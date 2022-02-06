@@ -74,9 +74,4 @@ impl<'a> Node<'a> {
     pub fn remove_child_at(&mut self, index: usize) -> NodeLike<'a> {
         self.children.remove(index)
     }
-
-    pub fn move_to(&mut self, tx: f64, ty: f64) {
-        self.transform.tx = (tx * 1.) / (1280. * 1.5) * 2.;
-        self.transform.ty = (ty * 1.) / (720. * 1.5) * 2.;
-    }
 }

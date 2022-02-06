@@ -2,8 +2,7 @@ use std::{
     fs,
     ops::{Deref, DerefMut},
 };
-use wgpu::{Device, Queue};
-use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::dpi::LogicalSize;
 
 use crate::{node::Node, renderer::Renderer, texture::Texture, types::Vertex};
 
@@ -62,6 +61,11 @@ impl<'a> Sprite<'a> {
         }
     }
 
+    pub fn move_to(&mut self, tx: i32, ty: i32) {
+        self.transform.tx = tx;
+        self.transform.ty = ty;
+    }
+
     pub fn calculate_vertices(&mut self, logical_size: LogicalSize<f64>, scale_factor: f64) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
@@ -75,29 +79,32 @@ impl<'a> Sprite<'a> {
         let b = self.transform.b;
         let c = self.transform.c;
         let d = self.transform.d;
-        let tx = self.transform.tx;
-        let ty = self.transform.ty;
+        // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
+        let tx =
+            (self.transform.tx as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
+        let ty = 1.
+            - (self.transform.ty as f64 * scale_factor) / (logical_size.height * scale_factor) * 2.;
 
         let w1 = -self.anchor.x * width;
         let w0 = w1 + width;
-        let h1 = -self.anchor.y * height;
+        let h1 = (-1. + self.anchor.y) * height;
         let h0 = h1 + height;
 
         // left top
         let p0x = a * w1 + c * h1 + tx - 1.;
-        let p0y = b * w1 + d * h1 + ty - 1.;
+        let p0y = b * w1 + d * h1 + ty;
 
         // left bottom
         let p1x = a * w0 + c * h1 + tx - 1.;
-        let p1y = b * w0 + d * h1 + ty - 1.;
+        let p1y = b * w0 + d * h1 + ty;
 
         // right top
         let p2x = a * w0 + c * h0 + tx - 1.;
-        let p2y = b * w0 + d * h0 + ty - 1.;
+        let p2y = b * w0 + d * h0 + ty;
 
         // right bottom
         let p3x = a * w1 + c * h0 + tx - 1.;
-        let p3y = b * w1 + d * h0 + ty - 1.;
+        let p3y = b * w1 + d * h0 + ty;
 
         let v = [
             Vertex {

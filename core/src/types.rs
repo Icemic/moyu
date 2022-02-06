@@ -62,6 +62,8 @@ impl Default for PointF {
 /// | a | c | tx|
 /// | b | d | ty|
 /// | 0 | 0 | 1 |
+///
+/// tx, ty is pixel size
 #[repr(C)]
 #[derive(PartialEq, Copy, Clone, Debug, Pod, Zeroable)]
 pub struct Transform {
@@ -69,18 +71,26 @@ pub struct Transform {
     pub b: f64,
     pub c: f64,
     pub d: f64,
-    pub tx: f64,
-    pub ty: f64,
+    pub tx: i32,
+    pub ty: i32,
 }
 
 impl Transform {
-    pub fn new(a: f64, b: f64, c: f64, d: f64, tx: f64, ty: f64) -> Self {
+    pub fn new(a: f64, b: f64, c: f64, d: f64, tx: i32, ty: i32) -> Self {
         Transform { a, b, c, d, tx, ty }
+    }
+
+    pub fn translate(tx: i32, ty: i32) -> Self {
+        Self {
+            tx,
+            ty,
+            ..Default::default()
+        }
     }
 }
 
 impl Default for Transform {
     fn default() -> Self {
-        Self::new(1., 0., 0., 1., 0., 0.)
+        Self::new(1., 0., 0., 1., 0, 0)
     }
 }

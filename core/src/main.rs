@@ -25,26 +25,24 @@ fn main() {
     let mut renderer = pollster::block_on(Renderer::new(&window));
 
     // load and use texture
-    let bg = Sprite::from_asset(&renderer, "title.png");
+    let mut bg = Sprite::from_asset(&renderer, "title.png");
     let mut button1 = Sprite::from_asset(&renderer, "button_n_01.png");
-    // let mut button2 = Sprite::from_asset(&renderer, "button_n_02.png");
-    // let mut button3 = Sprite::from_asset(&renderer, "button_n_06.png");
-    button1.move_to(923., 380.);
-    // button2.move_to(923., 440.);
-    // button3.move_to(923., 500.);
+    let mut button2 = Sprite::from_asset(&renderer, "button_n_02.png");
+    let mut button3 = Sprite::from_asset(&renderer, "button_n_06.png");
+    button1.move_to(923, 380);
+    button2.move_to(923, 440);
+    button3.move_to(923, 560);
 
-    renderer
-        .get_root_node()
-        .add_child(NodeLike::Sprite(bg));
+    renderer.get_root_node().add_child(NodeLike::Sprite(bg));
     renderer
         .get_root_node()
         .add_child(NodeLike::Sprite(button1));
-    // renderer
-    //     .get_root_node()
-    //     .add_child(NodeLike::Sprite(button2));
-    // renderer
-    //     .get_root_node()
-    //     .add_child(NodeLike::Sprite(button3));
+    renderer
+        .get_root_node()
+        .add_child(NodeLike::Sprite(button2));
+    renderer
+        .get_root_node()
+        .add_child(NodeLike::Sprite(button3));
 
     event_loop.run(move |event, _, control_flow| {
         match event {
