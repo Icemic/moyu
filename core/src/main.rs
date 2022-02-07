@@ -4,7 +4,7 @@ mod sprite;
 mod texture;
 mod types;
 
-use node::NodeLike;
+use node::{Node, NodeLike};
 use renderer::Renderer;
 use sprite::Sprite;
 use winit::{
@@ -29,20 +29,26 @@ fn main() {
     let mut button1 = Sprite::from_asset(&renderer, "button_n_01.png");
     let mut button2 = Sprite::from_asset(&renderer, "button_n_02.png");
     let mut button3 = Sprite::from_asset(&renderer, "button_n_06.png");
-    button1.move_to(923, 380);
-    button2.move_to(923, 440);
-    button3.move_to(923, 560);
+
+    let mut container = Node::new(
+        Some("Button Container"),
+        Default::default(),
+        Default::default(),
+    );
+    bg.move_to(0, 0);
+    container.move_to(923, 0);
+    button1.move_to(0, 380);
+    button2.move_to(0, 440);
+    button3.move_to(0, 560);
+
+    container.add_child(NodeLike::Sprite(button1));
+    container.add_child(NodeLike::Sprite(button2));
+    container.add_child(NodeLike::Sprite(button3));
 
     renderer.get_root_node().add_child(NodeLike::Sprite(bg));
     renderer
         .get_root_node()
-        .add_child(NodeLike::Sprite(button1));
-    renderer
-        .get_root_node()
-        .add_child(NodeLike::Sprite(button2));
-    renderer
-        .get_root_node()
-        .add_child(NodeLike::Sprite(button3));
+        .add_child(NodeLike::Node(container));
 
     event_loop.run(move |event, _, control_flow| {
         match event {

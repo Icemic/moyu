@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use wgpu::{util::DeviceExt, BindGroupLayout};
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
@@ -229,59 +231,70 @@ impl Renderer {
         // clear all update of last tick
         self.updated.clear();
 
-        for n in self.root_node.children.iter_mut() {
-            if let NodeLike::Sprite(sprite) = n {
-                let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    layout: &self.texture_bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(&sprite.texture.view),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&sprite.texture.sampler),
-                        },
-                    ],
-                    label: Some("bind_group"),
-                });
+        let device = &self.device;
 
-                sprite.calculate_vertices(self.logical_size, self.scale_factor);
+        walk_nodes(&self.root_node, &mut |child, parent| {
+            let mut child = child.borrow_mut();
+            match &mut *child {
+                NodeLike::Sprite(sprite) => {
+                    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        layout: &self.texture_bind_group_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: wgpu::BindingResource::TextureView(&sprite.texture.view),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: wgpu::BindingResource::Sampler(&sprite.texture.sampler),
+                            },
+                        ],
+                        label: Some("bind_group"),
+                    });
 
-                let vertices = &sprite.vertices.unwrap();
+                    sprite.calculate_transform(
+                        &parent.transform_to_global,
+                        self.logical_size,
+                        self.scale_factor,
+                    );
+                    sprite.calculate_vertices(self.logical_size, self.scale_factor);
 
-                let vertex_buffer =
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    let vertices = &sprite.vertices.unwrap();
+
+                    let vertex_buffer =
+                        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                             label: Some("Vertex Buffer"),
                             contents: bytemuck::cast_slice(vertices),
                             usage: wgpu::BufferUsages::VERTEX,
                         });
 
-                // let num_vertices1 = vertices1.len() as u32;
-                // let num_vertices2 = vertices2.len() as u32;
-                let num_vertices = vertices.len() as u32;
+                    let num_vertices = vertices.len() as u32;
 
-                let indices: &[u16] = &[0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7];
-
-                let index_buffer =
-                    self.device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    let index_buffer =
+                        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                             label: Some("Index Buffer"),
-                            contents: bytemuck::cast_slice(indices),
+                            contents: bytemuck::cast_slice(SPRITE_INDICES),
                             usage: wgpu::BufferUsages::INDEX,
                         });
-                let num_indices = (SPRITE_INDICES.len() * 2) as u32;
+                    let num_indices = SPRITE_INDICES.len() as u32;
 
-                self.updated.push((
-                    bind_group,
-                    vertex_buffer,
-                    index_buffer,
-                    num_vertices,
-                    num_indices,
-                ));
+                    self.updated.push((
+                        bind_group,
+                        vertex_buffer,
+                        index_buffer,
+                        num_vertices,
+                        num_indices,
+                    ));
+                }
+                NodeLike::Node(node) => {
+                    node.calculate_transform(
+                        &parent.transform_to_global,
+                        self.logical_size,
+                        self.scale_factor,
+                    );
+                }
             }
-        }
+        });
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -332,5 +345,27 @@ impl Renderer {
         output.present();
 
         Ok(())
+    }
+}
+
+/// walk through all node-like ones,
+/// due that the depth should not big, recursive is acceptable
+pub fn walk_nodes<'a, T>(root_node: &Node<'a>, func: &mut T)
+where
+    // child, arr, parent_node
+    T: FnMut(Rc<RefCell<NodeLike<'a>>>, &Node<'a>),
+{
+    let children = &root_node.children;
+    for child in children {
+        func(child.clone(), root_node);
+        let child = child.borrow();
+        let node = match &*child {
+            NodeLike::Sprite(sprite) => sprite,
+            NodeLike::Node(n) => n,
+        };
+
+        if node.children.len() > 0 {
+            walk_nodes(node, func);
+        }
     }
 }

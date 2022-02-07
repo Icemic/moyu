@@ -71,26 +71,50 @@ pub struct Transform {
     pub b: f64,
     pub c: f64,
     pub d: f64,
-    pub tx: i32,
-    pub ty: i32,
+    pub tx: f64,
+    pub ty: f64,
 }
 
 impl Transform {
-    pub fn new(a: f64, b: f64, c: f64, d: f64, tx: i32, ty: i32) -> Self {
+    /// create Transform instance
+    pub fn new(a: f64, b: f64, c: f64, d: f64, tx: f64, ty: f64) -> Self {
         Transform { a, b, c, d, tx, ty }
     }
 
-    pub fn translate(tx: i32, ty: i32) -> Self {
+    /// create Transform instance from specific translate value
+    pub fn translate(tx: f64, ty: f64) -> Self {
         Self {
             tx,
             ty,
             ..Default::default()
         }
     }
+
+    /// set translate value
+    pub fn set_translate(&mut self, x: f64, y: f64) {
+        self.tx = x;
+        self.ty = y;
+    }
+
+    /// multiply with a transform
+    pub fn multiply(&mut self, transform: Self) {
+        let a = self.a;
+        let b = self.b;
+        let c = self.c;
+        let d = self.d;
+
+        self.a = (transform.a * a) + (transform.b * c);
+        self.b = (transform.a * b) + (transform.b * d);
+        self.c = (transform.c * a) + (transform.d * c);
+        self.d = (transform.c * b) + (transform.d * d);
+
+        self.tx = (transform.tx * a) + (transform.ty * c) + self.tx;
+        self.ty = (transform.tx * b) + (transform.ty * d) + self.ty;
+    }
 }
 
 impl Default for Transform {
     fn default() -> Self {
-        Self::new(1., 0., 0., 1., 0, 0)
+        Self::new(1., 0., 0., 1., 0., 0.)
     }
 }
