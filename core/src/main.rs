@@ -2,6 +2,7 @@ mod node;
 mod renderer;
 mod sprite;
 mod texture;
+mod traits;
 mod types;
 
 use node::{Node, NodeLike};
@@ -15,7 +16,13 @@ use winit::{
 };
 
 fn main() {
-    env_logger::init();
+    #[cfg(debug_assertions)]
+    let env = env_logger::Env::default().default_filter_or("hai=debug");
+    #[cfg(not(debug_assertions))]
+    let env = env_logger::Env::default().default_filter_or("hai=warn");
+
+    env_logger::init_from_env(env);
+
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
