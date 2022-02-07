@@ -4,7 +4,7 @@ use std::{
 };
 use winit::dpi::LogicalSize;
 
-use crate::{node::Node, renderer::Renderer, texture::Texture, types::Vertex};
+use crate::{node::Node, renderer::Renderer, texture::Texture, traits::Focusable, types::Vertex};
 
 pub const SPRITE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 
@@ -118,5 +118,18 @@ impl<'a> Sprite<'a> {
         ];
 
         self.vertices = Some(v);
+    }
+}
+
+impl<'a> Focusable for Sprite<'a> {
+    fn contains(&self, x: i32, y: i32) -> bool {
+        if x > self.translate.x
+            && x < self.texture.width as i32 + self.translate.x
+            && y > self.translate.y
+            && y < self.texture.height as i32 + self.translate.y
+        {
+            return true;
+        }
+        false
     }
 }
