@@ -61,11 +61,6 @@ impl<'a> Sprite<'a> {
         }
     }
 
-    pub fn move_to(&mut self, tx: i32, ty: i32) {
-        self.transform.tx = tx;
-        self.transform.ty = ty;
-    }
-
     pub fn calculate_vertices(&mut self, logical_size: LogicalSize<f64>, scale_factor: f64) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
@@ -75,15 +70,12 @@ impl<'a> Sprite<'a> {
             / (logical_size.height * scale_factor) as f64
             * 2.;
 
-        let a = self.transform.a;
-        let b = self.transform.b;
-        let c = self.transform.c;
-        let d = self.transform.d;
-        // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-        let tx =
-            (self.transform.tx as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
-        let ty = 1.
-            - (self.transform.ty as f64 * scale_factor) / (logical_size.height * scale_factor) * 2.;
+        let a = self.transform_to_global.a;
+        let b = self.transform_to_global.b;
+        let c = self.transform_to_global.c;
+        let d = self.transform_to_global.d;
+        let tx = self.transform_to_global.tx;
+        let ty = 1. - self.transform_to_global.ty;
 
         let w1 = -self.anchor.x * width;
         let w0 = w1 + width;
@@ -124,11 +116,6 @@ impl<'a> Sprite<'a> {
                 tex_coords: [0., 0.],
             },
         ];
-
-        // println!(
-        //     "{} {} {} {} {} {} {} {}",
-        //     p0x, p0y, p3x, p3y, p1x, p1y, p2x, p2y,
-        // );
 
         self.vertices = Some(v);
     }
