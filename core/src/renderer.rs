@@ -1,5 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
+use log::debug;
 use wgpu::{util::DeviceExt, BindGroupLayout};
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
@@ -7,7 +8,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{node::Node, sprite::SPRITE_INDICES};
+use crate::{node::Node, sprite::SPRITE_INDICES, traits::Focusable};
 use crate::{node::NodeLike, types::Vertex};
 
 pub struct Renderer {
@@ -23,11 +24,11 @@ pub struct Renderer {
 
     root_node: Node<'static>,
     updated: Vec<(wgpu::BindGroup, wgpu::Buffer, wgpu::Buffer, u32, u32)>,
-    // vertex_buffer: wgpu::Buffer,
-    // num_vertices: u32,
-    // index_buffer: wgpu::Buffer,
-    // num_indices: u32,
-    // bind_group: wgpu::BindGroup
+    current_focused_node: Option<Rc<RefCell<NodeLike<'static>>>>, // vertex_buffer: wgpu::Buffer,
+                                                                  // num_vertices: u32,
+                                                                  // index_buffer: wgpu::Buffer,
+                                                                  // num_indices: u32,
+                                                                  // bind_group: wgpu::BindGroup
 }
 
 impl Renderer {
@@ -180,6 +181,7 @@ impl Renderer {
             texture_bind_group_layout,
             root_node,
             updated: vec![],
+            current_focused_node: None,
         }
     }
 
@@ -211,12 +213,49 @@ impl Renderer {
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         match event {
-            WindowEvent::CursorMoved {
-                device_id,
-                position,
-                ..
-            } => {
-                // println!("mouse move to {}, {}", position.x, position.y);
+            WindowEvent::CursorMoved { position, .. } => {
+                let global_logical_x = position.x / self.scale_factor;
+                let global_logical_y = position.y / self.scale_factor;
+
+                walk_nodes_bottom_top(&self.root_node, &mut |child, parent| {
+                    let mut child_ref = child.borrow_mut();
+                    let hit = match &mut *child_ref {
+                        NodeLike::Sprite(sprite) => {
+                            // calculate relative coordinate
+                            let parent_global_x =
+                                parent.transform_to_global.tx * self.logical_size.width / 2.;
+                            let parent_global_y =
+                                parent.transform_to_global.ty * self.logical_size.height / 2.;
+
+                            let relative_logical_x =
+                                (global_logical_x - parent_global_x).round() as i32;
+                            let relative_logical_y =
+                                (global_logical_y - parent_global_y).round() as i32;
+
+                            // check if pointer is over the sprite
+                            let hit = sprite.contains(relative_logical_x, relative_logical_y);
+
+                            (hit, sprite.label)
+                        }
+                        _ => (false, None),
+                    };
+
+                    if hit.0 {
+                        self.current_focused_node = Some(child.clone());
+                        debug!("[input] pointer is over {}", hit.1.unwrap());
+                    }
+
+                    hit.0
+                });
+                true
+            }
+            WindowEvent::CursorLeft { .. } => {
+                self.current_focused_node = None;
+                true
+            }
+            WindowEvent::MouseInput { state, button, .. } => {
+                //
+                println!("click");
                 true
             }
             _ => false,
@@ -233,7 +272,7 @@ impl Renderer {
 
         let device = &self.device;
 
-        walk_nodes(&self.root_node, &mut |child, parent| {
+        walk_nodes_top_bottom(&self.root_node, &mut |child, parent| {
             let mut child = child.borrow_mut();
             match &mut *child {
                 NodeLike::Sprite(sprite) => {
@@ -294,6 +333,7 @@ impl Renderer {
                     );
                 }
             }
+            false
         });
     }
 
@@ -348,24 +388,65 @@ impl Renderer {
     }
 }
 
-/// walk through all node-like ones,
+/// walk through all node-like ones from top to bottom,
 /// due that the depth should not big, recursive is acceptable
-pub fn walk_nodes<'a, T>(root_node: &Node<'a>, func: &mut T)
+pub fn walk_nodes_top_bottom<'a, T>(root_node: &Node<'a>, func: &mut T) -> bool
 where
-    // child, arr, parent_node
-    T: FnMut(Rc<RefCell<NodeLike<'a>>>, &Node<'a>),
+    // child, arr, parent_node  -> should_end
+    T: FnMut(Rc<RefCell<NodeLike<'a>>>, &Node<'a>) -> bool,
 {
     let children = &root_node.children;
-    for child in children {
-        func(child.clone(), root_node);
-        let child = child.borrow();
-        let node = match &*child {
+    for child in children.iter() {
+        let should_end = func(child.clone(), root_node);
+
+        if should_end {
+            return true;
+        }
+
+        let child_ref = child.borrow();
+        let node = match &*child_ref {
             NodeLike::Sprite(sprite) => sprite,
             NodeLike::Node(n) => n,
         };
 
         if node.children.len() > 0 {
-            walk_nodes(node, func);
+            let should_end = walk_nodes_top_bottom(node, func);
+            if should_end {
+                return true;
+            }
         }
     }
+    false
+}
+
+/// walk through all node-like ones from bottom to top,
+/// due that the depth should not big, recursive is acceptable
+pub fn walk_nodes_bottom_top<'a, T>(root_node: &Node<'a>, func: &mut T) -> bool
+where
+    // child, arr, parent_node  -> should_end
+    T: FnMut(Rc<RefCell<NodeLike<'a>>>, &Node<'a>) -> bool,
+{
+    let children = &root_node.children;
+    for child in children.iter().rev() {
+        {
+            let child_ref = child.borrow();
+            let node = match &*child_ref {
+                NodeLike::Sprite(sprite) => sprite,
+                NodeLike::Node(n) => n,
+            };
+
+            if node.children.len() > 0 {
+                let should_end = walk_nodes_bottom_top(node, func);
+                if should_end {
+                    return true;
+                }
+            }
+        }
+
+        let should_end = func(child.clone(), root_node);
+        if should_end {
+            return true;
+        }
+    }
+    false
 }
