@@ -4,7 +4,9 @@ mod sprite;
 mod texture;
 mod traits;
 mod types;
+mod v8;
 
+use crate::v8::V8;
 use node::{Node, NodeLike};
 use renderer::Renderer;
 use sprite::Sprite;
@@ -22,6 +24,11 @@ fn main() {
     let env = env_logger::Env::default().default_filter_or("hai=warn");
 
     env_logger::init_from_env(env);
+
+    // init v8
+    let mut vm = V8::init();
+
+    vm.run();
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
