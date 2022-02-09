@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use v8::{
     Array, Boolean, FunctionCallback, FunctionTemplate, HandleScope, Local, MapFnTo, NewStringType,
     Number, String,
@@ -102,4 +104,15 @@ pub fn v8_func<'s>(
     value: impl MapFnTo<FunctionCallback>,
 ) -> Local<'s, FunctionTemplate> {
     FunctionTemplate::new(scope, value)
+}
+
+pub fn try_find_file(dir: &PathBuf, filename: &str, extensions: Vec<&str>) -> Option<PathBuf> {
+    let p = PathBuf::from(dir).join(filename);
+    for ext in extensions {
+        let p = p.with_extension(ext);
+        if p.exists() {
+            return Some(p.canonicalize().unwrap());
+        }
+    }
+    None
 }

@@ -2,19 +2,18 @@
 mod macros;
 mod internals;
 mod module;
+mod state;
 mod utils;
 
-use v8::{
-    script_compiler::{self, Source},
-    Context, ContextScope, HandleScope, Isolate, OwnedIsolate, PromiseResolver, ScriptOrigin,
-    String,
-};
+use log::info;
+use std::env;
+use v8::{Context, ContextScope, HandleScope, Isolate, OwnedIsolate};
 
 use internals::setup;
 use module::dynamic_import_callback;
-use utils::IntoV8;
 
-use crate::v8::module::module_resolve_callback;
+use self::state::State;
+use crate::v8::module::import_module;
 
 pub struct V8 {
     isolate: OwnedIsolate,
@@ -28,12 +27,20 @@ impl V8 {
 
         let mut isolate = Isolate::new(Default::default());
 
+        let state = State::new();
+
+        isolate.set_slot(state);
         isolate.set_host_import_module_dynamically_callback(dynamic_import_callback);
 
         V8 { isolate }
     }
 
     pub fn run(&mut self) {
+        let mut entry_dir = env::var("HAI_ENTRY")
+            .unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
+
+        info!("[module] entry '{}'", entry_dir);
+
         let scope = &mut HandleScope::new(&mut self.isolate);
         let global_context = Context::new(scope);
         let scope = &mut ContextScope::new(scope, global_context);
@@ -42,41 +49,9 @@ impl V8 {
         let global = global_context.global(scope);
         setup(scope, &global);
 
-        let code = String::new(
-            scope,
-            "import a from 'aaa';console.log('aaa'); 'a' + 'b';a();",
-        )
-        .unwrap();
-        println!("javascript code: {}", code.to_rust_string_lossy(scope));
-
-        let resource_name = "main".into_v8(scope).into();
-        let resource_map_name = "".into_v8(scope).into();
-        let origin = ScriptOrigin::new(
-            scope,
-            resource_name,
-            0,
-            0,
-            false,
-            0,
-            resource_map_name,
-            false,
-            false,
-            true,
-        );
-        let source = Source::new(code, Some(&origin));
-
-        let module = script_compiler::compile_module(scope, source).unwrap();
-        module
-            .instantiate_module(scope, module_resolve_callback)
-            .unwrap();
-        let mut result = module.evaluate(scope).unwrap();
-        if result.is_promise() {
-            let resolver = PromiseResolver::new(scope).unwrap();
-            let promise = resolver.get_promise(scope);
-            resolver.resolve(scope, result);
-            result = promise.result(scope);
-        }
-        let result = result.to_string(scope).unwrap();
-        println!("result: {}", result.to_rust_string_lossy(scope));
+        // input shall be a referrer name but entry_dir is a directory, so do some hack
+        entry_dir.push_str("./index");
+        // start from entry file
+        import_module(scope, Some(entry_dir), None, "./index".to_string(), None);
     }
 }
