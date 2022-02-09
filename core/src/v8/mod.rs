@@ -3,14 +3,13 @@ mod macros;
 mod internals;
 mod utils;
 
-use utils::Utils;
 use v8::{
     script_compiler::{self, Source},
     CallbackScope, Context, ContextScope, FixedArray, HandleScope, Isolate, Local, Module,
     OwnedIsolate, Promise, PromiseResolver, ScriptOrModule, ScriptOrigin, String,
 };
 
-use crate::v8::{internals::setup, utils::Convert};
+use crate::v8::{internals::setup, utils::IntoV8};
 
 pub struct V8 {
     isolate: OwnedIsolate,
@@ -45,8 +44,8 @@ impl V8 {
         .unwrap();
         println!("javascript code: {}", code.to_rust_string_lossy(scope));
 
-        let resource_name = Utils::to_v8(scope, "main").into();
-        let resource_map_name = Utils::to_v8(scope, "").into();
+        let resource_name = "main".into_v8(scope).into();
+        let resource_map_name = "".into_v8(scope).into();
         let origin = ScriptOrigin::new(
             scope,
             resource_name,
@@ -90,8 +89,8 @@ fn import_module<'s>(
     .unwrap();
     println!("javascript code: {}", code.to_rust_string_lossy(scope));
 
-    let resource_name = Utils::to_v8(scope, "main").into();
-    let resource_map_name = Utils::to_v8(scope, "").into();
+    let resource_name = "main".into_v8(scope).into();
+    let resource_map_name = "".into_v8(scope).into();
     let origin = ScriptOrigin::new(
         scope,
         resource_name,
