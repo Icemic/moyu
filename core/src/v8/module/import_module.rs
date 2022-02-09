@@ -1,9 +1,11 @@
 use log::{error, info};
+use std::cell::RefCell;
 use std::fs;
+use std::rc::Rc;
 use std::{path::PathBuf, process::exit};
 use v8::{
     script_compiler::{self, Source},
-    FixedArray, HandleScope, Local, Module, Promise, PromiseResolver, ScriptOrigin, String,
+    FixedArray, Global, HandleScope, Local, Module, Promise, PromiseResolver, ScriptOrigin, String,
 };
 
 use super::module_resolve_callback;
@@ -12,9 +14,9 @@ use crate::v8::{state::State, utils::IntoV8};
 
 pub enum ResolvedModule {
     // path to local disk
-    Local(std::string::String),
+    Local,
     // url
-    Remote(std::string::String),
+    Remote,
     // file not exists or other errors
     None,
 }
@@ -31,7 +33,8 @@ pub fn import_module<'s>(
     if let Some(referrer_name) = referrer_name {
         actual_referrer_name.push_str(&referrer_name);
     } else if let Some(referrer_script_id) = referrer_script_id {
-        let state: &mut State = scope.get_slot_mut().unwrap();
+        let state = scope.get_slot_mut::<Rc<RefCell<State>>>().unwrap().clone();
+        let state = state.borrow_mut();
         if let Some(referrer_name) = state.get_module_referrer_name(referrer_script_id) {
             actual_referrer_name.push_str(&referrer_name)
         }
@@ -46,18 +49,46 @@ pub fn import_module<'s>(
         exit(-1);
     }
 
-    let module = resolve_module(&specifier, &actual_referrer_name);
+    // resolve to absolute referrer path
+    let (module_type, module_referrer) = resolve_module(&specifier, &actual_referrer_name);
 
-    let (code, module_referrer) = match module {
-        ResolvedModule::Local(filename) => {
-            let code = read_code_local(&filename);
-            info!("[module] module '{}' loaded from '{}'", specifier, filename);
-            (code, filename)
+    let state = scope.get_slot_mut::<Rc<RefCell<State>>>().unwrap().clone();
+    let mut state = state.borrow_mut();
+
+    // check cache or load new module
+    if let Some(module) = state.get_module(&module_referrer) {
+        let module = Local::new(scope, module);
+
+        let resolver = PromiseResolver::new(scope).unwrap();
+        let promise = resolver.get_promise(scope);
+        // TODO: Is undefined ok?
+        let undefined = v8::undefined(scope).into();
+        resolver.resolve(scope, undefined);
+
+        info!(
+            "[module] module '{}' loaded from '{}' (use cache)",
+            specifier, module_referrer
+        );
+
+        return (module, promise);
+    }
+
+    let code = match module_type {
+        ResolvedModule::Local => {
+            let code = read_code_local(&module_referrer);
+            info!(
+                "[module] module '{}' loaded from '{}'",
+                specifier, module_referrer
+            );
+            code
         }
-        ResolvedModule::Remote(url) => {
-            let code = read_code_remote(&url);
-            info!("[module] module '{}' loaded from '{}'", specifier, url);
-            (code, url)
+        ResolvedModule::Remote => {
+            let code = read_code_remote(&module_referrer);
+            info!(
+                "[module] module '{}' loaded from '{}'",
+                specifier, module_referrer
+            );
+            code
         }
         ResolvedModule::None => {
             error!(
@@ -93,8 +124,12 @@ pub fn import_module<'s>(
 
     // save to state
     let script_id = module.script_id().unwrap();
-    let state: &mut State = scope.get_slot_mut().unwrap();
+    let global_module = Global::new(scope, module);
+    state.save_module(&module_referrer, global_module);
     state.save_module_referrer_name(script_id, module_referrer);
+
+    // for `module_resolve_callback` below may cause a recursive calling while state is still borrowed.
+    drop(state);
 
     // instantiate and run module code
     module
@@ -112,15 +147,23 @@ pub fn import_module<'s>(
     (module, promise)
 }
 
-pub fn resolve_module(specifier: &str, referrer_name: &str) -> ResolvedModule {
+pub fn resolve_module(
+    specifier: &str,
+    referrer_name: &str,
+) -> (ResolvedModule, std::string::String) {
     if specifier.starts_with(".") {
         let path = PathBuf::from(referrer_name).with_file_name("");
 
-        if let Some(filename) = try_find_file(&path, specifier, vec!["ts", "tsx", "jsx", "js"]) {
-            return ResolvedModule::Local(filename.to_str().unwrap().to_string());
+        if let Some(filename) =
+            try_find_file(&path, specifier, vec!["ts", "tsx", "mjs", "jsx", "js"])
+        {
+            return (
+                ResolvedModule::Local,
+                filename.to_str().unwrap().to_string(),
+            );
         }
 
-        return ResolvedModule::None;
+        return (ResolvedModule::None, "".to_string());
     }
 
     // treat others as remote modules (just like modules in `node_modules` for nodejs)
@@ -134,7 +177,7 @@ pub fn resolve_module(specifier: &str, referrer_name: &str) -> ResolvedModule {
         path.push_str("?target=es2020");
     }
 
-    return ResolvedModule::Remote(path);
+    return (ResolvedModule::Remote, path);
 }
 
 pub fn read_code_local(filename: &std::string::String) -> std::string::String {
