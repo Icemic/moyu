@@ -6,7 +6,7 @@ mod state;
 mod utils;
 
 use log::info;
-use std::env;
+use std::{env, rc::Rc, cell::RefCell};
 use v8::{Context, ContextScope, HandleScope, Isolate, OwnedIsolate};
 
 use internals::setup;
@@ -29,7 +29,7 @@ impl V8 {
 
         let state = State::new();
 
-        isolate.set_slot(state);
+        isolate.set_slot(Rc::new(RefCell::new(state)));
         isolate.set_host_import_module_dynamically_callback(dynamic_import_callback);
 
         V8 { isolate }
