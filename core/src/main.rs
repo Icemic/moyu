@@ -1,6 +1,7 @@
 mod node;
 mod renderer;
 mod sprite;
+mod swc;
 mod texture;
 mod traits;
 mod types;
