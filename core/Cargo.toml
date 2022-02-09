@@ -5,6 +5,11 @@ version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["desktop"]
+desktop = ["v8"]
+web = ["wgpu/webgl"]
+
 [dependencies]
 anyhow = "1.0"
 bytemuck = {version = "1.4", features = ["derive"]}
@@ -16,6 +21,8 @@ log = "0.4"
 pollster = "0.2"
 swc = "0.122"
 swc_ecma_parser = "0.88"
-v8 = "0.39"
 wgpu = "0.12"
 winit = "0.26"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+v8 = {version = "0.39", optional = true}

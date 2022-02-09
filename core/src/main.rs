@@ -5,8 +5,10 @@ mod swc;
 mod texture;
 mod traits;
 mod types;
+#[cfg(not(target_arch = "wasm32"))]
 mod v8;
 
+#[cfg(not(target_arch = "wasm32"))]
 use crate::v8::V8;
 use dotenv::dotenv;
 use node::{Node, NodeLike};
@@ -31,8 +33,10 @@ fn main() {
     dotenv().ok();
 
     // init v8
-    let mut vm = V8::init();
 
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut vm = V8::init();
+    #[cfg(not(target_arch = "wasm32"))]
     vm.run();
 
     let event_loop = EventLoop::new();
