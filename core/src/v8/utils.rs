@@ -106,12 +106,16 @@ pub fn v8_func<'s>(
     FunctionTemplate::new(scope, value)
 }
 
-pub fn try_find_file(dir: &PathBuf, filename: &str, extensions: Vec<&str>) -> Option<PathBuf> {
+pub fn try_find_file<'a>(
+    dir: &PathBuf,
+    filename: &'a str,
+    extensions: Vec<&'a str>,
+) -> Option<(PathBuf, &'a str)> {
     let p = PathBuf::from(dir).join(filename);
     for ext in extensions {
         let p = p.with_extension(ext);
         if p.exists() {
-            return Some(p.canonicalize().unwrap());
+            return Some((p.canonicalize().unwrap(), ext));
         }
     }
     None
