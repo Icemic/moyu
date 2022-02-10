@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{debug, error, info};
 use std::cell::RefCell;
 use std::fs;
 use std::rc::Rc;
@@ -168,13 +168,20 @@ pub fn resolve_module(
 
     // treat others as remote modules (just like modules in `node_modules` for nodejs)
     let mut path = std::string::String::new();
-    path.push_str("https://esm.sh/");
-    path.push_str(specifier);
 
-    if path.contains('?') {
-        path.push_str("&target=es2020");
+    // specifier with a 'http://' or 'https://' will be used as-is,
+    // otherwise it will be treated as plain remote package name,
+    // then a default remote package cdn prefix will be added.
+    if specifier.starts_with("http://") || specifier.starts_with("https://") {
+        path.push_str(specifier);
     } else {
-        path.push_str("?target=es2020");
+        path.push_str("https://esm.sh/");
+        path.push_str(specifier);
+        if path.contains('?') {
+            path.push_str("&target=es2022");
+        } else {
+            path.push_str("?target=es2022");
+        }
     }
 
     return (ResolvedModule::Remote, path);
@@ -196,5 +203,14 @@ pub fn read_code_local(filename: &std::string::String) -> std::string::String {
 }
 
 pub fn read_code_remote(url: &std::string::String) -> std::string::String {
-    todo!("pull module from remote");
+    // TODO: use Client to set headers
+    let result = reqwest::blocking::get(url).unwrap();
+    let code = result.text().unwrap();
+    // print only the first 255 characters
+    debug!(
+        "content downloaded from: {}\n{}",
+        url,
+        &code[..(255.min(code.len()))]
+    );
+    code
 }

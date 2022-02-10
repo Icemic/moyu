@@ -25,4 +25,5 @@ wgpu = "0.12"
 winit = "0.26"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = {version = "0.11", features = ["blocking", "rustls-tls", "gzip", "deflate", "stream", "brotli"]}
 v8 = {version = "0.39", optional = true}
