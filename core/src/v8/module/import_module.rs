@@ -1,3 +1,4 @@
+use hai_module_compiler::{transpile, ScriptType};
 use log::{debug, error, info};
 use std::cell::RefCell;
 use std::fs;
@@ -5,7 +6,7 @@ use std::rc::Rc;
 use std::{path::PathBuf, process::exit};
 use v8::{
     script_compiler::{self, Source},
-    FixedArray, Global, HandleScope, Local, Module, Promise, PromiseResolver, ScriptOrigin, String,
+    FixedArray, Global, HandleScope, Local, Module, Promise, PromiseResolver, ScriptOrigin,
 };
 
 use super::module_resolve_callback;
@@ -14,7 +15,7 @@ use crate::v8::{state::State, utils::IntoV8};
 
 pub enum ResolvedModule {
     // path to local disk
-    Local,
+    Local(ScriptType),
     // url
     Remote,
     // file not exists or other errors
@@ -26,7 +27,7 @@ pub fn import_module<'s>(
     referrer_name: Option<std::string::String>,
     referrer_script_id: Option<i32>,
     specifier: std::string::String,
-    import_assertions: Option<Local<'s, FixedArray>>,
+    _import_assertions: Option<Local<'s, FixedArray>>,
 ) -> (Local<'s, Module>, Local<'s, Promise>) {
     // get referrer name which is required to load local module
     let mut actual_referrer_name = std::string::String::new();
@@ -73,8 +74,8 @@ pub fn import_module<'s>(
         return (module, promise);
     }
 
-    let code = match module_type {
-        ResolvedModule::Local => {
+    let mut code = match module_type {
+        ResolvedModule::Local(..) => {
             let code = read_code_local(&module_referrer);
             info!(
                 "[module] module '{}' loaded from '{}'",
@@ -99,9 +100,18 @@ pub fn import_module<'s>(
         }
     };
 
-    let resource_name = module_referrer.clone().into_v8(scope).into();
-    let source_map_url = "".into_v8(scope).into();
+    // transpile only applies for local code,
+    // for remote code shall be pre-transpiled
+    if let ResolvedModule::Local(script_type) = module_type {
+        code = transpile(&code, script_type).unwrap().code;
+        // print only the first 255 characters
+        debug!("code transpiled\n{}", &code[..(255.min(code.len()))]);
+    }
 
+    let resource_name = module_referrer.clone().into_v8(scope).into();
+    let source_map_url = "<internal>".into_v8(scope).into();
+
+    // create source origin
     let origin = ScriptOrigin::new(
         scope,
         resource_name,
@@ -131,11 +141,15 @@ pub fn import_module<'s>(
     // for `module_resolve_callback` below may cause a recursive calling while state is still borrowed.
     drop(state);
 
+    debug!("[module] instantiate module '{}'", specifier);
+
     // instantiate and run module code
     module
         .instantiate_module(scope, module_resolve_callback)
         .unwrap();
     let result = module.evaluate(scope).unwrap();
+
+    debug!("[module] instantiate module '{}' finished", specifier);
 
     // resolve promise of module loading
     let resolver = PromiseResolver::new(scope).unwrap();
@@ -154,11 +168,19 @@ pub fn resolve_module(
     if specifier.starts_with(".") {
         let path = PathBuf::from(referrer_name).with_file_name("");
 
-        if let Some(filename) =
+        if let Some((filename, ext)) =
             try_find_file(&path, specifier, vec!["ts", "tsx", "mjs", "jsx", "js"])
         {
+            let script_type;
+
+            if ext == "ts" || ext == "tsx" {
+                script_type = ScriptType::Typescript;
+            } else {
+                script_type = ScriptType::Javascript;
+            }
+
             return (
-                ResolvedModule::Local,
+                ResolvedModule::Local(script_type),
                 filename.to_str().unwrap().to_string(),
             );
         }
