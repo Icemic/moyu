@@ -1,5 +1,6 @@
 [workspace]
 members = [
   "core",
+  "module_compiler",
 ]
 resolver = "2"
