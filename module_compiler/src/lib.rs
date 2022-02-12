@@ -9,12 +9,13 @@ use swc::{
 };
 use swc_ecma_parser::{EsConfig, Syntax, TsConfig};
 
+#[derive(Debug)]
 pub enum ScriptType {
     Typescript,
     Javascript,
 }
 
-pub fn transpile(source: &str, script_type: ScriptType) -> Result<TransformOutput, Error> {
+pub fn transpile(source: &str, script_type: &ScriptType) -> Result<TransformOutput, Error> {
     let cm = Arc::new(SourceMap::new(FilePathMapping::empty()));
 
     let c = Arc::new(Compiler::new(cm));
@@ -62,21 +63,21 @@ mod tests {
     #[test]
     fn module_compiler_typescript() {
         let s = "import xx from 'sdsf'; const a: number = 1;xx();";
-        let code = transpile(s, ScriptType::Typescript).unwrap().code;
+        let code = transpile(s, &ScriptType::Typescript).unwrap().code;
         assert_eq!(code, "import xx from 'sdsf';\nconst a = 1;\nxx();\n");
     }
 
     #[test]
     fn module_compiler_typescript_tsx() {
         let s = "function abc(){return <div foo='bar' />}";
-        let code = transpile(s, ScriptType::Typescript).unwrap().code;
+        let code = transpile(s, &ScriptType::Typescript).unwrap().code;
         assert_eq!(code, "function abc() {\n    return(/*#__PURE__*/ React.createElement(\"div\", {\n        foo: \"bar\"\n    }));\n}\n");
     }
 
     #[test]
     fn module_compiler_javascript() {
         let s = "let arr = []; for (const item of arr) { doSomething(item); }";
-        let code = transpile(s, ScriptType::Javascript).unwrap().code;
+        let code = transpile(s, &ScriptType::Javascript).unwrap().code;
         assert_eq!(
             code,
             "let arr = [];\nfor (const item of arr){\n    doSomething(item);\n}\n"
@@ -86,7 +87,7 @@ mod tests {
     #[test]
     fn module_compiler_javascript_jsx() {
         let s = "function abc(){return <div foo='bar' />}";
-        let code = transpile(s, ScriptType::Javascript).unwrap().code;
+        let code = transpile(s, &ScriptType::Javascript).unwrap().code;
         assert_eq!(code, "function abc() {\n    return(/*#__PURE__*/ React.createElement(\"div\", {\n        foo: \"bar\"\n    }));\n}\n");
     }
 }

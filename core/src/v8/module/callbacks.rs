@@ -1,24 +1,43 @@
+use std::{cell::RefCell, rc::Rc};
 use v8::{
-    CallbackScope, Context, FixedArray, HandleScope, Local, Module, Promise, ScriptOrModule, String,
+    CallbackScope, Context, FixedArray, Global, Local, Module, Promise, PromiseResolver,
+    ScriptOrModule, String,
 };
 
-use super::import_module;
+use super::ModulePendingStatus;
+use crate::v8::state::State;
 
+/// load a module synchronously
+/// used directly by module.instantiate_module which needs a v8::Module instance
+/// while the instance must created synchronously, its instantiation and
 pub fn module_resolve_callback<'a>(
     context: Local<'a, Context>,
     specifier: Local<'a, String>,
-    import_assertions: Local<'a, FixedArray>,
+    _import_assertions: Local<'a, FixedArray>,
     referrer: Local<'a, Module>,
 ) -> Option<Local<'a, Module>> {
     let scope = &mut unsafe { CallbackScope::new(context) };
+
+    let state = scope.get_slot_mut::<Rc<RefCell<State>>>().unwrap();
+    let state = state.borrow();
+    let module_loader = state.module_loader();
+
+    drop(state);
+
     let specifier = specifier.to_rust_string_lossy(scope);
-    let (module, _) = import_module(
-        scope,
-        None,
-        referrer.script_id(),
-        specifier,
-        Some(import_assertions),
-    );
+    let mut module_loader = module_loader.borrow_mut();
+    let referer_name = module_loader
+        .get_resolved_specifier_from_script_id(referrer.script_id().unwrap())
+        .unwrap();
+    let resolved_specifier = module_loader.create_module_info(referer_name, specifier);
+
+    module_loader.resolve_module(scope, &resolved_specifier);
+
+    module_loader.enqueue_module_pending(ModulePendingStatus::Resolved, &resolved_specifier, None);
+
+    let module = module_loader.get_module(&resolved_specifier).unwrap();
+    let module = Local::new(scope, module);
+
     Some(module)
 }
 
@@ -26,19 +45,34 @@ pub extern "C" fn dynamic_import_callback(
     context: Local<Context>,
     referrer: Local<ScriptOrModule>,
     specifier: Local<String>,
-    import_assertions: Local<FixedArray>,
+    _import_assertions: Local<FixedArray>,
 ) -> *mut Promise {
     let scope = &mut unsafe { CallbackScope::new(context) };
-    let scope = &mut HandleScope::new(scope);
+    let state = scope.get_slot_mut::<Rc<RefCell<State>>>().unwrap();
+    let state = state.borrow();
+    let module_loader = state.module_loader();
+    let module_loader_mut = module_loader.borrow_mut();
+
+    drop(state);
+    drop(module_loader_mut);
 
     let referrer_name = referrer.get_resource_name().to_rust_string_lossy(scope);
     let specifier = specifier.to_rust_string_lossy(scope);
-    let (_, promise) = import_module(
-        scope,
-        Some(referrer_name),
-        None,
-        specifier,
-        Some(import_assertions),
+
+    // create promise resolver
+    let resolver = PromiseResolver::new(scope).unwrap();
+    let promise: *mut Promise = &*resolver.get_promise(scope) as *const _ as *mut _;
+    let resolver = Global::new(scope, resolver);
+
+    let mut module_loader_mut = module_loader.borrow_mut();
+
+    // add to queue
+    let resolved_specifier = module_loader_mut.create_module_info(referrer_name, specifier);
+    module_loader_mut.enqueue_module_pending(
+        ModulePendingStatus::Created,
+        &resolved_specifier,
+        Some(resolver),
     );
-    return &*promise as *const _ as *mut _;
+
+    promise
 }

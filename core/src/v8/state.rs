@@ -1,34 +1,24 @@
-use std::collections::HashMap;
-use v8::{Global, Module};
+use futures::task::AtomicWaker;
+use std::{cell::RefCell, rc::Rc};
+
+use super::module::ModuleLoader;
 
 pub struct State {
-    pub module_referrer_names: HashMap<i32, String>,
-    pub module_map: HashMap<String, Global<Module>>,
+    pub module_loader: Rc<RefCell<ModuleLoader>>,
+    pub waker: AtomicWaker,
 }
 
 impl State {
     pub fn new() -> Self {
+        let mut module_loader = ModuleLoader::new();
+        module_loader.setup_entry_module();
         State {
-            module_referrer_names: Default::default(),
-            module_map: Default::default(),
+            module_loader: Rc::new(RefCell::new(module_loader)),
+            waker: AtomicWaker::new(),
         }
     }
-    pub fn get_module_referrer_name(&self, script_id: i32) -> Option<String> {
-        if let Some(v) = self.module_referrer_names.get(&script_id) {
-            return Some(v.clone());
-        }
-        None
-    }
 
-    pub fn save_module_referrer_name(&mut self, script_id: i32, referrer_name: String) {
-        self.module_referrer_names.insert(script_id, referrer_name);
-    }
-
-    pub fn get_module(&mut self, referrer_name: &String) -> Option<&Global<Module>> {
-        self.module_map.get(referrer_name)
-    }
-
-    pub fn save_module(&mut self, referrer_name: &String, module: Global<Module>) {
-        self.module_map.insert(referrer_name.clone(), module);
+    pub fn module_loader(&self) -> Rc<RefCell<ModuleLoader>> {
+        self.module_loader.clone()
     }
 }

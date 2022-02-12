@@ -1,3 +1,5 @@
+#![feature(drain_filter)]
+
 mod node;
 mod renderer;
 mod sprite;
@@ -8,7 +10,7 @@ mod types;
 mod v8;
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::v8::V8;
+use crate::v8::JSRuntime;
 use dotenv::dotenv;
 use node::{Node, NodeLike};
 use renderer::Renderer;
@@ -20,7 +22,8 @@ use winit::{
     window::WindowBuilder,
 };
 
-fn main() {
+#[tokio::main]
+async fn main() {
     #[cfg(debug_assertions)]
     let env = env_logger::Env::default().default_filter_or("hai=debug");
     #[cfg(not(debug_assertions))]
@@ -34,9 +37,8 @@ fn main() {
     // init v8
 
     #[cfg(not(target_arch = "wasm32"))]
-    let mut vm = V8::init();
-    #[cfg(not(target_arch = "wasm32"))]
-    vm.run();
+    let mut vm = JSRuntime::new();
+    vm.run_event_loop().await;
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -44,7 +46,8 @@ fn main() {
         .build(&event_loop)
         .unwrap();
 
-    let mut renderer = pollster::block_on(Renderer::new(&window));
+    // let mut renderer = pollster::block_on(Renderer::new(&window));
+    let mut renderer = Renderer::new(&window).await;
 
     // load and use texture
     let mut bg = Sprite::from_asset(&renderer, "title.png");

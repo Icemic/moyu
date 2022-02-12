@@ -16,9 +16,9 @@ bytemuck = {version = "1.4", features = ["derive"]}
 cgmath = "0.18"
 dotenv = "0.15.0"
 env_logger = "0.9"
+futures = "0.3"
 image = "0.23"
 log = "0.4"
-pollster = "0.2"
 wgpu = "0.12"
 winit = "0.26"
 
@@ -27,5 +27,9 @@ path = "../module_compiler"
 version = "0.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-reqwest = {version = "0.11", features = ["blocking", "rustls-tls", "gzip", "deflate", "stream", "brotli"]}
+reqwest = {version = "0.11", features = ["rustls-tls", "gzip", "deflate", "stream", "brotli"]}
+tokio = {version = "1", features = ["full"]}
 v8 = {version = "0.39", optional = true}
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+pollster = "0.2"
