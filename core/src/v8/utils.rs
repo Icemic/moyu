@@ -1,5 +1,4 @@
-use std::path::{Path, PathBuf};
-
+use std::path::PathBuf;
 use v8::{
     Array, Boolean, FunctionCallback, FunctionTemplate, HandleScope, Local, MapFnTo, NewStringType,
     Number, String,
