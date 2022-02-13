@@ -7,12 +7,13 @@ mod texture;
 mod traits;
 mod types;
 
+use dotenv::dotenv;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
-use dotenv::dotenv;
 use node::{Node, NodeLike};
 use renderer::Renderer;
 use sprite::Sprite;
+use std::thread;
 use winit::{
     dpi::{LogicalSize, Size},
     event::*,
@@ -20,8 +21,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-#[tokio::main]
-async fn main() {
+fn main() {
     // load custom env from .env file
     dotenv().ok();
 
@@ -34,11 +34,19 @@ async fn main() {
     // init v8
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let mut vm = JSRuntime::new();
-        vm.prepare_static_modules().await;
-        vm.start();
+        thread::spawn(|| {
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async {
+                let mut vm = JSRuntime::new();
+                vm.prepare_static_modules().await;
+                vm.start();
 
-        vm.run_event_loop().await;
+                vm.run_event_loop().await;
+            });
+        });
     }
 
     let event_loop = EventLoop::new();
@@ -47,8 +55,10 @@ async fn main() {
         .build(&event_loop)
         .unwrap();
 
-    // let mut renderer = pollster::block_on(Renderer::new(&window));
-    let mut renderer = Renderer::new(&window).await;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .build()
+        .unwrap();
+    let mut renderer = runtime.block_on(Renderer::new(&window));
 
     // load and use texture
     let mut bg = Sprite::from_asset(&renderer, "title.png");
