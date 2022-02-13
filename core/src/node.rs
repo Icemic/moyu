@@ -50,6 +50,7 @@ impl<'a> Node<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_child(&self, index: usize) -> Option<Rc<RefCell<NodeLike<'a>>>> {
         if let Some(child) = self.children.get(index) {
             return Some(Rc::clone(child));
@@ -61,10 +62,12 @@ impl<'a> Node<'a> {
         self.children.push(Rc::new(RefCell::new(child)));
     }
 
+    #[allow(dead_code)]
     pub fn insert_child(&mut self, index: usize, child: NodeLike<'a>) {
         self.children.insert(index, Rc::new(RefCell::new(child)));
     }
 
+    #[allow(dead_code)]
     pub fn remove_child(
         &mut self,
         child: Rc<RefCell<NodeLike<'a>>>,
@@ -79,6 +82,7 @@ impl<'a> Node<'a> {
         None
     }
 
+    #[allow(dead_code)]
     pub fn remove_child_at(&mut self, index: usize) -> Option<Rc<RefCell<NodeLike<'a>>>> {
         if index < self.children.len() {
             return Some(self.children.remove(index));
