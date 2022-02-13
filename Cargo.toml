@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "core",
-  "module_compiler",
+  "hai_core",
+  "hai_module_compiler",
 ]
 resolver = "2"
