@@ -82,6 +82,7 @@ impl Transform {
     }
 
     /// create Transform instance from specific translate value
+    #[allow(dead_code)]
     pub fn translate(tx: f64, ty: f64) -> Self {
         Self {
             tx,
@@ -91,6 +92,7 @@ impl Transform {
     }
 
     /// set translate value
+    #[allow(dead_code)]
     pub fn set_translate(&mut self, x: f64, y: f64) {
         self.tx = x;
         self.ty = y;

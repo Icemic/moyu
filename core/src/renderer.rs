@@ -253,7 +253,7 @@ impl Renderer {
                 self.current_focused_node = None;
                 true
             }
-            WindowEvent::MouseInput { state, button, .. } => {
+            WindowEvent::MouseInput { .. } => {
                 //
                 println!("click");
                 true
