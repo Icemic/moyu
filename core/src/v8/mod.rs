@@ -3,6 +3,7 @@ mod macros;
 mod internals;
 mod module;
 mod state;
+mod timer;
 mod utils;
 
 use futures::StreamExt;
@@ -13,7 +14,7 @@ use std::{
     task::{Context as TaskContext, Poll},
 };
 use tokio::macros::support::poll_fn;
-use v8::{Context, ContextScope, Global, HandleScope, Isolate, OwnedIsolate};
+use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, OwnedIsolate, Value};
 
 use self::module::{dynamic_import_callback, ModuleLoader};
 use crate::v8::state::State;
@@ -144,17 +145,60 @@ impl JSRuntime {
                             module_info.specifier, resolved_specifier
                         );
                     }
-                    // Poll::Pending
                 }
                 Poll::Pending => {}
             }
         }
     }
 
+    fn poll_timers(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
+        let state = self.isolate.get_slot::<Rc<RefCell<State>>>().unwrap();
+        let state = state.borrow_mut();
+
+        // register waker to isolate state
+        state.waker.register(cx.waker());
+
+        let timer = state.timer();
+
+        drop(state);
+
+        let mut timer = timer.borrow_mut();
+
+        // register waker to module loader
+        timer.waker.register(cx.waker());
+
+        match timer.pending.poll_next_unpin(cx) {
+            Poll::Ready(None) => return Poll::Ready(()),
+            Poll::Ready(Some(handler_id)) => {
+                let callback = timer.consume_callback(handler_id);
+
+                // timer should be dropped before callback was called,
+                // or it may cause `already borrowed` error
+                // when two or more callbacks (aka two or more setTimeout or setInterval) nested.
+                drop(timer);
+
+                if let Some(callback) = callback {
+                    let scope = &mut self.get_handle_scope();
+                    let context = Context::new(scope);
+                    let global = context.global(scope);
+                    let callback = Local::new(scope, callback);
+                    // TODO: support pass extra arguments
+                    let args: [Local<'_, Value>; 0] = [];
+                    callback.call(scope, global.into(), &args);
+                }
+
+                cx.waker().clone().wake();
+                Poll::Pending
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+
     pub async fn run_event_loop(&mut self) {
         loop {
             tokio::time::sleep(tokio::time::Duration::from_millis(4)).await;
-            poll_fn(|cx| self.poll_prepare_module(cx)).await
+            poll_fn(|cx| self.poll_prepare_module(cx)).await;
+            poll_fn(|cx| self.poll_timers(cx)).await;
         }
     }
 }
