@@ -4,7 +4,7 @@ use std::{path::PathBuf, process::exit};
 use tokio::fs;
 
 use super::types::ModuleType;
-use crate::v8::utils::try_find_file;
+use crate::utils::try_find_file;
 
 /// not follow completely https://html.spec.whatwg.org/multipage/webappapis.html#resolve-a-module-specifier
 pub fn resolve_module_specifier(

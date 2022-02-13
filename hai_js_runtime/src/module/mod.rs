@@ -3,25 +3,23 @@ mod types;
 mod utils;
 
 pub use callbacks::*;
-use futures::task::AtomicWaker;
 pub use types::*;
 pub use utils::*;
 
 use futures::stream::FuturesUnordered;
+use futures::task::AtomicWaker;
 use futures::{Future, FutureExt};
 use hai_module_compiler::transpile;
 use log::{debug, info};
 use std::collections::HashMap;
 use std::env;
 use std::pin::Pin;
-
 use v8::{
     script_compiler::{self, Source},
-    Global, HandleScope, Local, Module, ScriptOrigin,
+    Global, HandleScope, Local, Module, ModuleRequest, ModuleStatus, Promise, ScriptOrigin, Value,
 };
-use v8::{ModuleRequest, ModuleStatus, Promise, Value};
 
-use crate::v8::utils::IntoV8;
+use crate::utils::IntoV8;
 
 pub struct ModuleLoader {
     pub entry_resolved_specifier: Option<std::string::String>,

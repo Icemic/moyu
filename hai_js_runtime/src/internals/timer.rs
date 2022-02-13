@@ -1,11 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
-
 use v8::{
     Exception, Function, FunctionCallbackArguments, FunctionTemplate, Global, HandleScope, Local,
     Number, Object, ReturnValue, String,
 };
 
-use crate::v8::{state::State, timer::TimerType, utils::IntoV8};
+use crate::{state::State, timer::TimerType, utils::IntoV8};
 
 pub fn init(handle_scope: &mut HandleScope, global: &Local<Object>) {
     bind_function!(

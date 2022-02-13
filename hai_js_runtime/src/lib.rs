@@ -8,6 +8,7 @@ mod utils;
 
 use futures::StreamExt;
 use log::{error, info};
+use state::State;
 use std::{
     cell::RefCell,
     rc::Rc,
@@ -17,7 +18,7 @@ use tokio::macros::support::poll_fn;
 use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, OwnedIsolate, Value};
 
 use self::module::{dynamic_import_callback, ModuleLoader};
-use crate::v8::state::State;
+
 
 pub struct JSRuntime {
     isolate: OwnedIsolate,
