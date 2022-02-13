@@ -24,21 +24,24 @@ use winit::{
 
 #[tokio::main]
 async fn main() {
+    // load custom env from .env file
+    dotenv().ok();
+
     #[cfg(debug_assertions)]
     let env = env_logger::Env::default().default_filter_or("hai=debug");
     #[cfg(not(debug_assertions))]
     let env = env_logger::Env::default().default_filter_or("hai=warn");
-
     env_logger::init_from_env(env);
 
-    // load custom env from .env file
-    dotenv().ok();
-
     // init v8
-
     #[cfg(not(target_arch = "wasm32"))]
-    let mut vm = JSRuntime::new();
-    vm.run_event_loop().await;
+    {
+        let mut vm = JSRuntime::new();
+        vm.prepare_static_modules().await;
+        vm.start();
+
+        vm.run_event_loop().await;
+    }
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
