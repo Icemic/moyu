@@ -6,11 +6,9 @@ mod sprite;
 mod texture;
 mod traits;
 mod types;
-#[cfg(not(target_arch = "wasm32"))]
-mod v8;
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::v8::JSRuntime;
+use hai_js_runtime::JSRuntime;
 use dotenv::dotenv;
 use node::{Node, NodeLike};
 use renderer::Renderer;

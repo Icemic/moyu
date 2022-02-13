@@ -2,5 +2,6 @@
 members = [
   "hai_core",
   "hai_module_compiler",
+  "hai_js_runtime",
 ]
 resolver = "2"

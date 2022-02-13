@@ -7,7 +7,7 @@ version = "0.1.0"
 
 [features]
 default = ["desktop"]
-desktop = ["v8"]
+desktop = ["hai_js_runtime"]
 web = ["wgpu/webgl"]
 
 [dependencies]
@@ -22,14 +22,10 @@ log = "0.4"
 wgpu = "0.12"
 winit = "0.26"
 
-[dependencies.hai_module_compiler]
-path = "../hai_module_compiler"
+[dependencies.hai_js_runtime]
+optional = true
+path = "../hai_js_runtime"
 version = "0.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-reqwest = {version = "0.11", features = ["rustls-tls", "gzip", "deflate", "stream", "brotli"]}
 tokio = {version = "1", features = ["full"]}
-v8 = {version = "0.39", optional = true}
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-pollster = "0.2"

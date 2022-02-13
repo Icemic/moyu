@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 use v8::{CallbackScope, Context, FixedArray, Local, Module, Promise, ScriptOrModule, String};
 
 use super::utils::resolve_module_specifier;
-use crate::v8::state::State;
+use crate::state::State;
 
 /// load a module synchronously
 /// used directly by module.instantiate_module which needs a v8::Module instance
