@@ -10,8 +10,8 @@ pub struct State {
 
 impl State {
     pub fn new() -> Self {
-        let mut module_loader = ModuleLoader::new();
-        module_loader.setup_entry_module();
+        let module_loader = ModuleLoader::new();
+
         State {
             module_loader: Rc::new(RefCell::new(module_loader)),
             waker: AtomicWaker::new(),

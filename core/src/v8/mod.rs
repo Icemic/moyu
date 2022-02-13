@@ -5,19 +5,18 @@ mod module;
 mod state;
 mod utils;
 
+use futures::StreamExt;
+use log::{error, info};
 use std::{
     cell::RefCell,
     rc::Rc,
     task::{Context as TaskContext, Poll},
 };
 use tokio::macros::support::poll_fn;
-use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, OwnedIsolate};
+use v8::{Context, ContextScope, Global, HandleScope, Isolate, OwnedIsolate};
 
-use crate::v8::{
-    module::{ModuleLoader, ModulePendingStatus},
-    state::State,
-};
-use module::dynamic_import_callback;
+use self::module::{dynamic_import_callback, ModuleLoader};
+use crate::v8::state::State;
 
 pub struct JSRuntime {
     isolate: OwnedIsolate,
@@ -78,11 +77,37 @@ impl JSRuntime {
         v8::HandleScope::with_context(self.get_isolate_mut(), context)
     }
 
-    pub async fn run_event_loop(&mut self) {
-        poll_fn(|cx| self.poll_event_loop(cx)).await
+    pub fn start(&mut self) {
+        let module_loader = {
+            let state = self.isolate.get_slot::<Rc<RefCell<State>>>().unwrap();
+            let state = state.borrow_mut();
+            state.module_loader()
+        };
+
+        let module_loader_mut = module_loader.borrow_mut();
+
+        let resolved_specifier = module_loader_mut.entry_resolved_specifier.clone().unwrap();
+        let module = module_loader_mut.get_module(&resolved_specifier).unwrap();
+
+        drop(module_loader_mut);
+
+        let scope = &mut self.get_handle_scope();
+        ModuleLoader::instantiate_module(scope, module.clone(), &resolved_specifier);
+        ModuleLoader::evaluate_module(scope, module, &resolved_specifier);
     }
 
-    fn poll_event_loop(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
+    pub async fn prepare_static_modules(&mut self) {
+        {
+            let state = self.isolate.get_slot::<Rc<RefCell<State>>>().unwrap();
+            let state = state.borrow_mut();
+            let module_loader = state.module_loader();
+            let mut module_loader = module_loader.borrow_mut();
+            module_loader.prepare_from_entry();
+        }
+        poll_fn(|cx| self.poll_prepare_module(cx)).await
+    }
+
+    fn poll_prepare_module(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
         let state = self.isolate.get_slot::<Rc<RefCell<State>>>().unwrap();
         let state = state.borrow_mut();
 
@@ -93,75 +118,43 @@ impl JSRuntime {
 
         drop(state);
 
+        let mut module_loader = module_loader.borrow_mut();
+
+        // register waker to module loader
+        module_loader.waker.register(cx.waker());
+
         loop {
-            // borrow module loader
-            // be careful that module_loader should not have any borrow when `instantiate_module` executes,
-            // or it will panic.
-            let mut module_loader_mut = module_loader.borrow_mut();
-            let module_pending = module_loader_mut.pending_modules.pop();
-
-            if let Some(mut module_pending) = module_pending {
-                let resolved_specifier = module_pending.resolved_specifier.clone();
-                let promise_resolver = &module_pending.promise_resolver;
-
-                // get a new handle scope for instantiate module and evaluate it
-                let scope = &mut self.get_handle_scope();
-
-                match module_pending.status {
-                    ModulePendingStatus::Created => {
-                        module_pending.status = ModulePendingStatus::Resolved;
-                        module_loader_mut.pending_modules.push(module_pending);
-                        module_loader_mut.resolve_module(scope, &resolved_specifier);
+            match module_loader.pending.poll_next_unpin(cx) {
+                Poll::Ready(None) => return Poll::Ready(()),
+                Poll::Ready(Some((resolved_specifier, code))) => {
+                    let module_info = module_loader
+                        .module_info_map
+                        .get(&resolved_specifier)
+                        .unwrap();
+                    if let Ok(code) = code {
+                        info!(
+                            "[module] module '{}' loaded from '{}'",
+                            module_info.specifier, resolved_specifier
+                        );
+                        let scope = &mut self.get_handle_scope();
+                        module_loader.compile_module(scope, &resolved_specifier, &code);
+                    } else {
+                        error!(
+                            "[module] cannot load module '{}', file '{}' not exists.",
+                            module_info.specifier, resolved_specifier
+                        );
                     }
-                    ModulePendingStatus::Resolved => {
-                        let module = module_loader_mut.get_module(&resolved_specifier).unwrap();
-
-                        module_pending.status = ModulePendingStatus::Instantiated;
-                        module_loader_mut.pending_modules.push(module_pending);
-
-                        drop(module_loader_mut);
-
-                        ModuleLoader::instantiate_module(scope, module, &resolved_specifier);
-                    }
-                    ModulePendingStatus::Instantiated => {
-                        let module = module_loader_mut.get_module(&resolved_specifier).unwrap();
-
-                        module_pending.status = ModulePendingStatus::Evaluated;
-                        module_loader_mut.pending_modules.push(module_pending);
-
-                        drop(module_loader_mut);
-
-                        let result =
-                            ModuleLoader::evaluate_module(scope, module, &resolved_specifier);
-
-                        let mut module_loader_mut = module_loader.borrow_mut();
-
-                        let mut module_info = module_loader_mut
-                            .module_info_map
-                            .get_mut(&resolved_specifier)
-                            .unwrap();
-                        if let Some(result) = result {
-                            module_info.result = Some(result);
-                        }
-                    }
-                    ModulePendingStatus::Evaluated => {
-                        if let Some(promise_resolver) = promise_resolver {
-                            let result = module_loader_mut
-                                .get_module_result(&resolved_specifier)
-                                .unwrap();
-                            let result = Local::new(scope, result);
-
-                            let promise_resolver = Local::new(scope, promise_resolver);
-                            promise_resolver.resolve(scope, result);
-                        }
-                    }
-                };
-            } else {
-                cx.waker().clone().wake();
-                break;
+                    // Poll::Pending
+                }
+                Poll::Pending => {}
             }
         }
+    }
 
-        Poll::Pending
+    pub async fn run_event_loop(&mut self) {
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_millis(4)).await;
+            poll_fn(|cx| self.poll_prepare_module(cx)).await
+        }
     }
 }

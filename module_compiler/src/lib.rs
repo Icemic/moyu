@@ -9,7 +9,7 @@ use swc::{
 };
 use swc_ecma_parser::{EsConfig, Syntax, TsConfig};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ScriptType {
     Typescript,
     Javascript,
