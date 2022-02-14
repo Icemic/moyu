@@ -23,3 +23,7 @@ rustflags = ["-Zshare-generics=n"]
 # In most cases the gains are negligible, but if you are on macos and have slow compile times you should see significant gains.
 #[profile.dev]
 #debug = 1
+
+[alias]
+run-wasm = "run --release --package run-wasm -- hai_core --features web"
+run-desktop = "run --package hai_core --features desktop"

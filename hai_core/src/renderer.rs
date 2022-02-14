@@ -49,8 +49,13 @@ impl Renderer {
                 force_fallback_adapter: false,
             })
             .await
-            .unwrap();
+            .expect("No suitable GPU adapters found on the system.");
 
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let adapter_info = adapter.get_info();
+            println!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
+        }
         // or
         // let adapter = instance
         //     .enumerate_adapters(wgpu::Backends::all())
@@ -61,18 +66,24 @@ impl Renderer {
         //     .next()
         //     .unwrap();
 
+        let limits = if !cfg!(target_arch = "wasm32") {
+            wgpu::Limits::default()
+        } else {
+            wgpu::Limits::downlevel_webgl2_defaults()
+        };
+
         // graphic card with specific backend
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     features: wgpu::Features::empty(),
-                    limits: wgpu::Limits::default(),
+                    limits,
                     label: None,
                 },
                 None, // Trace path
             )
             .await
-            .unwrap();
+            .expect("Unable to find a suitable GPU adapter.");
 
         // define how the surface creates its underlying SurfaceTextures
         let config = wgpu::SurfaceConfiguration {

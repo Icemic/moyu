@@ -13,6 +13,7 @@ use hai_js_runtime::JSRuntime;
 use node::{Node, NodeLike};
 use renderer::Renderer;
 use sprite::Sprite;
+#[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 use winit::{
     dpi::{LogicalSize, Size},
@@ -22,6 +23,9 @@ use winit::{
 };
 
 fn main() {
+    #[cfg(target_arch = "wasm32")]
+    console_error_panic_hook::set_once();
+
     // load custom env from .env file
     dotenv().ok();
 
@@ -55,10 +59,29 @@ fn main() {
         .build(&event_loop)
         .unwrap();
 
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .build()
-        .unwrap();
-    let mut renderer = runtime.block_on(Renderer::new(&window));
+    #[cfg(target_arch = "wasm32")]
+    {
+        use winit::platform::web::WindowExtWebSys;
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| doc.body())
+            .and_then(|body| {
+                body.append_child(&web_sys::Element::from(window.canvas()))
+                    .ok()
+            })
+            .expect("couldn't append canvas to document body");
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut renderer = {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        runtime.block_on(Renderer::new(&window))
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let mut renderer = { pollster::block_on(Renderer::new(&window)) };
 
     // load and use texture
     let mut bg = Sprite::from_asset(&renderer, "title.png");
