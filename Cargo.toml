@@ -1,7 +1,9 @@
 [workspace]
+default-members = ["hai_core"]
 members = [
   "hai_core",
   "hai_module_compiler",
   "hai_js_runtime",
+  "run_wasm",
 ]
 resolver = "2"

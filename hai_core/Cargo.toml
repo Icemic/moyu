@@ -6,7 +6,7 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["desktop"]
+default = []
 desktop = ["hai_js_runtime"]
 web = ["wgpu/webgl"]
 
@@ -21,11 +21,18 @@ image = "0.23"
 log = "0.4"
 wgpu = "0.12"
 winit = "0.26"
-
+console_error_panic_hook = "0.1"
+web-sys = {version="0.3.56", features=["console"]}
 [dependencies.hai_js_runtime]
 optional = true
 path = "../hai_js_runtime"
 version = "0.1"
 
+# deps for desktop platforms
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = {version = "1", features = ["full"]}
+
+# deps for web
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+pollster = "0.2.5"
+web-sys = "0.3.56"
