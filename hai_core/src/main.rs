@@ -7,9 +7,9 @@ mod texture;
 mod traits;
 mod types;
 
-use dotenv::dotenv;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
+use hai_pal::{env, logger, platform};
 use node::{Node, NodeLike};
 use renderer::Renderer;
 use sprite::Sprite;
@@ -23,17 +23,9 @@ use winit::{
 };
 
 fn main() {
-    #[cfg(target_arch = "wasm32")]
-    console_error_panic_hook::set_once();
-
-    // load custom env from .env file
-    dotenv().ok();
-
-    #[cfg(debug_assertions)]
-    let env = env_logger::Env::default().default_filter_or("hai=debug");
-    #[cfg(not(debug_assertions))]
-    let env = env_logger::Env::default().default_filter_or("hai=warn");
-    env_logger::init_from_env(env);
+    platform::setup();
+    env::setup();
+    logger::setup();
 
     // init v8
     #[cfg(not(target_arch = "wasm32"))]

@@ -1,0 +1,17 @@
+#[cfg(not(target_arch = "wasm32"))]
+pub fn setup() {
+    #[cfg(debug_assertions)]
+    let env = env_logger::Env::default().default_filter_or("hai=debug");
+    #[cfg(not(debug_assertions))]
+    let env = env_logger::Env::default().default_filter_or("hai=warn");
+    env_logger::init_from_env(env);
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn setup() {
+    use log::Level;
+    #[cfg(debug_assertions)]
+    console_log::init_with_level(Level::Debug).expect("failed to setup logger.");
+    #[cfg(not(debug_assertions))]
+    console_log::init_with_level(Level::Info).expect("failed to setup logger.");
+}
