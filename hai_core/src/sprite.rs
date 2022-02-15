@@ -1,7 +1,5 @@
-use std::{
-    fs,
-    ops::{Deref, DerefMut},
-};
+use hai_pal::fs;
+use std::ops::{Deref, DerefMut};
 use winit::dpi::LogicalSize;
 
 use crate::{node::Node, renderer::Renderer, texture::Texture, traits::Focusable, types::Vertex};
