@@ -15,17 +15,17 @@ impl Texture {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bytes: &[u8],
-        label: &str,
+        label: String,
     ) -> Result<Self> {
         let img = image::load_from_memory(bytes)?;
-        Self::from_image(device, queue, &img, Some(label))
+        Self::from_image(device, queue, &img, label)
     }
 
     pub fn from_image(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         img: &image::DynamicImage,
-        label: Option<&str>,
+        label: String,
     ) -> Result<Self> {
         // TODO: map various color type to wgpu::TextureFormat
         let rgba = img
@@ -40,7 +40,7 @@ impl Texture {
             depth_or_array_layers: 1,
         };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label,
+            label: Some(label.as_str()),
             size,
             mip_level_count: 1,
             sample_count: 1,
