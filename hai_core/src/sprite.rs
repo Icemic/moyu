@@ -7,33 +7,33 @@ use crate::{node::Node, renderer::Renderer, texture::Texture, traits::Focusable,
 pub const SPRITE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 
 #[derive(Debug)]
-pub struct Sprite<'a> {
+pub struct Sprite {
     /// path name relative to assets folder
-    pub asset_path: &'a str,
+    pub asset_path: String,
     /// loaded texture
     pub texture: Texture,
     /// calculated vertices
     pub vertices: Option<[Vertex; 4]>,
     /// node
-    node: Node<'a>,
+    node: Node,
 }
 
-impl<'a> Deref for Sprite<'a> {
-    type Target = Node<'a>;
+impl Deref for Sprite {
+    type Target = Node;
 
     fn deref(&self) -> &Self::Target {
         &self.node
     }
 }
 
-impl<'a> DerefMut for Sprite<'a> {
+impl DerefMut for Sprite {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.node
     }
 }
 
-impl<'a> Sprite<'a> {
-    pub fn from_asset(renderer: &Renderer, asset_path: &'a str) -> Self {
+impl Sprite {
+    pub fn from_asset(renderer: &Renderer, asset_path: String) -> Self {
         let bytes = match fs::read(format!("assets/{}", asset_path)) {
             Ok(v) => v,
             Err(err) => {
@@ -47,9 +47,9 @@ impl<'a> Sprite<'a> {
         };
 
         let texture =
-            Texture::from_bytes(&renderer.device, &renderer.queue, &bytes, asset_path).unwrap();
+            Texture::from_bytes(&renderer.device, &renderer.queue, &bytes, asset_path.clone()).unwrap();
 
-        let node = Node::new(Some(asset_path), Default::default(), Default::default());
+        let node = Node::new(asset_path.clone(), Default::default(), Default::default());
 
         Sprite {
             asset_path,
@@ -119,7 +119,7 @@ impl<'a> Sprite<'a> {
     }
 }
 
-impl<'a> Focusable for Sprite<'a> {
+impl Focusable for Sprite {
     fn contains(&self, x: i32, y: i32) -> bool {
         if x > self.translate.x
             && x < self.texture.width as i32 + self.translate.x
