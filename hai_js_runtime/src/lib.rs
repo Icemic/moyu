@@ -1,12 +1,14 @@
 #[macro_use]
-mod macros;
+pub mod macros;
 mod internals;
 mod module;
 mod state;
 mod timer;
 mod utils;
 
-use futures::StreamExt;
+pub use v8;
+
+use futures::{future::poll_fn, StreamExt};
 use log::{error, info};
 use state::State;
 use std::{
@@ -14,11 +16,9 @@ use std::{
     rc::Rc,
     task::{Context as TaskContext, Poll},
 };
-use tokio::macros::support::poll_fn;
-use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, OwnedIsolate, Value};
+use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, Object, OwnedIsolate, Value};
 
 use self::module::{dynamic_import_callback, ModuleLoader};
-
 
 pub struct JSRuntime {
     isolate: OwnedIsolate,
@@ -33,7 +33,7 @@ impl JSRuntime {
 
         let mut isolate = Isolate::new(Default::default());
         isolate.set_host_import_module_dynamically_callback(dynamic_import_callback);
-        // isolate.set_capture_stack_trace_for_uncaught_exceptions(true, 10);
+        isolate.set_capture_stack_trace_for_uncaught_exceptions(true, 10);
         // isolate.set_promise_reject_callback();
         // isolate.set_host_initialize_import_meta_object_callback();
 
@@ -64,6 +64,17 @@ impl JSRuntime {
             isolate,
             global_context,
         }
+    }
+
+    pub fn with_global<T, K>(&mut self, callback: &mut T) -> K
+    where
+        T: FnMut(&mut HandleScope, &Local<Object>) -> K,
+    {
+        let scope = &mut HandleScope::new(&mut self.isolate);
+        let context = Local::new(scope, self.global_context.clone());
+        let context_scope = &mut ContextScope::new(scope, context);
+        let global = context.global(context_scope);
+        callback(context_scope, &global)
     }
 
     pub fn get_global_context(&mut self) -> v8::Global<v8::Context> {
@@ -125,30 +136,30 @@ impl JSRuntime {
         // register waker to module loader
         module_loader.waker.register(cx.waker());
 
-        loop {
-            match module_loader.pending.poll_next_unpin(cx) {
-                Poll::Ready(None) => return Poll::Ready(()),
-                Poll::Ready(Some((resolved_specifier, code))) => {
-                    let module_info = module_loader
-                        .module_info_map
-                        .get(&resolved_specifier)
-                        .unwrap();
-                    if let Ok(code) = code {
-                        info!(
-                            "[module] module '{}' loaded from '{}'",
-                            module_info.specifier, resolved_specifier
-                        );
-                        let scope = &mut self.get_handle_scope();
-                        module_loader.compile_module(scope, &resolved_specifier, &code);
-                    } else {
-                        error!(
-                            "[module] cannot load module '{}', file '{}' not exists.",
-                            module_info.specifier, resolved_specifier
-                        );
-                    }
+        match module_loader.pending.poll_next_unpin(cx) {
+            Poll::Ready(None) => return Poll::Ready(()),
+            Poll::Ready(Some((resolved_specifier, code))) => {
+                let module_info = module_loader
+                    .module_info_map
+                    .get(&resolved_specifier)
+                    .unwrap();
+                if let Ok(code) = code {
+                    info!(
+                        "[module] module '{}' loaded from '{}'",
+                        module_info.specifier, resolved_specifier
+                    );
+                    let scope = &mut self.get_handle_scope();
+                    module_loader.compile_module(scope, &resolved_specifier, &code);
+                } else {
+                    error!(
+                        "[module] cannot load module '{}', file '{}' not exists.",
+                        module_info.specifier, resolved_specifier
+                    );
                 }
-                Poll::Pending => {}
+                cx.waker().clone().wake();
+                Poll::Pending
             }
+            Poll::Pending => Poll::Pending,
         }
     }
 
@@ -195,11 +206,20 @@ impl JSRuntime {
         }
     }
 
+    pub fn poll_tick(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
+        let prepare_module_result = self.poll_prepare_module(cx);
+        let timers_result = self.poll_timers(cx);
+
+        if prepare_module_result.is_ready() && timers_result.is_ready() {
+            return Poll::Ready(());
+        }
+        Poll::Pending
+    }
+
     pub async fn run_event_loop(&mut self) {
         loop {
-            tokio::time::sleep(tokio::time::Duration::from_millis(4)).await;
-            poll_fn(|cx| self.poll_prepare_module(cx)).await;
-            poll_fn(|cx| self.poll_timers(cx)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
+            poll_fn(|cx| self.poll_tick(cx)).await;
         }
     }
 }
