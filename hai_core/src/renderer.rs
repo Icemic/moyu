@@ -1,6 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
-
 use log::debug;
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 use wgpu::{util::DeviceExt, BindGroupLayout};
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
@@ -8,7 +11,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{node::Node, sprite::SPRITE_INDICES, traits::Focusable};
+use crate::{node::Node, sprite::SPRITE_INDICES, state::State, traits::Focusable};
 use crate::{node::NodeLike, types::Vertex};
 
 pub struct Renderer {
@@ -22,13 +25,11 @@ pub struct Renderer {
     render_pipeline: wgpu::RenderPipeline,
     texture_bind_group_layout: BindGroupLayout,
 
-    root_node: Node<'static>,
-    updated: Vec<(wgpu::BindGroup, wgpu::Buffer, wgpu::Buffer, u32, u32)>,
-    current_focused_node: Option<Rc<RefCell<NodeLike<'static>>>>, // vertex_buffer: wgpu::Buffer,
-                                                                  // num_vertices: u32,
-                                                                  // index_buffer: wgpu::Buffer,
-                                                                  // num_indices: u32,
-                                                                  // bind_group: wgpu::BindGroup
+    current_focused_node: Option<Rc<RefCell<NodeLike>>>, // vertex_buffer: wgpu::Buffer,
+                                                         // num_vertices: u32,
+                                                         // index_buffer: wgpu::Buffer,
+                                                         // num_indices: u32,
+                                                         // bind_group: wgpu::BindGroup
 }
 
 impl Renderer {
@@ -177,9 +178,6 @@ impl Renderer {
             multiview: None,
         });
 
-        // create root node
-        let root_node = Node::new(Some("Root Node"), Default::default(), Default::default());
-
         Self {
             physical_size: size,
             logical_size,
@@ -190,8 +188,6 @@ impl Renderer {
             config,
             render_pipeline,
             texture_bind_group_layout,
-            root_node,
-            updated: vec![],
             current_focused_node: None,
         }
     }
@@ -222,13 +218,19 @@ impl Renderer {
         }
     }
 
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
+    pub fn input<'a>(&mut self, event: &WindowEvent, state: &Arc<Mutex<State<'a>>>) -> bool {
+        let state = state.lock().unwrap();
+        let root_node = state.root_node.clone();
+        let root_node = root_node.lock().unwrap();
+
+        drop(state);
+
         match event {
             WindowEvent::CursorMoved { position, .. } => {
                 let global_logical_x = position.x / self.scale_factor;
                 let global_logical_y = position.y / self.scale_factor;
 
-                walk_nodes_bottom_top(&self.root_node, &mut |child, parent| {
+                walk_nodes_bottom_top(&root_node, &mut |child, parent| {
                     let mut child_ref = child.borrow_mut();
                     let hit = match &mut *child_ref {
                         NodeLike::Sprite(sprite) => {
@@ -246,7 +248,7 @@ impl Renderer {
                             // check if pointer is over the sprite
                             let hit = sprite.contains(relative_logical_x, relative_logical_y);
 
-                            (hit, sprite.label)
+                            (hit, Some(sprite.label.clone()))
                         }
                         _ => (false, None),
                     };
@@ -273,17 +275,21 @@ impl Renderer {
         }
     }
 
-    pub fn get_root_node(&mut self) -> &mut Node<'static> {
-        &mut self.root_node
-    }
+    pub fn update<'a>(&mut self, state: &Arc<Mutex<State<'a>>>) {
+        let state = state.lock().unwrap();
+        let queue = state.pending_renderable.clone();
+        let mut queue = queue.lock().unwrap();
+        let root_node = state.root_node.clone();
+        let root_node = root_node.lock().unwrap();
 
-    pub fn update(&mut self) {
+        drop(state);
+
         // clear all update of last tick
-        self.updated.clear();
+        queue.clear();
 
         let device = &self.device;
 
-        walk_nodes_top_bottom(&self.root_node, &mut |child, parent| {
+        walk_nodes_top_bottom(&root_node, &mut |child, parent| {
             let mut child = child.borrow_mut();
             match &mut *child {
                 NodeLike::Sprite(sprite) => {
@@ -328,7 +334,7 @@ impl Renderer {
                         });
                     let num_indices = SPRITE_INDICES.len() as u32;
 
-                    self.updated.push((
+                    queue.push((
                         bind_group,
                         vertex_buffer,
                         index_buffer,
@@ -348,7 +354,13 @@ impl Renderer {
         });
     }
 
-    pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render<'a>(&mut self, state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceError> {
+        let state = state.lock().unwrap();
+        let queue = state.pending_renderable.clone();
+        let mut queue = queue.lock().unwrap();
+
+        drop(state);
+
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -380,7 +392,7 @@ impl Renderer {
 
             render_pass.set_pipeline(&self.render_pipeline);
 
-            for (bind_group, vertex_buffer, index_buffer, _, num_indices) in self.updated.iter() {
+            for (bind_group, vertex_buffer, index_buffer, _, num_indices) in queue.iter() {
                 render_pass.set_bind_group(0, &bind_group, &[]);
                 render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
@@ -389,7 +401,7 @@ impl Renderer {
         }
 
         // clear queue
-        self.updated.clear();
+        queue.clear();
 
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
@@ -401,10 +413,10 @@ impl Renderer {
 
 /// walk through all node-like ones from top to bottom,
 /// due that the depth should not big, recursive is acceptable
-pub fn walk_nodes_top_bottom<'a, T>(root_node: &Node<'a>, func: &mut T) -> bool
+pub fn walk_nodes_top_bottom<T>(root_node: &Node, func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Rc<RefCell<NodeLike<'a>>>, &Node<'a>) -> bool,
+    T: FnMut(Rc<RefCell<NodeLike>>, &Node) -> bool,
 {
     let children = &root_node.children;
     for child in children.iter() {
@@ -432,10 +444,10 @@ where
 
 /// walk through all node-like ones from bottom to top,
 /// due that the depth should not big, recursive is acceptable
-pub fn walk_nodes_bottom_top<'a, T>(root_node: &Node<'a>, func: &mut T) -> bool
+pub fn walk_nodes_bottom_top<T>(root_node: &Node, func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Rc<RefCell<NodeLike<'a>>>, &Node<'a>) -> bool,
+    T: FnMut(Rc<RefCell<NodeLike>>, &Node) -> bool,
 {
     let children = &root_node.children;
     for child in children.iter().rev() {

@@ -1,8 +1,10 @@
 #![feature(drain_filter)]
 
 mod node;
+mod presets;
 mod renderer;
 mod sprite;
+mod state;
 mod texture;
 mod traits;
 mod types;
@@ -10,9 +12,10 @@ mod types;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
-use node::{Node, NodeLike};
+use presets::add_preset_default;
 use renderer::Renderer;
-use sprite::Sprite;
+use state::State;
+use std::sync::{Arc, Mutex};
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 use winit::{
@@ -75,37 +78,16 @@ fn main() {
     #[cfg(target_arch = "wasm32")]
     let mut renderer = { pollster::block_on(Renderer::new(&window)) };
 
-    // load and use texture
-    let mut bg = Sprite::from_asset(&renderer, "title.png");
-    let mut button1 = Sprite::from_asset(&renderer, "button_n_01.png");
-    let mut button2 = Sprite::from_asset(&renderer, "button_n_02.png");
-    let mut button3 = Sprite::from_asset(&renderer, "button_n_06.png");
+    let state = State::new(&window);
+    let state = Arc::new(Mutex::new(state));
 
-    let mut container = Node::new(
-        Some("Button Container"),
-        Default::default(),
-        Default::default(),
-    );
-    bg.move_to(0, 0);
-    container.move_to(923, 0);
-    button1.move_to(0, 380);
-    button2.move_to(0, 440);
-    button3.move_to(0, 560);
-
-    container.add_child(NodeLike::Sprite(button1));
-    container.add_child(NodeLike::Sprite(button2));
-    container.add_child(NodeLike::Sprite(button3));
-
-    renderer.get_root_node().add_child(NodeLike::Sprite(bg));
-    renderer
-        .get_root_node()
-        .add_child(NodeLike::Node(container));
+    add_preset_default(&state, &renderer);
 
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                renderer.update();
-                match renderer.render() {
+                renderer.update(&state);
+                match renderer.render(&state) {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
                     Err(wgpu::SurfaceError::Lost) => renderer.refresh(),
@@ -125,7 +107,7 @@ fn main() {
                 window_id,
             } if window_id == window.id() => {
                 // makes State to have priority over main()
-                if !renderer.input(event) {
+                if !renderer.input(event, &state) {
                     // UPDATED!
                     match event {
                         WindowEvent::CloseRequested

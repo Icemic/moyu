@@ -1,0 +1,41 @@
+use std::sync::{Arc, Mutex};
+
+use crate::{
+    node::{Node, NodeLike},
+    sprite::Sprite,
+    state::State, renderer::Renderer,
+};
+
+pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>, renderer: &Renderer) {
+    let state = state.lock().unwrap();
+    let root_node = state.root_node.clone();
+    let mut root_node = root_node.lock().unwrap();
+
+    drop(state);
+
+    // load and use texture
+    let mut bg = Sprite::from_asset(&renderer, "title.png".to_string());
+    let mut button1 = Sprite::from_asset(&renderer, "button_n_01.png".to_string());
+    let mut button2 = Sprite::from_asset(&renderer, "button_n_02.png".to_string());
+    let mut button3 = Sprite::from_asset(&renderer, "button_n_06.png".to_string());
+
+    drop(renderer);
+
+    let mut container = Node::new(
+        "Button Container".to_string(),
+        Default::default(),
+        Default::default(),
+    );
+    bg.move_to(0, 0);
+    container.move_to(923, 0);
+    button1.move_to(0, 380);
+    button2.move_to(0, 440);
+    button3.move_to(0, 560);
+
+    container.add_child(NodeLike::Sprite(button1));
+    container.add_child(NodeLike::Sprite(button2));
+    container.add_child(NodeLike::Sprite(button3));
+
+    root_node.add_child(NodeLike::Sprite(bg));
+    root_node.add_child(NodeLike::Node(container));
+}
