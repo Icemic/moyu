@@ -8,17 +8,17 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum NodeLike<'a> {
-    Node(Node<'a>),
-    Sprite(Sprite<'a>),
+pub enum NodeLike {
+    Node(Node),
+    Sprite(Sprite),
 }
 
 static mut NODE_ID: u32 = 0;
 
 #[derive(Debug)]
-pub struct Node<'a> {
+pub struct Node {
     /// Debug label
-    pub label: Label<'a>,
+    pub label: String,
     /// id
     pub id: u32,
     /// anchor point
@@ -30,11 +30,11 @@ pub struct Node<'a> {
     /// transform matrix relative to global
     pub transform_to_global: Transform,
     /// children
-    pub children: Vec<Rc<RefCell<NodeLike<'a>>>>,
+    pub children: Vec<Rc<RefCell<NodeLike>>>,
 }
 
-impl<'a> Node<'a> {
-    pub fn new(label: Label<'a>, anchor: PointF, transform: Transform) -> Self {
+impl Node {
+    pub fn new(label: String, anchor: PointF, transform: Transform) -> Self {
         let id = unsafe {
             NODE_ID += 1;
             NODE_ID
@@ -51,27 +51,24 @@ impl<'a> Node<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn get_child(&self, index: usize) -> Option<Rc<RefCell<NodeLike<'a>>>> {
+    pub fn get_child(&self, index: usize) -> Option<Rc<RefCell<NodeLike>>> {
         if let Some(child) = self.children.get(index) {
             return Some(Rc::clone(child));
         }
         None
     }
 
-    pub fn add_child(&mut self, child: NodeLike<'a>) {
+    pub fn add_child(&mut self, child: NodeLike) {
         self.children.push(Rc::new(RefCell::new(child)));
     }
 
     #[allow(dead_code)]
-    pub fn insert_child(&mut self, index: usize, child: NodeLike<'a>) {
+    pub fn insert_child(&mut self, index: usize, child: NodeLike) {
         self.children.insert(index, Rc::new(RefCell::new(child)));
     }
 
     #[allow(dead_code)]
-    pub fn remove_child(
-        &mut self,
-        child: Rc<RefCell<NodeLike<'a>>>,
-    ) -> Option<Rc<RefCell<NodeLike<'a>>>> {
+    pub fn remove_child(&mut self, child: Rc<RefCell<NodeLike>>) -> Option<Rc<RefCell<NodeLike>>> {
         if let Some(index) = self
             .children
             .iter()
@@ -83,7 +80,7 @@ impl<'a> Node<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn remove_child_at(&mut self, index: usize) -> Option<Rc<RefCell<NodeLike<'a>>>> {
+    pub fn remove_child_at(&mut self, index: usize) -> Option<Rc<RefCell<NodeLike>>> {
         if index < self.children.len() {
             return Some(self.children.remove(index));
         }
