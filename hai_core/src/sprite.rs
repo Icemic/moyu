@@ -46,8 +46,13 @@ impl Sprite {
             }
         };
 
-        let texture =
-            Texture::from_bytes(&renderer.device, &renderer.queue, &bytes, asset_path.clone()).unwrap();
+        let texture = Texture::from_bytes(
+            &renderer.device,
+            &renderer.queue,
+            &bytes,
+            asset_path.clone(),
+        )
+        .unwrap();
 
         let node = Node::new(asset_path.clone(), Default::default(), Default::default());
 
@@ -129,5 +134,11 @@ impl Focusable for Sprite {
             return true;
         }
         false
+    }
+}
+
+impl PartialEq for Sprite {
+    fn eq(&self, other: &Sprite) -> bool {
+        self.id == other.id
     }
 }

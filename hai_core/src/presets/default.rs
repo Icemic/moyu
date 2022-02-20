@@ -10,7 +10,7 @@ use crate::{
 pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>, renderer: &Renderer) {
     let state = state.lock().unwrap();
     let root_node = renderer.root_node();
-    let mut root_node = root_node.borrow_mut();
+    let mut root_node = root_node.lock().unwrap();
     // let mut root_node = root_node.lock().unwrap();
 
     drop(state);
