@@ -2,6 +2,7 @@ use futures::task::AtomicWaker;
 use std::{
     cell::RefCell,
     ffi::c_void,
+    mem::forget,
     rc::Rc,
     sync::{Arc, Mutex},
 };
@@ -41,9 +42,13 @@ impl Shared {
     }
 
     pub fn state<T>(&self) -> Arc<Mutex<T>> {
-        // let boxed = unsafe { transmute::<*mut c_void, Box<T>>(self.state) };
-        // boxed.as_ref().clone()
         let ptr = self.state as *const Mutex<T>;
-        unsafe { Arc::from_raw(ptr) }
+        let r = unsafe { Arc::from_raw(ptr) };
+        let r_cloned = r.clone();
+
+        // keep ptr leaked
+        forget(r);
+
+        r_cloned
     }
 }
