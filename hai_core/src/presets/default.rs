@@ -2,22 +2,24 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     node::{Node, NodeLike},
+    renderer::Renderer,
     sprite::Sprite,
-    state::State, renderer::Renderer,
+    state::State,
 };
 
 pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>, renderer: &Renderer) {
     let state = state.lock().unwrap();
-    let root_node = state.root_node.clone();
-    let mut root_node = root_node.lock().unwrap();
+    let root_node = renderer.root_node();
+    let mut root_node = root_node.borrow_mut();
+    // let mut root_node = root_node.lock().unwrap();
 
     drop(state);
 
     // load and use texture
-    let mut bg = Sprite::from_asset(&renderer, "title.png".to_string());
-    let mut button1 = Sprite::from_asset(&renderer, "button_n_01.png".to_string());
-    let mut button2 = Sprite::from_asset(&renderer, "button_n_02.png".to_string());
-    let mut button3 = Sprite::from_asset(&renderer, "button_n_06.png".to_string());
+    let mut bg = Sprite::from_asset(renderer, "title.png".to_string());
+    let mut button1 = Sprite::from_asset(renderer, "button_n_01.png".to_string());
+    let mut button2 = Sprite::from_asset(renderer, "button_n_02.png".to_string());
+    let mut button3 = Sprite::from_asset(renderer, "button_n_06.png".to_string());
 
     drop(renderer);
 
