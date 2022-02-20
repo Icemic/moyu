@@ -43,9 +43,9 @@ fn clear_timeout_or_interval(
     let handler_id = handler_id.value() as i32;
 
     let timer = {
-        let state = scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
-        let state = state.borrow();
-        state.timer()
+        let shared = scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
+        let shared = shared.borrow();
+        shared.timer()
     };
     let mut timer = timer.borrow_mut();
     timer.cancel_timer(handler_id);
@@ -86,9 +86,9 @@ fn create_timer(
     let callback = Global::new(scope, callback);
 
     let timer = {
-        let state = scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
-        let state = state.borrow();
-        state.timer()
+        let shared = scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
+        let shared = shared.borrow();
+        shared.timer()
     };
     let mut timer = timer.borrow_mut();
     let handler_id = timer.add_timer(t, callback, duration);
