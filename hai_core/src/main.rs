@@ -1,6 +1,7 @@
 #![feature(drain_filter)]
 
 mod node;
+mod ops;
 mod presets;
 mod renderer;
 mod sprite;
@@ -30,17 +31,28 @@ fn main() {
     env::setup();
     logger::setup();
 
-    // init v8
+    // create multithread shared state
+    let state = State::new();
+    let state = Arc::new(Mutex::new(state));
+
+    // desktop targets only
+    // spawn a v8 thread
     #[cfg(not(target_arch = "wasm32"))]
     {
+        let state = state.clone();
         thread::spawn(|| {
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .unwrap();
             runtime.block_on(async {
-                let mut vm = JSRuntime::new();
+                let mut vm = JSRuntime::new(state);
                 vm.prepare_static_modules().await;
+
+                vm.with_global(|scope, global| {
+                    ops::init(scope, global);
+                });
+
                 vm.start();
 
                 vm.run_event_loop().await;
@@ -48,12 +60,8 @@ fn main() {
         });
     }
 
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
-        .build(&event_loop)
-        .unwrap();
-
+    // web target only
+    // add a canvas element to dom as 'window'
     #[cfg(target_arch = "wasm32")]
     {
         use winit::platform::web::WindowExtWebSys;
@@ -67,6 +75,14 @@ fn main() {
             .expect("couldn't append canvas to document body");
     }
 
+    // create main thread infinity loop
+    let event_loop = EventLoop::new();
+    // create window
+    let window = WindowBuilder::new()
+        .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
+        .build(&event_loop)
+        .unwrap();
+
     #[cfg(not(target_arch = "wasm32"))]
     let mut renderer = {
         let runtime = tokio::runtime::Builder::new_current_thread()
@@ -77,9 +93,6 @@ fn main() {
 
     #[cfg(target_arch = "wasm32")]
     let mut renderer = { pollster::block_on(Renderer::new(&window)) };
-
-    let state = State::new(&window);
-    let state = Arc::new(Mutex::new(state));
 
     add_preset_default(&state, &renderer);
 
@@ -107,7 +120,7 @@ fn main() {
                 window_id,
             } if window_id == window.id() => {
                 // makes State to have priority over main()
-                if !renderer.input(event, &state) {
+                if !renderer.input(event) {
                     // UPDATED!
                     match event {
                         WindowEvent::CloseRequested

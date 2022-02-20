@@ -24,7 +24,7 @@ pub struct Renderer {
     config: wgpu::SurfaceConfiguration,
     render_pipeline: wgpu::RenderPipeline,
     texture_bind_group_layout: BindGroupLayout,
-
+    root_node: Rc<RefCell<Node>>,
     current_focused_node: Option<Rc<RefCell<NodeLike>>>, // vertex_buffer: wgpu::Buffer,
                                                          // num_vertices: u32,
                                                          // index_buffer: wgpu::Buffer,
@@ -178,6 +178,14 @@ impl Renderer {
             multiview: None,
         });
 
+        // create root node
+        let root_node = Node::new(
+            "Root Node".to_string(),
+            Default::default(),
+            Default::default(),
+        );
+        let root_node = Rc::new(RefCell::new(root_node));
+
         Self {
             physical_size: size,
             logical_size,
@@ -189,7 +197,13 @@ impl Renderer {
             render_pipeline,
             texture_bind_group_layout,
             current_focused_node: None,
+            root_node,
         }
+    }
+
+    /// get mutable root node
+    pub fn root_node(&self) -> Rc<RefCell<Node>> {
+        self.root_node.clone()
     }
 
     /// reset surface
@@ -218,17 +232,23 @@ impl Renderer {
         }
     }
 
-    pub fn input<'a>(&mut self, event: &WindowEvent, state: &Arc<Mutex<State<'a>>>) -> bool {
-        let state = state.lock().unwrap();
-        let root_node = state.root_node.clone();
-        let root_node = root_node.lock().unwrap();
+    pub fn input<'a>(
+        &mut self,
+        event: &WindowEvent,
+        // state: &Arc<Mutex<State<'a>>>
+    ) -> bool {
+        // let state = state.lock().unwrap();
+        // let root_node = state.root_node.clone();
+        // let root_node = root_node.lock().unwrap();
 
-        drop(state);
+        // drop(state);
 
         match event {
             WindowEvent::CursorMoved { position, .. } => {
                 let global_logical_x = position.x / self.scale_factor;
                 let global_logical_y = position.y / self.scale_factor;
+
+                let root_node = self.root_node.borrow();
 
                 walk_nodes_bottom_top(&root_node, &mut |child, parent| {
                     let mut child_ref = child.borrow_mut();
@@ -279,8 +299,8 @@ impl Renderer {
         let state = state.lock().unwrap();
         let queue = state.pending_renderable.clone();
         let mut queue = queue.lock().unwrap();
-        let root_node = state.root_node.clone();
-        let root_node = root_node.lock().unwrap();
+        // let root_node = state.root_node.clone();
+        // let root_node = root_node.lock().unwrap();
 
         drop(state);
 
@@ -288,6 +308,8 @@ impl Renderer {
         queue.clear();
 
         let device = &self.device;
+
+        let root_node = self.root_node.borrow();
 
         walk_nodes_top_bottom(&root_node, &mut |child, parent| {
             let mut child = child.borrow_mut();
