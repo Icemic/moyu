@@ -6,16 +6,16 @@ mod shared;
 mod timer;
 mod utils;
 
-pub use v8;
-
 use futures::{future::poll_fn, StreamExt};
 use log::{error, info};
-use shared::Shared;
+pub use shared::Shared;
 use std::{
     cell::RefCell,
     rc::Rc,
+    sync::{Arc, Mutex},
     task::{Context as TaskContext, Poll},
 };
+pub use v8;
 use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, Object, OwnedIsolate, Value};
 
 use self::module::{dynamic_import_callback, ModuleLoader};
@@ -26,7 +26,7 @@ pub struct JSRuntime {
 }
 
 impl JSRuntime {
-    pub fn new() -> Self {
+    pub fn new<T>(state: Arc<Mutex<T>>) -> Self {
         let platform = v8::new_default_platform(0, false).make_shared();
         v8::V8::initialize_platform(platform);
         v8::V8::initialize();
@@ -37,7 +37,7 @@ impl JSRuntime {
         // isolate.set_promise_reject_callback();
         // isolate.set_host_initialize_import_meta_object_callback();
 
-        let (global_context, state) = {
+        let (global_context, shared) = {
             let scope = &mut HandleScope::new(&mut isolate);
             let context = Context::new(scope);
 
@@ -51,14 +51,14 @@ impl JSRuntime {
             // save global context
             let global_context = Global::new(scope, context);
 
-            // save state
-            let state = Shared::new();
+            // save shared object
+            let shared = Shared::new(state);
 
-            (global_context, state)
+            (global_context, shared)
         };
 
         // save state to slot
-        isolate.set_slot(Rc::new(RefCell::new(state)));
+        isolate.set_slot(Rc::new(RefCell::new(shared)));
 
         Self {
             isolate,
