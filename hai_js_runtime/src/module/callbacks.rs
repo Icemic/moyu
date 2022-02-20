@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 use v8::{CallbackScope, Context, FixedArray, Local, Module, Promise, ScriptOrModule, String};
 
 use super::utils::resolve_module_specifier;
-use crate::state::State;
+use crate::shared::Shared;
 
 /// load a module synchronously
 /// used directly by module.instantiate_module which needs a v8::Module instance
@@ -15,7 +15,7 @@ pub fn module_resolve_callback<'a>(
 ) -> Option<Local<'a, Module>> {
     let scope = &mut unsafe { CallbackScope::new(context) };
 
-    let state = scope.get_slot_mut::<Rc<RefCell<State>>>().unwrap();
+    let state = scope.get_slot_mut::<Rc<RefCell<Shared>>>().unwrap();
     let state = state.borrow();
     let module_loader = state.module_loader();
 

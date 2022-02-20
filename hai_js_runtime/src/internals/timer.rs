@@ -4,7 +4,7 @@ use v8::{
     Number, Object, ReturnValue, String,
 };
 
-use crate::{state::State, timer::TimerType, utils::IntoV8};
+use crate::{shared::Shared, timer::TimerType, utils::IntoV8};
 
 pub fn init(handle_scope: &mut HandleScope, global: &Local<Object>) {
     bind_function!(
@@ -43,7 +43,7 @@ fn clear_timeout_or_interval(
     let handler_id = handler_id.value() as i32;
 
     let timer = {
-        let state = scope.get_slot::<Rc<RefCell<State>>>().unwrap();
+        let state = scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
         let state = state.borrow();
         state.timer()
     };
@@ -86,7 +86,7 @@ fn create_timer(
     let callback = Global::new(scope, callback);
 
     let timer = {
-        let state = scope.get_slot::<Rc<RefCell<State>>>().unwrap();
+        let state = scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
         let state = state.borrow();
         state.timer()
     };
