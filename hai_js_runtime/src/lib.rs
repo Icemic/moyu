@@ -2,7 +2,7 @@
 pub mod macros;
 mod internals;
 mod module;
-mod state;
+mod shared;
 mod timer;
 mod utils;
 
@@ -10,7 +10,7 @@ pub use v8;
 
 use futures::{future::poll_fn, StreamExt};
 use log::{error, info};
-use state::State;
+use shared::Shared;
 use std::{
     cell::RefCell,
     rc::Rc,
@@ -52,7 +52,7 @@ impl JSRuntime {
             let global_context = Global::new(scope, context);
 
             // save state
-            let state = State::new();
+            let state = Shared::new();
 
             (global_context, state)
         };
@@ -92,7 +92,7 @@ impl JSRuntime {
 
     pub fn start(&mut self) {
         let module_loader = {
-            let state = self.isolate.get_slot::<Rc<RefCell<State>>>().unwrap();
+            let state = self.isolate.get_slot::<Rc<RefCell<Shared>>>().unwrap();
             let state = state.borrow_mut();
             state.module_loader()
         };
@@ -111,7 +111,7 @@ impl JSRuntime {
 
     pub async fn prepare_static_modules(&mut self) {
         {
-            let state = self.isolate.get_slot::<Rc<RefCell<State>>>().unwrap();
+            let state = self.isolate.get_slot::<Rc<RefCell<Shared>>>().unwrap();
             let state = state.borrow_mut();
             let module_loader = state.module_loader();
             let mut module_loader = module_loader.borrow_mut();
@@ -121,7 +121,7 @@ impl JSRuntime {
     }
 
     fn poll_prepare_module(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
-        let state = self.isolate.get_slot::<Rc<RefCell<State>>>().unwrap();
+        let state = self.isolate.get_slot::<Rc<RefCell<Shared>>>().unwrap();
         let state = state.borrow_mut();
 
         // register waker to isolate state
@@ -164,7 +164,7 @@ impl JSRuntime {
     }
 
     fn poll_timers(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
-        let state = self.isolate.get_slot::<Rc<RefCell<State>>>().unwrap();
+        let state = self.isolate.get_slot::<Rc<RefCell<Shared>>>().unwrap();
         let state = state.borrow_mut();
 
         // register waker to isolate state
