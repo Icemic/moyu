@@ -4,7 +4,7 @@ mod internals;
 mod module;
 mod shared;
 mod timer;
-mod utils;
+pub mod utils;
 
 use futures::{future::poll_fn, StreamExt};
 use log::{error, info};
