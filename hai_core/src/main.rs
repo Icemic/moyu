@@ -14,7 +14,7 @@ mod types;
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
 use presets::add_preset_default;
-use renderer::Renderer;
+use renderer::{create_surface, input, prepare_pipeline, render, update};
 use state::State;
 use std::sync::{Arc, Mutex};
 #[cfg(not(target_arch = "wasm32"))]
@@ -31,8 +31,64 @@ fn main() {
     env::setup();
     logger::setup();
 
+    // web target only
+    // add a canvas element to dom as 'window'
+    #[cfg(target_arch = "wasm32")]
+    {
+        use winit::platform::web::WindowExtWebSys;
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| doc.body())
+            .and_then(|body| {
+                body.append_child(&web_sys::Element::from(window.canvas()))
+                    .ok()
+            })
+            .expect("couldn't append canvas to document body");
+    }
+
+    // create main thread infinity loop
+    let event_loop = EventLoop::new();
+    // create window
+    let window = WindowBuilder::new()
+        .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
+        .build(&event_loop)
+        .unwrap();
+
+    // create wgpu surface
+    #[cfg(not(target_arch = "wasm32"))]
+    let (surface, device, queue, config) = {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        runtime.block_on(create_surface(&window, &window.inner_size()))
+    };
+    #[cfg(target_arch = "wasm32")]
+    let (surface, device, queue, config) = { pollster::block_on(create_surface(&window, &size)) };
+
+    let (render_pipeline, bind_group_layout) = prepare_pipeline(&device, &config);
+
+    let surface = Arc::new(Mutex::new(surface));
+    let device = Arc::new(Mutex::new(device));
+    let queue = Arc::new(Mutex::new(queue));
+    let render_pipeline = Arc::new(Mutex::new(render_pipeline));
+    let bind_group_layout = Arc::new(Mutex::new(bind_group_layout));
+
     // create multithread shared state
-    let state = State::new();
+    let mut state = State::new(
+        surface,
+        device,
+        queue,
+        config,
+        render_pipeline,
+        bind_group_layout,
+    );
+
+    // set screen size
+    let size = window.inner_size();
+    let scale_factor = window.scale_factor();
+    state.set_screen_size((size.width, size.height), scale_factor);
+
+    // make state sharable among threads
     let state = Arc::new(Mutex::new(state));
 
     // desktop targets only
@@ -60,50 +116,19 @@ fn main() {
         });
     }
 
-    // web target only
-    // add a canvas element to dom as 'window'
-    #[cfg(target_arch = "wasm32")]
-    {
-        use winit::platform::web::WindowExtWebSys;
-        web_sys::window()
-            .and_then(|win| win.document())
-            .and_then(|doc| doc.body())
-            .and_then(|body| {
-                body.append_child(&web_sys::Element::from(window.canvas()))
-                    .ok()
-            })
-            .expect("couldn't append canvas to document body");
-    }
-
-    // create main thread infinity loop
-    let event_loop = EventLoop::new();
-    // create window
-    let window = WindowBuilder::new()
-        .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
-        .build(&event_loop)
-        .unwrap();
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut renderer = {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .unwrap();
-        runtime.block_on(Renderer::new(&window))
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let mut renderer = { pollster::block_on(Renderer::new(&window)) };
-
-    add_preset_default(&state, &renderer);
+    add_preset_default(&state);
 
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                renderer.update(&state);
-                match renderer.render(&state) {
+                update(&state);
+                match render(&state) {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
-                    Err(wgpu::SurfaceError::Lost) => renderer.refresh(),
+                    Err(wgpu::SurfaceError::Lost) => {
+                        let mut state = state.lock().unwrap();
+                        state.refresh();
+                    }
                     // The system is out of memory, we should probably quit
                     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                     // All other errors (Outdated, Timeout) should be resolved by the next frame
@@ -120,7 +145,7 @@ fn main() {
                 window_id,
             } if window_id == window.id() => {
                 // makes State to have priority over main()
-                if !renderer.input(event) {
+                if !input(event, &state) {
                     // UPDATED!
                     match event {
                         WindowEvent::CloseRequested
@@ -134,14 +159,19 @@ fn main() {
                             ..
                         } => *control_flow = ControlFlow::Exit,
                         WindowEvent::Resized(physical_size) => {
-                            renderer.resize(*physical_size, None);
+                            let mut state = state.lock().unwrap();
+                            state.resize((physical_size.width, physical_size.height), None);
                         }
                         WindowEvent::ScaleFactorChanged {
                             scale_factor,
                             new_inner_size,
                             ..
                         } => {
-                            renderer.resize(**new_inner_size, Some(*scale_factor));
+                            let mut state = state.lock().unwrap();
+                            state.resize(
+                                (new_inner_size.width, new_inner_size.height),
+                                Some(*scale_factor),
+                            );
                         }
                         _ => {}
                     }

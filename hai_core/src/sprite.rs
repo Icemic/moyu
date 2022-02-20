@@ -1,8 +1,9 @@
 use hai_pal::fs;
 use std::ops::{Deref, DerefMut};
+use wgpu::{Device, Queue};
 use winit::dpi::LogicalSize;
 
-use crate::{node::Node, renderer::Renderer, texture::Texture, traits::Focusable, types::Vertex};
+use crate::{node::Node, texture::Texture, traits::Focusable, types::Vertex};
 
 pub const SPRITE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 
@@ -33,7 +34,7 @@ impl DerefMut for Sprite {
 }
 
 impl Sprite {
-    pub fn from_asset(renderer: &Renderer, asset_path: String) -> Self {
+    pub fn from_asset(device: &Device, queue: &Queue, asset_path: String) -> Self {
         let bytes = match fs::read(format!("assets/{}", asset_path)) {
             Ok(v) => v,
             Err(err) => {
@@ -46,13 +47,7 @@ impl Sprite {
             }
         };
 
-        let texture = Texture::from_bytes(
-            &renderer.device,
-            &renderer.queue,
-            &bytes,
-            asset_path.clone(),
-        )
-        .unwrap();
+        let texture = Texture::from_bytes(device, queue, &bytes, asset_path.clone()).unwrap();
 
         let node = Node::new(asset_path.clone(), Default::default(), Default::default());
 

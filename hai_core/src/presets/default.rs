@@ -2,26 +2,26 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     node::{Node, NodeLike},
-    renderer::Renderer,
     sprite::Sprite,
     state::State,
 };
 
-pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>, renderer: &Renderer) {
+pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>) {
     let state = state.lock().unwrap();
-    let root_node = renderer.root_node();
+    let root_node = state.root_node.clone();
     let mut root_node = root_node.lock().unwrap();
-    // let mut root_node = root_node.lock().unwrap();
+    let device = state.device.clone();
+    let device = device.lock().unwrap();
+    let queue = state.queue.clone();
+    let queue = queue.lock().unwrap();
 
     drop(state);
 
     // load and use texture
-    let mut bg = Sprite::from_asset(renderer, "title.png".to_string());
-    let mut button1 = Sprite::from_asset(renderer, "button_n_01.png".to_string());
-    let mut button2 = Sprite::from_asset(renderer, "button_n_02.png".to_string());
-    let mut button3 = Sprite::from_asset(renderer, "button_n_06.png".to_string());
-
-    drop(renderer);
+    let mut bg = Sprite::from_asset(&device, &queue, "title.png".to_string());
+    let mut button1 = Sprite::from_asset(&device, &queue, "button_n_01.png".to_string());
+    let mut button2 = Sprite::from_asset(&device, &queue, "button_n_02.png".to_string());
+    let mut button3 = Sprite::from_asset(&device, &queue, "button_n_06.png".to_string());
 
     let mut container = Node::new(
         "Button Container".to_string(),
