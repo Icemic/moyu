@@ -1,9 +1,5 @@
 use log::debug;
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use wgpu::{util::DeviceExt, BindGroupLayout};
 use winit::{
     dpi::{LogicalSize, PhysicalSize},
@@ -24,12 +20,12 @@ pub struct Renderer {
     config: wgpu::SurfaceConfiguration,
     render_pipeline: wgpu::RenderPipeline,
     texture_bind_group_layout: BindGroupLayout,
-    root_node: Rc<RefCell<Node>>,
-    current_focused_node: Option<Rc<RefCell<NodeLike>>>, // vertex_buffer: wgpu::Buffer,
-                                                         // num_vertices: u32,
-                                                         // index_buffer: wgpu::Buffer,
-                                                         // num_indices: u32,
-                                                         // bind_group: wgpu::BindGroup
+    root_node: Arc<Mutex<Node>>,
+    current_focused_node: Option<Arc<Mutex<NodeLike>>>, // vertex_buffer: wgpu::Buffer,
+                                                        // num_vertices: u32,
+                                                        // index_buffer: wgpu::Buffer,
+                                                        // num_indices: u32,
+                                                        // bind_group: wgpu::BindGroup
 }
 
 impl Renderer {
@@ -184,7 +180,7 @@ impl Renderer {
             Default::default(),
             Default::default(),
         );
-        let root_node = Rc::new(RefCell::new(root_node));
+        let root_node = Arc::new(Mutex::new(root_node));
 
         Self {
             physical_size: size,
@@ -202,7 +198,7 @@ impl Renderer {
     }
 
     /// get mutable root node
-    pub fn root_node(&self) -> Rc<RefCell<Node>> {
+    pub fn root_node(&self) -> Arc<Mutex<Node>> {
         self.root_node.clone()
     }
 
@@ -248,10 +244,10 @@ impl Renderer {
                 let global_logical_x = position.x / self.scale_factor;
                 let global_logical_y = position.y / self.scale_factor;
 
-                let root_node = self.root_node.borrow();
+                let root_node = self.root_node.lock().unwrap();
 
                 walk_nodes_bottom_top(&root_node, &mut |child, parent| {
-                    let mut child_ref = child.borrow_mut();
+                    let mut child_ref = child.lock().unwrap();
                     let hit = match &mut *child_ref {
                         NodeLike::Sprite(sprite) => {
                             // calculate relative coordinate
@@ -309,10 +305,10 @@ impl Renderer {
 
         let device = &self.device;
 
-        let root_node = self.root_node.borrow();
+        let root_node = self.root_node.lock().unwrap();
 
         walk_nodes_top_bottom(&root_node, &mut |child, parent| {
-            let mut child = child.borrow_mut();
+            let mut child = child.lock().unwrap();
             match &mut *child {
                 NodeLike::Sprite(sprite) => {
                     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -438,7 +434,7 @@ impl Renderer {
 pub fn walk_nodes_top_bottom<T>(root_node: &Node, func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Rc<RefCell<NodeLike>>, &Node) -> bool,
+    T: FnMut(Arc<Mutex<NodeLike>>, &Node) -> bool,
 {
     let children = &root_node.children;
     for child in children.iter() {
@@ -448,8 +444,8 @@ where
             return true;
         }
 
-        let child_ref = child.borrow();
-        let node = match &*child_ref {
+        let child = child.lock().unwrap();
+        let node = match &*child {
             NodeLike::Sprite(sprite) => sprite,
             NodeLike::Node(n) => n,
         };
@@ -469,12 +465,12 @@ where
 pub fn walk_nodes_bottom_top<T>(root_node: &Node, func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Rc<RefCell<NodeLike>>, &Node) -> bool,
+    T: FnMut(Arc<Mutex<NodeLike>>, &Node) -> bool,
 {
     let children = &root_node.children;
     for child in children.iter().rev() {
         {
-            let child_ref = child.borrow();
+            let child_ref = child.lock().unwrap();
             let node = match &*child_ref {
                 NodeLike::Sprite(sprite) => sprite,
                 NodeLike::Node(n) => n,

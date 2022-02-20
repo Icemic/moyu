@@ -1,5 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
-use wgpu::Label;
+use std::sync::{Arc, Mutex};
 use winit::dpi::LogicalSize;
 
 use crate::{
@@ -7,7 +6,7 @@ use crate::{
     types::{Point, PointF, Transform},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum NodeLike {
     Node(Node),
     Sprite(Sprite),
@@ -30,7 +29,7 @@ pub struct Node {
     /// transform matrix relative to global
     pub transform_to_global: Transform,
     /// children
-    pub children: Vec<Rc<RefCell<NodeLike>>>,
+    pub children: Vec<Arc<Mutex<NodeLike>>>,
 }
 
 impl Node {
@@ -51,36 +50,36 @@ impl Node {
     }
 
     #[allow(dead_code)]
-    pub fn get_child(&self, index: usize) -> Option<Rc<RefCell<NodeLike>>> {
+    pub fn get_child(&self, index: usize) -> Option<Arc<Mutex<NodeLike>>> {
         if let Some(child) = self.children.get(index) {
-            return Some(Rc::clone(child));
+            return Some(child.clone());
         }
         None
     }
 
     pub fn add_child(&mut self, child: NodeLike) {
-        self.children.push(Rc::new(RefCell::new(child)));
+        self.children.push(Arc::new(Mutex::new(child)));
     }
 
     #[allow(dead_code)]
     pub fn insert_child(&mut self, index: usize, child: NodeLike) {
-        self.children.insert(index, Rc::new(RefCell::new(child)));
+        self.children.insert(index, Arc::new(Mutex::new(child)));
     }
 
     #[allow(dead_code)]
-    pub fn remove_child(&mut self, child: Rc<RefCell<NodeLike>>) -> Option<Rc<RefCell<NodeLike>>> {
-        if let Some(index) = self
-            .children
-            .iter()
-            .position(|item| item.as_ptr() == child.as_ptr())
-        {
+    pub fn remove_child(&mut self, child: Arc<Mutex<NodeLike>>) -> Option<Arc<Mutex<NodeLike>>> {
+        if let Some(index) = self.children.iter().position(|item| {
+            let l = item.lock().unwrap();
+            let r = child.lock().unwrap();
+            *l == *r
+        }) {
             return Some(self.children.remove(index));
         }
         None
     }
 
     #[allow(dead_code)]
-    pub fn remove_child_at(&mut self, index: usize) -> Option<Rc<RefCell<NodeLike>>> {
+    pub fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<NodeLike>>> {
         if index < self.children.len() {
             return Some(self.children.remove(index));
         }
@@ -114,5 +113,11 @@ impl Node {
         let mut transform_to_global = parent_transform.clone();
         transform_to_global.multiply(self.transform);
         self.transform_to_global = transform_to_global;
+    }
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Node) -> bool {
+        self.id == other.id
     }
 }
