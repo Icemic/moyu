@@ -15,11 +15,11 @@ pub fn module_resolve_callback<'a>(
 ) -> Option<Local<'a, Module>> {
     let scope = &mut unsafe { CallbackScope::new(context) };
 
-    let state = scope.get_slot_mut::<Rc<RefCell<Shared>>>().unwrap();
-    let state = state.borrow();
-    let module_loader = state.module_loader();
+    let shared = scope.get_slot_mut::<Rc<RefCell<Shared>>>().unwrap();
+    let shared = shared.borrow();
+    let module_loader = shared.module_loader();
 
-    drop(state);
+    drop(shared);
 
     let specifier = specifier.to_rust_string_lossy(scope);
     let module_loader = module_loader.borrow_mut();
@@ -42,12 +42,12 @@ pub extern "C" fn dynamic_import_callback(
     _import_assertions: Local<FixedArray>,
 ) -> *mut Promise {
     // let scope = &mut unsafe { CallbackScope::new(context) };
-    // let state = scope.get_slot_mut::<Rc<RefCell<State>>>().unwrap();
-    // let state = state.borrow();
-    // let module_loader = state.module_loader();
+    // let shared = scope.get_slot_mut::<Rc<RefCell<shared>>>().unwrap();
+    // let shared = shared.borrow();
+    // let module_loader = shared.module_loader();
     // let module_loader_mut = module_loader.borrow_mut();
 
-    // drop(state);
+    // drop(shared);
     // drop(module_loader_mut);
 
     // let referrer_name = referrer.get_resource_name().to_rust_string_lossy(scope);
