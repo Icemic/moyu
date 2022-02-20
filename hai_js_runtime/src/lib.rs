@@ -66,7 +66,7 @@ impl JSRuntime {
         }
     }
 
-    pub fn with_global<T, K>(&mut self, callback: &mut T) -> K
+    pub fn with_global<T, K>(&mut self, mut callback: T) -> K
     where
         T: FnMut(&mut HandleScope, &Local<Object>) -> K,
     {
