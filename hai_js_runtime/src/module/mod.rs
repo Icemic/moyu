@@ -198,7 +198,7 @@ impl ModuleLoader {
         let module_requests = module.get_module_requests();
         for i in 0..module_requests.length() {
             let module_request: Local<ModuleRequest> =
-                module_requests.get(scope, i).unwrap().into();
+                module_requests.get(scope, i).unwrap().try_into().unwrap();
             let specifier = module_request.get_specifier().to_rust_string_lossy(scope);
             // resolved_specifier there is dependency's refererr name
             self.pending_module_info(resolved_specifier.to_string(), specifier);
