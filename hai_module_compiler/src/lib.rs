@@ -2,11 +2,11 @@ pub use anyhow::Error;
 use std::sync::Arc;
 pub use swc::TransformOutput;
 use swc::{
-    common::{FileName, FilePathMapping, SourceMap},
     config::{Config, IsModule, JscConfig, ModuleConfig, Options},
-    ecmascript::ast::EsVersion,
-    try_with_handler, Compiler,
+    try_with_handler, Compiler, HandlerOpts,
 };
+use swc_core::ast::EsVersion;
+use swc_core::common::{FileName, FilePathMapping, SourceMap};
 use swc_ecma_parser::{EsConfig, Syntax, TsConfig};
 
 #[derive(Debug, Clone)]
@@ -20,7 +20,7 @@ pub fn transpile(source: &str, script_type: &ScriptType) -> Result<TransformOutp
 
     let c = Arc::new(Compiler::new(cm));
 
-    try_with_handler(c.cm.clone(), false, |handler| {
+    try_with_handler(c.cm.clone(), HandlerOpts::default(), |handler| {
         let syntax = match script_type {
             ScriptType::Typescript => Syntax::Typescript(TsConfig {
                 tsx: true,
@@ -44,10 +44,10 @@ pub fn transpile(source: &str, script_type: &ScriptType) -> Result<TransformOutp
                     ..Default::default()
                 },
                 module: Some(ModuleConfig::Es6),
-                minify: false,
+                minify: false.into(),
+                is_module: IsModule::Bool(true),
                 ..Default::default()
             },
-            is_module: IsModule::Bool(true),
             ..Default::default()
         };
 
@@ -71,7 +71,7 @@ mod tests {
     fn module_compiler_typescript_tsx() {
         let s = "function abc(){return <div foo='bar' />}";
         let code = transpile(s, &ScriptType::Typescript).unwrap().code;
-        assert_eq!(code, "function abc() {\n    return(/*#__PURE__*/ React.createElement(\"div\", {\n        foo: \"bar\"\n    }));\n}\n");
+        assert_eq!(code, "function abc() {\n    return /*#__PURE__*/ React.createElement(\"div\", {\n        foo: \"bar\"\n    });\n}\n");
     }
 
     #[test]
@@ -88,6 +88,6 @@ mod tests {
     fn module_compiler_javascript_jsx() {
         let s = "function abc(){return <div foo='bar' />}";
         let code = transpile(s, &ScriptType::Javascript).unwrap().code;
-        assert_eq!(code, "function abc() {\n    return(/*#__PURE__*/ React.createElement(\"div\", {\n        foo: \"bar\"\n    }));\n}\n");
+        assert_eq!(code, "function abc() {\n    return /*#__PURE__*/ React.createElement(\"div\", {\n        foo: \"bar\"\n    });\n}\n");
     }
 }
