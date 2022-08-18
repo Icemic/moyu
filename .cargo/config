@@ -24,6 +24,9 @@ rustflags = ["-Zshare-generics=n"]
 #[profile.dev]
 #debug = 1
 
+[build]
+rustc-wrapper = "/usr/local/bin/sccache"
+
 [alias]
 run-wasm = "run --release --package run-wasm -- hai_core --features web"
 run-desktop = "run --package hai_core --features desktop"
