@@ -1,5 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
-use v8::{CallbackScope, Context, FixedArray, Local, Module, Promise, ScriptOrModule, String};
+use v8::{
+    CallbackScope, Context, FixedArray, Local, Module, Promise, ScriptOrModule, String, Value,
+};
 
 use super::utils::resolve_module_specifier;
 use crate::shared::Shared;
@@ -37,7 +39,8 @@ pub fn module_resolve_callback<'a>(
 
 pub extern "C" fn dynamic_import_callback(
     _context: Local<Context>,
-    _referrer: Local<ScriptOrModule>,
+    _host_defined_options: v8::Local<v8::Data>,
+    _resource_name: Local<Value>,
     _specifier: Local<String>,
     _import_assertions: Local<FixedArray>,
 ) -> *mut Promise {
