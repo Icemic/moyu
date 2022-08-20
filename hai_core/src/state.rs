@@ -59,6 +59,9 @@ impl<'a> State<'a> {
         debug!("test!!");
     }
 
+    /**
+     * Set screen size before first render, which should not be called after render loop started.
+     */
     pub fn set_screen_size(&mut self, physical_size: (u32, u32), scale_factor: f64) {
         self.physical_size = physical_size;
         self.scale_factor = scale_factor;
