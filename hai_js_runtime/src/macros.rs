@@ -110,3 +110,66 @@ macro_rules! unwrap {
         }
     }};
 }
+
+/**
+ * do type check and return value, or throw to js.
+ */
+#[macro_export]
+macro_rules! try_from_value_or_throw_exception {
+    ($scope:ident, $v8_local_type:ty, $v8_local_value:expr) => {
+        match Local::<$v8_local_type>::try_from($v8_local_value) {
+            Ok(v) => v,
+            Err(err) => {
+                throw_exception!($scope, format!("{}", err));
+                return;
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! throw_exception {
+    ($scope:ident, $string:expr) => {
+        let error_message: Local<String> = $string.into_v8($scope);
+        let error = Exception::error($scope, error_message);
+        $scope.throw_exception(error);
+    };
+}
+
+#[macro_export]
+macro_rules! get_shared_state {
+    ($scope:ident, $t:ty) => {{
+        let shared = $scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
+        let shared = shared.borrow();
+
+        shared.state::<$t>()
+    }};
+}
+
+/**
+ * get value from v8 array by index.
+ */
+#[macro_export]
+macro_rules! get_from_v8_array {
+    ($scope:ident, $args:ident, $index:expr) => {{
+        let key = ($index as u32).into_v8($scope).into();
+        let value = $args.get($scope, key);
+        value
+    }};
+}
+
+/**
+ * check a js command parameter is not undefined, or throw to js.
+ */
+#[macro_export]
+macro_rules! check_exist {
+    ($scope:ident, $v:ident) => {
+        if $v.is_none() {
+            throw_exception!(
+                $scope,
+                format!("parameter {} must be specified.", stringify!($v))
+            );
+            return;
+        }
+    };
+}
