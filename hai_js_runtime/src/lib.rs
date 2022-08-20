@@ -1,9 +1,11 @@
 #[macro_use]
-pub mod macros;
+mod macros;
 mod internals;
 mod module;
 mod shared;
 mod timer;
+
+pub mod prelude;
 pub mod utils;
 
 use futures::{future::poll_fn, StreamExt};
