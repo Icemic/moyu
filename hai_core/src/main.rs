@@ -13,7 +13,6 @@ mod types;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
-use presets::add_preset_default;
 use renderer::{create_surface, input, prepare_pipeline, render, update};
 use state::State;
 use std::sync::{Arc, Mutex};
@@ -115,8 +114,6 @@ fn main() {
             });
         });
     }
-
-    add_preset_default(&state);
 
     event_loop.run(move |event, _, control_flow| {
         match event {
