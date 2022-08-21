@@ -2,7 +2,7 @@ use hai_js_runtime::{prelude::*, *};
 use log::warn;
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{presets::add_preset_default, state::State};
+use crate::{presets::add_preset_default, state::State, user_event::UserEvent};
 
 pub fn load_preset(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Function>>) {
     let key = (0 as u32).into_v8(scope).into();
@@ -29,16 +29,25 @@ pub fn load_preset(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<
 
 pub fn resize_window(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Function>>) {
     let state = get_shared_state!(scope, State);
-    let mut state = state.lock().unwrap();
+    let state = state.lock().unwrap();
 
     let width = get_from_v8_array!(scope, args, 0);
     let height = get_from_v8_array!(scope, args, 1);
+    let factor = get_from_v8_array!(scope, args, 2);
 
     check_exist!(scope, width);
     check_exist!(scope, height);
 
     let width = try_from_value_or_throw_exception!(scope, Number, width.unwrap());
     let height = try_from_value_or_throw_exception!(scope, Number, height.unwrap());
+    let factor = try_from_option_value_or_throw_exception!(scope, Number, factor.unwrap());
 
-    state.resize((width.value() as u32, height.value() as u32), None);
+    state
+        .event_proxy
+        .send_event(UserEvent::ResizeWindow(
+            width.value(),
+            height.value(),
+            factor.and_then(|v| Some(v.value())),
+        ))
+        .unwrap();
 }
