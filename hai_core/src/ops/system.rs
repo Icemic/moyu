@@ -51,3 +51,10 @@ pub fn resize_window(scope: &mut HandleScope, args: Local<Array>, _: Option<Loca
         ))
         .unwrap();
 }
+
+pub fn quit(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Function>>) {
+    let state = get_shared_state!(scope, State);
+    let state = state.lock().unwrap();
+
+    state.event_proxy.send_event(UserEvent::Quit).unwrap();
+}

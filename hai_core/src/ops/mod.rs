@@ -41,6 +41,7 @@ fn receive_command(scope: &mut HandleScope, args: FunctionCallbackArguments, _: 
         "test" => debug!("command_name test!"),
         "load_preset" => load_preset(scope, command_args, None),
         "resize_window" => resize_window(scope, command_args, None),
+        "quit" => quit(scope, command_args, None),
         _ => {
             let error_message: Local<String> =
                 format!("Unknown command '{}'", command_name).into_v8(scope);
