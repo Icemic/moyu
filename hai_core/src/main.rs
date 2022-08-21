@@ -9,7 +9,9 @@ mod state;
 mod texture;
 mod traits;
 mod types;
+mod user_event;
 
+use cgmath::num_traits::ToPrimitive;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
@@ -18,6 +20,7 @@ use state::State;
 use std::sync::{Arc, Mutex};
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
+use user_event::UserEvent;
 use winit::{
     dpi::{LogicalSize, Size},
     event::*,
@@ -46,7 +49,7 @@ fn main() {
     }
 
     // create main thread infinity loop
-    let event_loop = EventLoop::new();
+    let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
     // create window
     let window = WindowBuilder::new()
         .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
@@ -72,6 +75,8 @@ fn main() {
     let render_pipeline = Arc::new(Mutex::new(render_pipeline));
     let bind_group_layout = Arc::new(Mutex::new(bind_group_layout));
 
+    let event_proxy = event_loop.create_proxy();
+
     // create multithread shared state
     let mut state = State::new(
         surface,
@@ -80,6 +85,7 @@ fn main() {
         config,
         render_pipeline,
         bind_group_layout,
+        event_proxy,
     );
 
     // set screen size
@@ -174,6 +180,22 @@ fn main() {
                     }
                 }
             }
+            Event::UserEvent(user_event) => match user_event {
+                UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
+                    let factor = factor.unwrap_or(window.scale_factor());
+                    let mut state = state.lock().unwrap();
+                    state.resize(
+                        (
+                            (logical_width * factor).to_u32().unwrap(),
+                            (logical_height * factor).to_u32().unwrap(),
+                        ),
+                        Some(factor),
+                    );
+                    let window_size =
+                        Size::Logical(LogicalSize::new(logical_width, logical_height));
+                    window.set_inner_size(window_size);
+                }
+            },
             _ => {}
         }
     });

@@ -1,9 +1,12 @@
 use log::debug;
 use std::sync::{Arc, Mutex};
 use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
-use winit::event::Event;
+use winit::{event::Event, event_loop::EventLoopProxy};
 
-use crate::node::{Node, NodeLike};
+use crate::{
+    node::{Node, NodeLike},
+    user_event::UserEvent,
+};
 
 pub struct State<'a> {
     pub physical_size: (u32, u32),
@@ -14,6 +17,8 @@ pub struct State<'a> {
     pub config: SurfaceConfiguration,
     pub render_pipeline: Arc<Mutex<RenderPipeline>>,
     pub bind_group_layout: Arc<Mutex<BindGroupLayout>>,
+    pub event_proxy: EventLoopProxy<UserEvent>,
+
     pub pending_events: Arc<Mutex<Vec<Event<'a, ()>>>>,
     pub pending_updates: Arc<Mutex<Vec<()>>>,
     pub pending_renderable:
@@ -30,6 +35,7 @@ impl<'a> State<'a> {
         config: SurfaceConfiguration,
         render_pipeline: Arc<Mutex<RenderPipeline>>,
         bind_group_layout: Arc<Mutex<BindGroupLayout>>,
+        event_proxy: EventLoopProxy<UserEvent>,
     ) -> Self {
         // create root node
         let root_node = Node::new(
@@ -47,6 +53,7 @@ impl<'a> State<'a> {
             config,
             render_pipeline,
             bind_group_layout,
+            event_proxy,
             pending_events: Default::default(),
             pending_updates: Default::default(),
             pending_renderable: Default::default(),

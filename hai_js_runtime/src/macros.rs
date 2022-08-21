@@ -127,6 +127,26 @@ macro_rules! try_from_value_or_throw_exception {
     };
 }
 
+/**
+ * do type check and return Some(value), or return None
+ */
+#[macro_export]
+macro_rules! try_from_option_value_or_throw_exception {
+    ($scope:ident, $v8_local_type:ty, $v8_local_value:expr) => {
+        if $v8_local_value.is_null_or_undefined() {
+            None
+        } else {
+            match Local::<$v8_local_type>::try_from($v8_local_value) {
+                Ok(v) => Some(v),
+                Err(err) => {
+                    throw_exception!($scope, format!("{}", err));
+                    return;
+                }
+            }
+        }
+    };
+}
+
 #[macro_export]
 macro_rules! throw_exception {
     ($scope:ident, $string:expr) => {
