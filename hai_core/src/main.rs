@@ -15,6 +15,7 @@ use cgmath::num_traits::ToPrimitive;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
+use log::info;
 use renderer::{create_surface, input, prepare_pipeline, render, update};
 use state::State;
 use std::sync::{Arc, Mutex};
@@ -194,6 +195,10 @@ fn main() {
                     let window_size =
                         Size::Logical(LogicalSize::new(logical_width, logical_height));
                     window.set_inner_size(window_size);
+                }
+                UserEvent::Quit => {
+                    *control_flow = ControlFlow::Exit;
+                    info!("Goodbye.");
                 }
             },
             _ => {}
