@@ -22,10 +22,15 @@ pub fn update<'a>(state: &Arc<Mutex<State<'a>>>) {
 
     drop(state);
 
+    let root_node = match &*root_node {
+        NodeLike::Node(n) => n,
+        _ => unreachable!("root_node must be a node."),
+    };
+
     // clear all update of last tick
     queue.clear();
 
-    walk_nodes_top_bottom(&root_node, &mut |child, parent| {
+    walk_nodes_top_bottom(root_node, &mut |child, parent| {
         let mut child = child.lock().unwrap();
         match &mut *child {
             NodeLike::Sprite(sprite) => {

@@ -172,9 +172,19 @@ macro_rules! get_shared_state {
 #[macro_export]
 macro_rules! get_from_v8_array {
     ($scope:ident, $args:ident, $index:expr) => {{
-        let key = ($index as u32).into_v8($scope).into();
+        $args.get_index($scope, $index as u32).unwrap()
+    }};
+}
+
+/**
+ * get value from v8 array by index.
+ */
+#[macro_export]
+macro_rules! get_from_v8_object {
+    ($scope:ident, $args:ident, $key:expr) => {{
+        let key = $key.into_v8($scope).into();
         let value = $args.get($scope, key);
-        value
+        value.unwrap()
     }};
 }
 
@@ -184,7 +194,7 @@ macro_rules! get_from_v8_array {
 #[macro_export]
 macro_rules! check_exist {
     ($scope:ident, $v:ident) => {
-        if $v.is_none() {
+        if $v.is_null_or_undefined() {
             throw_exception!(
                 $scope,
                 format!("parameter {} must be specified.", stringify!($v))

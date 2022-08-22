@@ -1,3 +1,4 @@
+use log::warn;
 use std::sync::{Arc, Mutex};
 use winit::dpi::LogicalSize;
 
@@ -57,13 +58,30 @@ impl Node {
         None
     }
 
-    pub fn add_child(&mut self, child: NodeLike) {
-        self.children.push(Arc::new(Mutex::new(child)));
+    pub fn add_child(&mut self, child: Arc<Mutex<NodeLike>>) {
+        self.children.push(child);
     }
 
     #[allow(dead_code)]
-    pub fn insert_child(&mut self, index: usize, child: NodeLike) {
-        self.children.insert(index, Arc::new(Mutex::new(child)));
+    pub fn insert_child(&mut self, index: usize, child: Arc<Mutex<NodeLike>>) {
+        self.children.insert(index, child);
+    }
+
+    #[allow(dead_code)]
+    pub fn insert_child_before(
+        &mut self,
+        before_child: Arc<Mutex<NodeLike>>,
+        child: Arc<Mutex<NodeLike>>,
+    ) {
+        let index = self.children.iter().position(|item| {
+            let l = item.lock().unwrap();
+            let r = child.lock().unwrap();
+            *l == *r
+        });
+        if index.is_none() {
+            warn!("Cannot insert child before another one because the another child does not present in current children.");
+        }
+        self.children.insert(index.unwrap_or(0), child);
     }
 
     #[allow(dead_code)]

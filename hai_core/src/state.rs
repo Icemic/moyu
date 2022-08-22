@@ -1,5 +1,8 @@
 use log::debug;
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 use winit::{event::Event, event_loop::EventLoopProxy};
 
@@ -23,8 +26,9 @@ pub struct State<'a> {
     pub pending_updates: Arc<Mutex<Vec<()>>>,
     pub pending_renderable:
         Arc<Mutex<Vec<(wgpu::BindGroup, wgpu::Buffer, wgpu::Buffer, u32, u32)>>>,
-    pub root_node: Arc<Mutex<Node>>,
+    pub root_node: Arc<Mutex<NodeLike>>,
     pub current_focused_node: Arc<Mutex<Option<Arc<Mutex<NodeLike>>>>>,
+    pub node_map: Arc<Mutex<HashMap<u32, Arc<Mutex<NodeLike>>>>>,
 }
 
 impl<'a> State<'a> {
@@ -43,6 +47,11 @@ impl<'a> State<'a> {
             Default::default(),
             Default::default(),
         );
+        let root_node = NodeLike::Node(root_node);
+        let root_node = Arc::new(Mutex::new(root_node));
+
+        let mut node_map: HashMap<u32, Arc<Mutex<NodeLike>>> = Default::default();
+        node_map.insert(0, root_node.clone());
 
         Self {
             physical_size: Default::default(),
@@ -57,8 +66,9 @@ impl<'a> State<'a> {
             pending_events: Default::default(),
             pending_updates: Default::default(),
             pending_renderable: Default::default(),
-            root_node: Arc::new(Mutex::new(root_node)),
+            root_node,
             current_focused_node: Arc::new(Mutex::new(None)),
+            node_map: Arc::new(Mutex::new(node_map)),
         }
     }
 
