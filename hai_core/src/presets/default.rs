@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::{
     node::{Node, NodeLike},
@@ -10,6 +10,10 @@ pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>) {
     let state = state.lock().unwrap();
     let root_node = state.root_node.clone();
     let mut root_node = root_node.lock().unwrap();
+    let root_node = match &mut *root_node {
+        NodeLike::Node(n) => n,
+        _ => unreachable!("root_node must be a node."),
+    };
     let device = state.device.clone();
     let device = device.lock().unwrap();
     let queue = state.queue.clone();
@@ -34,10 +38,10 @@ pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>) {
     button2.move_to(0, 440);
     button3.move_to(0, 560);
 
-    container.add_child(NodeLike::Sprite(button1));
-    container.add_child(NodeLike::Sprite(button2));
-    container.add_child(NodeLike::Sprite(button3));
+    container.add_child(Arc::new(Mutex::new(NodeLike::Sprite(button1))));
+    container.add_child(Arc::new(Mutex::new(NodeLike::Sprite(button2))));
+    container.add_child(Arc::new(Mutex::new(NodeLike::Sprite(button3))));
 
-    root_node.add_child(NodeLike::Sprite(bg));
-    root_node.add_child(NodeLike::Node(container));
+    root_node.add_child(Arc::new(Mutex::new(NodeLike::Sprite(bg))));
+    root_node.add_child(Arc::new(Mutex::new(NodeLike::Node(container))));
 }

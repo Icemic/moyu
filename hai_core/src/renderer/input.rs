@@ -23,8 +23,12 @@ pub fn input<'a>(event: &WindowEvent, state: &Arc<Mutex<State<'a>>>) -> bool {
             let global_logical_y = position.y / scale_factor;
 
             let root_node = root_node.lock().unwrap();
+            let root_node = match &*root_node {
+                NodeLike::Node(n) => n,
+                _ => unreachable!("root_node must be a node."),
+            };
 
-            walk_nodes_bottom_top(&root_node, &mut |child, parent| {
+            walk_nodes_bottom_top(root_node, &mut |child, parent| {
                 let mut child_ref = child.lock().unwrap();
                 let hit = match &mut *child_ref {
                     NodeLike::Sprite(sprite) => {

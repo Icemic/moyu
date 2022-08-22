@@ -38,9 +38,9 @@ pub fn resize_window(scope: &mut HandleScope, args: Local<Array>, _: Option<Loca
     check_exist!(scope, width);
     check_exist!(scope, height);
 
-    let width = try_from_value_or_throw_exception!(scope, Number, width.unwrap());
-    let height = try_from_value_or_throw_exception!(scope, Number, height.unwrap());
-    let factor = try_from_option_value_or_throw_exception!(scope, Number, factor.unwrap());
+    let width = try_from_value_or_throw_exception!(scope, Number, width);
+    let height = try_from_value_or_throw_exception!(scope, Number, height);
+    let factor = try_from_option_value_or_throw_exception!(scope, Number, factor);
 
     state
         .event_proxy
