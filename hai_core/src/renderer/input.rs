@@ -25,7 +25,7 @@ pub fn input<'a>(event: &WindowEvent, state: &Arc<Mutex<State<'a>>>) -> bool {
             let root_node = root_node.lock().unwrap();
 
             walk_nodes_bottom_top(&*root_node, &mut |child, parent| {
-                let mut child_ref = child.lock().unwrap();
+                let child_ref = child.lock().unwrap();
                 let hit = match NodeType::node_type(&*child_ref) {
                     "sprite" => {
                         let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
