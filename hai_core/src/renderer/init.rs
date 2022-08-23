@@ -1,3 +1,4 @@
+use log::info;
 use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -23,7 +24,7 @@ pub async fn create_surface(
     #[cfg(not(target_arch = "wasm32"))]
     {
         let adapter_info = adapter.get_info();
-        println!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
+        info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
     }
     // or
     // let adapter = instance

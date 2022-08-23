@@ -61,7 +61,7 @@ pub async fn read_code_local(filename: &std::string::String) -> std::string::Str
         Err(err) => {
             // force quit if a module cannot be loaded
             error!(
-                "[module] cannot load module, something went wrong at reading file '{}' ({}).",
+                "cannot load module, something went wrong at reading file '{}' ({}).",
                 filename,
                 err.to_string()
             );

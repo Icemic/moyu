@@ -147,14 +147,14 @@ impl JSRuntime {
                     .unwrap();
                 if let Ok(code) = code {
                     info!(
-                        "[module] module '{}' loaded from '{}'",
+                        "module '{}' loaded from '{}'",
                         module_info.specifier, resolved_specifier
                     );
                     let scope = &mut self.get_handle_scope();
                     module_loader.compile_module(scope, &resolved_specifier, &code);
                 } else {
                     error!(
-                        "[module] cannot load module '{}', file '{}' not exists.",
+                        "cannot load module '{}', file '{}' not exists.",
                         module_info.specifier, resolved_specifier
                     );
                 }
