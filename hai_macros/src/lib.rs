@@ -72,8 +72,54 @@ fn get_node_impl(struct_name: &Ident2) -> TokenStream2 {
 fn get_node_trait_impl(struct_name: &Ident2) -> TokenStream2 {
     quote! {
         impl Node for #struct_name {
-            fn id(&self) -> u32 {
-                self.id
+            fn node_type(&self) -> &'static str { todo!() }
+
+            fn id(&self) -> &u32 {
+                &self.id
+            }
+
+            fn label(&self) -> &String {
+                &self.label
+            }
+
+            fn anchor(&self) -> &PointF {
+                &self.anchor
+            }
+            fn translate(&self) -> &Point {
+                &self.translate
+            }
+            fn transform(&self) -> &Transform {
+                &self.transform
+            }
+            fn transform_to_global(&self) -> &Transform {
+                &self.transform_to_global
+            }
+            fn children(&self) -> &Vec<Arc<Mutex<dyn Node + Send>>> {
+                &self.children
+            }
+
+            // fn anchor_mut(&mut self) -> &mut PointF {
+            //     &mut self.anchor
+            // }
+            // fn translate_mut(&mut self) -> &mut Point {
+            //     &mut self.translate
+            // }
+            // fn transform_mut(&mut self) -> &mut Transform {
+            //     &mut self.transform
+            // }
+            // fn transform_to_global_mut(&mut self) -> &mut Transform {
+            //     &mut self.transform_to_global
+            // }
+            // fn children_mut(&mut self) -> &mut Vec<Arc<Mutex<dyn Node + Send>>> {
+            //     &mut self.children
+            // }
+
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
             }
 
             fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node + Send>>> {

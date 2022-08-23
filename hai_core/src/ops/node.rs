@@ -6,8 +6,7 @@ use std::{
 };
 
 use crate::{
-    node::{Node, NodeLike},
-    sprite::Sprite,
+    nodes::{Container, Sprite},
     state::State,
 };
 
@@ -41,9 +40,9 @@ pub fn create_instance(
     let mut node_id = 0;
     match node_type.as_str() {
         "node" => {
-            let n = Node::new(label, Default::default(), Default::default());
+            let n = Container::new(label, Default::default(), Default::default());
             node_id = n.id;
-            node_map.insert(n.id, Arc::new(Mutex::new(NodeLike::Node(n))));
+            node_map.insert(n.id, Arc::new(Mutex::new(n)));
         }
         "sprite" => {
             let device = state.device.clone();
@@ -59,7 +58,7 @@ pub fn create_instance(
 
             let n = Sprite::from_asset(&device, &queue, src);
             node_id = n.id;
-            node_map.insert(n.id, Arc::new(Mutex::new(NodeLike::Sprite(n))));
+            node_map.insert(n.id, Arc::new(Mutex::new(n)));
         }
         _ => {
             throw_exception!(scope, format!("Unknown nodeType '{}'", node_type));
@@ -110,10 +109,7 @@ pub fn add_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Fu
     let mut node = node.unwrap().lock().unwrap();
     let child_node = child_node.unwrap().clone();
 
-    match &mut *node {
-        NodeLike::Node(n) => n.add_child(child_node),
-        NodeLike::Sprite(n) => n.add_child(child_node),
-    }
+    node.add_child(child_node);
 }
 
 pub fn insert_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Function>>) {
@@ -154,10 +150,7 @@ pub fn insert_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local
     let index = index.value() as usize;
     let child_node = child_node.unwrap().clone();
 
-    match &mut *node {
-        NodeLike::Node(n) => n.insert_child(index, child_node),
-        NodeLike::Sprite(n) => n.insert_child(index, child_node),
-    }
+    node.insert_child(index, child_node);
 }
 
 pub fn insert_child_before(
@@ -211,10 +204,7 @@ pub fn insert_child_before(
     let before_node = before_node.unwrap().clone();
     let child_node = child_node.unwrap().clone();
 
-    match &mut *node {
-        NodeLike::Node(n) => n.insert_child_before(before_node, child_node),
-        NodeLike::Sprite(n) => n.insert_child_before(before_node, child_node),
-    }
+    node.insert_child_before(before_node, child_node);
 }
 
 pub fn remove_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Function>>) {
@@ -251,10 +241,7 @@ pub fn remove_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local
     let mut node = node.unwrap().lock().unwrap();
     let child_node = child_node.unwrap().clone();
 
-    match &mut *node {
-        NodeLike::Node(n) => n.remove_child(child_node).unwrap(),
-        NodeLike::Sprite(n) => n.remove_child(child_node).unwrap(),
-    };
+    node.remove_child(child_node).unwrap();
 }
 
 pub fn remove_child_at(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Function>>) {
@@ -282,8 +269,5 @@ pub fn remove_child_at(scope: &mut HandleScope, args: Local<Array>, _: Option<Lo
     let mut node = node.unwrap().lock().unwrap();
     let index = index.value() as usize;
 
-    match &mut *node {
-        NodeLike::Node(n) => n.remove_child_at(index).unwrap(),
-        NodeLike::Sprite(n) => n.remove_child_at(index).unwrap(),
-    };
+    node.remove_child_at(index).unwrap();
 }

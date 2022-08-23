@@ -3,7 +3,7 @@ use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
 
 use super::walk::walk_nodes_top_bottom;
-use crate::{node::NodeLike, sprite::SPRITE_INDICES, state::State};
+use crate::{nodes::{SPRITE_INDICES, Sprite}, state::State, traits::{Node, NodeType}};
 
 pub fn update<'a>(state: &Arc<Mutex<State<'a>>>) {
     let state = state.lock().unwrap();
@@ -22,18 +22,14 @@ pub fn update<'a>(state: &Arc<Mutex<State<'a>>>) {
 
     drop(state);
 
-    let root_node = match &*root_node {
-        NodeLike::Node(n) => n,
-        _ => unreachable!("root_node must be a node."),
-    };
-
     // clear all update of last tick
     queue.clear();
 
-    walk_nodes_top_bottom(root_node, &mut |child, parent| {
+    walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
         let mut child = child.lock().unwrap();
-        match &mut *child {
-            NodeLike::Sprite(sprite) => {
+        match NodeType::node_type(&*child) {
+            "sprite" => {
+                let sprite = child.as_any_mut().downcast_mut::<Sprite>().unwrap();
                 let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                     layout: &texture_bind_group_layout,
                     entries: &[
@@ -49,7 +45,7 @@ pub fn update<'a>(state: &Arc<Mutex<State<'a>>>) {
                     label: Some("bind_group"),
                 });
 
-                sprite.calculate_transform(&parent.transform_to_global, logical_size, scale_factor);
+                sprite.calculate_transform(&parent.transform_to_global(), logical_size, scale_factor);
                 sprite.calculate_vertices(logical_size, scale_factor);
 
                 let vertices = &sprite.vertices.unwrap();
@@ -77,8 +73,8 @@ pub fn update<'a>(state: &Arc<Mutex<State<'a>>>) {
                     num_indices,
                 ));
             }
-            NodeLike::Node(node) => {
-                node.calculate_transform(&parent.transform_to_global, logical_size, scale_factor);
+            _ => {
+                child.calculate_transform(&parent.transform_to_global(), logical_size, scale_factor);
             }
         }
         false

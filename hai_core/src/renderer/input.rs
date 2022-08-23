@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use winit::{dpi::PhysicalSize, event::WindowEvent};
 
 use super::walk::walk_nodes_bottom_top;
-use crate::{node::NodeLike, state::State, traits::Focusable};
+use crate::{state::State, nodes::Sprite, traits::{Focusable, NodeType}};
 
 pub fn input<'a>(event: &WindowEvent, state: &Arc<Mutex<State<'a>>>) -> bool {
     let state = state.lock().unwrap();
@@ -23,20 +23,17 @@ pub fn input<'a>(event: &WindowEvent, state: &Arc<Mutex<State<'a>>>) -> bool {
             let global_logical_y = position.y / scale_factor;
 
             let root_node = root_node.lock().unwrap();
-            let root_node = match &*root_node {
-                NodeLike::Node(n) => n,
-                _ => unreachable!("root_node must be a node."),
-            };
 
-            walk_nodes_bottom_top(root_node, &mut |child, parent| {
+            walk_nodes_bottom_top(&*root_node, &mut |child, parent| {
                 let mut child_ref = child.lock().unwrap();
-                let hit = match &mut *child_ref {
-                    NodeLike::Sprite(sprite) => {
+                let hit = match NodeType::node_type(&*child_ref) {
+                    "sprite" => {
+                        let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
                         // calculate relative coordinate
                         let parent_global_x =
-                            parent.transform_to_global.tx * logical_size.width / 2.;
+                            parent.transform_to_global().tx * logical_size.width / 2.;
                         let parent_global_y =
-                            parent.transform_to_global.ty * logical_size.height / 2.;
+                            parent.transform_to_global().ty * logical_size.height / 2.;
 
                         let relative_logical_x =
                             (global_logical_x - parent_global_x).round() as i32;

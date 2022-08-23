@@ -6,10 +6,7 @@ use std::{
 use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 use winit::{event::Event, event_loop::EventLoopProxy};
 
-use crate::{
-    node::{Node, NodeLike},
-    user_event::UserEvent,
-};
+use crate::{nodes::Container, user_event::UserEvent, traits::Node};
 
 pub struct State<'a> {
     pub physical_size: (u32, u32),
@@ -26,9 +23,9 @@ pub struct State<'a> {
     pub pending_updates: Arc<Mutex<Vec<()>>>,
     pub pending_renderable:
         Arc<Mutex<Vec<(wgpu::BindGroup, wgpu::Buffer, wgpu::Buffer, u32, u32)>>>,
-    pub root_node: Arc<Mutex<NodeLike>>,
-    pub current_focused_node: Arc<Mutex<Option<Arc<Mutex<NodeLike>>>>>,
-    pub node_map: Arc<Mutex<HashMap<u32, Arc<Mutex<NodeLike>>>>>,
+    pub root_node: Arc<Mutex<Container>>,
+    pub current_focused_node: Arc<Mutex<Option<Arc<Mutex<dyn Node + Send>>>>>,
+    pub node_map: Arc<Mutex<HashMap<u32, Arc<Mutex<dyn Node + Send>>>>>,
 }
 
 impl<'a> State<'a> {
@@ -42,15 +39,14 @@ impl<'a> State<'a> {
         event_proxy: EventLoopProxy<UserEvent>,
     ) -> Self {
         // create root node
-        let root_node = Node::new(
+        let root_node = Container::new(
             "Root Node".to_string(),
             Default::default(),
             Default::default(),
         );
-        let root_node = NodeLike::Node(root_node);
         let root_node = Arc::new(Mutex::new(root_node));
 
-        let mut node_map: HashMap<u32, Arc<Mutex<NodeLike>>> = Default::default();
+        let mut node_map: HashMap<u32, Arc<Mutex<dyn Node + Send>>> = Default::default();
         node_map.insert(0, root_node.clone());
 
         Self {
