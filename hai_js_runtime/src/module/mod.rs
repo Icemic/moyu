@@ -66,7 +66,7 @@ impl ModuleLoader {
         let mut entry_dir = env::var("HAI_ENTRY")
             .unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
 
-        info!("[module] entry '{}'", entry_dir);
+        info!("entry '{}'", entry_dir);
 
         // input shall be a referrer name but entry_dir is a directory, so do some hack
         entry_dir.push_str("./index");
@@ -221,7 +221,7 @@ impl ModuleLoader {
             // );
         }
 
-        debug!("[module] instantiate module '{}'", resolved_specifier);
+        debug!("instantiate module '{}'", resolved_specifier);
 
         // instantiate and run module code
         module
@@ -246,17 +246,13 @@ impl ModuleLoader {
             return None;
         }
 
-        debug!("[module] evaluate module '{}'", resolved_specifier);
+        debug!("evaluate module '{}'", resolved_specifier);
 
         if let Some(result) = module.evaluate(scope) {
             debug!(
-                "[module] instantiate module '{}' finished",
+                "instantiate module '{}' finished",
                 resolved_specifier
             );
-
-            let result2: Local<Promise> = result.clone().try_into().unwrap();
-
-            println!("{:?} {:?}", result2, module.get_status());
 
             // TODO: error handling?
 

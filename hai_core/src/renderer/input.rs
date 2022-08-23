@@ -51,7 +51,7 @@ pub fn input<'a>(event: &WindowEvent, state: &Arc<Mutex<State<'a>>>) -> bool {
                 if hit.0 {
                     let mut current_focused_node = current_focused_node.lock().unwrap();
                     *current_focused_node = Some(child.clone());
-                    debug!("[input] pointer is over {}", hit.1.unwrap());
+                    debug!("pointer is over {}", hit.1.unwrap());
                 }
 
                 hit.0
@@ -65,7 +65,7 @@ pub fn input<'a>(event: &WindowEvent, state: &Arc<Mutex<State<'a>>>) -> bool {
         }
         WindowEvent::MouseInput { .. } => {
             //
-            println!("click");
+            debug!("click");
             true
         }
         _ => false,

@@ -1,6 +1,6 @@
 use hai_macros::node;
 use hai_pal::fs;
-use log::warn;
+use log::{warn, error};
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 use wgpu::{Device, Queue};
@@ -28,8 +28,8 @@ impl Sprite {
         let bytes = match fs::read(format!("assets/{}", asset_path)) {
             Ok(v) => v,
             Err(err) => {
-                println!(
-                    "[Error][Sprite] load bytes from asset '{}': {}",
+                error!(
+                    "load bytes from asset '{}': {}",
                     asset_path,
                     err.to_string()
                 );
