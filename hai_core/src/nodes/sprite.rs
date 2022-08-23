@@ -1,11 +1,12 @@
 use hai_macros::node;
 use hai_pal::fs;
 use log::warn;
+use std::any::Any;
 use std::sync::{Arc, Mutex};
 use wgpu::{Device, Queue};
 use winit::dpi::LogicalSize;
 
-use crate::traits::{Node, NODE_ID};
+use crate::traits::{Node, NodeType, NODE_ID};
 use crate::types::{Point, PointF, Transform};
 use crate::{texture::Texture, traits::Focusable, types::Vertex};
 
@@ -117,6 +118,12 @@ impl Sprite {
         ];
 
         self.vertices = Some(v);
+    }
+}
+
+impl NodeType for Sprite {
+    fn node_type(&self) -> &'static str {
+        "sprite"
     }
 }
 

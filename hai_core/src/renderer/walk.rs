@@ -1,15 +1,15 @@
 use std::sync::{Arc, Mutex};
 
-use crate::node::{Node, NodeLike};
+use crate::traits::Node;
 
 /// walk through all node-like ones from top to bottom,
 /// due that the depth should not big, recursive is acceptable
-pub fn walk_nodes_top_bottom<T>(root_node: &Node, func: &mut T) -> bool
+pub fn walk_nodes_top_bottom<T>(root_node: &(dyn Node + Send), func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Arc<Mutex<NodeLike>>, &Node) -> bool,
+    T: FnMut(Arc<Mutex<dyn Node + Send>>, &(dyn Node + Send)) -> bool,
 {
-    let children = &root_node.children;
+    let children = root_node.children();
     for child in children.iter() {
         let should_end = func(child.clone(), root_node);
 
@@ -18,13 +18,9 @@ where
         }
 
         let child = child.lock().unwrap();
-        let node = match &*child {
-            NodeLike::Sprite(sprite) => sprite,
-            NodeLike::Node(n) => n,
-        };
 
-        if node.children.len() > 0 {
-            let should_end = walk_nodes_top_bottom(node, func);
+        if child.children().len() > 0 {
+            let should_end = walk_nodes_top_bottom(&*child, func);
             if should_end {
                 return true;
             }
@@ -35,22 +31,18 @@ where
 
 /// walk through all node-like ones from bottom to top,
 /// due that the depth should not big, recursive is acceptable
-pub fn walk_nodes_bottom_top<T>(root_node: &Node, func: &mut T) -> bool
+pub fn walk_nodes_bottom_top<T>(root_node: &(dyn Node + Send), func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Arc<Mutex<NodeLike>>, &Node) -> bool,
+    T: FnMut(Arc<Mutex<dyn Node + Send>>, &(dyn Node + Send)) -> bool,
 {
-    let children = &root_node.children;
+    let children = root_node.children();
     for child in children.iter().rev() {
         {
-            let child_ref = child.lock().unwrap();
-            let node = match &*child_ref {
-                NodeLike::Sprite(sprite) => sprite,
-                NodeLike::Node(n) => n,
-            };
+            let child = child.lock().unwrap();
 
-            if node.children.len() > 0 {
-                let should_end = walk_nodes_bottom_top(node, func);
+            if child.children().len() > 0 {
+                let should_end = walk_nodes_bottom_top(&*child, func);
                 if should_end {
                     return true;
                 }

@@ -1,11 +1,9 @@
 #![feature(drain_filter)]
 
-mod node;
 mod nodes;
 mod ops;
 mod presets;
 mod renderer;
-mod sprite;
 mod state;
 mod texture;
 mod traits;

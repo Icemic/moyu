@@ -1,19 +1,15 @@
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 
 use crate::{
-    node::{Node, NodeLike},
-    sprite::Sprite,
+    nodes::{Container, Sprite},
     state::State,
+    traits::Node,
 };
 
 pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>) {
     let state = state.lock().unwrap();
     let root_node = state.root_node.clone();
     let mut root_node = root_node.lock().unwrap();
-    let root_node = match &mut *root_node {
-        NodeLike::Node(n) => n,
-        _ => unreachable!("root_node must be a node."),
-    };
     let device = state.device.clone();
     let device = device.lock().unwrap();
     let queue = state.queue.clone();
@@ -27,7 +23,7 @@ pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>) {
     let mut button2 = Sprite::from_asset(&device, &queue, "button_n_02.png".to_string());
     let mut button3 = Sprite::from_asset(&device, &queue, "button_n_06.png".to_string());
 
-    let mut container = Node::new(
+    let mut container = Container::new(
         "Button Container".to_string(),
         Default::default(),
         Default::default(),
@@ -38,10 +34,10 @@ pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>) {
     button2.move_to(0, 440);
     button3.move_to(0, 560);
 
-    container.add_child(Arc::new(Mutex::new(NodeLike::Sprite(button1))));
-    container.add_child(Arc::new(Mutex::new(NodeLike::Sprite(button2))));
-    container.add_child(Arc::new(Mutex::new(NodeLike::Sprite(button3))));
+    container.add_child(Arc::new(Mutex::new(button1)));
+    container.add_child(Arc::new(Mutex::new(button2)));
+    container.add_child(Arc::new(Mutex::new(button3)));
 
-    root_node.add_child(Arc::new(Mutex::new(NodeLike::Sprite(bg))));
-    root_node.add_child(Arc::new(Mutex::new(NodeLike::Node(container))));
+    root_node.add_child(Arc::new(Mutex::new(bg)));
+    root_node.add_child(Arc::new(Mutex::new(container)));
 }
