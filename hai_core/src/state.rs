@@ -1,4 +1,3 @@
-use log::debug;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -6,7 +5,7 @@ use std::{
 use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 use winit::{event::Event, event_loop::EventLoopProxy};
 
-use crate::{nodes::Container, user_event::UserEvent, traits::Node};
+use crate::{nodes::Container, traits::Node, user_event::UserEvent};
 
 pub struct State<'a> {
     pub physical_size: (u32, u32),
@@ -66,10 +65,6 @@ impl<'a> State<'a> {
             current_focused_node: Arc::new(Mutex::new(None)),
             node_map: Arc::new(Mutex::new(node_map)),
         }
-    }
-
-    pub fn test(&self) {
-        debug!("test!!");
     }
 
     /**

@@ -1,7 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
-use v8::{
-    CallbackScope, Context, FixedArray, Local, Module, Promise, ScriptOrModule, String, Value,
-};
+use v8::{CallbackScope, Context, FixedArray, Local, Module, Promise, String, Value};
 
 use super::utils::resolve_module_specifier;
 use crate::shared::Shared;

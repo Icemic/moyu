@@ -1,19 +1,12 @@
 mod node;
 mod system;
 
-use crate::state::State;
 use hai_js_runtime::{prelude::*, utils::IntoV8, *};
 use log::debug;
-use std::{cell::RefCell, rc::Rc};
 
 use self::{node::*, system::*};
 
 pub fn init(handle_scope: &mut HandleScope, global: &Local<Object>) {
-    bind_function!(
-      to global;
-      of handle_scope;
-      "testCommand" => test
-    );
     bind_object! {
         to global;
         of handle_scope;
@@ -21,15 +14,6 @@ pub fn init(handle_scope: &mut HandleScope, global: &Local<Object>) {
             "pushCommand" => receive_command
         }
     }
-}
-
-fn test(scope: &mut HandleScope, args: FunctionCallbackArguments, _: ReturnValue) {
-    let shared = scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
-    let shared = shared.borrow();
-
-    let state = shared.state::<State>();
-    let state = state.lock().unwrap();
-    state.test();
 }
 
 // (name: string, args: [...], callback?: (err: Error, returnValue: any) => void) => void
