@@ -124,7 +124,8 @@ fn main() {
         });
     }
 
-    let mut fps = 0;
+    let mut fps_requested = 0;
+    let mut fps_rendered = 0;
     let mut last_fps_timestamp = 0.;
 
     event_loop.run(move |event, _, control_flow| {
@@ -144,22 +145,33 @@ fn main() {
                     Err(e) => eprintln!("{:?}", e),
                 }
 
-                fps += 1;
+                fps_rendered += 1;
+            }
+            Event::MainEventsCleared => {
+                // RedrawRequested will only trigger once, unless we manually
+                // request it.
+                window.request_redraw();
+
+                fps_requested += 1;
+
                 let time = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_secs_f64();
                 let delta = time - last_fps_timestamp;
                 if delta >= 1. {
-                    window.set_title(format!("{:.1} fps", fps as f64 / delta).as_str());
+                    window.set_title(
+                        format!(
+                            "fps: {:.1} requested, {:.1} rendered",
+                            fps_requested as f64 / delta,
+                            fps_rendered as f64 / delta
+                        )
+                        .as_str(),
+                    );
                     last_fps_timestamp = time;
-                    fps = 0;
+                    fps_rendered = 0;
+                    fps_requested = 0;
                 }
-            }
-            Event::MainEventsCleared => {
-                // RedrawRequested will only trigger once, unless we manually
-                // request it.
-                window.request_redraw();
             }
             Event::WindowEvent {
                 ref event,
