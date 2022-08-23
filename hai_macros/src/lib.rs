@@ -58,42 +58,13 @@ fn get_node_extra_traits(struct_name: &Ident2) -> TokenStream2 {
                 self.id == other.id
             }
         }
-
-        // impl<S: 'static + PartialEq> NodeAny for S  {
-        //     fn as_any(&self) -> &dyn Any {
-        //         self
-        //     }
-
-        //     fn equals_a(&self, other: &dyn NodeAny) -> bool {
-        //         // Do a type-safe casting. If the types are different,
-        //         // return false, otherwise test the values for equality.
-        //         other
-        //             .as_any()
-        //             .downcast_ref::<S>()
-        //             .map_or(false, |a| self == a)
-        //     }
-        // }
     }
 }
 
 fn get_node_impl(struct_name: &Ident2) -> TokenStream2 {
     quote! {
         impl #struct_name {
-            pub fn new(label: String, anchor: PointF, transform: Transform) -> Self {
-                let id = unsafe {
-                    NODE_ID += 1;
-                    NODE_ID
-                };
-                Self {
-                    label,
-                    id,
-                    anchor,
-                    translate: Point::default(),
-                    transform,
-                    transform_to_global: Transform::default(),
-                    children: vec![]
-                }
-            }
+
         }
     }
 }
