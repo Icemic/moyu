@@ -29,6 +29,10 @@ version = "0.1"
 path = "../hai_pal"
 version = "0.1"
 
+[dependencies.hai_macros]
+path = "../hai_macros"
+version = "0.1"
+
 # deps for desktop platforms
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = {version = "1", features = ["full"]}

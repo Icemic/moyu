@@ -1,0 +1,187 @@
+use proc_macro::TokenStream;
+use proc_macro2::{Ident as Ident2, TokenStream as TokenStream2};
+use quote::quote;
+use syn::{parse::Parser, parse_macro_input, Field, ItemStruct};
+
+#[proc_macro_attribute]
+pub fn node(_args: TokenStream, struct_body: TokenStream) -> TokenStream {
+    let mut ast = parse_macro_input!(struct_body as ItemStruct);
+
+    if let syn::Fields::Named(ref mut fields) = ast.fields {
+        fields.named.extend(get_node_fields());
+    };
+
+    let node_impl = get_node_impl(&ast.ident);
+    let node_trait_impl = get_node_trait_impl(&ast.ident);
+    let extra_traits = get_node_extra_traits(&ast.ident);
+
+    quote! {
+        #ast
+
+        #node_impl
+
+        #node_trait_impl
+
+        #extra_traits
+    }
+    .into()
+}
+
+fn get_node_fields() -> Vec<Field> {
+    let fields: Vec<TokenStream2> = vec![
+        // Debug label
+        quote! { pub label: String},
+        // id
+        quote! { pub id: u32},
+        // anchor point
+        quote! { pub anchor: PointF},
+        // translate relative to parent
+        quote! { pub translate: Point},
+        // transform matrix relative to parent
+        quote! { pub transform: Transform},
+        // transform matrix relative to global
+        quote! { pub transform_to_global: Transform },
+        // children
+        quote! { pub children: Vec<Arc<Mutex<dyn Node + Send>>> },
+    ];
+
+    fields
+        .into_iter()
+        .map(|field| syn::Field::parse_named.parse2(field).unwrap())
+        .collect()
+}
+
+fn get_node_extra_traits(struct_name: &Ident2) -> TokenStream2 {
+    quote! {
+        impl PartialEq for #struct_name {
+            fn eq(&self, other: &#struct_name) -> bool {
+                self.id == other.id
+            }
+        }
+
+        // impl<S: 'static + PartialEq> NodeAny for S  {
+        //     fn as_any(&self) -> &dyn Any {
+        //         self
+        //     }
+
+        //     fn equals_a(&self, other: &dyn NodeAny) -> bool {
+        //         // Do a type-safe casting. If the types are different,
+        //         // return false, otherwise test the values for equality.
+        //         other
+        //             .as_any()
+        //             .downcast_ref::<S>()
+        //             .map_or(false, |a| self == a)
+        //     }
+        // }
+    }
+}
+
+fn get_node_impl(struct_name: &Ident2) -> TokenStream2 {
+    quote! {
+        impl #struct_name {
+            pub fn new(label: String, anchor: PointF, transform: Transform) -> Self {
+                let id = unsafe {
+                    NODE_ID += 1;
+                    NODE_ID
+                };
+                Self {
+                    label,
+                    id,
+                    anchor,
+                    translate: Point::default(),
+                    transform,
+                    transform_to_global: Transform::default(),
+                    children: vec![]
+                }
+            }
+        }
+    }
+}
+
+fn get_node_trait_impl(struct_name: &Ident2) -> TokenStream2 {
+    quote! {
+        impl Node for #struct_name {
+            fn id(&self) -> u32 {
+                self.id
+            }
+
+            fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node + Send>>> {
+                if let Some(child) = self.children.get(index) {
+                    return Some(child.clone());
+                }
+                None
+            }
+
+            fn add_child(&mut self, child: Arc<Mutex<dyn Node + Send>>) {
+                self.children.push(child);
+            }
+
+            fn insert_child(&mut self, index: usize, child: Arc<Mutex<dyn Node + Send>>) {
+                self.children.insert(index, child);
+            }
+
+            fn insert_child_before(
+                &mut self,
+                before_child: Arc<Mutex<dyn Node + Send>>,
+                child: Arc<Mutex<dyn Node + Send>>,
+            ) {
+                let index = self.children.iter().position(|item| {
+                    let l = item.lock().unwrap();
+                    let r = child.lock().unwrap();
+                    *l == *r
+                });
+                if index.is_none() {
+                    warn!("Cannot insert child before another one because the another child does not present in current children.");
+                }
+                self.children.insert(index.unwrap_or(0), child);
+            }
+
+            fn remove_child(&mut self, child: Arc<Mutex<dyn Node + Send>>) -> Option<Arc<Mutex<dyn Node + Send>>> {
+                if let Some(index) = self.children.iter().position(|item| {
+                    let l = item.lock().unwrap();
+                    let r = child.lock().unwrap();
+                    *l == *r
+                }) {
+                    return Some(self.children.remove(index));
+                }
+                None
+            }
+
+            fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node + Send>>> {
+                if index < self.children.len() {
+                    return Some(self.children.remove(index));
+                }
+                None
+            }
+
+            fn move_to(&mut self, x: i32, y: i32) {
+                self.translate.x = x;
+                self.translate.y = y;
+            }
+
+            fn calculate_transform(
+                &mut self,
+                parent_transform: &Transform,
+                logical_size: LogicalSize<f64>,
+                scale_factor: f64,
+            ) {
+                let x = self.translate.x;
+                let y = self.translate.y;
+
+                // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
+                let tx = (x as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
+                let ty = (y as f64 * scale_factor) / (logical_size.height * scale_factor) * 2.;
+
+                self.transform.tx = tx;
+                self.transform.ty = ty;
+
+                // TODO: rotate, scale and skew
+
+                // refresh global transform matrix
+                let mut transform_to_global = parent_transform.clone();
+                transform_to_global.multiply(self.transform);
+                self.transform_to_global = transform_to_global;
+            }
+        }
+    }
+}

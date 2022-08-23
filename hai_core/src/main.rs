@@ -1,5 +1,6 @@
 #![feature(drain_filter)]
 
+mod container;
 mod node;
 mod ops;
 mod presets;
@@ -12,6 +13,7 @@ mod types;
 mod user_event;
 
 use cgmath::num_traits::ToPrimitive;
+use container::Container;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
@@ -97,12 +99,15 @@ fn main() {
     // make state sharable among threads
     let state = Arc::new(Mutex::new(state));
 
+    let test_container = Container::new("".to_string(), Default::default(), Default::default());
+
     // desktop targets only
     // spawn a v8 thread
     #[cfg(not(target_arch = "wasm32"))]
     {
         let state = state.clone();
         thread::spawn(|| {
+            test_container;
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
