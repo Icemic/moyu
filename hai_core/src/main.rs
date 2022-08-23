@@ -17,9 +17,12 @@ use hai_pal::{env, logger, platform};
 use log::info;
 use renderer::{create_surface, input, prepare_pipeline, render, update};
 use state::State;
-use std::sync::{Arc, Mutex};
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
+use std::{
+    sync::{Arc, Mutex},
+    time::{SystemTime, UNIX_EPOCH},
+};
 use user_event::UserEvent;
 use winit::{
     dpi::{LogicalSize, Size},
@@ -121,6 +124,9 @@ fn main() {
         });
     }
 
+    let mut fps = 0;
+    let mut last_fps_timestamp = 0.;
+
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
@@ -136,6 +142,18 @@ fn main() {
                     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                     // All other errors (Outdated, Timeout) should be resolved by the next frame
                     Err(e) => eprintln!("{:?}", e),
+                }
+
+                fps += 1;
+                let time = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs_f64();
+                let delta = time - last_fps_timestamp;
+                if delta >= 1. {
+                    window.set_title(format!("{:.1} fps", fps as f64 / delta).as_str());
+                    last_fps_timestamp = time;
+                    fps = 0;
                 }
             }
             Event::MainEventsCleared => {
