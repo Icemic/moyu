@@ -1,5 +1,6 @@
 use std::{
     any::Any,
+    fmt::Debug,
     sync::{Arc, Mutex},
 };
 use winit::dpi::LogicalSize;
@@ -8,7 +9,7 @@ use crate::types::{Point, PointF, Transform};
 
 pub static mut NODE_ID: u32 = 0;
 
-pub trait Node: NodeType {
+pub trait Node: NodeType + Send + Debug {
     fn id(&self) -> &u32;
     fn label(&self) -> &String;
 
@@ -16,36 +17,33 @@ pub trait Node: NodeType {
     fn translate(&self) -> &Point;
     fn transform(&self) -> &Transform;
     fn transform_to_global(&self) -> &Transform;
-    fn children(&self) -> &Vec<Arc<Mutex<dyn Node + Send>>>;
+    fn children(&self) -> &Vec<Arc<Mutex<dyn Node>>>;
 
     // fn anchor_mut(&mut self) -> &mut PointF;
     // fn translate_mut(&mut self) -> &mut Point;
     // fn transform_mut(&mut self) -> &mut Transform;
     // fn transform_to_global_mut(&mut self) -> &mut Transform;
-    // fn children_mut(&mut self) -> &mut Vec<Arc<Mutex<dyn Node + Send>>>;
+    // fn children_mut(&mut self) -> &mut Vec<Arc<Mutex<dyn Node>>>;
 
     fn node_type(&self) -> &'static str;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node + Send>>>;
+    fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node>>>;
 
-    fn add_child(&mut self, child: Arc<Mutex<dyn Node + Send>>);
+    fn add_child(&mut self, child: Arc<Mutex<dyn Node>>);
 
-    fn insert_child(&mut self, index: usize, child: Arc<Mutex<dyn Node + Send>>);
+    fn insert_child(&mut self, index: usize, child: Arc<Mutex<dyn Node>>);
 
     fn insert_child_before(
         &mut self,
-        before_child: Arc<Mutex<dyn Node + Send>>,
-        child: Arc<Mutex<dyn Node + Send>>,
+        before_child: Arc<Mutex<dyn Node>>,
+        child: Arc<Mutex<dyn Node>>,
     );
 
-    fn remove_child(
-        &mut self,
-        child: Arc<Mutex<dyn Node + Send>>,
-    ) -> Option<Arc<Mutex<dyn Node + Send>>>;
+    fn remove_child(&mut self, child: Arc<Mutex<dyn Node>>) -> Option<Arc<Mutex<dyn Node>>>;
 
-    fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node + Send>>>;
+    fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node>>>;
 
     fn move_to(&mut self, x: i32, y: i32);
 
@@ -57,14 +55,7 @@ pub trait Node: NodeType {
     );
 }
 
-use core::fmt::Debug;
-impl Debug for dyn Node + Send {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Series{{{}}}", 111)
-    }
-}
-
-impl PartialEq for dyn Node + Send {
+impl PartialEq for dyn Node {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
     }

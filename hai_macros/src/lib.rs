@@ -42,7 +42,7 @@ fn get_node_fields() -> Vec<Field> {
         // transform matrix relative to global
         quote! { pub transform_to_global: Transform },
         // children
-        quote! { pub children: Vec<Arc<Mutex<dyn Node + Send>>> },
+        quote! { pub children: Vec<Arc<Mutex<dyn Node>>> },
     ];
 
     fields
@@ -72,7 +72,9 @@ fn get_node_impl(struct_name: &Ident2) -> TokenStream2 {
 fn get_node_trait_impl(struct_name: &Ident2) -> TokenStream2 {
     quote! {
         impl Node for #struct_name {
-            fn node_type(&self) -> &'static str { todo!() }
+            fn node_type(&self) -> &'static str { 
+                unreachable!("Should not call Node::node_type, use NodeType::node_type(&node) instead.");
+            }
 
             fn id(&self) -> &u32 {
                 &self.id
@@ -94,7 +96,7 @@ fn get_node_trait_impl(struct_name: &Ident2) -> TokenStream2 {
             fn transform_to_global(&self) -> &Transform {
                 &self.transform_to_global
             }
-            fn children(&self) -> &Vec<Arc<Mutex<dyn Node + Send>>> {
+            fn children(&self) -> &Vec<Arc<Mutex<dyn Node>>> {
                 &self.children
             }
 
@@ -110,7 +112,7 @@ fn get_node_trait_impl(struct_name: &Ident2) -> TokenStream2 {
             // fn transform_to_global_mut(&mut self) -> &mut Transform {
             //     &mut self.transform_to_global
             // }
-            // fn children_mut(&mut self) -> &mut Vec<Arc<Mutex<dyn Node + Send>>> {
+            // fn children_mut(&mut self) -> &mut Vec<Arc<Mutex<dyn Node>>> {
             //     &mut self.children
             // }
 
@@ -122,25 +124,25 @@ fn get_node_trait_impl(struct_name: &Ident2) -> TokenStream2 {
                 self
             }
 
-            fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node + Send>>> {
+            fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node>>> {
                 if let Some(child) = self.children.get(index) {
                     return Some(child.clone());
                 }
                 None
             }
 
-            fn add_child(&mut self, child: Arc<Mutex<dyn Node + Send>>) {
+            fn add_child(&mut self, child: Arc<Mutex<dyn Node>>) {
                 self.children.push(child);
             }
 
-            fn insert_child(&mut self, index: usize, child: Arc<Mutex<dyn Node + Send>>) {
+            fn insert_child(&mut self, index: usize, child: Arc<Mutex<dyn Node>>) {
                 self.children.insert(index, child);
             }
 
             fn insert_child_before(
                 &mut self,
-                before_child: Arc<Mutex<dyn Node + Send>>,
-                child: Arc<Mutex<dyn Node + Send>>,
+                before_child: Arc<Mutex<dyn Node>>,
+                child: Arc<Mutex<dyn Node>>,
             ) {
                 let index = self.children.iter().position(|item| {
                     let l = item.lock().unwrap();
@@ -153,7 +155,7 @@ fn get_node_trait_impl(struct_name: &Ident2) -> TokenStream2 {
                 self.children.insert(index.unwrap_or(0), child);
             }
 
-            fn remove_child(&mut self, child: Arc<Mutex<dyn Node + Send>>) -> Option<Arc<Mutex<dyn Node + Send>>> {
+            fn remove_child(&mut self, child: Arc<Mutex<dyn Node>>) -> Option<Arc<Mutex<dyn Node>>> {
                 if let Some(index) = self.children.iter().position(|item| {
                     let l = item.lock().unwrap();
                     let r = child.lock().unwrap();
@@ -164,7 +166,7 @@ fn get_node_trait_impl(struct_name: &Ident2) -> TokenStream2 {
                 None
             }
 
-            fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node + Send>>> {
+            fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node>>> {
                 if index < self.children.len() {
                     return Some(self.children.remove(index));
                 }

@@ -24,8 +24,8 @@ pub struct State<'a> {
     pub pending_renderable:
         Arc<Mutex<Vec<(wgpu::BindGroup, wgpu::Buffer, wgpu::Buffer, u32, u32)>>>,
     pub root_node: Arc<Mutex<Container>>,
-    pub current_focused_node: Arc<Mutex<Option<Arc<Mutex<dyn Node + Send>>>>>,
-    pub node_map: Arc<Mutex<HashMap<u32, Arc<Mutex<dyn Node + Send>>>>>,
+    pub current_focused_node: Arc<Mutex<Option<Arc<Mutex<dyn Node>>>>>,
+    pub node_map: Arc<Mutex<HashMap<u32, Arc<Mutex<dyn Node>>>>>,
 }
 
 impl<'a> State<'a> {
@@ -46,7 +46,7 @@ impl<'a> State<'a> {
         );
         let root_node = Arc::new(Mutex::new(root_node));
 
-        let mut node_map: HashMap<u32, Arc<Mutex<dyn Node + Send>>> = Default::default();
+        let mut node_map: HashMap<u32, Arc<Mutex<dyn Node>>> = Default::default();
         node_map.insert(0, root_node.clone());
 
         Self {
