@@ -25,7 +25,7 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn from_asset(device: &Device, queue: &Queue, asset_path: String) -> Self {
+    pub fn new(device: &Device, queue: &Queue, asset_path: String) -> Self {
         let entry_dir = env::var("HAI_ENTRY")
             .unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
         let bytes = match fs::read(format!("{}assets/{}", entry_dir, asset_path)) {
