@@ -18,10 +18,10 @@ pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>) {
     drop(state);
 
     // load and use texture
-    let mut bg = Sprite::from_asset(&device, &queue, "title.png".to_string());
-    let mut button1 = Sprite::from_asset(&device, &queue, "button_n_01.png".to_string());
-    let mut button2 = Sprite::from_asset(&device, &queue, "button_n_02.png".to_string());
-    let mut button3 = Sprite::from_asset(&device, &queue, "button_n_06.png".to_string());
+    let mut bg = Sprite::new(&device, &queue, "title.png".to_string());
+    let mut button1 = Sprite::new(&device, &queue, "button_n_01.png".to_string());
+    let mut button2 = Sprite::new(&device, &queue, "button_n_02.png".to_string());
+    let mut button3 = Sprite::new(&device, &queue, "button_n_06.png".to_string());
 
     let mut container = Container::new(
         "Button Container".to_string(),

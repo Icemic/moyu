@@ -57,7 +57,7 @@ pub fn create_instance(
                 .and_then(|v| Some(v.to_rust_string_lossy(scope)))
                 .unwrap_or_default();
 
-            let n = Sprite::from_asset(&device, &queue, src);
+            let n = Sprite::new(&device, &queue, src);
             node_id = n.id;
             node_map.insert(n.id, Arc::new(Mutex::new(n)));
         }
