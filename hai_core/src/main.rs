@@ -56,6 +56,7 @@ fn main() {
     // create window
     let window = WindowBuilder::new()
         .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
+        .with_resizable(false)
         .build(&event_loop)
         .unwrap();
 

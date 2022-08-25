@@ -1,7 +1,8 @@
 use hai_macros::node;
 use hai_pal::fs;
-use log::{warn, error};
+use log::{error, warn};
 use std::any::Any;
+use std::env;
 use std::sync::{Arc, Mutex};
 use wgpu::{Device, Queue};
 use winit::dpi::LogicalSize;
@@ -25,7 +26,9 @@ pub struct Sprite {
 
 impl Sprite {
     pub fn from_asset(device: &Device, queue: &Queue, asset_path: String) -> Self {
-        let bytes = match fs::read(format!("assets/{}", asset_path)) {
+        let entry_dir = env::var("HAI_ENTRY")
+            .unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
+        let bytes = match fs::read(format!("{}assets/{}", entry_dir, asset_path)) {
             Ok(v) => v,
             Err(err) => {
                 error!(

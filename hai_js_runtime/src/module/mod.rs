@@ -16,7 +16,7 @@ use std::env;
 use std::pin::Pin;
 use v8::{
     script_compiler::{self, Source},
-    Global, HandleScope, Local, Module, ModuleRequest, ModuleStatus, Promise, ScriptOrigin, Value,
+    Global, HandleScope, Local, Module, ModuleRequest, ModuleStatus, ScriptOrigin, Value,
 };
 
 use crate::utils::IntoV8;
@@ -249,10 +249,7 @@ impl ModuleLoader {
         debug!("evaluate module '{}'", resolved_specifier);
 
         if let Some(result) = module.evaluate(scope) {
-            debug!(
-                "instantiate module '{}' finished",
-                resolved_specifier
-            );
+            debug!("instantiate module '{}' finished", resolved_specifier);
 
             // TODO: error handling?
 
