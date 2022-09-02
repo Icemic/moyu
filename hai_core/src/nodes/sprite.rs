@@ -1,10 +1,7 @@
 use hai_macros::node;
-use hai_pal::fs;
-use log::{error, warn};
+use log::warn;
 use std::any::Any;
-use std::env;
-use std::sync::{Arc, Mutex};
-use wgpu::{Device, Queue};
+use std::sync::{Arc, Mutex, RwLock};
 use winit::dpi::LogicalSize;
 
 use crate::traits::{Node, NodeType, NODE_ID};
@@ -18,38 +15,18 @@ pub const SPRITE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 #[node]
 #[derive(Debug)]
 pub struct Sprite {
-    /// path name relative to assets folder
-    pub asset_path: String,
     /// loaded texture
-    pub texture: Texture,
+    pub texture: Arc<RwLock<Texture>>,
     /// calculated vertices
     pub vertices: Option<[Vertex; 4]>,
 }
 
 impl Sprite {
-    pub fn new(device: &Device, queue: &Queue, asset_path: String) -> Self {
-        let entry_dir = env::var("HAI_ENTRY")
-            .unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
-        let bytes = match fs::read(format!("{}assets/{}", entry_dir, asset_path)) {
-            Ok(v) => v,
-            Err(err) => {
-                error!(
-                    "load bytes from asset '{}': {}",
-                    asset_path,
-                    err.to_string()
-                );
-                vec![]
-            }
-        };
-
-        let texture = Texture::from_bytes(device, queue, &bytes, asset_path.clone()).unwrap();
-
+    pub fn new(label: String, texture: Arc<RwLock<Texture>>) -> Self {
         let id = unsafe {
             NODE_ID += 1;
             NODE_ID
         };
-
-        let label = asset_path.clone();
 
         Sprite {
             id,
@@ -60,7 +37,6 @@ impl Sprite {
             transform_to_global: Transform::default(),
             children: vec![],
 
-            asset_path,
             texture,
             vertices: None,
         }
@@ -69,11 +45,14 @@ impl Sprite {
     pub fn calculate_vertices(&mut self, logical_size: LogicalSize<f64>, scale_factor: f64) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
+        let texture = self.texture.read().unwrap();
         let width =
-            (self.texture.width as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
-        let height = (self.texture.height as f64 * scale_factor)
+            (texture.width as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
+        let height = (texture.height as f64 * scale_factor)
             / (logical_size.height * scale_factor) as f64
             * 2.;
+
+        drop(texture);
 
         let a = self.transform_to_global.a;
         let b = self.transform_to_global.b;
@@ -134,10 +113,12 @@ impl NodeType for Sprite {
 
 impl Focusable for Sprite {
     fn contains(&self, x: i32, y: i32) -> bool {
+        let texture = self.texture.read().unwrap();
+
         if x > self.translate.x
-            && x < self.texture.width as i32 + self.translate.x
+            && x < texture.width as i32 + self.translate.x
             && y > self.translate.y
-            && y < self.texture.height as i32 + self.translate.y
+            && y < texture.height as i32 + self.translate.y
         {
             return true;
         }

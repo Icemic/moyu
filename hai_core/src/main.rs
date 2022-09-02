@@ -4,6 +4,7 @@ mod nodes;
 mod ops;
 mod presets;
 mod renderer;
+mod resource;
 mod state;
 mod traits;
 mod types;
@@ -20,6 +21,7 @@ use state::State;
 use std::thread;
 use std::{
     sync::{Arc, Mutex},
+    task::Poll,
     time::{SystemTime, UNIX_EPOCH},
 };
 use user_event::UserEvent;
@@ -100,11 +102,16 @@ fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let state = state.clone();
+
         thread::spawn(|| {
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .unwrap();
+            let resource_manager = {
+                let state = state.lock().unwrap();
+                state.resource_manager.clone()
+            };
             runtime.block_on(async {
                 let mut vm = JSRuntime::new(state);
                 vm.prepare_static_modules().await;
@@ -115,7 +122,11 @@ fn main() {
 
                 vm.start();
 
-                vm.run_event_loop().await;
+                vm.run_event_loop(|cx| {
+                    let mut resource_manager = resource_manager.lock().unwrap();
+                    resource_manager.poll(cx)
+                })
+                .await;
             });
         });
     }
