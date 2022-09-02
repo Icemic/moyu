@@ -158,7 +158,7 @@ impl JSRuntime {
                         module_info.specifier, resolved_specifier
                     );
                 }
-                cx.waker().clone().wake();
+                cx.waker().wake_by_ref();
                 Poll::Pending
             }
             Poll::Pending => Poll::Pending,
@@ -201,7 +201,7 @@ impl JSRuntime {
                     callback.call(scope, global.into(), &args);
                 }
 
-                cx.waker().clone().wake();
+                cx.waker().wake_by_ref();
                 Poll::Pending
             }
             Poll::Pending => Poll::Pending,
