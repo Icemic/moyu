@@ -21,7 +21,6 @@ use state::State;
 use std::thread;
 use std::{
     sync::{Arc, Mutex},
-    task::Poll,
     time::{SystemTime, UNIX_EPOCH},
 };
 use user_event::UserEvent;
