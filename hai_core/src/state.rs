@@ -1,11 +1,11 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, MutexGuard},
 };
 use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 use winit::{event::Event, event_loop::EventLoopProxy};
 
-use crate::{nodes::Container, traits::Node, user_event::UserEvent};
+use crate::{nodes::Container, resource::ResourceManager, traits::Node, user_event::UserEvent};
 
 pub struct State<'a> {
     pub physical_size: (u32, u32),
@@ -17,6 +17,7 @@ pub struct State<'a> {
     pub render_pipeline: Arc<Mutex<RenderPipeline>>,
     pub bind_group_layout: Arc<Mutex<BindGroupLayout>>,
     pub event_proxy: EventLoopProxy<UserEvent>,
+    pub resource_manager: Arc<Mutex<ResourceManager>>,
 
     pub pending_events: Arc<Mutex<Vec<Event<'a, ()>>>>,
     pub pending_updates: Arc<Mutex<Vec<()>>>,
@@ -48,6 +49,8 @@ impl<'a> State<'a> {
         let mut node_map: HashMap<u32, Arc<Mutex<dyn Node>>> = Default::default();
         node_map.insert(0, root_node.clone());
 
+        let resource_manager = ResourceManager::new(device.clone(), queue.clone());
+
         Self {
             physical_size: Default::default(),
             scale_factor: Default::default(),
@@ -58,6 +61,7 @@ impl<'a> State<'a> {
             render_pipeline,
             bind_group_layout,
             event_proxy,
+            resource_manager: Arc::new(Mutex::new(resource_manager)),
             pending_events: Default::default(),
             pending_updates: Default::default(),
             pending_renderable: Default::default(),
@@ -65,6 +69,10 @@ impl<'a> State<'a> {
             current_focused_node: Arc::new(Mutex::new(None)),
             node_map: Arc::new(Mutex::new(node_map)),
         }
+    }
+
+    pub fn resource_manager(&mut self) -> MutexGuard<ResourceManager> {
+        self.resource_manager.lock().unwrap()
     }
 
     /**

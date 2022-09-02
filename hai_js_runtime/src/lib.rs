@@ -17,6 +17,7 @@ use std::{
     sync::{Arc, Mutex},
     task::{Context as TaskContext, Poll},
 };
+use tokio::select;
 pub use v8;
 use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, Object, OwnedIsolate, Value};
 
@@ -218,10 +219,17 @@ impl JSRuntime {
         Poll::Pending
     }
 
-    pub async fn run_event_loop(&mut self) {
+    pub async fn run_event_loop<T>(&mut self, external_poll_fn: T)
+    where
+        T: Fn(&mut TaskContext<'_>) -> Poll<()>,
+    {
         loop {
             tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
-            poll_fn(|cx| self.poll_tick(cx)).await;
+
+            select! {
+                _ = poll_fn(|cx| self.poll_tick(cx)) => {},
+                _ = poll_fn(|cx| external_poll_fn(cx)) => {},
+            };
         }
     }
 }

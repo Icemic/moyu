@@ -3,7 +3,11 @@ use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
 
 use super::walk::walk_nodes_top_bottom;
-use crate::{nodes::{SPRITE_INDICES, Sprite}, state::State, traits::{Node, NodeType}};
+use crate::{
+    nodes::{Sprite, TextureStatus, SPRITE_INDICES},
+    state::State,
+    traits::{Node, NodeType},
+};
 
 pub fn update<'a>(state: &Arc<Mutex<State<'a>>>) {
     let state = state.lock().unwrap();
@@ -30,51 +34,69 @@ pub fn update<'a>(state: &Arc<Mutex<State<'a>>>) {
         match NodeType::node_type(&*child) {
             "sprite" => {
                 let sprite = child.as_any_mut().downcast_mut::<Sprite>().unwrap();
-                let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    layout: &texture_bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(&sprite.texture.view),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&sprite.texture.sampler),
-                        },
-                    ],
-                    label: Some("bind_group"),
-                });
+                let texture = sprite.texture.read().unwrap();
 
-                sprite.calculate_transform(&parent.transform_to_global(), logical_size, scale_factor);
-                sprite.calculate_vertices(logical_size, scale_factor);
+                if let TextureStatus::Ready = texture.status() {
+                    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        layout: &texture_bind_group_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: wgpu::BindingResource::TextureView(
+                                    texture.view.as_ref().unwrap(),
+                                ),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: wgpu::BindingResource::Sampler(texture.sampler.as_ref().unwrap()),
+                            },
+                        ],
+                        label: Some("bind_group"),
+                    });
 
-                let vertices = &sprite.vertices.unwrap();
+                    drop(texture);
 
-                let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Vertex Buffer"),
-                    contents: bytemuck::cast_slice(vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                });
+                    sprite.calculate_transform(
+                        &parent.transform_to_global(),
+                        logical_size,
+                        scale_factor,
+                    );
+                    sprite.calculate_vertices(logical_size, scale_factor);
 
-                let num_vertices = vertices.len() as u32;
+                    let vertices = &sprite.vertices.unwrap();
 
-                let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Index Buffer"),
-                    contents: bytemuck::cast_slice(SPRITE_INDICES),
-                    usage: wgpu::BufferUsages::INDEX,
-                });
-                let num_indices = SPRITE_INDICES.len() as u32;
+                    let vertex_buffer =
+                        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Vertex Buffer"),
+                            contents: bytemuck::cast_slice(vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        });
 
-                queue.push((
-                    bind_group,
-                    vertex_buffer,
-                    index_buffer,
-                    num_vertices,
-                    num_indices,
-                ));
+                    let num_vertices = vertices.len() as u32;
+
+                    let index_buffer =
+                        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Index Buffer"),
+                            contents: bytemuck::cast_slice(SPRITE_INDICES),
+                            usage: wgpu::BufferUsages::INDEX,
+                        });
+                    let num_indices = SPRITE_INDICES.len() as u32;
+
+                    queue.push((
+                        bind_group,
+                        vertex_buffer,
+                        index_buffer,
+                        num_vertices,
+                        num_indices,
+                    ));
+                }
             }
             _ => {
-                child.calculate_transform(&parent.transform_to_global(), logical_size, scale_factor);
+                child.calculate_transform(
+                    &parent.transform_to_global(),
+                    logical_size,
+                    scale_factor,
+                );
             }
         }
         false
