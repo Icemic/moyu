@@ -9,7 +9,9 @@ use winit::dpi::LogicalSize;
 
 use crate::traits::{Node, NodeType, NODE_ID};
 use crate::types::{Point, PointF, Transform};
-use crate::{texture::Texture, traits::Focusable, types::Vertex};
+use crate::{traits::Focusable, types::Vertex};
+
+use super::Texture;
 
 pub const SPRITE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 
