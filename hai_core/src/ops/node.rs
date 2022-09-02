@@ -46,11 +46,6 @@ pub fn create_instance(
             node_map.insert(n.id, Arc::new(Mutex::new(n)));
         }
         "sprite" => {
-            let device = state.device.clone();
-            let device = device.lock().unwrap();
-            let queue = state.queue.clone();
-            let queue = queue.lock().unwrap();
-
             let src = get_from_v8_object!(scope, props, "src");
             let src = try_from_option_value_or_throw_exception!(scope, String, src);
             let src = src
