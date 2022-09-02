@@ -5,7 +5,6 @@ mod ops;
 mod presets;
 mod renderer;
 mod state;
-mod texture;
 mod traits;
 mod types;
 mod user_event;
@@ -62,12 +61,8 @@ fn main() {
 
     // create wgpu surface
     #[cfg(not(target_arch = "wasm32"))]
-    let (surface, device, queue, config) = {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .build()
-            .unwrap();
-        runtime.block_on(create_surface(&window, &window.inner_size()))
-    };
+    let (surface, device, queue, config) =
+        futures::executor::block_on(create_surface(&window, &window.inner_size()));
     #[cfg(target_arch = "wasm32")]
     let (surface, device, queue, config) = { pollster::block_on(create_surface(&window, &size)) };
 
