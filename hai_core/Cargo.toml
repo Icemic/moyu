@@ -17,7 +17,7 @@ cgmath = "0.18"
 futures = "0.3"
 image = "0.23"
 log = "0.4"
-wgpu = "0.12"
+wgpu = "0.13"
 winit = "0.26"
 
 [dependencies.hai_js_runtime]
