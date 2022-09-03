@@ -28,7 +28,7 @@ pub fn render<'a>(state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceErro
     {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
-            color_attachments: &[wgpu::RenderPassColorAttachment {
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &view,
                 resolve_target: None,
                 ops: wgpu::Operations {
@@ -40,7 +40,7 @@ pub fn render<'a>(state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceErro
                     }),
                     store: true,
                 },
-            }],
+            })],
             depth_stencil_attachment: None,
         });
 

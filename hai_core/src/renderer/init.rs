@@ -58,7 +58,7 @@ pub async fn create_surface(
     // define how the surface creates its underlying SurfaceTextures
     let config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        format: surface.get_preferred_format(&adapter).unwrap(),
+        format: surface.get_supported_formats(&adapter)[0],
         // width or height should not be 0 or it will cause crash
         width: size.width,
         height: size.height,
@@ -104,7 +104,7 @@ pub fn prepare_pipeline(
         });
 
     // shader
-    let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Shader"),
         source: wgpu::ShaderSource::Wgsl(include_str!("./shaders/default.wgsl").into()),
     });
@@ -126,11 +126,11 @@ pub fn prepare_pipeline(
         fragment: Some(wgpu::FragmentState {
             module: &shader,
             entry_point: "fs_main",
-            targets: &[wgpu::ColorTargetState {
+            targets: &[Some(wgpu::ColorTargetState {
                 format: config.format,
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
-            }],
+            })],
         }),
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
