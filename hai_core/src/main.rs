@@ -15,7 +15,7 @@ use cgmath::num_traits::ToPrimitive;
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
 use log::info;
-use renderer::{create_surface, input, prepare_pipeline, render, update};
+use renderer::{create_surface, input, render, NullRenderer, SpriteRenderer};
 use state::State;
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
@@ -67,26 +67,22 @@ fn main() {
     #[cfg(target_arch = "wasm32")]
     let (surface, device, queue, config) = { pollster::block_on(create_surface(&window, &size)) };
 
-    let (render_pipeline, bind_group_layout) = prepare_pipeline(&device, &config);
+    // let (render_pipeline, bind_group_layout) = prepare_pipeline(&device, &config);
+
+    // let null_renderer = Arc::new(Mutex::new(NullRenderer::new(&device, &config)));
+    let sprite_renderer = SpriteRenderer::new(&device, &config);
 
     let surface = Arc::new(Mutex::new(surface));
     let device = Arc::new(Mutex::new(device));
     let queue = Arc::new(Mutex::new(queue));
-    let render_pipeline = Arc::new(Mutex::new(render_pipeline));
-    let bind_group_layout = Arc::new(Mutex::new(bind_group_layout));
 
     let event_proxy = event_loop.create_proxy();
 
     // create multithread shared state
-    let mut state = State::new(
-        surface,
-        device,
-        queue,
-        config,
-        render_pipeline,
-        bind_group_layout,
-        event_proxy,
-    );
+    let mut state = State::new(surface, device, queue, config, event_proxy);
+
+    // state.register_renderer("null".to_string(), null_renderer);
+    state.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
 
     // set screen size
     let size = window.inner_size();
@@ -137,7 +133,7 @@ fn main() {
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                update(&state);
+                // update(&state);
                 match render(&state) {
                     Ok(_) => {}
                     // Reconfigure the surface if lost

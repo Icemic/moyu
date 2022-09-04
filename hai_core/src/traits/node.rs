@@ -7,6 +7,8 @@ use winit::dpi::LogicalSize;
 
 use crate::types::{Point, PointF, Transform};
 
+use super::Renderable;
+
 pub static mut NODE_ID: u32 = 0;
 
 pub trait Node: NodeType + Send + Debug {
@@ -28,6 +30,12 @@ pub trait Node: NodeType + Send + Debug {
     fn node_type(&self) -> &'static str;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn try_as_renderable(&self) -> Option<&dyn Renderable> {
+        None
+    }
+    fn try_as_renderable_mut(&mut self) -> Option<&mut dyn Renderable> {
+        None
+    }
 
     fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node>>>;
 

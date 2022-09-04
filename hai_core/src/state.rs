@@ -1,11 +1,17 @@
+use log::error;
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex, MutexGuard, RwLock},
 };
 use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
 use winit::{event::Event, event_loop::EventLoopProxy};
 
-use crate::{nodes::Container, resource::ResourceManager, traits::Node, user_event::UserEvent};
+use crate::{
+    nodes::Container,
+    resource::ResourceManager,
+    traits::{Node, Renderable, Renderer},
+    user_event::UserEvent,
+};
 
 pub struct State<'a> {
     pub physical_size: (u32, u32),
@@ -14,16 +20,15 @@ pub struct State<'a> {
     pub device: Arc<Mutex<Device>>,
     pub queue: Arc<Mutex<Queue>>,
     pub config: SurfaceConfiguration,
-    pub render_pipeline: Arc<Mutex<RenderPipeline>>,
-    pub bind_group_layout: Arc<Mutex<BindGroupLayout>>,
     pub event_proxy: EventLoopProxy<UserEvent>,
     pub resource_manager: Arc<Mutex<ResourceManager>>,
+    renderers: HashMap<String, Box<dyn Renderer>>,
 
     pub pending_events: Arc<Mutex<Vec<Event<'a, ()>>>>,
     pub pending_updates: Arc<Mutex<Vec<()>>>,
     pub pending_renderable:
         Arc<Mutex<Vec<(wgpu::BindGroup, wgpu::Buffer, wgpu::Buffer, u32, u32)>>>,
-    pub root_node: Arc<Mutex<Container>>,
+    pub root_node: Arc<Mutex<dyn Node>>,
     pub current_focused_node: Arc<Mutex<Option<Arc<Mutex<dyn Node>>>>>,
     pub node_map: Arc<Mutex<HashMap<u32, Arc<Mutex<dyn Node>>>>>,
 }
@@ -34,8 +39,6 @@ impl<'a> State<'a> {
         device: Arc<Mutex<Device>>,
         queue: Arc<Mutex<Queue>>,
         config: SurfaceConfiguration,
-        render_pipeline: Arc<Mutex<RenderPipeline>>,
-        bind_group_layout: Arc<Mutex<BindGroupLayout>>,
         event_proxy: EventLoopProxy<UserEvent>,
     ) -> Self {
         // create root node
@@ -50,6 +53,7 @@ impl<'a> State<'a> {
         node_map.insert(0, root_node.clone());
 
         let resource_manager = ResourceManager::new(device.clone(), queue.clone());
+        let renderers = HashMap::default();
 
         Self {
             physical_size: Default::default(),
@@ -58,10 +62,9 @@ impl<'a> State<'a> {
             device,
             queue,
             config,
-            render_pipeline,
-            bind_group_layout,
             event_proxy,
             resource_manager: Arc::new(Mutex::new(resource_manager)),
+            renderers,
             pending_events: Default::default(),
             pending_updates: Default::default(),
             pending_renderable: Default::default(),
@@ -73,6 +76,19 @@ impl<'a> State<'a> {
 
     pub fn resource_manager(&mut self) -> MutexGuard<ResourceManager> {
         self.resource_manager.lock().unwrap()
+    }
+
+    pub fn register_renderer(&mut self, name: String, renderer: Box<dyn Renderer>) {
+        if self.renderers.contains_key(&name) {
+            error!("There's already a renderer named '{}'.", name);
+            return;
+        }
+        self.renderers.insert(name, renderer);
+    }
+
+    pub fn get_renderer(&self, name: &str) -> &Box<dyn Renderer> {
+        let renderer = self.renderers.get(name);
+        renderer.expect(format!("Cannot find a renderer named '{}'", name).as_str())
     }
 
     /**

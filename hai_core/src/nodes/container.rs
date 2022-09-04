@@ -4,7 +4,7 @@ use std::any::Any;
 use std::sync::{Arc, Mutex};
 use winit::dpi::LogicalSize;
 
-use crate::traits::{Node, NODE_ID, NodeType};
+use crate::traits::{Node, NodeType, NODE_ID};
 use crate::types::{Point, PointF, Transform};
 
 #[node]

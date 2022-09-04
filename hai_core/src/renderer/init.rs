@@ -70,6 +70,7 @@ pub async fn create_surface(
     (surface, device, queue, config)
 }
 
+#[deprecated]
 pub fn prepare_pipeline(
     device: &Device,
     config: &SurfaceConfiguration,

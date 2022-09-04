@@ -1,18 +1,33 @@
+use darling::FromMeta;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident as Ident2, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{parse::Parser, parse_macro_input, Field, ItemStruct};
+use syn::{parse::Parser, parse_macro_input, AttributeArgs, Field, ItemStruct};
+
+#[derive(Debug, Default, FromMeta)]
+#[darling(default)]
+struct NodeArgs {
+    renderable: bool,
+}
 
 #[proc_macro_attribute]
-pub fn node(_args: TokenStream, struct_body: TokenStream) -> TokenStream {
+pub fn node(args: TokenStream, struct_body: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(args as AttributeArgs);
     let mut ast = parse_macro_input!(struct_body as ItemStruct);
 
     if let syn::Fields::Named(ref mut fields) = ast.fields {
         fields.named.extend(get_node_fields());
     };
 
+    let args = match NodeArgs::from_list(&args) {
+        Ok(v) => v,
+        Err(e) => {
+            return TokenStream::from(e.write_errors());
+        }
+    };
+
     let node_impl = get_node_impl(&ast.ident);
-    let node_trait_impl = get_node_trait_impl(&ast.ident);
+    let node_trait_impl = get_node_trait_impl(&ast.ident, args.renderable);
     let extra_traits = get_node_extra_traits(&ast.ident);
 
     quote! {
@@ -69,137 +84,160 @@ fn get_node_impl(struct_name: &Ident2) -> TokenStream2 {
     }
 }
 
-fn get_node_trait_impl(struct_name: &Ident2) -> TokenStream2 {
-    quote! {
-        impl Node for #struct_name {
-            fn node_type(&self) -> &'static str { 
-                unreachable!("Should not call Node::node_type, use NodeType::node_type(&node) instead.");
+fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
+    let base = quote! {
+        fn node_type(&self) -> &'static str {
+            unreachable!("Should not call Node::node_type, use NodeType::node_type(&node) instead.");
+        }
+
+        fn id(&self) -> &u32 {
+            &self.id
+        }
+
+        fn label(&self) -> &String {
+            &self.label
+        }
+
+        fn anchor(&self) -> &PointF {
+            &self.anchor
+        }
+        fn translate(&self) -> &Point {
+            &self.translate
+        }
+        fn transform(&self) -> &Transform {
+            &self.transform
+        }
+        fn transform_to_global(&self) -> &Transform {
+            &self.transform_to_global
+        }
+        fn children(&self) -> &Vec<Arc<Mutex<dyn Node>>> {
+            &self.children
+        }
+
+        // fn anchor_mut(&mut self) -> &mut PointF {
+        //     &mut self.anchor
+        // }
+        // fn translate_mut(&mut self) -> &mut Point {
+        //     &mut self.translate
+        // }
+        // fn transform_mut(&mut self) -> &mut Transform {
+        //     &mut self.transform
+        // }
+        // fn transform_to_global_mut(&mut self) -> &mut Transform {
+        //     &mut self.transform_to_global
+        // }
+        // fn children_mut(&mut self) -> &mut Vec<Arc<Mutex<dyn Node>>> {
+        //     &mut self.children
+        // }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
+
+        fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node>>> {
+            if let Some(child) = self.children.get(index) {
+                return Some(child.clone());
             }
+            None
+        }
 
-            fn id(&self) -> &u32 {
-                &self.id
+        fn add_child(&mut self, child: Arc<Mutex<dyn Node>>) {
+            self.children.push(child);
+        }
+
+        fn insert_child(&mut self, index: usize, child: Arc<Mutex<dyn Node>>) {
+            self.children.insert(index, child);
+        }
+
+        fn insert_child_before(
+            &mut self,
+            before_child: Arc<Mutex<dyn Node>>,
+            child: Arc<Mutex<dyn Node>>,
+        ) {
+            let index = self.children.iter().position(|item| {
+                let l = item.lock().unwrap();
+                let r = child.lock().unwrap();
+                *l == *r
+            });
+            if index.is_none() {
+                warn!("Cannot insert child before another one because the another child does not present in current children.");
             }
+            self.children.insert(index.unwrap_or(0), child);
+        }
 
-            fn label(&self) -> &String {
-                &self.label
+        fn remove_child(&mut self, child: Arc<Mutex<dyn Node>>) -> Option<Arc<Mutex<dyn Node>>> {
+            if let Some(index) = self.children.iter().position(|item| {
+                let l = item.lock().unwrap();
+                let r = child.lock().unwrap();
+                *l == *r
+            }) {
+                return Some(self.children.remove(index));
             }
+            None
+        }
 
-            fn anchor(&self) -> &PointF {
-                &self.anchor
+        fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node>>> {
+            if index < self.children.len() {
+                return Some(self.children.remove(index));
             }
-            fn translate(&self) -> &Point {
-                &self.translate
+            None
+        }
+
+        fn move_to(&mut self, x: i32, y: i32) {
+            self.translate.x = x;
+            self.translate.y = y;
+        }
+
+        fn calculate_transform(
+            &mut self,
+            parent_transform: &Transform,
+            logical_size: LogicalSize<f64>,
+            scale_factor: f64,
+        ) {
+            let x = self.translate.x;
+            let y = self.translate.y;
+
+            // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
+            let tx = (x as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
+            let ty = (y as f64 * scale_factor) / (logical_size.height * scale_factor) * 2.;
+
+            self.transform.tx = tx;
+            self.transform.ty = ty;
+
+            // TODO: rotate, scale and skew
+
+            // refresh global transform matrix
+            let mut transform_to_global = parent_transform.clone();
+            transform_to_global.multiply(self.transform);
+            self.transform_to_global = transform_to_global;
+        }
+    };
+
+    let renderable_impls = quote! {
+        fn try_as_renderable(&self) -> Option<&dyn Renderable> {
+            Some(self)
+        }
+
+        fn try_as_renderable_mut(&mut self) -> Option<&mut dyn Renderable> {
+            Some(self)
+        }
+    };
+
+    if renderable {
+        quote! {
+            impl Node for #struct_name {
+                #base
+                #renderable_impls
             }
-            fn transform(&self) -> &Transform {
-                &self.transform
-            }
-            fn transform_to_global(&self) -> &Transform {
-                &self.transform_to_global
-            }
-            fn children(&self) -> &Vec<Arc<Mutex<dyn Node>>> {
-                &self.children
-            }
-
-            // fn anchor_mut(&mut self) -> &mut PointF {
-            //     &mut self.anchor
-            // }
-            // fn translate_mut(&mut self) -> &mut Point {
-            //     &mut self.translate
-            // }
-            // fn transform_mut(&mut self) -> &mut Transform {
-            //     &mut self.transform
-            // }
-            // fn transform_to_global_mut(&mut self) -> &mut Transform {
-            //     &mut self.transform_to_global
-            // }
-            // fn children_mut(&mut self) -> &mut Vec<Arc<Mutex<dyn Node>>> {
-            //     &mut self.children
-            // }
-
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-
-            fn as_any_mut(&mut self) -> &mut dyn Any {
-                self
-            }
-
-            fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node>>> {
-                if let Some(child) = self.children.get(index) {
-                    return Some(child.clone());
-                }
-                None
-            }
-
-            fn add_child(&mut self, child: Arc<Mutex<dyn Node>>) {
-                self.children.push(child);
-            }
-
-            fn insert_child(&mut self, index: usize, child: Arc<Mutex<dyn Node>>) {
-                self.children.insert(index, child);
-            }
-
-            fn insert_child_before(
-                &mut self,
-                before_child: Arc<Mutex<dyn Node>>,
-                child: Arc<Mutex<dyn Node>>,
-            ) {
-                let index = self.children.iter().position(|item| {
-                    let l = item.lock().unwrap();
-                    let r = child.lock().unwrap();
-                    *l == *r
-                });
-                if index.is_none() {
-                    warn!("Cannot insert child before another one because the another child does not present in current children.");
-                }
-                self.children.insert(index.unwrap_or(0), child);
-            }
-
-            fn remove_child(&mut self, child: Arc<Mutex<dyn Node>>) -> Option<Arc<Mutex<dyn Node>>> {
-                if let Some(index) = self.children.iter().position(|item| {
-                    let l = item.lock().unwrap();
-                    let r = child.lock().unwrap();
-                    *l == *r
-                }) {
-                    return Some(self.children.remove(index));
-                }
-                None
-            }
-
-            fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node>>> {
-                if index < self.children.len() {
-                    return Some(self.children.remove(index));
-                }
-                None
-            }
-
-            fn move_to(&mut self, x: i32, y: i32) {
-                self.translate.x = x;
-                self.translate.y = y;
-            }
-
-            fn calculate_transform(
-                &mut self,
-                parent_transform: &Transform,
-                logical_size: LogicalSize<f64>,
-                scale_factor: f64,
-            ) {
-                let x = self.translate.x;
-                let y = self.translate.y;
-
-                // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-                let tx = (x as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
-                let ty = (y as f64 * scale_factor) / (logical_size.height * scale_factor) * 2.;
-
-                self.transform.tx = tx;
-                self.transform.ty = ty;
-
-                // TODO: rotate, scale and skew
-
-                // refresh global transform matrix
-                let mut transform_to_global = parent_transform.clone();
-                transform_to_global.multiply(self.transform);
-                self.transform_to_global = transform_to_global;
+        }
+    } else {
+        quote! {
+            impl Node for #struct_name {
+                #base
             }
         }
     }

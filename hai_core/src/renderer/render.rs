@@ -1,19 +1,24 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
+use winit::dpi::PhysicalSize;
 
-use crate::state::State;
+use crate::{
+    state::State,
+    traits::{Node, NodeType, Renderable, RendererUpdatePayload},
+};
 
-pub fn render<'a>(state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceError> {
-    let state = state.lock().unwrap();
-    let pending_renderable = state.pending_renderable.clone();
-    let mut pending_renderable = pending_renderable.lock().unwrap();
+use super::{walk::walk_nodes_top_bottom, NUM_INDICES};
+
+pub fn render<'a>(_state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceError> {
+    let state = _state.lock().unwrap();
     let surface = state.surface.clone();
     let surface = surface.lock().unwrap();
     let device = state.device.clone();
-    let device = device.lock().unwrap();
     let queue = state.queue.clone();
-    let queue = queue.lock().unwrap();
-    let render_pipeline = state.render_pipeline.clone();
-    let render_pipeline = render_pipeline.lock().unwrap();
+    let root_node_arc = state.root_node.clone();
+
+    let phy_size = PhysicalSize::new(state.physical_size.0, state.physical_size.1);
+    let scale_factor = state.scale_factor;
+    let logical_size = phy_size.to_logical::<f64>(scale_factor);
 
     drop(state);
 
@@ -21,11 +26,37 @@ pub fn render<'a>(state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceErro
     let view = output
         .texture
         .create_view(&wgpu::TextureViewDescriptor::default());
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("Render Encoder"),
-    });
+    let mut encoder = {
+        let device = device.lock().unwrap();
+        device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Render Encoder"),
+        })
+    };
 
     {
+        let root_node = root_node_arc.lock().unwrap();
+        let upload_payload = RendererUpdatePayload {
+            logical_size,
+            scale_factor,
+        };
+
+        let mut nodes: Vec<Arc<Mutex<dyn Node>>> = vec![];
+
+        walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
+            let mut _child = child.lock().unwrap();
+            _child.calculate_transform(parent.transform_to_global(), logical_size, scale_factor);
+
+            drop(_child);
+            nodes.push(child);
+
+            false
+        });
+
+        let mut childs: Vec<MutexGuard<dyn Node>> =
+            nodes.iter_mut().map(|n| n.lock().unwrap()).collect();
+
+        let state = _state.lock().unwrap();
+
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -33,9 +64,9 @@ pub fn render<'a>(state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceErro
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.1,
-                        g: 0.2,
-                        b: 0.3,
+                        r: 1.0,
+                        g: 1.0,
+                        b: 1.0,
                         a: 1.0,
                     }),
                     store: true,
@@ -44,18 +75,40 @@ pub fn render<'a>(state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceErro
             depth_stencil_attachment: None,
         });
 
-        render_pass.set_pipeline(&render_pipeline);
+        let childs: Vec<&mut dyn Renderable> = childs
+            .iter_mut()
+            .filter_map(|n| n.try_as_renderable_mut())
+            .collect();
 
-        for (bind_group, vertex_buffer, index_buffer, _, num_indices) in pending_renderable.iter() {
-            render_pass.set_bind_group(0, &bind_group, &[]);
-            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..*num_indices, 0, 0..1);
+        for child in childs {
+            let node_type = NodeType::node_type(child);
+
+            let current_renderer = { state.get_renderer(node_type) };
+
+            child.update(
+                &device,
+                &queue,
+                current_renderer.bind_group_layout(),
+                &upload_payload,
+            );
+
+            render_pass.set_pipeline(current_renderer.render_pipeline());
+            render_pass.set_index_buffer(
+                current_renderer.index_buffer().slice(..),
+                wgpu::IndexFormat::Uint16,
+            );
+
+            if let Some((bind_group, vertex_buffer)) = child.get_renderable() {
+                render_pass.set_bind_group(0, &bind_group, &[]);
+                render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+
+                // FIXME: NUM_INDICES depends on which renderer the child matches.
+                render_pass.draw_indexed(0..NUM_INDICES, 0, 0..1);
+            }
         }
     }
 
-    // clear queue
-    pending_renderable.clear();
+    let queue = queue.lock().unwrap();
 
     // submit will accept anything that implements IntoIter
     queue.submit(std::iter::once(encoder.finish()));

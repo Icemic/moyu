@@ -283,20 +283,20 @@ pub fn move_to(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Func
     let x = try_from_value_or_throw_exception!(scope, Number, x);
     let y = try_from_value_or_throw_exception!(scope, Number, y);
 
-    let state = get_shared_state!(scope, State);
-    let state = state.lock().unwrap();
-    let node_map = state.node_map.clone();
+    let node_map = {
+        let state = get_shared_state!(scope, State);
+        let state = state.lock().unwrap();
+        state.node_map.clone()
+    };
     let node_map = node_map.lock().unwrap();
 
     let node = node_map.get(&(node_id.value() as u32));
-
     if node.is_none() {
         throw_exception!(scope, format!("Cannot find node by id {}", node_id.value()));
         return;
     }
 
     let mut node = node.unwrap().lock().unwrap();
-
     node.move_to(x.value() as i32, y.value() as i32);
 }
 
