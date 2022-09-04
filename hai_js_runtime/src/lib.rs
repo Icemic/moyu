@@ -10,6 +10,7 @@ pub mod utils;
 
 use futures::{future::poll_fn, StreamExt};
 use log::{error, info};
+use module::promise_reject_callback;
 pub use shared::Shared;
 use std::{
     cell::RefCell,
@@ -37,7 +38,8 @@ impl JSRuntime {
         let mut isolate = Isolate::new(Default::default());
         isolate.set_host_import_module_dynamically_callback(dynamic_import_callback);
         isolate.set_capture_stack_trace_for_uncaught_exceptions(true, 10);
-        // isolate.set_promise_reject_callback();
+        isolate.set_promise_reject_callback(promise_reject_callback);
+        isolate.set_microtasks_policy(v8::MicrotasksPolicy::Auto);
         // isolate.set_host_initialize_import_meta_object_callback();
 
         let (global_context, shared) = {
