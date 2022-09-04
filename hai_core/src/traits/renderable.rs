@@ -3,8 +3,6 @@ use std::sync::{Arc, Mutex};
 use wgpu::{BindGroup, BindGroupLayout, Buffer, Device, Queue};
 use winit::dpi::LogicalSize;
 
-use crate::types::Transform;
-
 use super::Node;
 
 pub trait Renderable
