@@ -13,7 +13,7 @@ use crate::{
     user_event::UserEvent,
 };
 
-pub struct State<'a> {
+pub struct State {
     pub physical_size: (u32, u32),
     pub scale_factor: f64,
     pub surface: Arc<Mutex<Surface>>,
@@ -24,16 +24,12 @@ pub struct State<'a> {
     pub resource_manager: Arc<Mutex<ResourceManager>>,
     pub renderers: Arc<RwLock<HashMap<String, Box<dyn Renderer>>>>,
 
-    pub pending_events: Arc<Mutex<Vec<Event<'a, ()>>>>,
-    pub pending_updates: Arc<Mutex<Vec<()>>>,
-    pub pending_renderable:
-        Arc<Mutex<Vec<(wgpu::BindGroup, wgpu::Buffer, wgpu::Buffer, u32, u32)>>>,
     pub root_node: Arc<Mutex<dyn Node>>,
     pub current_focused_node: Arc<Mutex<Option<Arc<Mutex<dyn Node>>>>>,
     pub node_map: Arc<Mutex<HashMap<u32, Arc<Mutex<dyn Node>>>>>,
 }
 
-impl<'a> State<'a> {
+impl State {
     pub fn new(
         surface: Arc<Mutex<Surface>>,
         device: Arc<Mutex<Device>>,
@@ -65,9 +61,6 @@ impl<'a> State<'a> {
             event_proxy,
             resource_manager: Arc::new(Mutex::new(resource_manager)),
             renderers: Arc::new(RwLock::new(renderers)),
-            pending_events: Default::default(),
-            pending_updates: Default::default(),
-            pending_renderable: Default::default(),
             root_node,
             current_focused_node: Arc::new(Mutex::new(None)),
             node_map: Arc::new(Mutex::new(node_map)),

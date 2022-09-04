@@ -6,7 +6,7 @@ use crate::{
     traits::Node,
 };
 
-pub fn add_preset_default<'a>(state: &Arc<Mutex<State<'a>>>) {
+pub fn add_preset_default(state: &Arc<Mutex<State>>) {
     let state = state.lock().unwrap();
     let root_node = state.root_node.clone();
     let mut root_node = root_node.lock().unwrap();

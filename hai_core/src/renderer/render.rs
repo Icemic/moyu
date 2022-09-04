@@ -8,7 +8,7 @@ use crate::{
 
 use super::{walk::walk_nodes_top_bottom, NUM_INDICES};
 
-pub fn render<'a>(_state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceError> {
+pub fn render(_state: &Arc<Mutex<State>>) -> Result<(), wgpu::SurfaceError> {
     let state = _state.lock().unwrap();
     let surface = state.surface.clone();
     let surface = surface.lock().unwrap();
