@@ -2,8 +2,8 @@ use hai_macros::node;
 use log::warn;
 use std::any::Any;
 use std::sync::{Arc, Mutex, RwLock};
-use wgpu::util::DeviceExt;
-use wgpu::{BindGroup, BindGroupLayout, Buffer, Device, Queue};
+use wgpu::util::{DeviceExt, StagingBelt};
+use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 use winit::dpi::LogicalSize;
 
 use crate::traits::{Node, NodeType, Renderable, RendererUpdatePayload, NODE_ID};
@@ -122,7 +122,9 @@ impl Renderable for Sprite {
     fn update(
         &mut self,
         arc_device: &Arc<Mutex<Device>>,
-        arc_queue: &Arc<Mutex<Queue>>,
+        _: &Arc<Mutex<Queue>>,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
         bind_group_layout: &BindGroupLayout,
         payload: &RendererUpdatePayload,
     ) {
@@ -170,12 +172,16 @@ impl Renderable for Sprite {
                 self.vertex_buffer = Some(vertex_buffer);
             };
         } else {
-            let queue = arc_queue.lock().unwrap();
-            queue.write_buffer(
-                self.vertex_buffer.as_ref().unwrap(),
-                0,
-                bytemuck::cast_slice(self.vertices.as_ref().unwrap()),
-            );
+            let buf = bytemuck::cast_slice(self.vertices.as_ref().unwrap());
+            staging_belt
+                .write_buffer(
+                    encoder,
+                    self.vertex_buffer.as_ref().unwrap(),
+                    0,
+                    (buf.len() as u64).try_into().unwrap(),
+                    &device,
+                )
+                .copy_from_slice(buf);
         }
     }
 

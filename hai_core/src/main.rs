@@ -15,7 +15,7 @@ use cgmath::num_traits::ToPrimitive;
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
 use log::info;
-use renderer::{create_surface, input, render, SpriteRenderer};
+use renderer::{create_surface, input, Renderer, SpriteRenderer};
 use state::State;
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
@@ -130,11 +130,13 @@ fn main() {
     let mut fps_rendered = 0;
     let mut last_fps_timestamp = 0.;
 
+    let mut renderer = Renderer::new();
+
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
                 // update(&state);
-                match render(&state) {
+                match renderer.render(&state) {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
                     Err(wgpu::SurfaceError::Lost) => {
