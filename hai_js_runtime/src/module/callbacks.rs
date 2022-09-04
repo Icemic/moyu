@@ -1,5 +1,8 @@
+use log::error;
 use std::{cell::RefCell, rc::Rc};
-use v8::{CallbackScope, Context, FixedArray, Local, Module, Promise, String, Value};
+use v8::{
+    CallbackScope, Context, FixedArray, Local, Module, Promise, PromiseRejectMessage, String, Value,
+};
 
 use super::utils::resolve_module_specifier;
 use crate::shared::Shared;
@@ -79,4 +82,12 @@ pub extern "C" fn dynamic_import_callback(
     // promise
 
     todo!("not supported yet");
+}
+
+pub extern "C" fn promise_reject_callback(msg: PromiseRejectMessage) {
+    // @see https://github.com/denoland/deno/blob/307d84cfa5c1489ddfc8477f6561676356399e8c/core/bindings.rs#L409
+    // let scope = &mut unsafe { v8::CallbackScope::new(&msg) };
+
+    let event = msg.get_event();
+    error!("Uncaught promise reject event: {:?}", event);
 }
