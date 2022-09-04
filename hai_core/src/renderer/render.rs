@@ -1,7 +1,4 @@
-use std::{
-    convert::TryInto,
-    sync::{Arc, Mutex, MutexGuard},
-};
+use std::sync::{Arc, Mutex, MutexGuard};
 use wgpu::util::StagingBelt;
 use winit::dpi::PhysicalSize;
 
