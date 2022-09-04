@@ -27,7 +27,7 @@ pub fn create_instance(
     let node_type = node_type.to_rust_string_lossy(scope);
 
     let state = get_shared_state!(scope, State);
-    let mut state = state.lock().unwrap();
+    let state = state.lock().unwrap();
     let node_map = state.node_map.clone();
     let mut node_map = node_map.lock().unwrap();
 
@@ -52,7 +52,7 @@ pub fn create_instance(
                 .and_then(|v| Some(v.to_rust_string_lossy(scope)))
                 .unwrap_or_default();
 
-            let mut resource_manager = state.resource_manager();
+            let mut resource_manager = state.resource_manager.lock().unwrap();
             let texture = resource_manager.get_texture(src.clone());
             let n = Sprite::new(src, texture);
             node_id = n.id;

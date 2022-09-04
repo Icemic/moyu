@@ -16,6 +16,8 @@ pub fn render<'a>(_state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceErr
     let queue = state.queue.clone();
     let root_node_arc = state.root_node.clone();
 
+    let renderers = state.renderers.clone();
+    let renderers = renderers.read().unwrap();
     let phy_size = PhysicalSize::new(state.physical_size.0, state.physical_size.1);
     let scale_factor = state.scale_factor;
     let logical_size = phy_size.to_logical::<f64>(scale_factor);
@@ -55,8 +57,6 @@ pub fn render<'a>(_state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceErr
         let mut childs: Vec<MutexGuard<dyn Node>> =
             nodes.iter_mut().map(|n| n.lock().unwrap()).collect();
 
-        let state = _state.lock().unwrap();
-
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -83,7 +83,7 @@ pub fn render<'a>(_state: &Arc<Mutex<State<'a>>>) -> Result<(), wgpu::SurfaceErr
         for child in childs {
             let node_type = NodeType::node_type(child);
 
-            let current_renderer = { state.get_renderer(node_type) };
+            let current_renderer = { renderers.get(node_type).unwrap() };
 
             child.update(
                 &device,
