@@ -69,6 +69,8 @@ impl JSRuntime {
         }
     }
 
+    /// expose global object (aka globalThis) via callback
+    /// can be used somewhere outside of runtime crate
     pub fn with_global<T, K>(&mut self, mut callback: T) -> K
     where
         T: FnMut(&mut HandleScope, &Local<Object>) -> K,
@@ -93,37 +95,34 @@ impl JSRuntime {
         v8::HandleScope::with_context(self.get_isolate_mut(), context)
     }
 
-    pub fn start(&mut self) {
+    pub async fn prepare_entry(&mut self) {
         let module_loader = {
             let state = self.isolate.get_slot::<Rc<RefCell<Shared>>>().unwrap();
             let state = state.borrow_mut();
             state.module_loader()
         };
 
-        let module_loader_mut = module_loader.borrow_mut();
-
-        let resolved_specifier = module_loader_mut.entry_resolved_specifier.clone().unwrap();
-        let module = module_loader_mut.get_module(&resolved_specifier).unwrap();
-
-        drop(module_loader_mut);
-
-        let scope = &mut self.get_handle_scope();
-        ModuleLoader::instantiate_module(scope, module.clone(), &resolved_specifier);
-        ModuleLoader::evaluate_module(scope, module, &resolved_specifier);
-    }
-
-    pub async fn prepare_static_modules(&mut self) {
-        {
-            let state = self.isolate.get_slot::<Rc<RefCell<Shared>>>().unwrap();
-            let state = state.borrow_mut();
-            let module_loader = state.module_loader();
+        // resolve entry path
+        let entry_specifier = {
             let mut module_loader = module_loader.borrow_mut();
-            module_loader.prepare_from_entry();
-        }
-        poll_fn(|cx| self.poll_prepare_module(cx)).await
+            module_loader.prepare_from_entry()
+        };
+
+        // entry module must be ready
+        poll_fn(|cx| self.poll_module_loading(cx)).await;
+
+        // get the loaded entry module
+        let module_loader = module_loader.borrow_mut();
+        let module = module_loader.get_module(&entry_specifier).unwrap();
+        drop(module_loader);
+
+        // start instantiating and evaluating from the entry module
+        let scope = &mut self.get_handle_scope();
+        ModuleLoader::instantiate_module(scope, module.clone(), &entry_specifier);
+        ModuleLoader::evaluate_module(scope, module, &entry_specifier);
     }
 
-    fn poll_prepare_module(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
+    fn poll_module_loading(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
         let state = self.isolate.get_slot::<Rc<RefCell<Shared>>>().unwrap();
         let state = state.borrow_mut();
 
@@ -142,10 +141,7 @@ impl JSRuntime {
         match module_loader.pending.poll_next_unpin(cx) {
             Poll::Ready(None) => return Poll::Ready(()),
             Poll::Ready(Some((resolved_specifier, code))) => {
-                let module_info = module_loader
-                    .module_info_map
-                    .get(&resolved_specifier)
-                    .unwrap();
+                let module_info = module_loader.modules.get(&resolved_specifier).unwrap();
                 if let Ok(code) = code {
                     info!(
                         "module '{}' loaded from '{}'",
@@ -210,7 +206,7 @@ impl JSRuntime {
     }
 
     pub fn poll_tick(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
-        let prepare_module_result = self.poll_prepare_module(cx);
+        let prepare_module_result = self.poll_module_loading(cx);
         let timers_result = self.poll_timers(cx);
 
         if prepare_module_result.is_ready() && timers_result.is_ready() {

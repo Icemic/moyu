@@ -16,15 +16,15 @@ use std::env;
 use std::pin::Pin;
 use v8::{
     script_compiler::{self, Source},
-    Global, HandleScope, Local, Module, ModuleRequest, ModuleStatus, ScriptOrigin, Value,
+    Global, HandleScope, Local, Module as V8Module, ModuleRequest, ModuleStatus, ScriptOrigin,
+    Value,
 };
 
 use crate::utils::IntoV8;
 
 pub struct ModuleLoader {
-    pub entry_resolved_specifier: Option<std::string::String>,
-    pub module_referrer_names: HashMap<i32, std::string::String>,
-    pub module_info_map: HashMap<std::string::String, ModuleInfo>,
+    pub resolved_names: HashMap<i32, std::string::String>,
+    pub modules: HashMap<std::string::String, Module>,
     pub pending: FuturesUnordered<
         Pin<
             Box<
@@ -44,9 +44,8 @@ pub struct ModuleLoader {
 impl ModuleLoader {
     pub fn new() -> Self {
         Self {
-            entry_resolved_specifier: None,
-            module_referrer_names: Default::default(),
-            module_info_map: Default::default(),
+            resolved_names: Default::default(),
+            modules: Default::default(),
             pending: Default::default(),
             waker: Default::default(),
         }
@@ -56,13 +55,13 @@ impl ModuleLoader {
         &self,
         script_id: i32,
     ) -> Option<std::string::String> {
-        if let Some(v) = self.module_referrer_names.get(&script_id) {
+        if let Some(v) = self.resolved_names.get(&script_id) {
             return Some(v.clone());
         }
         None
     }
 
-    pub fn prepare_from_entry(&mut self) {
+    pub fn prepare_from_entry(&mut self) -> String {
         let mut entry_dir = env::var("HAI_ENTRY")
             .unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
 
@@ -73,8 +72,7 @@ impl ModuleLoader {
         // start from entry file
 
         let resolved_specifier = self.pending_module_info(entry_dir, "./index".to_string());
-        self.entry_resolved_specifier = Some(resolved_specifier);
-        // self.enqueue_module_pending(ModulePendingStatus::Created, &resolved_specifier, None);
+        resolved_specifier
     }
 
     pub fn pending_module_info(
@@ -86,7 +84,7 @@ impl ModuleLoader {
         // resolve to absolute referrer path
         let (module_type, resolved_specifier) = resolve_module_specifier(&specifier, &referrer);
 
-        let module_info = ModuleInfo {
+        let module_info = Module {
             specifier,
             module_referrer: referrer,
             resolved_specifier: resolved_specifier.clone(),
@@ -138,7 +136,7 @@ impl ModuleLoader {
         }
         .boxed_local();
 
-        self.module_info_map
+        self.modules
             .insert(_resolved_specifier.clone(), module_info);
         self.pending.push(load_fn);
 
@@ -155,7 +153,7 @@ impl ModuleLoader {
         code: &str,
     ) {
         let module_info = self
-            .module_info_map
+            .modules
             .get_mut(resolved_specifier)
             .expect(format!("cannot find module {}", resolved_specifier).as_str());
 
@@ -186,7 +184,7 @@ impl ModuleLoader {
         // save to state
         let script_id = module.script_id().unwrap();
 
-        self.module_referrer_names
+        self.resolved_names
             .insert(script_id, resolved_specifier.to_string());
 
         let global_module = Global::new(scope, module);
@@ -207,7 +205,7 @@ impl ModuleLoader {
 
     pub fn instantiate_module<'a>(
         scope: &mut HandleScope,
-        module: Global<Module>,
+        module: Global<V8Module>,
         resolved_specifier: &str,
     ) -> bool {
         let module = Local::new(scope, module);
@@ -233,7 +231,7 @@ impl ModuleLoader {
 
     pub fn evaluate_module(
         scope: &mut HandleScope,
-        module: Global<Module>,
+        module: Global<V8Module>,
         resolved_specifier: &str,
     ) -> Option<Global<Value>> {
         let module = Local::new(scope, module);
@@ -262,22 +260,12 @@ impl ModuleLoader {
         unreachable!("cannot evaluate a module which does not exist.");
     }
 
-    pub fn get_module(&self, resolved_specifier: &str) -> Option<Global<Module>> {
+    pub fn get_module(&self, resolved_specifier: &str) -> Option<Global<V8Module>> {
         let module_info = self
-            .module_info_map
+            .modules
             .get(resolved_specifier)
             .expect(format!("cannot find module {}", resolved_specifier).as_str());
 
         module_info.module.clone()
-    }
-
-    #[allow(dead_code)]
-    pub fn get_module_result(&self, resolved_specifier: &str) -> Option<Global<Value>> {
-        let module_info = self
-            .module_info_map
-            .get(resolved_specifier)
-            .expect(format!("cannot find module {}", resolved_specifier).as_str());
-
-        module_info.result.clone()
     }
 }
