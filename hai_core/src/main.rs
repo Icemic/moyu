@@ -57,6 +57,7 @@ fn main() {
     let window = WindowBuilder::new()
         .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
         .with_resizable(false)
+        .with_visible(false)
         .build(&event_loop)
         .unwrap();
 
@@ -67,9 +68,6 @@ fn main() {
     #[cfg(target_arch = "wasm32")]
     let (surface, device, queue, config) = { pollster::block_on(create_surface(&window, &size)) };
 
-    // let (render_pipeline, bind_group_layout) = prepare_pipeline(&device, &config);
-
-    // let null_renderer = Arc::new(Mutex::new(NullRenderer::new(&device, &config)));
     let sprite_renderer = SpriteRenderer::new(&device, &config);
 
     let surface = Arc::new(Mutex::new(surface));
@@ -126,6 +124,8 @@ fn main() {
         });
     }
 
+    window.set_visible(true);
+
     let mut fps_requested = 0;
     let mut fps_rendered = 0;
     let mut last_fps_timestamp = 0.;
@@ -135,7 +135,6 @@ fn main() {
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                // update(&state);
                 match renderer.render(&state) {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
