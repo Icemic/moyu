@@ -1,10 +1,10 @@
 use log::error;
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex, MutexGuard, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
-use winit::{event::Event, event_loop::EventLoopProxy};
+use winit::event_loop::EventLoopProxy;
 
 use crate::{
     nodes::Container,
