@@ -66,12 +66,11 @@ impl ResourceManager {
             let bytes = match fs::read(asset_full_path).await {
                 Ok(v) => v,
                 Err(err) => {
-                    error!(
-                        "load bytes from asset '{}': {}",
+                    return Err(anyhow::format_err!(
+                        "failed to read '{}': {}",
                         asset_relative_path,
                         err.to_string()
-                    );
-                    vec![]
+                    ));
                 }
             };
 
@@ -159,7 +158,7 @@ impl ResourceManager {
         self.waker.register(cx.waker());
         match self.tasks.poll_next_unpin(cx) {
             Poll::Ready(Some(Err(err))) => {
-                error!("poll load texture failed!");
+                error!("{}", err.to_string());
                 Poll::Ready(())
             }
             Poll::Ready(_) => Poll::Ready(()),
