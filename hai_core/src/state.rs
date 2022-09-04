@@ -1,7 +1,7 @@
 use log::error;
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex, MutexGuard, RwLock},
 };
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::{event::Event, event_loop::EventLoopProxy};
@@ -22,7 +22,7 @@ pub struct State<'a> {
     pub config: SurfaceConfiguration,
     pub event_proxy: EventLoopProxy<UserEvent>,
     pub resource_manager: Arc<Mutex<ResourceManager>>,
-    renderers: HashMap<String, Box<dyn Renderer>>,
+    pub renderers: Arc<RwLock<HashMap<String, Box<dyn Renderer>>>>,
 
     pub pending_events: Arc<Mutex<Vec<Event<'a, ()>>>>,
     pub pending_updates: Arc<Mutex<Vec<()>>>,
@@ -64,7 +64,7 @@ impl<'a> State<'a> {
             config,
             event_proxy,
             resource_manager: Arc::new(Mutex::new(resource_manager)),
-            renderers,
+            renderers: Arc::new(RwLock::new(renderers)),
             pending_events: Default::default(),
             pending_updates: Default::default(),
             pending_renderable: Default::default(),
@@ -74,21 +74,13 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn resource_manager(&mut self) -> MutexGuard<ResourceManager> {
-        self.resource_manager.lock().unwrap()
-    }
-
     pub fn register_renderer(&mut self, name: String, renderer: Box<dyn Renderer>) {
-        if self.renderers.contains_key(&name) {
+        let mut renderers = self.renderers.write().unwrap();
+        if renderers.contains_key(&name) {
             error!("There's already a renderer named '{}'.", name);
             return;
         }
-        self.renderers.insert(name, renderer);
-    }
-
-    pub fn get_renderer(&self, name: &str) -> &Box<dyn Renderer> {
-        let renderer = self.renderers.get(name);
-        renderer.expect(format!("Cannot find a renderer named '{}'", name).as_str())
+        renderers.insert(name, renderer);
     }
 
     /**

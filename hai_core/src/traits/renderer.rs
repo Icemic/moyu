@@ -2,7 +2,7 @@ use wgpu::{BindGroupLayout, Buffer, RenderPipeline};
 
 pub trait Renderer
 where
-    Self: Send,
+    Self: Send + Sync,
 {
     fn name(&self) -> &'static str;
     fn render_pipeline(&self) -> &RenderPipeline;
