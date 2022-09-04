@@ -107,14 +107,12 @@ fn main() {
             };
             runtime.block_on(async {
                 let mut vm = JSRuntime::new(state);
-                vm.prepare_static_modules().await;
 
                 vm.with_global(|scope, global| {
                     ops::init(scope, global);
                 });
 
-                vm.start();
-
+                vm.prepare_entry().await;
                 vm.run_event_loop(|cx| {
                     let mut resource_manager = resource_manager.lock().unwrap();
                     resource_manager.poll(cx)
