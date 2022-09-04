@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use wgpu::{BindGroup, BindGroupLayout, Buffer, Device, Queue};
+use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 use winit::dpi::LogicalSize;
 
 use super::Node;
@@ -13,6 +13,8 @@ where
         &mut self,
         arc_device: &Arc<Mutex<Device>>,
         arc_queue: &Arc<Mutex<Queue>>,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
         bind_group_layout: &BindGroupLayout,
         payload: &RendererUpdatePayload,
     );
