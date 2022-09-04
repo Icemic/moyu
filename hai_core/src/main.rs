@@ -15,7 +15,7 @@ use cgmath::num_traits::ToPrimitive;
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
 use log::info;
-use renderer::{create_surface, input, render, NullRenderer, SpriteRenderer};
+use renderer::{create_surface, input, render, SpriteRenderer};
 use state::State;
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
@@ -27,7 +27,7 @@ use user_event::UserEvent;
 use winit::{
     dpi::{LogicalSize, Size},
     event::*,
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
     window::WindowBuilder,
 };
 
@@ -52,7 +52,7 @@ fn main() {
     }
 
     // create main thread infinity loop
-    let event_loop: EventLoop<UserEvent> = EventLoop::with_user_event();
+    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
     // create window
     let window = WindowBuilder::new()
         .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))

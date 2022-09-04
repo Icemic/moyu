@@ -3,7 +3,8 @@ use wgpu::{util::DeviceExt, *};
 use crate::{nodes::SPRITE_INDICES, traits::Renderer, types::Vertex};
 
 /// the number of vertices in a sprite is always 4.
-pub static NUM_VERTICES: u32 = 4;
+// pub static NUM_VERTICES: u32 = 4;
+
 pub static NUM_INDICES: u32 = SPRITE_INDICES.len() as u32;
 
 pub struct SpriteRenderer {

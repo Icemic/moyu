@@ -1,15 +1,15 @@
 use log::error;
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex, MutexGuard, RwLock},
+    sync::{Arc, Mutex, MutexGuard},
 };
-use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline, Surface, SurfaceConfiguration};
+use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::{event::Event, event_loop::EventLoopProxy};
 
 use crate::{
     nodes::Container,
     resource::ResourceManager,
-    traits::{Node, Renderable, Renderer},
+    traits::{Node, Renderer},
     user_event::UserEvent,
 };
 
