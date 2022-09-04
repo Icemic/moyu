@@ -5,7 +5,7 @@ use winit::{dpi::PhysicalSize, event::WindowEvent};
 use super::walk::walk_nodes_bottom_top;
 use crate::{state::State, nodes::Sprite, traits::{Focusable, NodeType}};
 
-pub fn input<'a>(event: &WindowEvent, state: &Arc<Mutex<State<'a>>>) -> bool {
+pub fn input(event: &WindowEvent, state: &Arc<Mutex<State>>) -> bool {
     let state = state.lock().unwrap();
     let root_node = state.root_node.clone();
     let current_focused_node = state.current_focused_node.clone();
