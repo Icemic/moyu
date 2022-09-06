@@ -143,18 +143,18 @@ impl JSRuntime {
         match module_loader.pending.poll_next_unpin(cx) {
             Poll::Ready(None) => return Poll::Ready(()),
             Poll::Ready(Some((resolved_specifier, code))) => {
-                let module_info = module_loader.modules.get(&resolved_specifier).unwrap();
+                let module = module_loader.modules.get(&resolved_specifier).unwrap();
                 if let Ok(code) = code {
                     info!(
                         "module '{}' loaded from '{}'",
-                        module_info.specifier, resolved_specifier
+                        module.specifier, resolved_specifier
                     );
                     let scope = &mut self.get_handle_scope();
                     module_loader.compile_module(scope, &resolved_specifier, &code);
                 } else {
                     error!(
                         "cannot load module '{}', file '{}' not exists.",
-                        module_info.specifier, resolved_specifier
+                        module.specifier, resolved_specifier
                     );
                 }
                 cx.waker().wake_by_ref();
@@ -171,7 +171,7 @@ impl JSRuntime {
         // register waker to isolate state
         state.waker.register(cx.waker());
 
-        let timer = state.timer();
+        let timer = state.scheduler();
 
         drop(state);
 

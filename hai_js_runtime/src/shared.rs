@@ -11,7 +11,7 @@ use super::{module::ModuleLoader, timer::TimerScheduler};
 
 pub struct Shared {
     pub module_loader: Rc<RefCell<ModuleLoader>>,
-    pub timer: Rc<RefCell<TimerScheduler>>,
+    pub scheduler: Rc<RefCell<TimerScheduler>>,
     pub waker: AtomicWaker,
     /// external state binding to js runtime
     /// which makes injected methods read or write custom data
@@ -27,7 +27,7 @@ impl Shared {
 
         Shared {
             module_loader: Rc::new(RefCell::new(module_loader)),
-            timer: Rc::new(RefCell::new(timer)),
+            scheduler: Rc::new(RefCell::new(timer)),
             waker: AtomicWaker::new(),
             state,
         }
@@ -37,8 +37,8 @@ impl Shared {
         self.module_loader.clone()
     }
 
-    pub fn timer(&self) -> Rc<RefCell<TimerScheduler>> {
-        self.timer.clone()
+    pub fn scheduler(&self) -> Rc<RefCell<TimerScheduler>> {
+        self.scheduler.clone()
     }
 
     pub fn state<T>(&self) -> Arc<Mutex<T>> {
