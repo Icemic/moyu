@@ -3,16 +3,20 @@ edition = "2021"
 name = "hai_js_runtime"
 version = "0.1.0"
 
+[features]
+default = []
+remote = ["reqwest"]
+
 [dependencies]
 anyhow = "1.0"
 futures = "0.3"
 log = "0.4"
 
-[dependencies.hai_module_compiler]
-path = "../hai_module_compiler"
+[dependencies.hai_pal]
+path = "../hai_pal"
 version = "0.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-reqwest = {version = "0.11", features = ["rustls-tls", "gzip", "deflate", "stream", "brotli"]}
+reqwest = {version = "0.11", optional = true, features = ["rustls-tls", "gzip", "deflate", "stream", "brotli"]}
 tokio = {version = "1", features = ["full"]}
 v8 = {version = "0.48"}

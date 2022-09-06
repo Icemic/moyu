@@ -14,12 +14,13 @@ use cgmath::num_traits::ToPrimitive;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
 use hai_pal::{env, logger, platform};
-use log::info;
+use log::{error, info};
 use renderer::{create_surface, input, Renderer, SpriteRenderer};
 use state::State;
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 use std::{
+    process::exit,
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -112,7 +113,11 @@ fn main() {
                     ops::init(scope, global);
                 });
 
-                vm.prepare_entry().await;
+                if let Err(err) = vm.prepare_entry().await {
+                    error!("{}", err.to_string());
+                    exit(-1);
+                };
+
                 vm.run_event_loop(|cx| {
                     let mut resource_manager = resource_manager.lock().unwrap();
                     resource_manager.poll(cx)

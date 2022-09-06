@@ -8,7 +8,9 @@ mod timer;
 pub mod prelude;
 pub mod utils;
 
+use anyhow::Result;
 use futures::{future::poll_fn, StreamExt};
+use hai_pal::env::entry_dir;
 use log::{error, info};
 use module::promise_reject_callback;
 pub use shared::Shared;
@@ -97,7 +99,7 @@ impl JSRuntime {
         v8::HandleScope::with_context(self.get_isolate_mut(), context)
     }
 
-    pub async fn prepare_entry(&mut self) {
+    pub async fn prepare_entry(&mut self) -> Result<()> {
         let module_loader = {
             let state = self.isolate.get_slot::<Rc<RefCell<Shared>>>().unwrap();
             let state = state.borrow_mut();
@@ -107,7 +109,7 @@ impl JSRuntime {
         // resolve entry path
         let entry_specifier = {
             let mut module_loader = module_loader.borrow_mut();
-            module_loader.prepare_from_entry()
+            module_loader.push_module_loading_task(&entry_dir(), "./index".to_string())?
         };
 
         // entry module must be ready
@@ -122,6 +124,8 @@ impl JSRuntime {
         let scope = &mut self.get_handle_scope();
         ModuleLoader::instantiate_module(scope, module.clone(), &entry_specifier);
         ModuleLoader::evaluate_module(scope, module, &entry_specifier);
+
+        Ok(())
     }
 
     fn poll_module_loading(&mut self, cx: &mut TaskContext<'_>) -> Poll<()> {
@@ -142,19 +146,21 @@ impl JSRuntime {
 
         match module_loader.pending.poll_next_unpin(cx) {
             Poll::Ready(None) => return Poll::Ready(()),
-            Poll::Ready(Some((resolved_specifier, code))) => {
-                let module = module_loader.modules.get(&resolved_specifier).unwrap();
+            Poll::Ready(Some((resolved_file_path, code))) => {
+                let module = module_loader.modules.get(&resolved_file_path).unwrap();
                 if let Ok(code) = code {
                     info!(
                         "module '{}' loaded from '{}'",
-                        module.specifier, resolved_specifier
+                        module.specifier,
+                        resolved_file_path.to_string()
                     );
                     let scope = &mut self.get_handle_scope();
-                    module_loader.compile_module(scope, &resolved_specifier, &code);
+                    module_loader.compile_module(scope, &resolved_file_path, &code).unwrap();
                 } else {
                     error!(
                         "cannot load module '{}', file '{}' not exists.",
-                        module.specifier, resolved_specifier
+                        module.specifier,
+                        resolved_file_path.to_string()
                     );
                 }
                 cx.waker().wake_by_ref();
