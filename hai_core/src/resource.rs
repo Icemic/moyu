@@ -1,6 +1,7 @@
 use anyhow::Result;
 use futures::{stream::FuturesUnordered, task::AtomicWaker, Future, FutureExt, StreamExt};
 use hai_pal::env::entry_dir;
+use hai_pal::fs;
 use image::GenericImageView;
 use log::{debug, error};
 use std::{
@@ -9,7 +10,6 @@ use std::{
     sync::{Arc, Mutex, RwLock, Weak},
     task::{Context, Poll},
 };
-use tokio::fs;
 use wgpu::{Device, Queue};
 
 use crate::nodes::{Texture, TextureStatus};
@@ -49,10 +49,10 @@ impl ResourceManager {
     /// it does not check whether a same asset has been loaded.
     pub fn add_task(&mut self, asset_relative_path: String) -> Arc<RwLock<Texture>> {
         let asset_full_path = entry_dir()
-            .to_file_path()
+            .join("assets/")
             .unwrap()
-            .join("assets")
-            .join(&asset_relative_path);
+            .join(&asset_relative_path)
+            .unwrap();
         debug!("texture will load from {}", asset_relative_path);
 
         let texture = Arc::new(RwLock::new(Texture::new()));
@@ -63,7 +63,7 @@ impl ResourceManager {
         let device = self.device.clone();
         let queue = self.queue.clone();
         let task_fn = async move {
-            let bytes = match fs::read(asset_full_path).await {
+            let bytes = match fs::read(&asset_full_path).await {
                 Ok(v) => v,
                 Err(err) => {
                     return Err(anyhow::format_err!(

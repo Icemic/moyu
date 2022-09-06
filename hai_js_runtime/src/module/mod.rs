@@ -1,19 +1,17 @@
 mod callbacks;
 mod types;
-mod utils;
 
 use anyhow::Result;
 pub use callbacks::*;
-use hai_pal::url::{resolve_package_from, Url};
-pub use types::*;
-pub use utils::*;
-
 use futures::stream::FuturesUnordered;
 use futures::task::AtomicWaker;
 use futures::{Future, FutureExt};
+use hai_pal::fs;
+use hai_pal::url::{resolve_package_from, Url};
 use log::debug;
 use std::collections::HashMap;
 use std::pin::Pin;
+pub use types::*;
 use v8::{
     script_compiler::{self, Source},
     Global, HandleScope, Local, Module as V8Module, ModuleRequest, ModuleStatus, ScriptOrigin,
@@ -45,14 +43,21 @@ impl ModuleLoader {
     pub fn push_module_loading_task(&mut self, base_dir: &Url, specifier: String) -> Result<Url> {
         // resolve to absolute referrer path
         let module = match resolve_package_from(specifier.as_str(), base_dir.clone()) {
-            Ok(resolved_file_path) => Module {
-                specifier: specifier.clone(),
-                resolved_file_path,
-                module_type: ModuleType::Local,
-                script_id: None,
-                module: None,
-                result: None,
-            },
+            Ok(resolved_file_path) => {
+                let module_type = if resolved_file_path.scheme() == "file" {
+                    ModuleType::Local
+                } else {
+                    ModuleType::Remote
+                };
+                Module {
+                    specifier: specifier.clone(),
+                    resolved_file_path,
+                    module_type,
+                    script_id: None,
+                    module: None,
+                    result: None,
+                }
+            }
             Err(err) => {
                 return Err(anyhow::format_err!(
                     "Cannot find module '{}': {}",
@@ -65,20 +70,17 @@ impl ModuleLoader {
         debug!("resolved module: {:?}", module);
 
         let resolved_file_path = module.resolved_file_path.clone();
-        let module_type = module.module_type.clone();
 
         let load_fn = async move {
             // TODO: async load code, create module, then modify
 
-            let code = match module_type {
-                ModuleType::Local => {
-                    let code = read_code_local(&resolved_file_path).await;
-                    Ok(code)
-                }
-                ModuleType::Remote => {
-                    let code = read_code_remote(&resolved_file_path).await;
-                    Ok(code)
-                }
+            let code = match fs::read(&resolved_file_path).await {
+                Ok(v) => Ok(String::from_utf8(v).unwrap()),
+                Err(err) => Err(anyhow::format_err!(
+                    "failed to read '{}': {}",
+                    resolved_file_path,
+                    err.to_string()
+                )),
             };
 
             (resolved_file_path, code)
