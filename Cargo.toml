@@ -2,7 +2,6 @@
 default-members = ["hai_core"]
 members = [
   "hai_core",
-  "hai_module_compiler",
   "hai_js_runtime",
   "hai_pal",
   "hai_macros",
