@@ -45,7 +45,7 @@ fn clear_timeout_or_interval(
     let timer = {
         let shared = scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
         let shared = shared.borrow();
-        shared.timer()
+        shared.scheduler()
     };
     let mut timer = timer.borrow_mut();
     timer.cancel_timer(handler_id);
@@ -88,7 +88,7 @@ fn create_timer(
     let timer = {
         let shared = scope.get_slot::<Rc<RefCell<Shared>>>().unwrap();
         let shared = shared.borrow();
-        shared.timer()
+        shared.scheduler()
     };
     let mut timer = timer.borrow_mut();
     let handler_id = timer.add_timer(t, callback, duration);

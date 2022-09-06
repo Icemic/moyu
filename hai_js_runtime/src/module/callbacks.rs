@@ -81,7 +81,7 @@ pub extern "C" fn dynamic_import_callback(
 
     // promise
 
-    todo!("not supported yet");
+    unimplemented!("not supported yet");
 }
 
 pub extern "C" fn promise_reject_callback(msg: PromiseRejectMessage) {

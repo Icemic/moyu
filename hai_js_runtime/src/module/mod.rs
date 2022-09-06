@@ -22,6 +22,7 @@ use v8::{
 
 use crate::utils::IntoV8;
 
+#[derive(Debug, Default)]
 pub struct ModuleLoader {
     pub resolved_names: HashMap<i32, std::string::String>,
     pub modules: HashMap<std::string::String, Module>,
@@ -43,12 +44,7 @@ pub struct ModuleLoader {
 
 impl ModuleLoader {
     pub fn new() -> Self {
-        Self {
-            resolved_names: Default::default(),
-            modules: Default::default(),
-            pending: Default::default(),
-            waker: Default::default(),
-        }
+        Self::default()
     }
 
     pub fn get_resolved_specifier_from_script_id(
@@ -71,11 +67,11 @@ impl ModuleLoader {
         entry_dir.push_str("./index");
         // start from entry file
 
-        let resolved_specifier = self.pending_module_info(entry_dir, "./index".to_string());
+        let resolved_specifier = self.push_module_loading_task(entry_dir, "./index".to_string());
         resolved_specifier
     }
 
-    pub fn pending_module_info(
+    pub fn push_module_loading_task(
         &mut self,
         // referrer name has been resolved for it's referrer's specifier
         referrer: std::string::String,
@@ -84,7 +80,7 @@ impl ModuleLoader {
         // resolve to absolute referrer path
         let (module_type, resolved_specifier) = resolve_module_specifier(&specifier, &referrer);
 
-        let module_info = Module {
+        let module = Module {
             specifier,
             module_referrer: referrer,
             resolved_specifier: resolved_specifier.clone(),
@@ -95,7 +91,7 @@ impl ModuleLoader {
         };
 
         let _resolved_specifier = resolved_specifier.clone();
-        let module_type = module_info.module_type.clone();
+        let module_type = module.module_type.clone();
 
         let load_fn = async move {
             // TODO: async load code, create module, then modify
@@ -136,8 +132,7 @@ impl ModuleLoader {
         }
         .boxed_local();
 
-        self.modules
-            .insert(_resolved_specifier.clone(), module_info);
+        self.modules.insert(_resolved_specifier.clone(), module);
         self.pending.push(load_fn);
 
         // activate poll
@@ -152,7 +147,7 @@ impl ModuleLoader {
         resolved_specifier: &str,
         code: &str,
     ) {
-        let module_info = self
+        let module = self
             .modules
             .get_mut(resolved_specifier)
             .expect(format!("cannot find module {}", resolved_specifier).as_str());
@@ -179,27 +174,27 @@ impl ModuleLoader {
         let source = Source::new(code, Some(&origin));
 
         // compile module
-        let module = script_compiler::compile_module(scope, source).unwrap();
+        let v8module = script_compiler::compile_module(scope, source).unwrap();
 
         // save to state
-        let script_id = module.script_id().unwrap();
+        let script_id = v8module.script_id().unwrap();
 
         self.resolved_names
             .insert(script_id, resolved_specifier.to_string());
 
-        let global_module = Global::new(scope, module);
+        let global_module = Global::new(scope, v8module);
 
-        module_info.script_id = Some(script_id);
-        module_info.module = Some(global_module);
+        module.script_id = Some(script_id);
+        module.module = Some(global_module);
 
         // pend dependencies' imports
-        let module_requests = module.get_module_requests();
+        let module_requests = v8module.get_module_requests();
         for i in 0..module_requests.length() {
             let module_request: Local<ModuleRequest> =
                 module_requests.get(scope, i).unwrap().try_into().unwrap();
             let specifier = module_request.get_specifier().to_rust_string_lossy(scope);
             // resolved_specifier there is dependency's refererr name
-            self.pending_module_info(resolved_specifier.to_string(), specifier);
+            self.push_module_loading_task(resolved_specifier.to_string(), specifier);
         }
     }
 
@@ -261,11 +256,11 @@ impl ModuleLoader {
     }
 
     pub fn get_module(&self, resolved_specifier: &str) -> Option<Global<V8Module>> {
-        let module_info = self
+        let module = self
             .modules
             .get(resolved_specifier)
             .expect(format!("cannot find module {}", resolved_specifier).as_str());
 
-        module_info.module.clone()
+        module.module.clone()
     }
 }
