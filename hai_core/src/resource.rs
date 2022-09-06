@@ -48,7 +48,11 @@ impl ResourceManager {
     /// add a task to load a new texture.
     /// it does not check whether a same asset has been loaded.
     pub fn add_task(&mut self, asset_relative_path: String) -> Arc<RwLock<Texture>> {
-        let asset_full_path = entry_dir().join("assets").join(&asset_relative_path);
+        let asset_full_path = entry_dir()
+            .to_file_path()
+            .unwrap()
+            .join("assets")
+            .join(&asset_relative_path);
         debug!("texture will load from {}", asset_relative_path);
 
         let texture = Arc::new(RwLock::new(Texture::new()));

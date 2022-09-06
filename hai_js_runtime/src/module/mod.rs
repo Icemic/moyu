@@ -2,17 +2,17 @@ mod callbacks;
 mod types;
 mod utils;
 
+use anyhow::Result;
 pub use callbacks::*;
+use hai_pal::url::{resolve_package_from, Url};
 pub use types::*;
 pub use utils::*;
 
 use futures::stream::FuturesUnordered;
 use futures::task::AtomicWaker;
 use futures::{Future, FutureExt};
-use hai_module_compiler::transpile;
-use log::{debug, info};
+use log::debug;
 use std::collections::HashMap;
-use std::env;
 use std::pin::Pin;
 use v8::{
     script_compiler::{self, Source},
@@ -24,19 +24,10 @@ use crate::utils::IntoV8;
 
 #[derive(Debug, Default)]
 pub struct ModuleLoader {
-    pub resolved_names: HashMap<i32, std::string::String>,
-    pub modules: HashMap<std::string::String, Module>,
+    pub resolved_names: HashMap<i32, Url>,
+    pub modules: HashMap<Url, Module>,
     pub pending: FuturesUnordered<
-        Pin<
-            Box<
-                dyn Future<
-                    Output = (
-                        std::string::String,
-                        Result<std::string::String, anyhow::Error>,
-                    ),
-                >,
-            >,
-        >,
+        Pin<Box<dyn Future<Output = (Url, Result<std::string::String, anyhow::Error>)>>>,
     >,
     // pub pending_modules: Vec<ModulePending>,
     pub waker: AtomicWaker,
@@ -47,112 +38,76 @@ impl ModuleLoader {
         Self::default()
     }
 
-    pub fn get_resolved_specifier_from_script_id(
-        &self,
-        script_id: i32,
-    ) -> Option<std::string::String> {
-        if let Some(v) = self.resolved_names.get(&script_id) {
-            return Some(v.clone());
-        }
-        None
+    pub fn get_resolved_file_path_from_script_id(&self, script_id: i32) -> Option<&Url> {
+        self.resolved_names.get(&script_id)
     }
 
-    pub fn prepare_from_entry(&mut self) -> String {
-        let mut entry_dir = env::var("HAI_ENTRY")
-            .unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
-
-        info!("entry '{}'", entry_dir);
-
-        // input shall be a referrer name but entry_dir is a directory, so do some hack
-        entry_dir.push_str("./index");
-        // start from entry file
-
-        let resolved_specifier = self.push_module_loading_task(entry_dir, "./index".to_string());
-        resolved_specifier
-    }
-
-    pub fn push_module_loading_task(
-        &mut self,
-        // referrer name has been resolved for it's referrer's specifier
-        referrer: std::string::String,
-        specifier: std::string::String,
-    ) -> std::string::String {
+    pub fn push_module_loading_task(&mut self, base_dir: &Url, specifier: String) -> Result<Url> {
         // resolve to absolute referrer path
-        let (module_type, resolved_specifier) = resolve_module_specifier(&specifier, &referrer);
-
-        let module = Module {
-            specifier,
-            module_referrer: referrer,
-            resolved_specifier: resolved_specifier.clone(),
-            module_type,
-            script_id: None,
-            module: None,
-            result: None,
+        let module = match resolve_package_from(specifier.as_str(), base_dir.clone()) {
+            Ok(resolved_file_path) => Module {
+                specifier: specifier.clone(),
+                resolved_file_path,
+                module_type: ModuleType::Local,
+                script_id: None,
+                module: None,
+                result: None,
+            },
+            Err(err) => {
+                return Err(anyhow::format_err!(
+                    "Cannot find module '{}': {}",
+                    specifier,
+                    err.to_string()
+                ));
+            }
         };
 
-        let _resolved_specifier = resolved_specifier.clone();
+        debug!("resolved module: {:?}", module);
+
+        let resolved_file_path = module.resolved_file_path.clone();
         let module_type = module.module_type.clone();
 
         let load_fn = async move {
             // TODO: async load code, create module, then modify
 
             let code = match module_type {
-                ModuleType::Local(script_type) => {
-                    let mut code = read_code_local(&resolved_specifier).await;
-                    // transpile only applies for local code,
-                    // for remote code shall be pre-transpiled
-                    code = transpile(&code, &script_type).unwrap().code;
-                    // print only the first 255 characters
-                    debug!("code transpiled\n{}", &code[..(255.min(code.len()))]);
-
-                    // info!(
-                    //     "[module] module '{}' loaded from '{}'",
-                    //     specifier, resolved_specifier
-                    // );
+                ModuleType::Local => {
+                    let code = read_code_local(&resolved_file_path).await;
                     Ok(code)
                 }
                 ModuleType::Remote => {
-                    let code = read_code_remote(&resolved_specifier).await;
-                    // info!(
-                    //     "[module] module '{}' loaded from '{}'",
-                    //     specifier, resolved_specifier
-                    // );
+                    let code = read_code_remote(&resolved_file_path).await;
                     Ok(code)
-                }
-                ModuleType::None => {
-                    // error!(
-                    //     "[module] cannot load module '{}', file not exists.",
-                    //     specifier
-                    // );
-                    Err(anyhow::format_err!(""))
                 }
             };
 
-            (resolved_specifier, code)
+            (resolved_file_path, code)
         }
         .boxed_local();
 
-        self.modules.insert(_resolved_specifier.clone(), module);
+        let resolved_file_path = module.resolved_file_path.clone();
+
+        self.modules.insert(resolved_file_path.clone(), module);
         self.pending.push(load_fn);
 
         // activate poll
         self.waker.wake();
 
-        _resolved_specifier
+        Ok(resolved_file_path)
     }
 
     pub fn compile_module(
         &mut self,
         scope: &mut HandleScope,
-        resolved_specifier: &str,
+        resolved_file_path: &Url,
         code: &str,
-    ) {
+    ) -> Result<()> {
         let module = self
             .modules
-            .get_mut(resolved_specifier)
-            .expect(format!("cannot find module {}", resolved_specifier).as_str());
+            .get_mut(resolved_file_path)
+            .expect(format!("cannot find module '{}'", resolved_file_path.as_str()).as_str());
 
-        let resource_name = resolved_specifier.into_v8(scope).into();
+        let resource_name = resolved_file_path.as_str().into_v8(scope).into();
         let source_map_url = "<internal>".into_v8(scope).into();
 
         // create source origin
@@ -180,7 +135,7 @@ impl ModuleLoader {
         let script_id = v8module.script_id().unwrap();
 
         self.resolved_names
-            .insert(script_id, resolved_specifier.to_string());
+            .insert(script_id, resolved_file_path.clone());
 
         let global_module = Global::new(scope, v8module);
 
@@ -189,32 +144,38 @@ impl ModuleLoader {
 
         // pend dependencies' imports
         let module_requests = v8module.get_module_requests();
+        let current_dir = module.resolved_file_path.join("./").unwrap();
         for i in 0..module_requests.length() {
             let module_request: Local<ModuleRequest> =
                 module_requests.get(scope, i).unwrap().try_into().unwrap();
             let specifier = module_request.get_specifier().to_rust_string_lossy(scope);
-            // resolved_specifier there is dependency's refererr name
-            self.push_module_loading_task(resolved_specifier.to_string(), specifier);
+            self.push_module_loading_task(&current_dir, specifier)?;
         }
+
+        Ok(())
     }
 
     pub fn instantiate_module<'a>(
         scope: &mut HandleScope,
         module: Global<V8Module>,
-        resolved_specifier: &str,
+        resolved_file_path: &Url,
     ) -> bool {
         let module = Local::new(scope, module);
 
         if module.get_status() != ModuleStatus::Uninstantiated {
-            println!("???? {:?} {}", module.get_status(), resolved_specifier);
+            println!(
+                "???? {:?} {}",
+                module.get_status(),
+                resolved_file_path.as_str()
+            );
             return false;
             // unreachable!(
             //     "cannot instantiate a module '{}' which has been instantiated or errored",
-            //     resolved_specifier
+            //     resolved_file_path
             // );
         }
 
-        debug!("instantiate module '{}'", resolved_specifier);
+        debug!("instantiate module '{}'", resolved_file_path.as_str());
 
         // instantiate and run module code
         module
@@ -227,7 +188,7 @@ impl ModuleLoader {
     pub fn evaluate_module(
         scope: &mut HandleScope,
         module: Global<V8Module>,
-        resolved_specifier: &str,
+        resolved_file_path: &Url,
     ) -> Option<Global<Value>> {
         let module = Local::new(scope, module);
 
@@ -239,10 +200,13 @@ impl ModuleLoader {
             return None;
         }
 
-        debug!("evaluate module '{}'", resolved_specifier);
+        debug!("evaluate module '{}'", resolved_file_path.as_str());
 
         if let Some(result) = module.evaluate(scope) {
-            debug!("instantiate module '{}' finished", resolved_specifier);
+            debug!(
+                "instantiate module '{}' finished",
+                resolved_file_path.as_str()
+            );
 
             // TODO: error handling?
 
@@ -255,11 +219,11 @@ impl ModuleLoader {
         unreachable!("cannot evaluate a module which does not exist.");
     }
 
-    pub fn get_module(&self, resolved_specifier: &str) -> Option<Global<V8Module>> {
+    pub fn get_module(&self, resolved_file_path: &Url) -> Option<Global<V8Module>> {
         let module = self
             .modules
-            .get(resolved_specifier)
-            .expect(format!("cannot find module {}", resolved_specifier).as_str());
+            .get(resolved_file_path)
+            .expect(format!("cannot find module {}", resolved_file_path.as_str()).as_str());
 
         module.module.clone()
     }

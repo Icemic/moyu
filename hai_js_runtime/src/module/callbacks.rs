@@ -1,10 +1,10 @@
+use hai_pal::url::resolve_package_from;
 use log::error;
 use std::{cell::RefCell, rc::Rc};
 use v8::{
     CallbackScope, Context, FixedArray, Local, Module, Promise, PromiseRejectMessage, String, Value,
 };
 
-use super::utils::resolve_module_specifier;
 use crate::shared::Shared;
 
 /// load a module synchronously
@@ -27,12 +27,13 @@ pub fn module_resolve_callback<'a>(
     let specifier = specifier.to_rust_string_lossy(scope);
     let module_loader = module_loader.borrow_mut();
     let referrer_name = module_loader
-        .get_resolved_specifier_from_script_id(referrer.script_id().unwrap())
+        .get_resolved_file_path_from_script_id(referrer.script_id().unwrap())
         .unwrap();
 
-    let (_, resolved_specifier) = resolve_module_specifier(&specifier, &referrer_name);
+    let base_dir = referrer_name.join("./").unwrap();
+    let resolved_file_path = resolve_package_from(&specifier, base_dir).unwrap();
 
-    let module = module_loader.get_module(&resolved_specifier).unwrap();
+    let module = module_loader.get_module(&resolved_file_path).unwrap();
     let module = Local::new(scope, module);
 
     Some(module)

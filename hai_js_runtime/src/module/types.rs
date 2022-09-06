@@ -1,21 +1,18 @@
-use hai_module_compiler::ScriptType;
+use hai_pal::url::Url;
 use v8::{Global, Module as V8Module, Value};
 
 #[derive(Debug, Clone)]
 pub enum ModuleType {
     // path to local disk
-    Local(ScriptType),
+    Local,
     // url
     Remote,
-    // file not exists or other errors
-    None,
 }
 
 #[derive(Debug, Clone)]
 pub struct Module {
     pub specifier: std::string::String,
-    pub module_referrer: std::string::String,
-    pub resolved_specifier: std::string::String,
+    pub resolved_file_path: Url,
     pub module_type: ModuleType,
     pub script_id: Option<i32>,
     pub module: Option<Global<V8Module>>,
