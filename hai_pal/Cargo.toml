@@ -6,6 +6,7 @@ version = "0.1.0"
 [dependencies]
 anyhow = "1.0"
 log = "0.4"
+reqwest = {version = "0.11", features = ["rustls-tls", "gzip", "deflate", "stream", "brotli"]}
 url = "2.2"
 
 # deps for desktop platforms
@@ -13,6 +14,7 @@ url = "2.2"
 dotenv = "0.15.0"
 env_logger = "0.9"
 node-resolve = "2.2"
+tokio = {version = "1", features = ["full"]}
 
 # deps for web
 [target.'cfg(target_arch = "wasm32")'.dependencies]

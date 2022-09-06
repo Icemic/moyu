@@ -980,7 +980,6 @@ dependencies = [
  "futures",
  "hai_pal",
  "log",
- "reqwest",
  "tokio",
  "v8",
 ]
@@ -1006,6 +1005,8 @@ dependencies = [
  "env_logger",
  "log",
  "node-resolve",
+ "reqwest",
+ "tokio",
  "url",
 ]
 
