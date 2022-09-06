@@ -1,10 +1,10 @@
 use anyhow::Result;
 use futures::{stream::FuturesUnordered, task::AtomicWaker, Future, FutureExt, StreamExt};
+use hai_pal::env::entry_dir;
 use image::GenericImageView;
 use log::{debug, error};
 use std::{
     collections::HashMap,
-    env,
     pin::Pin,
     sync::{Arc, Mutex, RwLock, Weak},
     task::{Context, Poll},
@@ -17,7 +17,6 @@ use crate::nodes::{Texture, TextureStatus};
 pub struct ResourceManager {
     device: Arc<Mutex<Device>>,
     queue: Arc<Mutex<Queue>>,
-    entry_dir: String,
     texture_map: HashMap<String, Weak<RwLock<Texture>>>,
     tasks: FuturesUnordered<Pin<Box<dyn Future<Output = Result<()>> + Send>>>,
     waker: AtomicWaker,
@@ -25,12 +24,9 @@ pub struct ResourceManager {
 
 impl ResourceManager {
     pub fn new(device: Arc<Mutex<Device>>, queue: Arc<Mutex<Queue>>) -> Self {
-        let entry_dir = env::var("HAI_ENTRY")
-            .unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
         Self {
             device,
             queue,
-            entry_dir,
             texture_map: Default::default(),
             tasks: Default::default(),
             waker: Default::default(),
@@ -52,7 +48,7 @@ impl ResourceManager {
     /// add a task to load a new texture.
     /// it does not check whether a same asset has been loaded.
     pub fn add_task(&mut self, asset_relative_path: String) -> Arc<RwLock<Texture>> {
-        let asset_full_path = format!("{}assets/{}", self.entry_dir, asset_relative_path);
+        let asset_full_path = entry_dir().join("assets").join(&asset_relative_path);
         debug!("texture will load from {}", asset_relative_path);
 
         let texture = Arc::new(RwLock::new(Texture::new()));
