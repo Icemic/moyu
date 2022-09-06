@@ -155,6 +155,7 @@ impl JSRuntime {
                         resolved_file_path.to_string()
                     );
                     let scope = &mut self.get_handle_scope();
+                    // FIXME: catch unwind panic from tokio runtime
                     module_loader.compile_module(scope, &resolved_file_path, &code).unwrap();
                 } else {
                     error!(

@@ -129,7 +129,8 @@ impl ModuleLoader {
         let source = Source::new(code, Some(&origin));
 
         // compile module
-        let v8module = script_compiler::compile_module(scope, source).unwrap();
+        let v8module = script_compiler::compile_module(scope, source)
+            .ok_or(anyhow::format_err!("Error on compiling scripts."))?;
 
         // save to state
         let script_id = v8module.script_id().unwrap();
