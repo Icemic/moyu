@@ -147,8 +147,12 @@ impl ResourceManager {
             debug!("texture '{}' loaded", asset_relative_path);
 
             Ok(())
-        }
-        .boxed_local();
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let task_fn = task_fn.boxed();
+        #[cfg(target_arch = "wasm32")]
+        let task_fn = task_fn.boxed_local();
 
         self.tasks.push(task_fn);
 

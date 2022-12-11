@@ -247,17 +247,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-run-wasm"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "504f8305a43320764724b4faddba9acc3ac94750049e8265ae3f6c338d69fdaa"
-dependencies = [
- "devserver_lib",
- "pico-args",
- "wasm-bindgen-cli-support",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -953,8 +942,13 @@ dependencies = [
  "hai_pal",
  "image",
  "log",
+ "once_cell",
  "pollster",
+ "serde",
+ "serde-wasm-bindgen",
  "tokio",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "wgpu",
  "winit",
@@ -1950,7 +1944,9 @@ dependencies = [
 name = "run-wasm"
 version = "0.1.0"
 dependencies = [
- "cargo-run-wasm",
+ "devserver_lib",
+ "pico-args",
+ "wasm-bindgen-cli-support",
 ]
 
 [[package]]
@@ -2085,6 +2081,20 @@ name = "serde"
 version = "1.0.149"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "256b9932320c590e707b94576e3cc1f7c9024d0ee6612dfbcf1cb106cbe8e055"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde-wasm-bindgen"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3b4c031cd0d9014307d82b8abf653c0290fbdaeb4c02d00c63cf52f728628bf"
+dependencies = [
+ "js-sys",
+ "serde",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "serde_derive"
