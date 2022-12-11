@@ -18,7 +18,10 @@ pub struct ResourceManager {
     device: Arc<Mutex<Device>>,
     queue: Arc<Mutex<Queue>>,
     texture_map: HashMap<String, Weak<RwLock<Texture>>>,
+    #[cfg(not(target_arch = "wasm32"))]
     tasks: FuturesUnordered<Pin<Box<dyn Future<Output = Result<()>> + Send>>>,
+    #[cfg(target_arch = "wasm32")]
+    tasks: FuturesUnordered<Pin<Box<dyn Future<Output = Result<()>>>>>,
     waker: AtomicWaker,
 }
 
@@ -145,7 +148,7 @@ impl ResourceManager {
 
             Ok(())
         }
-        .boxed();
+        .boxed_local();
 
         self.tasks.push(task_fn);
 

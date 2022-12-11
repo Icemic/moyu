@@ -1,6 +1,7 @@
 mod node;
 mod system;
 
+#[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::{prelude::*, utils::IntoV8, *};
 use log::debug;
 

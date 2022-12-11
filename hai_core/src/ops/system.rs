@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::{prelude::*, *};
 use log::warn;
 use std::{cell::RefCell, rc::Rc};
