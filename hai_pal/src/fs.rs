@@ -1,4 +1,5 @@
 use anyhow::Result;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::fs;
 use url::Url;
 
