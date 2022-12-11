@@ -2,8 +2,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 declare const hai: any;
 
+if (hai && typeof hai.pushCommand === 'undefined') {
+  hai.pushCommand = function pushCommand(name: string, args: any[]) {
+    return hai[name](...args);
+  };
+}
+
 export function loadPreset(name: string) {
   hai.pushCommand('load_preset', [name]);
+}
+
+export function loadResources() {
+  hai.pushCommand('load_resources', []);
 }
 
 export function resizeWindow(logicalWidth: number, logicalHeight: number, factor?: number) {
@@ -16,9 +26,12 @@ export function quit() {
 
 export function createInstance(nodeType: 'node' | 'sprite', props: Record<string, any>) {
   let node_id = 0;
-  hai.pushCommand('create_instance', [nodeType, props], (id: number) => {
+  const ret = hai.pushCommand('create_instance', [nodeType, props], (id: number) => {
     node_id = id;
   });
+  if (ret) {
+    return ret;
+  }
   return node_id;
 }
 
@@ -49,10 +62,14 @@ export function moveTo(nodeId: number, x: number, y: number) {
 export function getTranslate(nodeId: number) {
   let x = 0;
   let y = 0;
-  hai.pushCommand('get_translate', [nodeId], (_x: number, _y: number) => {
+  const ret = hai.pushCommand('get_translate', [nodeId], (_x: number, _y: number) => {
     x = _x;
     y = _y;
   });
+
+  if (ret) {
+    return { x: ret[0], y: ret[1] };
+  }
 
   return { x, y };
 }

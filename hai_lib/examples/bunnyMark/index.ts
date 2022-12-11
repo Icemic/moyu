@@ -34,6 +34,7 @@ const loop = () => {
 
 setInterval(() => {
   bunnyMark.addBunny(10);
+  hai.loadResources();
 }, 800);
 
 loop();
