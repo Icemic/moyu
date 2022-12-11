@@ -1,3 +1,5 @@
+mod core;
+
 fn main() {
-    cargo_run_wasm::run_wasm();
+    core::run_wasm();
 }
