@@ -208,7 +208,7 @@ impl JSRuntime {
                     callback.call(scope, global.into(), &args);
                 }
 
-                cx.waker().wake_by_ref();
+                cx.waker().clone().wake();
                 Poll::Pending
             }
             Poll::Pending => Poll::Pending,
@@ -229,11 +229,20 @@ impl JSRuntime {
     where
         T: Fn(&mut TaskContext<'_>) -> Poll<()>,
     {
-        poll_fn(|cx| {
-            self.poll_tick(cx);
-            external_poll_fn(cx);
-            Poll::Pending as Poll<()>
-        })
-        .await;
+        loop {
+            poll_fn(|cx| {
+                let tick_result = self.poll_tick(cx);
+                let external_poll_result = external_poll_fn(cx);
+
+                if tick_result.is_ready() && external_poll_result.is_ready() {
+                    Poll::Ready(())
+                } else {
+                    Poll::Pending
+                }
+            })
+            .await;
+
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
     }
 }
