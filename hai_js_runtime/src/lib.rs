@@ -242,7 +242,7 @@ impl JSRuntime {
             })
             .await;
 
-            std::thread::sleep(std::time::Duration::from_millis(1));
+            spin_sleep::sleep(std::time::Duration::from_millis(4));
         }
     }
 }

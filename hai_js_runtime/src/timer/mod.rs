@@ -51,7 +51,7 @@ impl TimerScheduler {
         let duration = Duration::from_millis(duration_millis);
 
         let tick_fn = async move {
-            sleep(duration).await;
+            spin_sleep::sleep(duration);
             handler_id
         }
         .boxed_local();
