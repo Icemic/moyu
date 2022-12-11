@@ -1,6 +1,5 @@
+use futures::{stream::FuturesOrdered, task::AtomicWaker, Future, FutureExt};
 use std::{collections::HashMap, pin::Pin};
-
-use futures::{stream::FuturesUnordered, task::AtomicWaker, Future, FutureExt};
 use tokio::time::*;
 use v8::{Function, Global};
 
@@ -15,7 +14,7 @@ pub struct TimerScheduler {
     handler_id: HandlerId,
     callbacks: HashMap<HandlerId, Global<Function>>,
     timer_info: HashMap<HandlerId, (TimerType, u64)>,
-    pub pending: FuturesUnordered<Pin<Box<dyn Future<Output = HandlerId>>>>,
+    pub pending: FuturesOrdered<Pin<Box<dyn Future<Output = HandlerId>>>>,
     pub waker: AtomicWaker,
 }
 
