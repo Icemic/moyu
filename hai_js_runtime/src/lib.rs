@@ -20,7 +20,6 @@ use std::{
     sync::{Arc, Mutex},
     task::{Context as TaskContext, Poll},
 };
-use tokio::select;
 pub use v8;
 use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, Object, OwnedIsolate, Value};
 
@@ -156,7 +155,9 @@ impl JSRuntime {
                     );
                     let scope = &mut self.get_handle_scope();
                     // FIXME: catch unwind panic from tokio runtime
-                    module_loader.compile_module(scope, &resolved_file_path, &code).unwrap();
+                    module_loader
+                        .compile_module(scope, &resolved_file_path, &code)
+                        .unwrap();
                 } else {
                     error!(
                         "cannot load module '{}', file '{}' not exists.",
@@ -228,13 +229,11 @@ impl JSRuntime {
     where
         T: Fn(&mut TaskContext<'_>) -> Poll<()>,
     {
-        loop {
-            tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
-
-            select! {
-                _ = poll_fn(|cx| self.poll_tick(cx)) => {},
-                _ = poll_fn(|cx| external_poll_fn(cx)) => {},
-            };
-        }
+        poll_fn(|cx| {
+            self.poll_tick(cx);
+            external_poll_fn(cx);
+            Poll::Pending as Poll<()>
+        })
+        .await;
     }
 }
