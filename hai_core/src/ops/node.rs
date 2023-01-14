@@ -11,6 +11,7 @@ use std::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
+#[cfg(target_arch = "wasm32")]
 use crate::web::get_shared_state;
 use crate::{
     nodes::{Container, Sprite},
@@ -85,7 +86,7 @@ pub fn create_instance_inner(
 
     let label = label.unwrap_or_default();
 
-    let mut node_id = 0;
+    let node_id;
     match node_type.as_str() {
         "node" => {
             let n = Container::new(label, Default::default(), Default::default());

@@ -14,7 +14,10 @@ pub fn setup() {
 }
 
 pub fn entry_dir() -> Url {
+    #[cfg(not(target_arch = "wasm32"))]
     let entry_dir =
         env::var("HAI_ENTRY").unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
+    #[cfg(target_arch = "wasm32")]
+    let entry_dir = "http://localhost:3020/examples/bunnyMark/index.ts".to_string();
     Url::parse(&entry_dir).unwrap()
 }

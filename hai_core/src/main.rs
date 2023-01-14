@@ -9,6 +9,7 @@ mod state;
 mod traits;
 mod types;
 mod user_event;
+#[cfg(target_arch = "wasm32")]
 mod web;
 
 use cgmath::num_traits::ToPrimitive;
@@ -30,6 +31,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 use user_event::UserEvent;
+#[cfg(target_arch = "wasm32")]
 use web::set_shared_state;
 use winit::{
     dpi::{LogicalSize, Size},
