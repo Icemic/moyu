@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
+#[cfg(target_arch = "wasm32")]
 use crate::web::get_shared_state;
 use crate::{presets::add_preset_default, state::State, user_event::UserEvent};
 
@@ -50,8 +51,6 @@ pub fn resize_window(scope: &mut HandleScope, args: Local<Array>, _: Option<Loca
     let state = get_shared_state!(scope, State);
 
     let (width, height, factor) = {
-        let state = state.lock().unwrap();
-
         let width = get_from_v8_array!(scope, args, 0);
         let height = get_from_v8_array!(scope, args, 1);
         let factor = get_from_v8_array!(scope, args, 2);

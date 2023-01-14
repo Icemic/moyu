@@ -5,5 +5,6 @@ pub fn setup() {
 
 #[cfg(target_arch = "wasm32")]
 pub fn setup() {
-    console_error_panic_hook::set_once();
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+    // console_error_panic_hook::set_once();
 }
