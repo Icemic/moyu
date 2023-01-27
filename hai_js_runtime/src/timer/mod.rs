@@ -1,6 +1,6 @@
-use futures::{stream::FuturesUnordered, task::AtomicWaker, Future, FutureExt};
-use std::{collections::HashMap, pin::Pin};
-use tokio::time::*;
+use futures::{stream::FuturesUnordered, task::AtomicWaker};
+use std::collections::HashMap;
+use tokio::{task::JoinHandle, time::*};
 use v8::{Function, Global};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -14,7 +14,7 @@ pub struct TimerScheduler {
     handler_id: HandlerId,
     callbacks: HashMap<HandlerId, Global<Function>>,
     timer_info: HashMap<HandlerId, (TimerType, u64)>,
-    pub pending: FuturesUnordered<Pin<Box<dyn Future<Output = HandlerId>>>>,
+    pub pending: FuturesUnordered<JoinHandle<HandlerId>>,
     pub waker: AtomicWaker,
 }
 
@@ -53,10 +53,9 @@ impl TimerScheduler {
         let tick_fn = async move {
             spin_sleep::sleep(duration);
             handler_id
-        }
-        .boxed_local();
+        };
 
-        self.pending.push(tick_fn);
+        self.pending.push(tokio::spawn(tick_fn));
         self.waker.wake();
 
         handler_id
@@ -71,10 +70,9 @@ impl TimerScheduler {
             let tick_fn = async move {
                 sleep(Duration::from_millis(duration_millis)).await;
                 handler_id
-            }
-            .boxed_local();
+            };
 
-            self.pending.push(tick_fn);
+            self.pending.push(tokio::spawn(tick_fn));
             self.waker.wake();
         }
     }

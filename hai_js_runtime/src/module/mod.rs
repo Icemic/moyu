@@ -5,12 +5,11 @@ use anyhow::Result;
 pub use callbacks::*;
 use futures::stream::FuturesUnordered;
 use futures::task::AtomicWaker;
-use futures::{Future, FutureExt};
 use hai_pal::fs;
 use hai_pal::url::{resolve_package_from, Url};
 use log::debug;
 use std::collections::HashMap;
-use std::pin::Pin;
+use tokio::task::JoinHandle;
 pub use types::*;
 use v8::{
     script_compiler::{self, Source},
@@ -24,9 +23,8 @@ use crate::utils::IntoV8;
 pub struct ModuleLoader {
     pub resolved_names: HashMap<i32, Url>,
     pub modules: HashMap<Url, Module>,
-    pub pending: FuturesUnordered<
-        Pin<Box<dyn Future<Output = (Url, Result<std::string::String, anyhow::Error>)>>>,
-    >,
+    pub pending: FuturesUnordered<JoinHandle<(Url, Result<String>)>>,
+
     // pub pending_modules: Vec<ModulePending>,
     pub waker: AtomicWaker,
 }
@@ -84,13 +82,12 @@ impl ModuleLoader {
             };
 
             (resolved_file_path, code)
-        }
-        .boxed_local();
+        };
 
         let resolved_file_path = module.resolved_file_path.clone();
 
         self.modules.insert(resolved_file_path.clone(), module);
-        self.pending.push(load_fn);
+        self.pending.push(tokio::spawn(load_fn));
 
         // activate poll
         self.waker.wake();

@@ -145,7 +145,11 @@ impl JSRuntime {
 
         match module_loader.pending.poll_next_unpin(cx) {
             Poll::Ready(None) => return Poll::Ready(()),
-            Poll::Ready(Some((resolved_file_path, code))) => {
+            Poll::Ready(Some(Err(err))) => {
+                error!("unexpected error: {}.", err.to_string());
+                return Poll::Ready(());
+            }
+            Poll::Ready(Some(Ok((resolved_file_path, code)))) => {
                 let module = module_loader.modules.get(&resolved_file_path).unwrap();
                 if let Ok(code) = code {
                     info!(
@@ -190,7 +194,11 @@ impl JSRuntime {
 
         match timer.pending.poll_next_unpin(cx) {
             Poll::Ready(None) => return Poll::Ready(()),
-            Poll::Ready(Some(handler_id)) => {
+            Poll::Ready(Some(Err(err))) => {
+                error!("unexpected error: {}.", err.to_string());
+                return Poll::Ready(());
+            }
+            Poll::Ready(Some(Ok(handler_id))) => {
                 let callback = timer.consume_callback(handler_id);
 
                 // timer should be dropped before callback was called,

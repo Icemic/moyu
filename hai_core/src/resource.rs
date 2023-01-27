@@ -1,15 +1,15 @@
 use anyhow::Result;
-use futures::{stream::FuturesUnordered, task::AtomicWaker, Future, FutureExt, StreamExt};
+use futures::{stream::FuturesUnordered, task::AtomicWaker, StreamExt};
 use hai_pal::env::entry_dir;
 use hai_pal::fs;
 use image::GenericImageView;
 use log::{debug, error};
 use std::{
     collections::HashMap,
-    pin::Pin,
     sync::{Arc, Mutex, RwLock, Weak},
     task::{Context, Poll},
 };
+use tokio::task::JoinHandle;
 use wgpu::{Device, Queue};
 
 use crate::nodes::{Texture, TextureStatus};
@@ -18,7 +18,7 @@ pub struct ResourceManager {
     device: Arc<Mutex<Device>>,
     queue: Arc<Mutex<Queue>>,
     texture_map: HashMap<String, Weak<RwLock<Texture>>>,
-    tasks: FuturesUnordered<Pin<Box<dyn Future<Output = Result<()>> + Send>>>,
+    tasks: FuturesUnordered<JoinHandle<Result<()>>>,
     waker: AtomicWaker,
 }
 
@@ -76,12 +76,10 @@ impl ResourceManager {
 
             let img = image::load_from_memory(&bytes)?;
 
-            // TODO: map various color type to wgpu::TextureFormat
-            let rgba = img
-                .as_rgba8()
-                .expect("failed to read image data, this image may not 32bit rgba8 format.");
-
             let dimensions = img.dimensions();
+
+            // TODO: map various color type to wgpu::TextureFormat
+            let rgba = img.into_rgba8();
 
             {
                 let mut texture = texture.write().unwrap();
@@ -115,7 +113,7 @@ impl ResourceManager {
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                 },
-                rgba,
+                &rgba,
                 wgpu::ImageDataLayout {
                     offset: 0,
                     bytes_per_row: std::num::NonZeroU32::new(4 * dimensions.0),
@@ -144,10 +142,9 @@ impl ResourceManager {
             debug!("texture '{}' loaded", asset_relative_path);
 
             Ok(())
-        }
-        .boxed();
+        };
 
-        self.tasks.push(task_fn);
+        self.tasks.push(tokio::spawn(task_fn));
 
         self.waker.wake();
 
@@ -158,6 +155,10 @@ impl ResourceManager {
         self.waker.register(cx.waker());
         match self.tasks.poll_next_unpin(cx) {
             Poll::Ready(Some(Err(err))) => {
+                error!("{}", err.to_string());
+                Poll::Ready(())
+            }
+            Poll::Ready(Some(Ok(Err(err)))) => {
                 error!("{}", err.to_string());
                 Poll::Ready(())
             }
