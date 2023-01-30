@@ -1,24 +1,9 @@
-import React from 'react';
 import Reconciler from 'react-reconciler';
 import { HostConfig } from 'react-reconciler';
-// import { performance } from 'perf_hooks';
+import { DefaultEventPriority } from 'react-reconciler/constants';
 import { Node } from './node';
 import { ReactElement } from 'react';
-
-type DetailedHaiProps<E extends HaiNodeLikeAttributes> = E;
-
-interface HaiNodeLikeAttributes {
-  label?: string;
-}
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      node: DetailedHaiProps<HaiNodeLikeAttributes>;
-      sprite: DetailedHaiProps<HaiNodeLikeAttributes>;
-    }
-  }
-}
+import { DetailedHaiProps, HaiNodeLikeAttributes } from './declaration';
 
 type Type = 'sprite' | 'node';
 type Props = DetailedHaiProps<HaiNodeLikeAttributes>;
@@ -97,7 +82,6 @@ const hostConfig: HostConfig<
     //   return null;
     // }
     // console.log('update ', type);
-
     if (oldProps.label === newProps.label) {
       return null;
     }
@@ -139,17 +123,11 @@ const hostConfig: HostConfig<
     console.log('preparePortalMount');
   },
 
-  now: () => {
-    console.log('performance.now');
-    return Date.now();
-  },
-
   scheduleTimeout: setTimeout,
   cancelTimeout: clearTimeout,
   noTimeout: -1,
 
   // optional
-
   appendChild(parent, child) {
     console.log('appendChild', parent, child);
     parent.addChild(child);
@@ -203,30 +181,59 @@ const hostConfig: HostConfig<
     console.error('clearContainer not implement');
     // container.children.splice(0);
   },
+  getCurrentEventPriority: function (): number {
+    return DefaultEventPriority;
+  },
+  getInstanceFromNode(node: any): Reconciler.Fiber | null | undefined {
+    throw new Error('Function not implemented.');
+  },
+  beforeActiveInstanceBlur: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  afterActiveInstanceBlur: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  prepareScopeUpdate: function (scopeInstance: any, instance: any): void {
+    throw new Error('Function not implemented.');
+  },
+  getInstanceFromScope: function (scopeInstance: any): Node | null {
+    throw new Error('Function not implemented.');
+  },
+  detachDeletedInstance: function (node: Node): void {
+    throw new Error('Function not implemented.');
+  },
 };
 
-try {
-  const HaiRenderer = Reconciler(hostConfig);
+export const HaiRenderer = Reconciler(hostConfig);
 
-  const HaiRendererAPI = {
-    render: (reactElement: ReactElement, rootElement: Node, callback?: (() => void) | null) => {
-      // console.log(arguments);
-      // Create a root Container if it doesnt exist
-      // if (!domElement._rootContainer) {
-      //   domElement._rootContainer = HaiRenderer.createContainer(rootElement, false);
-      // }
+export interface RootOptions {
+  /**
+   * Prefix for `useId`.
+   */
+  identifierPrefix?: string;
+  onRecoverableError?: (error: unknown) => void;
+}
 
+export function createRoot(options?: RootOptions) {
+  const rootNode = Node.rootNode();
+  const rootElement = HaiRenderer.createContainer(
+    rootNode,
+    0,
+    null,
+    false,
+    false,
+    options?.identifierPrefix ?? 'hai',
+    options?.onRecoverableError ??
+      ((err) => {
+        console.error('unrecoverable error: ', err);
+      }),
+    null
+  );
+
+  return {
+    render: (reactElement: ReactElement, callback?: (() => void) | null) => {
       // update the root Container
       return HaiRenderer.updateContainer(reactElement, rootElement, null, callback);
     },
   };
-
-  const rootNode = Node.rootNode();
-  const rootElement = HaiRenderer.createContainer(rootNode, 1, false, null);
-
-  HaiRendererAPI.render(<sprite label="rabbit" src="rabbitv3_ash.png" />, rootElement);
-} catch (e) {
-  console.error('js catch: ', e);
 }
-
-console.log('render called.');

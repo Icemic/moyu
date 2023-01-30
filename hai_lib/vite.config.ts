@@ -5,7 +5,11 @@ import react from '@vitejs/plugin-react';
  * Build configuration for the application
  */
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      fastRefresh: false,
+    }),
+  ],
 
   envPrefix: 'EXPORT_',
 
@@ -29,5 +33,6 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3020,
+    hmr: false,
   },
 });
