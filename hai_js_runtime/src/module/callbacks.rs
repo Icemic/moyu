@@ -2,7 +2,8 @@ use hai_pal::url::resolve_package_from;
 use log::error;
 use std::{cell::RefCell, rc::Rc};
 use v8::{
-    CallbackScope, Context, FixedArray, Local, Module, Promise, PromiseRejectMessage, String, Value,
+    CallbackScope, Context, Exception, FixedArray, Local, Module, Promise, PromiseRejectMessage,
+    String, Value,
 };
 
 use crate::shared::Shared;
@@ -87,8 +88,30 @@ pub extern "C" fn dynamic_import_callback(
 
 pub extern "C" fn promise_reject_callback(msg: PromiseRejectMessage) {
     // @see https://github.com/denoland/deno/blob/307d84cfa5c1489ddfc8477f6561676356399e8c/core/bindings.rs#L409
-    // let scope = &mut unsafe { v8::CallbackScope::new(&msg) };
+    let scope = &mut unsafe { v8::CallbackScope::new(&msg) };
 
-    let event = msg.get_event();
-    error!("Uncaught promise reject event: {:?}", event);
+    if let Some(reason) = msg.get_value() {
+        if reason.is_object() {
+            use crate::utils::IntoV8;
+
+            let reason = reason.to_object(scope).unwrap();
+
+            // let message = get_from_v8_object!(scope, reason, "message");
+            let stack = get_from_v8_object!(scope, reason, "stack");
+            // let name = get_from_v8_object!(scope, reason, "name");
+
+            // let message = try_from_value_or_throw_exception!(scope, String, message);
+            let stack = try_from_value_or_throw_exception!(scope, String, stack);
+            // let name = try_from_value_or_throw_exception!(scope, String, name);
+
+            // let message = message.to_rust_string_lossy(scope);
+            let stack = stack.to_rust_string_lossy(scope);
+            // let name = name.to_rust_string_lossy(scope);
+
+            error!("Uncaught promise reject event:\n{}", stack);
+        }
+    } else {
+        let event = msg.get_event();
+        error!("Uncaught promise reject event: {:?}", event);
+    }
 }
