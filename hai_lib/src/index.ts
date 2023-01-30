@@ -1,6 +1,7 @@
 import Reconciler from 'react-reconciler';
 import { HostConfig } from 'react-reconciler';
 import { DefaultEventPriority } from 'react-reconciler/constants';
+import { omitBy } from 'lodash-es';
 import { Node } from './node';
 import { ReactElement } from 'react';
 import { DetailedHaiProps, HaiNodeLikeAttributes } from './declaration';
@@ -43,7 +44,7 @@ const hostConfig: HostConfig<
    * @required
    */
   createInstance(type, props, _root, _hostContext, _internalInstanceHandle) {
-    console.log('createInstance', type);
+    console.debug('createInstance', type);
     const node = Node.create(props.label, type, props);
     return node;
   },
@@ -53,7 +54,7 @@ const hostConfig: HostConfig<
    * @required
    */
   createTextInstance(_text, _rootContainerInstance, _hostContext, _internalInstanceHandle) {
-    console.log('createTextInstance');
+    console.debug('createTextInstance');
     // return SpanNode({}, text) as SkNode;
     throw new Error('Text nodes are not supported yet');
   },
@@ -62,7 +63,7 @@ const hostConfig: HostConfig<
    * @required
    */
   appendInitialChild(parentInstance, child) {
-    console.log('appendInitialChild');
+    console.debug('appendInitialChild');
     parentInstance.addChild(child);
   },
 
@@ -71,22 +72,25 @@ const hostConfig: HostConfig<
    * @required
    */
   finalizeInitialChildren(parentInstance, _type, _props, _rootContainerInstance, _hostContext) {
-    console.log('finalizeInitialChildren', parentInstance);
+    console.debug('finalizeInitialChildren', parentInstance);
     return false;
   },
 
-  prepareUpdate: (instance, type, oldProps, newProps, _rootContainerInstance, _hostContext) => {
-    console.log('prepareUpdate');
-    // const propsAreEqual = shallowEq(oldProps, newProps);
-    // if (propsAreEqual && !instance.memoizable) {
-    //   return null;
-    // }
-    // console.log('update ', type);
-    if (oldProps.label === newProps.label) {
-      return null;
+  prepareUpdate: (
+    instance,
+    type,
+    oldProps: Record<string, any>,
+    newProps: Record<string, any>,
+    _rootContainerInstance,
+    _hostContext
+  ) => {
+    const changedProps = omitBy(newProps, (value, key) => oldProps[key] === value);
+
+    if (Object.keys(changedProps).length) {
+      return changedProps;
     }
 
-    return { data: newProps };
+    return null;
   },
 
   shouldSetTextContent(_type, _props) {
@@ -94,33 +98,33 @@ const hostConfig: HostConfig<
   },
 
   getRootHostContext: (_rootContainerInstance: Node) => {
-    console.log('getRootHostContext');
+    console.debug('getRootHostContext');
     return null;
   },
 
   getChildHostContext(_parentHostContext, _type, _rootContainerInstance) {
-    console.log('getChildHostContext');
+    console.debug('getChildHostContext');
     return {};
   },
 
   getPublicInstance(node: Instance) {
-    console.log('getPublicInstance');
+    console.debug('getPublicInstance');
     return node;
   },
 
   prepareForCommit(_containerInfo) {
-    console.log('prepareForCommit');
+    console.debug('prepareForCommit');
     return null;
   },
 
   resetAfterCommit(container) {
-    console.log('resetAfterCommit');
+    console.debug('resetAfterCommit');
     // TODO: this is not necessary in continuous rendering
     // container.redraw();
   },
 
   preparePortalMount: () => {
-    console.log('preparePortalMount');
+    console.debug('preparePortalMount');
   },
 
   scheduleTimeout: setTimeout,
@@ -129,12 +133,12 @@ const hostConfig: HostConfig<
 
   // optional
   appendChild(parent, child) {
-    console.log('appendChild', parent, child);
+    console.debug('appendChild', parent, child);
     parent.addChild(child);
   },
 
   appendChildToContainer(container, child) {
-    console.log('appendChildToContainer', container, child);
+    console.debug('appendChildToContainer', container, child);
     container.addChild(child);
   },
 
@@ -155,22 +159,22 @@ const hostConfig: HostConfig<
   },
 
   finalizeContainerChildren: () => {
-    console.log('finalizeContainerChildren');
+    console.debug('finalizeContainerChildren');
   },
 
   commitMount(instance, type, props, internalInstanceHandle) {
     // if finalizeInitialChildren = true
-    console.log('commitMount');
+    console.debug('commitMount');
   },
 
   commitUpdate(instance, _updatePayload, type, prevProps, nextProps, _internalHandle) {
-    console.log('commitUpdate: ', type);
+    console.debug('commitUpdate: ', type, JSON.stringify(_updatePayload));
     // if (shallowEq(prevProps, nextProps) && allChildrenAreMemoized(instance)) {
     //   return;
     // }
     // bustBranchMemoization(instance);
     // instance.props = nextProps;
-    instance.label = nextProps.label;
+    // instance.label = nextProps.label;
   },
 
   commitTextUpdate: (_textInstance: TextInstance, _oldText: string, _newText: string) => {

@@ -4,9 +4,12 @@ export class Node {
   nodeId!: number;
   label?: string;
 
+  props: Record<string, any> = {};
+
   static create(label = '', type: 'node' | 'sprite', props: Record<string, any>) {
     const node = new Node();
     node.label = label;
+    node.props = props;
     node.nodeId = hai.createInstance(type, {
       label,
       ...props,
