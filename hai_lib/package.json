@@ -13,10 +13,12 @@
   "author": "Icemic <bingfeng.web@gmail.com>",
   "license": "Unlicense",
   "dependencies": {
+    "lodash-es": "^4.17.21",
     "react": "^18.2.0",
     "react-reconciler": "^0.29.0"
   },
   "devDependencies": {
+    "@types/lodash-es": "^4.17.6",
     "@types/node": "^18.11.18",
     "@types/react": "^18.0.27",
     "@types/react-reconciler": "^0.28.2",

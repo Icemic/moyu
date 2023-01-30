@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from '../../src';
 
 function App() {
-  return <sprite label="title" src="title.png" />;
+  const [src, setSrc] = useState('title.png');
+  useEffect(() => {
+    setTimeout(() => {
+      setSrc('button_n_02.png');
+    }, 2000);
+  }, []);
+  return <sprite label="title" src={src} />;
 }
 
 const root = createRoot();
