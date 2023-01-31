@@ -63,10 +63,11 @@ impl Renderer {
 
             walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
                 let mut _child = child.lock().unwrap();
-                _child.calculate_transform(
-                    parent.transform_to_global(),
+                _child.update_transform(
+                    parent.global_transform(),
                     logical_size,
                     scale_factor,
+                    false
                 );
 
                 drop(_child);

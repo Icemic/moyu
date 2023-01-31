@@ -3,7 +3,11 @@ use std::sync::{Arc, Mutex};
 use winit::{dpi::PhysicalSize, event::WindowEvent};
 
 use super::walk::walk_nodes_bottom_top;
-use crate::{state::State, nodes::Sprite, traits::{Focusable, NodeType}};
+use crate::{
+    nodes::Sprite,
+    state::State,
+    traits::{Focusable, NodeType},
+};
 
 pub fn input(event: &WindowEvent, state: &Arc<Mutex<State>>) -> bool {
     let state = state.lock().unwrap();
@@ -31,14 +35,12 @@ pub fn input(event: &WindowEvent, state: &Arc<Mutex<State>>) -> bool {
                         let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
                         // calculate relative coordinate
                         let parent_global_x =
-                            parent.transform_to_global().tx * logical_size.width / 2.;
+                            parent.global_transform().tx * logical_size.width / 2.;
                         let parent_global_y =
-                            parent.transform_to_global().ty * logical_size.height / 2.;
+                            parent.global_transform().ty * logical_size.height / 2.;
 
-                        let relative_logical_x =
-                            (global_logical_x - parent_global_x).round() as i32;
-                        let relative_logical_y =
-                            (global_logical_y - parent_global_y).round() as i32;
+                        let relative_logical_x = (global_logical_x - parent_global_x).round();
+                        let relative_logical_y = (global_logical_y - parent_global_y).round();
 
                         // check if pointer is over the sprite
                         let hit = sprite.contains(relative_logical_x, relative_logical_y);

@@ -297,7 +297,7 @@ pub fn move_to(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Func
     }
 
     let mut node = node.unwrap().lock().unwrap();
-    node.move_to(x.value() as i32, y.value() as i32);
+    node.move_to(x.value(), y.value());
 }
 
 pub fn get_translate(
