@@ -78,18 +78,6 @@ impl Transform {
         self.ty = y;
     }
 
-    /// set scale value
-    pub fn set_scale(&mut self, x: f64, y: f64) {
-        self.a = x;
-        self.d = y;
-    }
-
-    /// set scale value
-    pub fn set_skew(&mut self, x: f64, y: f64) {
-        self.b = x;
-        self.c = y;
-    }
-
     /// multiply with a transform
     pub fn multiply(&mut self, transform: Self) {
         let a = self.a;
