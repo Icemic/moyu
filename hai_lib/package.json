@@ -2,7 +2,7 @@
   "name": "@hai/lib",
   "version": "0.1.0",
   "description": "Base library of Hai no Engine",
-  "main": "src/index.ts",
+  "main": "src/lib.ts",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

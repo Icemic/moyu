@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { createRoot } from '../../src';
+import { createRoot } from '../..';
 
 function App() {
   const [src, setSrc] = useState('title.png');
