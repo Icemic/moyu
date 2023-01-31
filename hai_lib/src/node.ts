@@ -1,4 +1,4 @@
-import * as hai from './lib';
+import * as hai from './hai';
 
 export class Node {
   nodeId!: number;

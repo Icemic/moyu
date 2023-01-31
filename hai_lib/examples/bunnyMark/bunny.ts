@@ -1,4 +1,4 @@
-import * as hai from '../../';
+import { hai } from '../..';
 
 export class Bounds {
   left: number;

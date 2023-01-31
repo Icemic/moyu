@@ -1,5 +1,5 @@
 import Bunny, { Bounds } from './bunny';
-import * as hai from '../../';
+import { hai } from '../..';
 
 export default class BunnyMark {
   count = 0;
