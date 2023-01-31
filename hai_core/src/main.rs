@@ -9,30 +9,22 @@ mod state;
 mod traits;
 mod types;
 mod user_event;
-#[cfg(target_arch = "wasm32")]
-mod web;
 
 use cgmath::num_traits::ToPrimitive;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
-use hai_pal::{
-    env::{self, entry_dir},
-    logger, platform,
-};
-use log::{debug, error, info};
+use hai_pal::{env, logger, platform};
+use log::{error, info};
 use renderer::{create_surface, input, Renderer, SpriteRenderer};
-use state::State;
+use state::{set_shared_state, State};
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 use std::{
     process::exit,
-    str::FromStr,
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
 use user_event::UserEvent;
-#[cfg(target_arch = "wasm32")]
-use web::set_shared_state;
 use winit::{
     dpi::{LogicalSize, Size},
     event::*,
@@ -100,6 +92,8 @@ fn main() {
     // make state sharable among threads
     let state = Arc::new(Mutex::new(state));
 
+    set_shared_state(state.clone());
+
     // desktop targets only
     // spawn a v8 thread
     #[cfg(not(target_arch = "wasm32"))]
@@ -138,8 +132,8 @@ fn main() {
 
     #[cfg(target_arch = "wasm32")]
     {
-        let state = state.clone();
-        set_shared_state(state);
+        use log::debug;
+        use std::str::FromStr;
         wasm_bindgen_futures::spawn_local(async move {
             debug!("Injecting entry script.");
             let window = web_sys::window().expect("Cannot get global `window` object.");
@@ -150,7 +144,7 @@ fn main() {
                 .create_element("script")
                 .expect("Cannot create script element.");
             root_script
-                .set_attribute("src", entry_dir().as_str())
+                .set_attribute("src", env::entry_dir().as_str())
                 .unwrap();
             root_script.set_attribute("type", "module").unwrap();
 
