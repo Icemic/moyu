@@ -7,7 +7,7 @@ use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 use winit::dpi::LogicalSize;
 
 use crate::traits::{Node, NodeType, Renderable, RendererUpdatePayload, NODE_ID};
-use crate::types::{Point, PointF, Transform};
+use crate::types::{Point, Transform};
 use crate::{traits::Focusable, types::Vertex};
 
 use super::{Texture, TextureStatus};
@@ -36,10 +36,18 @@ impl Sprite {
         Sprite {
             id,
             label,
-            anchor: PointF::default(),
+            anchor: Point::default(),
+            pivot: Point::default(),
             translate: Point::default(),
+            scale: Point::one(),
+            rotation: 0.,
+            skew: Point::default(),
+
+            _update_id: 0,
+            _current_update_id: 0,
+
             transform: Transform::default(),
-            transform_to_global: Transform::default(),
+            global_transform: Transform::default(),
             children: vec![],
 
             texture,
@@ -61,12 +69,12 @@ impl Sprite {
 
         drop(texture);
 
-        let a = self.transform_to_global.a;
-        let b = self.transform_to_global.b;
-        let c = self.transform_to_global.c;
-        let d = self.transform_to_global.d;
-        let tx = self.transform_to_global.tx;
-        let ty = 1. - self.transform_to_global.ty;
+        let a = self.global_transform.a;
+        let b = self.global_transform.b;
+        let c = self.global_transform.c;
+        let d = self.global_transform.d;
+        let tx = self.global_transform.tx;
+        let ty = 1. - self.global_transform.ty;
 
         let w1 = -self.anchor.x * width;
         let w0 = w1 + width;
@@ -198,13 +206,15 @@ impl Renderable for Sprite {
 }
 
 impl Focusable for Sprite {
-    fn contains(&self, x: i32, y: i32) -> bool {
+    fn contains(&self, x: f64, y: f64) -> bool {
         let texture = self.texture.read().unwrap();
 
-        if x > self.translate.x
-            && x < texture.width as i32 + self.translate.x
-            && y > self.translate.y
-            && y < texture.height as i32 + self.translate.y
+        let translate = self.translate();
+
+        if x > translate.x
+            && x < texture.width as f64 + translate.x
+            && y > translate.y
+            && y < texture.height as f64 + translate.y
         {
             return true;
         }

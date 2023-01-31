@@ -5,7 +5,7 @@ use std::{
 };
 use winit::dpi::LogicalSize;
 
-use crate::types::{Point, PointF, Transform};
+use crate::types::{Point, Transform};
 
 use super::Renderable;
 
@@ -15,17 +15,23 @@ pub trait Node: NodeType + Send + Debug {
     fn id(&self) -> &u32;
     fn label(&self) -> &String;
 
-    fn anchor(&self) -> &PointF;
+    fn anchor(&self) -> &Point;
+    fn pivot(&self) -> &Point;
     fn translate(&self) -> &Point;
-    fn transform(&self) -> &Transform;
-    fn transform_to_global(&self) -> &Transform;
-    fn children(&self) -> &Vec<Arc<Mutex<dyn Node>>>;
+    fn scale(&self) -> &Point;
+    fn rotation(&self) -> &f64;
+    fn skew(&self) -> &Point;
 
-    // fn anchor_mut(&mut self) -> &mut PointF;
-    // fn translate_mut(&mut self) -> &mut Point;
-    // fn transform_mut(&mut self) -> &mut Transform;
-    // fn transform_to_global_mut(&mut self) -> &mut Transform;
-    // fn children_mut(&mut self) -> &mut Vec<Arc<Mutex<dyn Node>>>;
+    fn set_anchor(&mut self, x: f64, y: f64);
+    fn set_pivot(&mut self, x: f64, y: f64);
+    fn set_translate(&mut self, x: f64, y: f64);
+    fn set_scale(&mut self, x: f64, y: f64);
+    fn set_rotation(&mut self, radian: f64);
+    fn set_skew(&mut self, x: f64, y: f64);
+
+    fn transform(&self) -> &Transform;
+    fn global_transform(&self) -> &Transform;
+    fn children(&self) -> &Vec<Arc<Mutex<dyn Node>>>;
 
     fn node_type(&self) -> &'static str;
     fn as_any(&self) -> &dyn Any;
@@ -53,13 +59,14 @@ pub trait Node: NodeType + Send + Debug {
 
     fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node>>>;
 
-    fn move_to(&mut self, x: i32, y: i32);
+    fn move_to(&mut self, x: f64, y: f64);
 
-    fn calculate_transform(
+    fn update_transform(
         &mut self,
         parent_transform: &Transform,
         logical_size: LogicalSize<f64>,
         scale_factor: f64,
+        force: bool,
     );
 }
 

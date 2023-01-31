@@ -49,13 +49,26 @@ fn get_node_fields() -> Vec<Field> {
         // id
         quote! { pub id: u32},
         // anchor point
-        quote! { pub anchor: PointF},
+        quote! { anchor: Point},
+        // pivot point
+        quote! { pivot: Point},
         // translate relative to parent
-        quote! { pub translate: Point},
+        quote! { translate: Point},
+        // scale relative to parent
+        quote! { scale: Point},
+        // rotation relative to parent
+        quote! { rotation: f64},
+        // skew relative to parent
+        quote! { skew: Point},
+
+        // for update transform dirty check
+        quote! { _update_id: u32},
+        quote! { _current_update_id: u32},
+
         // transform matrix relative to parent
         quote! { pub transform: Transform},
         // transform matrix relative to global
-        quote! { pub transform_to_global: Transform },
+        quote! { pub global_transform: Transform },
         // children
         quote! { pub children: Vec<Arc<Mutex<dyn Node>>> },
     ];
@@ -98,37 +111,64 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
             &self.label
         }
 
-        fn anchor(&self) -> &PointF {
+        fn anchor(&self) -> &Point {
             &self.anchor
+        }
+        fn pivot(&self) -> &Point {
+            &self.pivot
         }
         fn translate(&self) -> &Point {
             &self.translate
         }
+        fn scale(&self) -> &Point {
+            &self.scale
+        }
+        fn rotation(&self) -> &f64 {
+            &self.rotation
+        }
+        fn skew(&self) -> &Point {
+            &self.skew
+        }
+
+        fn set_anchor(&mut self, x: f64, y: f64) {
+            self.anchor.x = x;
+            self.anchor.y = y;
+            self._update_id += 1;
+        }
+        fn set_pivot(&mut self, x: f64, y: f64) {
+            self.pivot.x = x;
+            self.pivot.y = y;
+            self._update_id += 1;
+        }
+        fn set_translate(&mut self, x: f64, y: f64) {
+            self.translate.x = x;
+            self.translate.y = y;
+            self._update_id += 1;
+        }
+        fn set_scale(&mut self, x: f64, y: f64) {
+            self.scale.x = x;
+            self.scale.y = y;
+            self._update_id += 1;
+        }
+        fn set_rotation(&mut self, radian: f64) {
+            self.rotation = radian;
+            self._update_id += 1;
+        }
+        fn set_skew(&mut self, x: f64, y: f64) {
+            self.skew.x = x;
+            self.skew.y = y;
+            self._update_id += 1;
+        }
+
         fn transform(&self) -> &Transform {
             &self.transform
         }
-        fn transform_to_global(&self) -> &Transform {
-            &self.transform_to_global
+        fn global_transform(&self) -> &Transform {
+            &self.global_transform
         }
         fn children(&self) -> &Vec<Arc<Mutex<dyn Node>>> {
             &self.children
         }
-
-        // fn anchor_mut(&mut self) -> &mut PointF {
-        //     &mut self.anchor
-        // }
-        // fn translate_mut(&mut self) -> &mut Point {
-        //     &mut self.translate
-        // }
-        // fn transform_mut(&mut self) -> &mut Transform {
-        //     &mut self.transform
-        // }
-        // fn transform_to_global_mut(&mut self) -> &mut Transform {
-        //     &mut self.transform_to_global
-        // }
-        // fn children_mut(&mut self) -> &mut Vec<Arc<Mutex<dyn Node>>> {
-        //     &mut self.children
-        // }
 
         fn as_any(&self) -> &dyn Any {
             self
@@ -187,33 +227,54 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
             None
         }
 
-        fn move_to(&mut self, x: i32, y: i32) {
+        fn move_to(&mut self, x: f64, y: f64) {
             self.translate.x = x;
             self.translate.y = y;
         }
 
-        fn calculate_transform(
+        fn update_transform(
             &mut self,
             parent_transform: &Transform,
             logical_size: LogicalSize<f64>,
             scale_factor: f64,
+            force: bool,
         ) {
-            let x = self.translate.x;
-            let y = self.translate.y;
+            if force || self._update_id != self._current_update_id {
+                let x = self.translate.x;
+                let y = self.translate.y;
+                let rotation = self.rotation;
+                let scale_x = self.scale.x;
+                let scale_y = self.scale.y;
+                let skew_x = self.skew.x;
+                let skew_y = self.skew.y;
+                let pivot_x = self.pivot.x;
+                let pivot_y = self.pivot.y;
 
-            // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-            let tx = (x as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
-            let ty = (y as f64 * scale_factor) / (logical_size.height * scale_factor) * 2.;
+                let a = (rotation + skew_y).cos() * scale_x;
+                let b = (rotation + skew_y).sin() * scale_x;
+                let c = -(rotation - skew_x).sin() * scale_y;
+                let d = (rotation - skew_x).cos() * scale_y;
+                let tx = x - ((pivot_x * a) + (pivot_y * c));
+                let ty = y - ((pivot_x * b) + (pivot_y * d));
 
-            self.transform.tx = tx;
-            self.transform.ty = ty;
+                // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
+                let tx = (x as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
+                let ty = (y as f64 * scale_factor) / (logical_size.height * scale_factor) * 2.;
 
-            // TODO: rotate, scale and skew
+                self.transform.a = a;
+                self.transform.b = b;
+                self.transform.c = c;
+                self.transform.d = d;
+                self.transform.ty = ty;
+                self.transform.ty = ty;
 
-            // refresh global transform matrix
-            let mut transform_to_global = parent_transform.clone();
-            transform_to_global.multiply(self.transform);
-            self.transform_to_global = transform_to_global;
+                // refresh global transform matrix
+                let mut global_transform = parent_transform.clone();
+                global_transform.multiply(self.transform);
+                self.global_transform = global_transform;
+
+                self._current_update_id = self._update_id;
+            }
         }
     };
 
