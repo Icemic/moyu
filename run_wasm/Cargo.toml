@@ -1,7 +1,18 @@
 [package]
+authors = ["Lucas Kent <rubickent@gmail.com>", "Icemic <bingfeng.web@gmail.com>"]
+edition = "2021"
+license = "MIT"
 name = "run-wasm"
 version = "0.1.0"
-edition = "2021"
 
-[dependencies]
-cargo-run-wasm = "0.1.0"
+# This project is modified from https://github.com/rukai/cargo-run-wasm by Lucas Kent
+
+[dependencies.devserver_lib]
+default_features = false
+version = "0.4.1"
+
+[dependencies.pico-args]
+version = "0.4.2"
+
+[dependencies.wasm-bindgen-cli-support]
+version = "0.2.78"

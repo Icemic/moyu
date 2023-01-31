@@ -9,22 +9,30 @@ mod state;
 mod traits;
 mod types;
 mod user_event;
+#[cfg(target_arch = "wasm32")]
+mod web;
 
 use cgmath::num_traits::ToPrimitive;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
-use hai_pal::{env, logger, platform};
-use log::{error, info};
+use hai_pal::{
+    env::{self, entry_dir},
+    logger, platform,
+};
+use log::{debug, error, info};
 use renderer::{create_surface, input, Renderer, SpriteRenderer};
 use state::State;
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 use std::{
     process::exit,
+    str::FromStr,
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
 use user_event::UserEvent;
+#[cfg(target_arch = "wasm32")]
+use web::set_shared_state;
 use winit::{
     dpi::{LogicalSize, Size},
     event::*,
@@ -33,9 +41,19 @@ use winit::{
 };
 
 fn main() {
-    platform::setup();
     env::setup();
     logger::setup();
+    platform::setup();
+
+    // create main thread infinity loop
+    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+    // create window
+    let window = WindowBuilder::new()
+        .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
+        .with_resizable(false)
+        .with_visible(false)
+        .build(&event_loop)
+        .unwrap();
 
     // web target only
     // add a canvas element to dom as 'window'
@@ -52,22 +70,13 @@ fn main() {
             .expect("couldn't append canvas to document body");
     }
 
-    // create main thread infinity loop
-    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
-    // create window
-    let window = WindowBuilder::new()
-        .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
-        .with_resizable(false)
-        .with_visible(false)
-        .build(&event_loop)
-        .unwrap();
-
     // create wgpu surface
     #[cfg(not(target_arch = "wasm32"))]
     let (surface, device, queue, config) =
         futures::executor::block_on(create_surface(&window, &window.inner_size()));
     #[cfg(target_arch = "wasm32")]
-    let (surface, device, queue, config) = { pollster::block_on(create_surface(&window, &size)) };
+    let (surface, device, queue, config) =
+        { pollster::block_on(create_surface(&window, &window.inner_size())) };
 
     let sprite_renderer = SpriteRenderer::new(&device, &config);
 
@@ -127,10 +136,35 @@ fn main() {
         });
     }
 
+    #[cfg(target_arch = "wasm32")]
+    {
+        let state = state.clone();
+        set_shared_state(state);
+        wasm_bindgen_futures::spawn_local(async move {
+            debug!("Injecting entry script.");
+            let window = web_sys::window().expect("Cannot get global `window` object.");
+            let document = window.document().expect("No document found.");
+            let body = document.body().expect("No body found.");
+
+            let root_script = document
+                .create_element("script")
+                .expect("Cannot create script element.");
+            root_script
+                .set_attribute("src", entry_dir().as_str())
+                .unwrap();
+            root_script.set_attribute("type", "module").unwrap();
+
+            body.append_child(&root_script).unwrap();
+        });
+    }
+
     window.set_visible(true);
 
+    #[cfg(not(target_arch = "wasm32"))]
     let mut fps_requested = 0;
+    #[cfg(not(target_arch = "wasm32"))]
     let mut fps_rendered = 0;
+    #[cfg(not(target_arch = "wasm32"))]
     let mut last_fps_timestamp = 0.;
 
     let mut renderer = Renderer::new();
@@ -151,32 +185,37 @@ fn main() {
                     Err(e) => eprintln!("{:?}", e),
                 }
 
-                fps_rendered += 1;
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    fps_rendered += 1;
+                }
             }
             Event::MainEventsCleared => {
                 // RedrawRequested will only trigger once, unless we manually
                 // request it.
                 window.request_redraw();
 
-                fps_requested += 1;
-
-                let time = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs_f64();
-                let delta = time - last_fps_timestamp;
-                if delta >= 1. {
-                    window.set_title(
-                        format!(
-                            "fps: {:.1} requested, {:.1} rendered",
-                            fps_requested as f64 / delta,
-                            fps_rendered as f64 / delta
-                        )
-                        .as_str(),
-                    );
-                    last_fps_timestamp = time;
-                    fps_rendered = 0;
-                    fps_requested = 0;
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    fps_requested += 1;
+                    let time = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs_f64();
+                    let delta = time - last_fps_timestamp;
+                    if delta >= 1. {
+                        window.set_title(
+                            format!(
+                                "fps: {:.1} requested, {:.1} rendered",
+                                fps_requested as f64 / delta,
+                                fps_rendered as f64 / delta
+                            )
+                            .as_str(),
+                        );
+                        last_fps_timestamp = time;
+                        fps_rendered = 0;
+                        fps_requested = 0;
+                    }
                 }
             }
             Event::WindowEvent {

@@ -1,4 +1,4 @@
-import * as hai from '../../';
+import * as hai from '../../src/lib';
 import BunnyMark from './bunnyMark';
 
 const bunnies = [

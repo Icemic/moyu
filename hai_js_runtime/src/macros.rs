@@ -149,11 +149,11 @@ macro_rules! try_from_option_value_or_throw_exception {
 
 #[macro_export]
 macro_rules! throw_exception {
-    ($scope:ident, $string:expr) => {
+    ($scope:ident, $string:expr) => {{
         let error_message: Local<String> = $string.into_v8($scope);
         let error = Exception::error($scope, error_message);
         $scope.throw_exception(error);
-    };
+    }};
 }
 
 #[macro_export]
