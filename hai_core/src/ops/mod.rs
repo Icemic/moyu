@@ -1,11 +1,13 @@
 mod node;
 mod system;
 
+#[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::{prelude::*, utils::IntoV8, *};
 use log::debug;
 
 use self::{node::*, system::*};
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn init(handle_scope: &mut HandleScope, global: &Local<Object>) {
     bind_object! {
         to global;
@@ -16,6 +18,7 @@ pub fn init(handle_scope: &mut HandleScope, global: &Local<Object>) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 // (name: string, args: [...], callback?: (err: Error, returnValue: any) => void) => void
 fn receive_command(scope: &mut HandleScope, args: FunctionCallbackArguments, _: ReturnValue) {
     let command_name = try_from_value_or_throw_exception!(scope, String, args.get(0));

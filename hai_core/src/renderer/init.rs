@@ -44,10 +44,18 @@ pub async fn create_surface(
         .await
         .expect("Unable to find a suitable GPU adapter.");
 
+    let format = *surface
+        .get_supported_formats(&adapter)
+        .iter()
+        .find(|f| !f.describe().srgb)
+        .expect("Cannot find a proper surface format.");
+
+    info!("Surface format: {:?}", format);
+
     // define how the surface creates its underlying SurfaceTextures
     let config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        format: surface.get_supported_formats(&adapter)[0],
+        format,
         // width or height should not be 0 or it will cause crash
         width: size.width,
         height: size.height,

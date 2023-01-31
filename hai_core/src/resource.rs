@@ -18,7 +18,10 @@ pub struct ResourceManager {
     device: Arc<Mutex<Device>>,
     queue: Arc<Mutex<Queue>>,
     texture_map: HashMap<String, Weak<RwLock<Texture>>>,
+    #[cfg(not(target_arch = "wasm32"))]
     tasks: FuturesUnordered<JoinHandle<Result<()>>>,
+    #[cfg(target_arch = "wasm32")]
+    tasks: FuturesUnordered<Pin<Box<dyn Future<Output = Result<()>>>>>,
     waker: AtomicWaker,
 }
 
@@ -128,8 +131,8 @@ impl ResourceManager {
                 address_mode_v: wgpu::AddressMode::ClampToEdge,
                 address_mode_w: wgpu::AddressMode::ClampToEdge,
                 mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Nearest,
-                mipmap_filter: wgpu::FilterMode::Nearest,
+                min_filter: wgpu::FilterMode::Linear,
+                mipmap_filter: wgpu::FilterMode::Linear,
                 ..Default::default()
             });
 
@@ -144,7 +147,12 @@ impl ResourceManager {
             Ok(())
         };
 
-        self.tasks.push(tokio::spawn(task_fn));
+        #[cfg(not(target_arch = "wasm32"))]
+        let task_fn = tokio::spawn(task_fn);
+        #[cfg(target_arch = "wasm32")]
+        let task_fn = task_fn.boxed_local();
+
+        self.tasks.push(task_fn);
 
         self.waker.wake();
 
