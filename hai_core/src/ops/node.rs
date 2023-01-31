@@ -3,19 +3,13 @@ use anyhow::Result;
 use hai_js_runtime::{prelude::*, *};
 #[cfg(target_arch = "wasm32")]
 use serde::{Deserialize, Serialize};
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
-#[cfg(target_arch = "wasm32")]
-use crate::web::get_shared_state;
+use crate::state::get_shared_state;
 use crate::{
     nodes::{Container, Sprite},
-    state::State,
     types::Point,
 };
 
@@ -42,9 +36,7 @@ pub fn create_instance(
     let src = try_from_option_value_or_throw_exception!(scope, String, src)
         .and_then(|v| Some(v.to_rust_string_lossy(scope)));
 
-    let state = get_shared_state!(scope, State);
-
-    match create_instance_inner(state, node_type, label, src) {
+    match create_instance_inner(node_type, label, src) {
         Ok(node_id) => {
             // call callback function to return node id
             if callback.is_some() {
@@ -70,16 +62,15 @@ pub struct CreateInstanceProps {
 #[cfg(target_arch = "wasm32")]
 pub fn create_instance(node_type: String, props: JsValue) -> Result<u32, std::string::String> {
     let example: CreateInstanceProps = serde_wasm_bindgen::from_value(props).unwrap();
-    let state = get_shared_state();
-    create_instance_inner(state, node_type, example.label, example.src)
+    create_instance_inner(node_type, example.label, example.src)
 }
 
 pub fn create_instance_inner(
-    state: Arc<Mutex<State>>,
     node_type: std::string::String,
     label: Option<std::string::String>,
     src: Option<std::string::String>,
 ) -> Result<u32, std::string::String> {
+    let state = get_shared_state();
     let state = state.lock().unwrap();
     let node_map = state.node_map.clone();
     let mut node_map = node_map.lock().unwrap();
@@ -121,9 +112,7 @@ pub fn add_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Fu
     let node_id = try_from_value_or_throw_exception!(scope, Number, node_id);
     let child_node_id = try_from_value_or_throw_exception!(scope, Number, child_node_id);
 
-    let state = get_shared_state!(scope, State);
-
-    if let Err(s) = add_child_inner(state, node_id.value() as u32, child_node_id.value() as u32) {
+    if let Err(s) = add_child_inner(node_id.value() as u32, child_node_id.value() as u32) {
         throw_exception!(scope, s);
     }
 }
@@ -131,15 +120,11 @@ pub fn add_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Fu
 #[wasm_bindgen]
 #[cfg(target_arch = "wasm32")]
 pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    add_child_inner(state, node_id, child_node_id)
+    add_child_inner(node_id, child_node_id)
 }
 
-pub fn add_child_inner(
-    state: Arc<Mutex<State>>,
-    node_id: u32,
-    child_node_id: u32,
-) -> Result<(), std::string::String> {
+pub fn add_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
+    let state = get_shared_state();
     let state = state.lock().unwrap();
     let node_map = state.node_map.clone();
     let node_map = node_map.lock().unwrap();
@@ -177,10 +162,7 @@ pub fn insert_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local
     let index = try_from_value_or_throw_exception!(scope, Number, index);
     let child_node_id = try_from_value_or_throw_exception!(scope, Number, child_node_id);
 
-    let state = get_shared_state!(scope, State);
-
     if let Err(s) = insert_child_inner(
-        state,
         node_id.value() as u32,
         index.value() as usize,
         child_node_id.value() as u32,
@@ -196,16 +178,15 @@ pub fn insert_child(
     index: usize,
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    insert_child_inner(state, node_id, index, child_node_id)
+    insert_child_inner(node_id, index, child_node_id)
 }
 
 pub fn insert_child_inner(
-    state: Arc<Mutex<State>>,
     node_id: u32,
     index: usize,
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
+    let state = get_shared_state();
     let state = state.lock().unwrap();
     let node_map = state.node_map.clone();
     let node_map = node_map.lock().unwrap();
@@ -247,10 +228,7 @@ pub fn insert_child_before(
     let before_node_id = try_from_value_or_throw_exception!(scope, Number, before_node_id);
     let child_node_id = try_from_value_or_throw_exception!(scope, Number, child_node_id);
 
-    let state = get_shared_state!(scope, State);
-
     if let Err(s) = insert_child_before_inner(
-        state,
         node_id.value() as u32,
         before_node_id.value() as u32,
         child_node_id.value() as u32,
@@ -266,16 +244,15 @@ pub fn insert_child_before(
     before_node_id: u32,
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    insert_child_before_inner(state, node_id, before_node_id, child_node_id)
+    insert_child_before_inner(node_id, before_node_id, child_node_id)
 }
 
 pub fn insert_child_before_inner(
-    state: Arc<Mutex<State>>,
     node_id: u32,
     before_node_id: u32,
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
+    let state = get_shared_state();
     let state = state.lock().unwrap();
     let node_map = state.node_map.clone();
     let node_map = node_map.lock().unwrap();
@@ -316,10 +293,7 @@ pub fn remove_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local
     let node_id = try_from_value_or_throw_exception!(scope, Number, node_id);
     let child_node_id = try_from_value_or_throw_exception!(scope, Number, child_node_id);
 
-    let state = get_shared_state!(scope, State);
-
-    if let Err(s) = remove_child_inner(state, node_id.value() as u32, child_node_id.value() as u32)
-    {
+    if let Err(s) = remove_child_inner(node_id.value() as u32, child_node_id.value() as u32) {
         throw_exception!(scope, s);
     }
 }
@@ -327,15 +301,11 @@ pub fn remove_child(scope: &mut HandleScope, args: Local<Array>, _: Option<Local
 #[wasm_bindgen]
 #[cfg(target_arch = "wasm32")]
 pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    remove_child_inner(state, node_id, child_node_id)
+    remove_child_inner(node_id, child_node_id)
 }
 
-pub fn remove_child_inner(
-    state: Arc<Mutex<State>>,
-    node_id: u32,
-    child_node_id: u32,
-) -> Result<(), std::string::String> {
+pub fn remove_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
+    let state = get_shared_state();
     let state = state.lock().unwrap();
     let node_map = state.node_map.clone();
     let node_map = node_map.lock().unwrap();
@@ -370,9 +340,7 @@ pub fn remove_child_at(scope: &mut HandleScope, args: Local<Array>, _: Option<Lo
     let node_id = try_from_value_or_throw_exception!(scope, Number, node_id);
     let index = try_from_value_or_throw_exception!(scope, Number, index);
 
-    let state = get_shared_state!(scope, State);
-
-    if let Err(s) = remove_child_at_inner(state, node_id.value() as u32, index.value() as usize) {
+    if let Err(s) = remove_child_at_inner(node_id.value() as u32, index.value() as usize) {
         throw_exception!(scope, s);
     }
 }
@@ -380,15 +348,11 @@ pub fn remove_child_at(scope: &mut HandleScope, args: Local<Array>, _: Option<Lo
 #[wasm_bindgen]
 #[cfg(target_arch = "wasm32")]
 pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    remove_child_at_inner(state, node_id, index)
+    remove_child_at_inner(node_id, index)
 }
 
-pub fn remove_child_at_inner(
-    state: Arc<Mutex<State>>,
-    node_id: u32,
-    index: usize,
-) -> Result<(), std::string::String> {
+pub fn remove_child_at_inner(node_id: u32, index: usize) -> Result<(), std::string::String> {
+    let state = get_shared_state();
     let state = state.lock().unwrap();
     let node_map = state.node_map.clone();
     let node_map = node_map.lock().unwrap();
@@ -420,8 +384,7 @@ pub fn move_to(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Func
     let x = try_from_value_or_throw_exception!(scope, Number, x);
     let y = try_from_value_or_throw_exception!(scope, Number, y);
 
-    let state = get_shared_state!(scope, State);
-    if let Err(s) = move_to_inner(state, node_id.value() as u32, x.value(), y.value()) {
+    if let Err(s) = move_to_inner(node_id.value() as u32, x.value(), y.value()) {
         throw_exception!(scope, s);
     }
 }
@@ -429,17 +392,12 @@ pub fn move_to(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Func
 #[wasm_bindgen]
 #[cfg(target_arch = "wasm32")]
 pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    move_to_inner(state, node_id, x, y)
+    move_to_inner(node_id, x, y)
 }
 
-pub fn move_to_inner(
-    state: Arc<Mutex<State>>,
-    node_id: u32,
-    x: f64,
-    y: f64,
-) -> Result<(), std::string::String> {
+pub fn move_to_inner(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> {
     let node_map = {
+        let state = get_shared_state();
         let state = state.lock().unwrap();
         state.node_map.clone()
     };
@@ -468,9 +426,7 @@ pub fn get_translate(
 
     let node_id = try_from_value_or_throw_exception!(scope, Number, node_id);
 
-    let state = get_shared_state!(scope, State);
-
-    match get_translate_inner(state, node_id.value() as u32) {
+    match get_translate_inner(node_id.value() as u32) {
         Ok([x, y]) => {
             // call callback function to return node id
             if callback.is_some() {
@@ -490,14 +446,11 @@ pub fn get_translate(
 #[wasm_bindgen]
 #[cfg(target_arch = "wasm32")]
 pub fn get_translate(node_id: u32) -> Result<Vec<i32>, std::string::String> {
-    let state = get_shared_state();
-    get_translate_inner(state, node_id).and_then(|v| Ok(v.to_vec()))
+    get_translate_inner(node_id).and_then(|v| Ok(v.to_vec()))
 }
 
-pub fn get_translate_inner(
-    state: Arc<Mutex<State>>,
-    node_id: u32,
-) -> Result<[f64; 2], std::string::String> {
+pub fn get_translate_inner(node_id: u32) -> Result<[f64; 2], std::string::String> {
+    let state = get_shared_state();
     let state = state.lock().unwrap();
     let node_map = state.node_map.clone();
     let node_map = node_map.lock().unwrap();

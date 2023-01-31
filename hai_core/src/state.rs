@@ -1,8 +1,9 @@
 use log::error;
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex, RwLock},
-};
+use once_cell::sync::OnceCell;
+use std::collections::HashMap;
+use std::ffi::c_void;
+use std::mem::forget;
+use std::sync::{Arc, Mutex, RwLock};
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;
 
@@ -12,6 +13,25 @@ use crate::{
     traits::{Node, Renderer},
     user_event::UserEvent,
 };
+
+static STATE: OnceCell<usize> = OnceCell::new();
+
+pub fn get_shared_state() -> Arc<Mutex<State>> {
+    let p = *STATE.get().unwrap() as *const c_void;
+    let ptr = p as *const Mutex<State>;
+    let r = unsafe { Arc::from_raw(ptr) };
+    let r_cloned = r.clone();
+
+    // keep ptr leaked
+    forget(r);
+
+    r_cloned
+}
+
+pub fn set_shared_state(state: Arc<Mutex<State>>) {
+    let p = Arc::into_raw(state) as *const c_void as usize;
+    STATE.set(p).expect("Failed to set shared state.");
+}
 
 pub struct State {
     pub physical_size: (u32, u32),
