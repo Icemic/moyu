@@ -47,7 +47,7 @@ pub async fn create_surface(
     let format = *surface
         .get_supported_formats(&adapter)
         .iter()
-        .find(|f| !f.describe().srgb)
+        .find(|f| f.describe().srgb)
         .expect("Cannot find a proper surface format.");
 
     info!("Surface format: {:?}", format);
