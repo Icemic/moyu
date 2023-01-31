@@ -44,7 +44,7 @@ impl Sprite {
             skew: Point::default(),
 
             _update_id: 0,
-            _current_update_id: 0,
+            _current_update_id: 1,
 
             transform: Transform::default(),
             global_transform: Transform::default(),
