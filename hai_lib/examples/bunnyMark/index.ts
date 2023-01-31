@@ -1,4 +1,4 @@
-import * as hai from '../../src/lib';
+import { hai } from '../..';
 import BunnyMark from './bunnyMark';
 
 const bunnies = [
@@ -23,7 +23,7 @@ const bunnyMark = new BunnyMark(bunnies, {
   bottom: 600,
 });
 
-bunnyMark.addBunny(5000);
+bunnyMark.addBunny(50);
 
 hai.resizeWindow(800, 600);
 
@@ -32,8 +32,8 @@ const loop = () => {
   setTimeout(loop, 16);
 };
 
-// setInterval(() => {
-//   bunnyMark.addBunny(10);
-// }, 800);
+setInterval(() => {
+  bunnyMark.addBunny(10);
+}, 800);
 
 loop();
