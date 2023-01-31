@@ -38,11 +38,7 @@ impl State {
         event_proxy: EventLoopProxy<UserEvent>,
     ) -> Self {
         // create root node
-        let root_node = Container::new(
-            "Root Node".to_string(),
-            Default::default(),
-            Default::default(),
-        );
+        let root_node = Container::new("Root Node".to_string());
         let root_node = Arc::new(Mutex::new(root_node));
 
         let mut node_map: HashMap<u32, Arc<Mutex<dyn Node>>> = Default::default();

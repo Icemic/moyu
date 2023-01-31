@@ -41,7 +41,7 @@ pub fn create_instance(
     let mut node_id = 0;
     match node_type.as_str() {
         "node" => {
-            let n = Container::new(label, Default::default(), Default::default());
+            let n = Container::new(label);
             node_id = n.id;
             node_map.insert(n.id, Arc::new(Mutex::new(n)));
         }

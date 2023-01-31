@@ -12,7 +12,7 @@ use crate::types::{Point, Transform};
 pub struct Container {}
 
 impl Container {
-    pub fn new(label: String, anchor: Point, transform: Transform) -> Self {
+    pub fn new(label: String) -> Self {
         let id = unsafe {
             NODE_ID += 1;
             NODE_ID
@@ -28,9 +28,9 @@ impl Container {
             skew: Point::default(),
 
             _update_id: 0,
-            _current_update_id: 0,
+            _current_update_id: 1,
 
-            transform,
+            transform: Transform::default(),
             global_transform: Transform::default(),
             children: vec![],
         }
