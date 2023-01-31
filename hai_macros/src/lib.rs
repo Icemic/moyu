@@ -228,8 +228,7 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
         }
 
         fn move_to(&mut self, x: f64, y: f64) {
-            self.translate.x = x;
-            self.translate.y = y;
+            self.set_translate(x, y);
         }
 
         fn update_transform(
@@ -265,7 +264,7 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
                 self.transform.b = b;
                 self.transform.c = c;
                 self.transform.d = d;
-                self.transform.ty = ty;
+                self.transform.tx = tx;
                 self.transform.ty = ty;
 
                 // refresh global transform matrix
