@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{
     any::Any,
     fmt::Debug,
@@ -5,13 +6,27 @@ use std::{
 };
 use winit::dpi::LogicalSize;
 
+use super::{parse_props, JSValue, Renderable, UpdateProps};
 use crate::types::{Point, Transform};
-
-use super::Renderable;
 
 pub static mut NODE_ID: u32 = 0;
 
-pub trait Node: NodeType + Send + Debug {
+#[derive(Serialize, Deserialize)]
+pub struct NodeProps {
+    pub anchor: Option<[f64; 2]>,
+    pub pivot: Option<[f64; 2]>,
+    pub x: Option<f64>,
+    pub y: Option<f64>,
+    pub scale: Option<f64>,
+    pub scale_x: Option<f64>,
+    pub scale_y: Option<f64>,
+    pub rotation: Option<f64>,
+    pub skew: Option<f64>,
+    pub skew_x: Option<f64>,
+    pub skew_y: Option<f64>,
+}
+
+pub trait Node: NodeType + UpdateProps + Send + Debug {
     fn id(&self) -> &u32;
     fn label(&self) -> &String;
 
@@ -25,9 +40,15 @@ pub trait Node: NodeType + Send + Debug {
     fn set_anchor(&mut self, x: f64, y: f64);
     fn set_pivot(&mut self, x: f64, y: f64);
     fn set_translate(&mut self, x: f64, y: f64);
+    fn set_x(&mut self, x: f64);
+    fn set_y(&mut self, y: f64);
     fn set_scale(&mut self, x: f64, y: f64);
+    fn set_scale_x(&mut self, x: f64);
+    fn set_scale_y(&mut self, y: f64);
     fn set_rotation(&mut self, radian: f64);
     fn set_skew(&mut self, x: f64, y: f64);
+    fn set_skew_x(&mut self, x: f64);
+    fn set_skew_y(&mut self, y: f64);
 
     fn transform(&self) -> &Transform;
     fn global_transform(&self) -> &Transform;
@@ -60,6 +81,46 @@ pub trait Node: NodeType + Send + Debug {
     fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node>>>;
 
     fn move_to(&mut self, x: f64, y: f64);
+
+    fn update_properties(&mut self, props: &mut JSValue) {
+        let props: NodeProps = parse_props(props).unwrap();
+
+        if let Some(x) = props.x {
+            self.set_x(x);
+        }
+
+        if let Some(y) = props.y {
+            self.set_y(y);
+        }
+
+        if let Some(v) = props.scale {
+            self.set_scale(v, v);
+        }
+
+        if let Some(x) = props.scale_x {
+            self.set_scale_x(x);
+        }
+
+        if let Some(y) = props.scale_y {
+            self.set_scale_y(y);
+        }
+
+        if let Some(v) = props.rotation {
+            self.set_rotation(v);
+        }
+
+        if let Some(v) = props.skew {
+            self.set_skew(v, v);
+        }
+
+        if let Some(x) = props.skew_x {
+            self.set_skew_x(x);
+        }
+
+        if let Some(y) = props.skew_y {
+            self.set_skew_y(y);
+        }
+    }
 
     fn update_transform(
         &mut self,

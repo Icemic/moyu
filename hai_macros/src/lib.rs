@@ -145,8 +145,24 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
             self.translate.y = y;
             self._update_id += 1;
         }
+        fn set_x(&mut self, x: f64) {
+            self.translate.x = x;
+            self._update_id += 1;
+        }
+        fn set_y(&mut self, y: f64) {
+            self.translate.y = y;
+            self._update_id += 1;
+        }
         fn set_scale(&mut self, x: f64, y: f64) {
             self.scale.x = x;
+            self.scale.y = y;
+            self._update_id += 1;
+        }
+        fn set_scale_x(&mut self, x: f64) {
+            self.scale.x = x;
+            self._update_id += 1;
+        }
+        fn set_scale_y(&mut self, y: f64) {
             self.scale.y = y;
             self._update_id += 1;
         }
@@ -156,6 +172,14 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
         }
         fn set_skew(&mut self, x: f64, y: f64) {
             self.skew.x = x;
+            self.skew.y = y;
+            self._update_id += 1;
+        }
+        fn set_skew_x(&mut self, x: f64) {
+            self.skew.x = x;
+            self._update_id += 1;
+        }
+        fn set_skew_y(&mut self, y: f64) {
             self.skew.y = y;
             self._update_id += 1;
         }

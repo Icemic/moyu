@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::state::get_shared_state;
+use crate::traits::{JSValue, UpdateProps, Node};
 use crate::{
     nodes::{Container, Sprite},
     types::Point,
@@ -466,4 +467,54 @@ pub fn get_translate_inner(node_id: u32) -> Result<[f64; 2], std::string::String
     let &Point { x, y } = node.translate();
 
     Ok([x, y])
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn update_props(
+    scope: &mut HandleScope,
+    args: Local<Array>,
+    _: Option<Local<Function>>,
+) {
+    let node_id = get_from_v8_array!(scope, args, 0);
+    let props = get_from_v8_array!(scope, args, 1);
+
+    check_exist!(scope, node_id);
+    check_exist!(scope, props);
+
+    let node_id = try_from_value_or_throw_exception!(scope, Number, node_id);
+
+    let props = JSValue::new(scope, props);
+
+    if let Err(s) = update_props_inner(node_id.value() as u32, props) {
+        throw_exception!(scope, s);
+    }
+}
+
+#[wasm_bindgen]
+#[cfg(target_arch = "wasm32")]
+pub fn update_props(node_id: u32, props: JsValue) -> Result<(), std::string::String> {
+    update_props_inner(node_id, JsValue)
+}
+
+pub fn update_props_inner(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
+    let state = get_shared_state();
+    let state = state.lock().unwrap();
+    let node_map = state.node_map.clone();
+    let node_map = node_map.lock().unwrap();
+
+    let node = node_map.get(&node_id);
+
+    if node.is_none() {
+        return Err(format!("Cannot find node by id {}", node_id));
+    }
+
+    let mut node = node.unwrap().lock().unwrap();
+
+    // set node props
+    Node::update_properties(&mut *node, &mut props);
+
+    // set props
+    UpdateProps::update_properties(&mut *node, &mut props);
+
+    Ok(())
 }

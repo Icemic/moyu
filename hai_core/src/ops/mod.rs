@@ -39,6 +39,7 @@ fn receive_command(scope: &mut HandleScope, args: FunctionCallbackArguments, _: 
         "remove_child_at" => remove_child_at(scope, command_args, None),
         "move_to" => move_to(scope, command_args, None),
         "get_translate" => get_translate(scope, command_args, command_callback),
+        "update_props" => update_props(scope, command_args, command_callback),
         _ => {
             let error_message: Local<String> =
                 format!("Unknown command '{}'", command_name).into_v8(scope);
