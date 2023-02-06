@@ -12,6 +12,7 @@ use crate::types::{Point, Transform};
 pub static mut NODE_ID: u32 = 0;
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NodeProps {
     pub anchor: Option<[f64; 2]>,
     pub pivot: Option<[f64; 2]>,
