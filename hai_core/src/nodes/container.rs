@@ -4,7 +4,7 @@ use std::any::Any;
 use std::sync::{Arc, Mutex};
 use winit::dpi::LogicalSize;
 
-use crate::traits::{Node, NodeType, NODE_ID};
+use crate::traits::{Node, NodeType, UpdateProps, NODE_ID};
 use crate::types::{Point, Transform};
 
 #[node]
@@ -42,3 +42,5 @@ impl NodeType for Container {
         "node"
     }
 }
+
+impl UpdateProps for Container {}

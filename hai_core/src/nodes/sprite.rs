@@ -1,12 +1,16 @@
 use hai_macros::node;
 use log::warn;
+use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::sync::{Arc, Mutex, RwLock};
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 use winit::dpi::LogicalSize;
 
-use crate::traits::{Node, NodeType, Renderable, RendererUpdatePayload, NODE_ID};
+use crate::state::get_shared_state;
+use crate::traits::{
+    parse_props, JSValue, Node, NodeType, Renderable, RendererUpdatePayload, UpdateProps, NODE_ID,
+};
 use crate::types::{Point, Transform};
 use crate::{traits::Focusable, types::Vertex};
 
@@ -219,5 +223,27 @@ impl Focusable for Sprite {
             return true;
         }
         false
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SpriteProps {
+    pub src: Option<String>,
+}
+
+impl UpdateProps for Sprite {
+    fn update_properties(&mut self, props: &mut JSValue) {
+        let props: SpriteProps = parse_props(props).unwrap();
+
+        if let Some(src) = props.src {
+            let state = get_shared_state();
+            let state = state.lock().unwrap();
+            let mut resource_manager = state.resource_manager.lock().unwrap();
+            let texture = resource_manager.get_texture(src);
+            self.texture = texture;
+        }
+
+        // force update vertices
+        self._update_id += 1;
     }
 }
