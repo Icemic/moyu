@@ -24,7 +24,7 @@ export function quit() {
   hai.pushCommand('quit', []);
 }
 
-export function createInstance(nodeType: 'node' | 'sprite', label: string | undefined, props: Record<string, any>) {
+export function createInstance(nodeType: string, label: string | undefined, props: Record<string, any>) {
   let node_id = 0;
   const ret: number = hai.pushCommand('create_instance', [nodeType, label, props], (id: number) => {
     node_id = id;

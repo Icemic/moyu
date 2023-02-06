@@ -6,7 +6,7 @@ export class Node {
 
   props: Record<string, any> = {};
 
-  static create(label = '', type: 'node' | 'sprite', props: Record<string, any>) {
+  static create(label = '', type: string, props: Record<string, any>) {
     const node = new Node();
     node.label = label;
     node.props = props;

@@ -6,7 +6,7 @@ import { Node } from './node';
 import { ReactElement } from 'react';
 import { DetailedHaiProps, HaiNodeAttributes } from './declaration';
 
-type Type = 'sprite' | 'node';
+type Type = string;
 type Props = DetailedHaiProps<HaiNodeAttributes>;
 type Container = Node;
 type Instance = Node;
