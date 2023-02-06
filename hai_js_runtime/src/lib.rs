@@ -13,6 +13,7 @@ use futures::{future::poll_fn, StreamExt};
 use hai_pal::env::entry_dir;
 use log::{error, info};
 use module::promise_reject_callback;
+pub use serde_v8;
 pub use shared::Shared;
 use std::{
     cell::RefCell,
@@ -37,7 +38,7 @@ impl JSRuntime {
         v8::V8::initialize();
 
         let mut isolate = Isolate::new(Default::default());
-        isolate.set_host_import_module_dynamically_callback(dynamic_import_callback);
+        // isolate.set_host_import_module_dynamically_callback(dynamic_import_callback);
         isolate.set_capture_stack_trace_for_uncaught_exceptions(true, 10);
         isolate.set_promise_reject_callback(promise_reject_callback);
         isolate.set_microtasks_policy(v8::MicrotasksPolicy::Auto);
