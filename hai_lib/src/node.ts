@@ -10,10 +10,7 @@ export class Node {
     const node = new Node();
     node.label = label;
     node.props = props;
-    node.nodeId = hai.createInstance(type, {
-      label,
-      ...props,
-    });
+    node.nodeId = hai.createInstance(type, label, props);
     return node;
   }
 
@@ -42,5 +39,9 @@ export class Node {
 
   removeChild(child: Node) {
     hai.removeChild(this.nodeId, child.nodeId);
+  }
+
+  updateProps(props: Record<string, any>) {
+    hai.updateProps(this.nodeId, props);
   }
 }

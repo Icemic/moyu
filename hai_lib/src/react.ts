@@ -4,10 +4,10 @@ import { DefaultEventPriority } from 'react-reconciler/constants';
 import { omitBy } from 'lodash-es';
 import { Node } from './node';
 import { ReactElement } from 'react';
-import { DetailedHaiProps, HaiNodeLikeAttributes } from './declaration';
+import { DetailedHaiProps, HaiNodeAttributes } from './declaration';
 
 type Type = 'sprite' | 'node';
-type Props = DetailedHaiProps<HaiNodeLikeAttributes>;
+type Props = DetailedHaiProps<HaiNodeAttributes>;
 type Container = Node;
 type Instance = Node;
 type TextInstance = never;
@@ -169,6 +169,9 @@ const hostConfig: HostConfig<
 
   commitUpdate(instance, _updatePayload, type, prevProps, nextProps, _internalHandle) {
     console.debug('commitUpdate: ', type, JSON.stringify(_updatePayload));
+
+    instance.updateProps(_updatePayload);
+
     // if (shallowEq(prevProps, nextProps) && allChildrenAreMemoized(instance)) {
     //   return;
     // }

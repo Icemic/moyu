@@ -8,7 +8,12 @@ function App() {
       setSrc('button_n_02.png');
     }, 2000);
   }, []);
-  return <sprite label="title" src={src} />;
+  //
+  return (
+    <container>
+      <sprite label="title" src={src} />
+    </container>
+  );
 }
 
 const root = createRoot();
