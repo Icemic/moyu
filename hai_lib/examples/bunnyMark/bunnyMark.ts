@@ -15,7 +15,7 @@ export default class BunnyMark {
     for (let i = 0; i < num; i++) {
       const texture = this.textures[this.count % this.textures.length];
 
-      const id = hai.createInstance('sprite', {
+      const id = hai.createInstance('sprite', '', {
         src: texture,
       });
 
