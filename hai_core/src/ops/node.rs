@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::state::get_shared_state;
-use crate::traits::{JSValue, UpdateProps, Node};
+use crate::traits::{JSValue, Node, UpdateProps};
 use crate::{
     nodes::{Container, Sprite},
     types::Point,
@@ -21,23 +21,19 @@ pub fn create_instance(
     callback: Option<Local<Function>>,
 ) {
     let node_type = get_from_v8_array!(scope, args, 0);
-    let props = get_from_v8_array!(scope, args, 1);
+    let label = get_from_v8_array!(scope, args, 1);
+    let props = get_from_v8_array!(scope, args, 2);
 
     check_exist!(scope, node_type);
     check_exist!(scope, props);
 
     let node_type = try_from_value_or_throw_exception!(scope, String, node_type);
-    let props = try_from_value_or_throw_exception!(scope, Object, props);
     let node_type = node_type.to_rust_string_lossy(scope);
-
-    let label = get_from_v8_object!(scope, props, "label");
     let label = try_from_option_value_or_throw_exception!(scope, String, label)
         .and_then(|v| Some(v.to_rust_string_lossy(scope)));
-    let src = get_from_v8_object!(scope, props, "src");
-    let src = try_from_option_value_or_throw_exception!(scope, String, src)
-        .and_then(|v| Some(v.to_rust_string_lossy(scope)));
+    let props = JSValue::new(scope, props);
 
-    match create_instance_inner(node_type, label, src) {
+    match create_instance_inner(node_type, label, props) {
         Ok(node_id) => {
             // call callback function to return node id
             if callback.is_some() {
@@ -63,13 +59,13 @@ pub struct CreateInstanceProps {
 #[cfg(target_arch = "wasm32")]
 pub fn create_instance(node_type: String, props: JsValue) -> Result<u32, std::string::String> {
     let example: CreateInstanceProps = serde_wasm_bindgen::from_value(props).unwrap();
-    create_instance_inner(node_type, example.label, example.src)
+    create_instance_inner(node_type, example.label, props)
 }
 
 pub fn create_instance_inner(
     node_type: std::string::String,
     label: Option<std::string::String>,
-    src: Option<std::string::String>,
+    mut props: JSValue,
 ) -> Result<u32, std::string::String> {
     let state = get_shared_state();
     let state = state.lock().unwrap();
@@ -79,25 +75,31 @@ pub fn create_instance_inner(
     let label = label.unwrap_or_default();
 
     let node_id;
+    let node: Arc<Mutex<dyn Node>>;
     match node_type.as_str() {
-        "node" => {
+        "container" => {
             let n = Container::new(label);
             node_id = n.id;
-            node_map.insert(n.id, Arc::new(Mutex::new(n)));
+            node = Arc::new(Mutex::new(n));
         }
         "sprite" => {
-            let src = src.unwrap_or_default();
-
-            let mut resource_manager = state.resource_manager.lock().unwrap();
-            let texture = resource_manager.get_texture(src.clone());
-            let n = Sprite::new(src, texture);
+            let n = Sprite::new(label);
             node_id = n.id;
-            node_map.insert(n.id, Arc::new(Mutex::new(n)));
+            node = Arc::new(Mutex::new(n));
         }
         _ => {
             return Err(format!("Unknown nodeType '{}'", node_type));
         }
     };
+
+    node_map.insert(node_id, node.clone());
+
+    drop(state);
+
+    let mut node = node.lock().unwrap();
+
+    Node::update_properties(&mut *node, &mut props);
+    UpdateProps::update_properties(&mut *node, &mut props);
 
     Ok(node_id)
 }
@@ -470,11 +472,7 @@ pub fn get_translate_inner(node_id: u32) -> Result<[f64; 2], std::string::String
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn update_props(
-    scope: &mut HandleScope,
-    args: Local<Array>,
-    _: Option<Local<Function>>,
-) {
+pub fn update_props(scope: &mut HandleScope, args: Local<Array>, _: Option<Local<Function>>) {
     let node_id = get_from_v8_array!(scope, args, 0);
     let props = get_from_v8_array!(scope, args, 1);
 
@@ -507,6 +505,8 @@ pub fn update_props_inner(node_id: u32, mut props: JSValue) -> Result<(), std::s
     if node.is_none() {
         return Err(format!("Cannot find node by id {}", node_id));
     }
+
+    drop(state);
 
     let mut node = node.unwrap().lock().unwrap();
 
