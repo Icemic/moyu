@@ -24,9 +24,9 @@ export function quit() {
   hai.pushCommand('quit', []);
 }
 
-export function createInstance(nodeType: 'node' | 'sprite', props: Record<string, any>) {
+export function createInstance(nodeType: 'node' | 'sprite', label: string | undefined, props: Record<string, any>) {
   let node_id = 0;
-  const ret: number = hai.pushCommand('create_instance', [nodeType, props], (id: number) => {
+  const ret: number = hai.pushCommand('create_instance', [nodeType, label, props], (id: number) => {
     node_id = id;
   });
   if (ret) {
@@ -56,7 +56,8 @@ export function removeChild(nodeId: number, childNodeId: number) {
 }
 
 export function moveTo(nodeId: number, x: number, y: number) {
-  hai.pushCommand('move_to', [nodeId, x, y]);
+  // hai.pushCommand('move_to', [nodeId, x, y]);
+  hai.pushCommand('update_props', [nodeId, { x, y }]);
 }
 
 export function getTranslate(nodeId: number) {
@@ -72,4 +73,8 @@ export function getTranslate(nodeId: number) {
   }
 
   return { x, y };
+}
+
+export function updateProps(nodeId: number, props: Record<string, any>) {
+  hai.pushCommand('update_props', [nodeId, props]);
 }

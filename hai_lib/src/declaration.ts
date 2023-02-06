@@ -1,18 +1,31 @@
-export type DetailedHaiProps<E extends HaiNodeLikeAttributes> = E;
+import { ReactNode } from 'react';
 
-export interface HaiNodeLikeAttributes {
+export type DetailedHaiProps<E extends HaiNodeAttributes> = E;
+
+export interface HaiNodeAttributes {
   label?: string;
+  x?: number;
+  y?: number;
+  scale?: number;
+  scaleX?: number;
+  scaley?: number;
+  rotation?: number;
+  skew?: number;
+  skewX?: number;
+  skewy?: number;
+  children?: ReactNode;
 }
 
-export type HaiNodeAttributes = HaiNodeLikeAttributes;
-export interface HaiSpriteAttribute extends HaiNodeLikeAttributes {
+export type HaiContainerAttributes = HaiNodeAttributes;
+export interface HaiSpriteAttribute extends HaiNodeAttributes {
   src: string;
+  area?: [number, number, number, number];
 }
 
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      node: DetailedHaiProps<HaiNodeAttributes>;
+      container: DetailedHaiProps<HaiContainerAttributes>;
       sprite: DetailedHaiProps<HaiSpriteAttribute>;
     }
   }
