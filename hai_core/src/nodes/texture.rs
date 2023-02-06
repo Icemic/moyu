@@ -1,3 +1,6 @@
+use once_cell::sync::OnceCell;
+use std::sync::{Arc, RwLock};
+
 #[derive(Debug)]
 pub struct Texture {
     pub status: TextureStatus,
@@ -56,4 +59,10 @@ pub enum TextureStatus {
     Ready,
     /// something occurs
     Error,
+}
+
+static EMPTY_TEXTURE: OnceCell<Arc<RwLock<Texture>>> = OnceCell::new();
+
+pub fn get_empty_texture() -> &'static Arc<RwLock<Texture>> {
+    EMPTY_TEXTURE.get_or_init(|| Arc::new(RwLock::new(Texture::new())))
 }

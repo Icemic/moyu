@@ -14,7 +14,7 @@ use crate::traits::{
 use crate::types::{Point, Transform};
 use crate::{traits::Focusable, types::Vertex};
 
-use super::{Texture, TextureStatus};
+use super::{get_empty_texture, Texture, TextureStatus};
 
 pub const SPRITE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 
@@ -23,6 +23,8 @@ pub const SPRITE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 pub struct Sprite {
     /// loaded texture
     pub texture: Arc<RwLock<Texture>>,
+    /// clip area
+    pub area: [f64; 4],
     /// calculated vertices
     pub vertices: Option<[Vertex; 4]>,
 
@@ -31,7 +33,7 @@ pub struct Sprite {
 }
 
 impl Sprite {
-    pub fn new(label: String, texture: Arc<RwLock<Texture>>) -> Self {
+    pub fn new(label: String) -> Self {
         let id = unsafe {
             NODE_ID += 1;
             NODE_ID
@@ -54,7 +56,8 @@ impl Sprite {
             global_transform: Transform::default(),
             children: vec![],
 
-            texture,
+            texture: get_empty_texture().clone(),
+            area: [0., 0., 1., 1.],
             vertices: None,
             bind_group: None,
             vertex_buffer: None,
@@ -72,6 +75,12 @@ impl Sprite {
             * 2.;
 
         drop(texture);
+
+        let [x0, y0, x1, y1] = self.area;
+
+        // scale size to fit area
+        let width = width * (x1 - x0);
+        let height = height * (y1 - y0);
 
         let a = self.global_transform.a;
         let b = self.global_transform.b;
@@ -104,19 +113,19 @@ impl Sprite {
         let v = [
             Vertex {
                 position: [p0x as f32, p0y as f32, 0.0],
-                tex_coords: [0., 1.],
+                tex_coords: [x0 as f32, y1 as f32],
             },
             Vertex {
                 position: [p1x as f32, p1y as f32, 0.0],
-                tex_coords: [1., 1.],
+                tex_coords: [x1 as f32, y1 as f32],
             },
             Vertex {
                 position: [p2x as f32, p2y as f32, 0.0],
-                tex_coords: [1., 0.],
+                tex_coords: [x1 as f32, y0 as f32],
             },
             Vertex {
                 position: [p3x as f32, p3y as f32, 0.0],
-                tex_coords: [0., 0.],
+                tex_coords: [x0 as f32, y0 as f32],
             },
         ];
 
@@ -227,8 +236,10 @@ impl Focusable for Sprite {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SpriteProps {
     pub src: Option<String>,
+    pub area: Option<[f64; 4]>,
 }
 
 impl UpdateProps for Sprite {
@@ -241,6 +252,13 @@ impl UpdateProps for Sprite {
             let mut resource_manager = state.resource_manager.lock().unwrap();
             let texture = resource_manager.get_texture(src);
             self.texture = texture;
+
+            // drop old bind group
+            self.bind_group = None;
+        }
+
+        if let Some(area) = props.area {
+            self.area = area;
         }
 
         // force update vertices
