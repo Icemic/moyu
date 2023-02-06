@@ -84,7 +84,8 @@ const hostConfig: HostConfig<
     _rootContainerInstance,
     _hostContext
   ) => {
-    const changedProps = omitBy(newProps, (value, key) => oldProps[key] === value);
+    const { label, children, ...props } = newProps;
+    const changedProps = omitBy(props, (value, key) => oldProps[key] === value);
 
     if (Object.keys(changedProps).length) {
       return changedProps;
