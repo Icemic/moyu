@@ -3,7 +3,7 @@ pub fn setup() {
     #[cfg(debug_assertions)]
     let env = env_logger::Env::default().default_filter_or("hai=debug");
     #[cfg(not(debug_assertions))]
-    let env = env_logger::Env::default().default_filter_or("hai=warn");
+    let env = env_logger::Env::default().default_filter_or("hai=warn,hai_js_runtime::internals::console=debug");
     env_logger::init_from_env(env);
 }
 
