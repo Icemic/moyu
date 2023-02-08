@@ -2,11 +2,12 @@ use anyhow::Result;
 use futures::{stream::FuturesUnordered, task::AtomicWaker, StreamExt};
 use hai_pal::env::entry_dir;
 use hai_pal::fs;
+use hai_pal::sync::{Mutex, RwLock};
 use image::GenericImageView;
 use log::{debug, error};
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex, RwLock, Weak},
+    sync::{Arc, Weak},
     task::{Context, Poll},
 };
 use tokio::task::JoinHandle;
@@ -85,7 +86,7 @@ impl ResourceManager {
             let rgba = img.into_rgba8();
 
             {
-                let mut texture = texture.write().unwrap();
+                let mut texture = texture.write();
                 texture.set_size(dimensions.0, dimensions.1);
                 texture.set_status(TextureStatus::Uploading);
             }
@@ -96,8 +97,8 @@ impl ResourceManager {
                 depth_or_array_layers: 1,
             };
 
-            let device = device.lock().unwrap();
-            let queue = queue.lock().unwrap();
+            let device = device.lock();
+            let queue = queue.lock();
 
             let texture_gpu = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(asset_relative_path.as_str()),
@@ -137,7 +138,7 @@ impl ResourceManager {
             });
 
             {
-                let mut texture = texture.write().unwrap();
+                let mut texture = texture.write();
                 texture.set_texture(texture_gpu, view, sampler);
                 texture.set_status(TextureStatus::Ready);
             }

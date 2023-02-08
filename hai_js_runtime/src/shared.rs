@@ -1,11 +1,6 @@
 use futures::task::AtomicWaker;
-use std::{
-    cell::RefCell,
-    ffi::c_void,
-    mem::forget,
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use hai_pal::sync::RwLock;
+use std::{cell::RefCell, ffi::c_void, mem::forget, rc::Rc, sync::Arc};
 
 use super::{module::ModuleLoader, timer::TimerScheduler};
 
@@ -19,7 +14,7 @@ pub struct Shared {
 }
 
 impl Shared {
-    pub fn new<T>(state: Arc<Mutex<T>>) -> Self {
+    pub fn new<T>(state: Arc<RwLock<T>>) -> Self {
         let module_loader = ModuleLoader::new();
         let timer = TimerScheduler::new();
 
@@ -41,8 +36,8 @@ impl Shared {
         self.scheduler.clone()
     }
 
-    pub fn state<T>(&self) -> Arc<Mutex<T>> {
-        let ptr = self.state as *const Mutex<T>;
+    pub fn state<T>(&self) -> Arc<RwLock<T>> {
+        let ptr = self.state as *const RwLock<T>;
         let r = unsafe { Arc::from_raw(ptr) };
         let r_cloned = r.clone();
 

@@ -1,9 +1,10 @@
 use anyhow::Result;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::{prelude::*, *};
+use hai_pal::sync::Mutex;
 #[cfg(target_arch = "wasm32")]
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
@@ -68,9 +69,9 @@ pub fn create_instance_inner(
     mut props: JSValue,
 ) -> Result<u32, std::string::String> {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
+    let state = state.read();
     let node_map = state.node_map.clone();
-    let mut node_map = node_map.lock().unwrap();
+    let mut node_map = node_map.lock();
 
     let label = label.unwrap_or_default();
 
@@ -96,7 +97,7 @@ pub fn create_instance_inner(
 
     drop(state);
 
-    let mut node = node.lock().unwrap();
+    let mut node = node.lock();
 
     Node::update_properties(&mut *node, &mut props);
     UpdateProps::update_properties(&mut *node, &mut props);
@@ -128,9 +129,9 @@ pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::St
 
 pub fn add_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
+    let state = state.read();
     let node_map = state.node_map.clone();
-    let node_map = node_map.lock().unwrap();
+    let node_map = node_map.lock();
 
     let node = node_map.get(&node_id);
     let child_node = node_map.get(&child_node_id);
@@ -143,7 +144,7 @@ pub fn add_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::stri
         return Err(format!("Cannot find node by id {}", child_node_id));
     }
 
-    let mut node = node.unwrap().lock().unwrap();
+    let mut node = node.unwrap().lock();
     let child_node = child_node.unwrap().clone();
 
     node.add_child(child_node);
@@ -190,9 +191,9 @@ pub fn insert_child_inner(
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
+    let state = state.read();
     let node_map = state.node_map.clone();
-    let node_map = node_map.lock().unwrap();
+    let node_map = node_map.lock();
 
     let node = node_map.get(&node_id);
     let child_node = node_map.get(&child_node_id);
@@ -205,7 +206,7 @@ pub fn insert_child_inner(
         return Err(format!("Cannot find node by id {}", child_node_id));
     }
 
-    let mut node = node.unwrap().lock().unwrap();
+    let mut node = node.unwrap().lock();
     let child_node = child_node.unwrap().clone();
 
     node.insert_child(index, child_node);
@@ -256,9 +257,9 @@ pub fn insert_child_before_inner(
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
+    let state = state.read();
     let node_map = state.node_map.clone();
-    let node_map = node_map.lock().unwrap();
+    let node_map = node_map.lock();
 
     let node = node_map.get(&node_id);
     let before_node = node_map.get(&before_node_id);
@@ -276,7 +277,7 @@ pub fn insert_child_before_inner(
         return Err(format!("Cannot find node by id {}", child_node_id));
     }
 
-    let mut node = node.unwrap().lock().unwrap();
+    let mut node = node.unwrap().lock();
     let before_node = before_node.unwrap().clone();
     let child_node = child_node.unwrap().clone();
 
@@ -309,9 +310,9 @@ pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string:
 
 pub fn remove_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
+    let state = state.read();
     let node_map = state.node_map.clone();
-    let node_map = node_map.lock().unwrap();
+    let node_map = node_map.lock();
 
     let node = node_map.get(&node_id);
     let child_node = node_map.get(&child_node_id);
@@ -324,7 +325,7 @@ pub fn remove_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::s
         return Err(format!("Cannot find node by id {}", child_node_id));
     }
 
-    let mut node = node.unwrap().lock().unwrap();
+    let mut node = node.unwrap().lock();
     let child_node = child_node.unwrap().clone();
 
     node.remove_child(child_node).unwrap();
@@ -356,9 +357,9 @@ pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::St
 
 pub fn remove_child_at_inner(node_id: u32, index: usize) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
+    let state = state.read();
     let node_map = state.node_map.clone();
-    let node_map = node_map.lock().unwrap();
+    let node_map = node_map.lock();
 
     let node = node_map.get(&node_id);
 
@@ -366,7 +367,7 @@ pub fn remove_child_at_inner(node_id: u32, index: usize) -> Result<(), std::stri
         return Err(format!("Cannot find node by id {}", node_id));
     }
 
-    let mut node = node.unwrap().lock().unwrap();
+    let mut node = node.unwrap().lock();
 
     node.remove_child_at(index).unwrap();
 
@@ -401,17 +402,17 @@ pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> 
 pub fn move_to_inner(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> {
     let node_map = {
         let state = get_shared_state();
-        let state = state.lock().unwrap();
+        let state = state.read();
         state.node_map.clone()
     };
-    let node_map = node_map.lock().unwrap();
+    let node_map = node_map.lock();
 
     let node = node_map.get(&node_id);
     if node.is_none() {
         return Err(format!("Cannot find node by id {}", node_id));
     }
 
-    let mut node = node.unwrap().lock().unwrap();
+    let mut node = node.unwrap().lock();
     node.move_to(x, y);
 
     Ok(())
@@ -454,9 +455,9 @@ pub fn get_translate(node_id: u32) -> Result<Vec<i32>, std::string::String> {
 
 pub fn get_translate_inner(node_id: u32) -> Result<[f64; 2], std::string::String> {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
+    let state = state.read();
     let node_map = state.node_map.clone();
-    let node_map = node_map.lock().unwrap();
+    let node_map = node_map.lock();
 
     let node = node_map.get(&node_id);
 
@@ -464,7 +465,7 @@ pub fn get_translate_inner(node_id: u32) -> Result<[f64; 2], std::string::String
         return Err(format!("Cannot find node by id {}", node_id));
     }
 
-    let node = node.unwrap().lock().unwrap();
+    let node = node.unwrap().lock();
 
     let &Point { x, y } = node.translate();
 
@@ -496,9 +497,9 @@ pub fn update_props(node_id: u32, props: JsValue) -> Result<(), std::string::Str
 
 pub fn update_props_inner(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
+    let state = state.read();
     let node_map = state.node_map.clone();
-    let node_map = node_map.lock().unwrap();
+    let node_map = node_map.lock();
 
     let node = node_map.get(&node_id);
 
@@ -508,7 +509,7 @@ pub fn update_props_inner(node_id: u32, mut props: JSValue) -> Result<(), std::s
 
     drop(state);
 
-    let mut node = node.unwrap().lock().unwrap();
+    let mut node = node.unwrap().lock();
 
     // set node props
     Node::update_properties(&mut *node, &mut props);

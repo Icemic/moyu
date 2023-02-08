@@ -14,6 +14,7 @@ url = "2.2"
 dotenv = "0.15.0"
 env_logger = "0.9"
 node-resolve = "2.2"
+parking_lot = {version = "0.12", features = ["hardware-lock-elision"]}
 tokio = {version = "1", features = ["full"]}
 
 # deps for web

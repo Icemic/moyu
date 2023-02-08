@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use hai_pal::sync::Mutex;
+use std::sync::Arc;
 
 use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 use winit::dpi::LogicalSize;

@@ -60,11 +60,9 @@ fn get_node_fields() -> Vec<Field> {
         quote! { rotation: f64},
         // skew relative to parent
         quote! { skew: Point},
-
         // for update transform dirty check
         quote! { _update_id: u32},
         quote! { _current_update_id: u32},
-
         // transform matrix relative to parent
         quote! { pub transform: Transform},
         // transform matrix relative to global
@@ -223,8 +221,8 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
             child: Arc<Mutex<dyn Node>>,
         ) {
             let index = self.children.iter().position(|item| {
-                let l = item.lock().unwrap();
-                let r = child.lock().unwrap();
+                let l = item.lock();
+                let r = child.lock();
                 *l == *r
             });
             if index.is_none() {
@@ -235,8 +233,8 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
 
         fn remove_child(&mut self, child: Arc<Mutex<dyn Node>>) -> Option<Arc<Mutex<dyn Node>>> {
             if let Some(index) = self.children.iter().position(|item| {
-                let l = item.lock().unwrap();
-                let r = child.lock().unwrap();
+                let l = item.lock();
+                let r = child.lock();
                 *l == *r
             }) {
                 return Some(self.children.remove(index));

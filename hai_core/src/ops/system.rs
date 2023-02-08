@@ -72,9 +72,10 @@ pub fn resize_window(width: f64, height: f64, factor: Option<f64>) {
 
 pub fn resize_window_inner(width: f64, height: f64, factor: Option<f64>) {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
+    let state = state.read();
     state
         .event_proxy
+        .lock()
         .send_event(UserEvent::ResizeWindow(width, height, factor))
         .unwrap();
 }
@@ -92,8 +93,12 @@ pub fn quit() {
 
 pub fn quit_inner() {
     let state = get_shared_state();
-    let state = state.lock().unwrap();
-    state.event_proxy.send_event(UserEvent::Quit).unwrap();
+    let state = state.read();
+    state
+        .event_proxy
+        .lock()
+        .send_event(UserEvent::Quit)
+        .unwrap();
 }
 
 #[wasm_bindgen]
@@ -104,7 +109,7 @@ pub fn load_resources() {
     wasm_bindgen_futures::spawn_local(async {
         let resource_manager = {
             let state = get_shared_state();
-            let state = state.lock().unwrap();
+            let state = state.read();
             state.resource_manager.clone()
         };
         let mut resource_manager = resource_manager.lock().unwrap();

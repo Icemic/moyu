@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use hai_pal::sync::RwLock;
+use std::sync::Arc;
 
 use crate::{
     nodes::{Container, Sprite},
@@ -6,14 +7,14 @@ use crate::{
     traits::Node,
 };
 
-pub fn add_preset_default(state: &Arc<Mutex<State>>) {
-    let state = state.lock().unwrap();
+pub fn add_preset_default(state: &Arc<RwLock<State>>) {
+    let state = state.read();
     let root_node = state.root_node.clone();
-    let mut root_node = root_node.lock().unwrap();
+    let mut root_node = root_node.lock();
     let device = state.device.clone();
-    let device = device.lock().unwrap();
+    let device = device.lock();
     let queue = state.queue.clone();
-    let queue = queue.lock().unwrap();
+    let queue = queue.lock();
 
     drop(state);
 

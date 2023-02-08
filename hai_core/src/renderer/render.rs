@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex, MutexGuard};
+use hai_pal::sync::{Mutex, MutexGuard, RwLock};
+use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use winit::dpi::PhysicalSize;
 
@@ -18,16 +19,16 @@ impl Renderer {
         let staging_belt = StagingBelt::new(0);
         Self { staging_belt }
     }
-    pub fn render(&mut self, _state: &Arc<Mutex<State>>) -> Result<(), wgpu::SurfaceError> {
-        let state = _state.lock().unwrap();
+    pub fn render(&mut self, _state: &Arc<RwLock<State>>) -> Result<(), wgpu::SurfaceError> {
+        let state = _state.read();
         let surface = state.surface.clone();
-        let surface = surface.lock().unwrap();
+        let surface = surface.lock();
         let device = state.device.clone();
         let queue = state.queue.clone();
         let root_node_arc = state.root_node.clone();
 
         let renderers = state.renderers.clone();
-        let renderers = renderers.read().unwrap();
+        let renderers = renderers.read();
         let phy_size = PhysicalSize::new(state.physical_size.0, state.physical_size.1);
         let scale_factor = state.scale_factor;
         let logical_size = phy_size.to_logical::<f64>(scale_factor);
@@ -39,21 +40,21 @@ impl Renderer {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = {
-            let device = device.lock().unwrap();
+            let device = device.lock();
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Command Encoder"),
             })
         };
 
         let mut belt_encoder = {
-            let device = device.lock().unwrap();
+            let device = device.lock();
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Belt Command Encoder"),
             })
         };
 
         {
-            let root_node = root_node_arc.lock().unwrap();
+            let root_node = root_node_arc.lock();
             let upload_payload = RendererUpdatePayload {
                 logical_size,
                 scale_factor,
@@ -62,12 +63,12 @@ impl Renderer {
             let mut nodes: Vec<Arc<Mutex<dyn Node>>> = vec![];
 
             walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
-                let mut _child = child.lock().unwrap();
+                let mut _child = child.lock();
                 _child.update_transform(
                     parent.global_transform(),
                     logical_size,
                     scale_factor,
-                    false
+                    false,
                 );
 
                 drop(_child);
@@ -77,7 +78,7 @@ impl Renderer {
             });
 
             let mut childs: Vec<MutexGuard<dyn Node>> =
-                nodes.iter_mut().map(|n| n.lock().unwrap()).collect();
+                nodes.iter_mut().map(|n| n.lock()).collect();
 
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -134,7 +135,7 @@ impl Renderer {
 
         self.staging_belt.finish();
 
-        let queue = queue.lock().unwrap();
+        let queue = queue.lock();
         queue.submit(std::iter::once(belt_encoder.finish()));
         queue.submit(std::iter::once(encoder.finish()));
         output.present();

@@ -1,9 +1,6 @@
+use hai_pal::sync::Mutex;
 use serde::{Deserialize, Serialize};
-use std::{
-    any::Any,
-    fmt::Debug,
-    sync::{Arc, Mutex},
-};
+use std::{any::Any, fmt::Debug, sync::Arc};
 use winit::dpi::LogicalSize;
 
 use super::{parse_props, JSValue, Renderable, UpdateProps};
