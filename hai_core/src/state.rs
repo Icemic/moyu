@@ -1,9 +1,10 @@
+use hai_pal::sync::{Mutex, RwLock};
 use log::error;
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::forget;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;
 
@@ -16,9 +17,9 @@ use crate::{
 
 static STATE: OnceCell<usize> = OnceCell::new();
 
-pub fn get_shared_state() -> Arc<Mutex<State>> {
+pub fn get_shared_state() -> Arc<RwLock<State>> {
     let p = *STATE.get().unwrap() as *const c_void;
-    let ptr = p as *const Mutex<State>;
+    let ptr = p as *const RwLock<State>;
     let r = unsafe { Arc::from_raw(ptr) };
     let r_cloned = r.clone();
 
@@ -28,7 +29,7 @@ pub fn get_shared_state() -> Arc<Mutex<State>> {
     r_cloned
 }
 
-pub fn set_shared_state(state: Arc<Mutex<State>>) {
+pub fn set_shared_state(state: Arc<RwLock<State>>) {
     let p = Arc::into_raw(state) as *const c_void as usize;
     STATE.set(p).expect("Failed to set shared state.");
 }
@@ -40,7 +41,7 @@ pub struct State {
     pub device: Arc<Mutex<Device>>,
     pub queue: Arc<Mutex<Queue>>,
     pub config: SurfaceConfiguration,
-    pub event_proxy: EventLoopProxy<UserEvent>,
+    pub event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
     pub resource_manager: Arc<Mutex<ResourceManager>>,
     pub renderers: Arc<RwLock<HashMap<String, Box<dyn Renderer>>>>,
 
@@ -55,7 +56,7 @@ impl State {
         device: Arc<Mutex<Device>>,
         queue: Arc<Mutex<Queue>>,
         config: SurfaceConfiguration,
-        event_proxy: EventLoopProxy<UserEvent>,
+        event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
     ) -> Self {
         // create root node
         let root_node = Container::new("Root Node".to_string());
@@ -84,7 +85,7 @@ impl State {
     }
 
     pub fn register_renderer(&mut self, name: String, renderer: Box<dyn Renderer>) {
-        let mut renderers = self.renderers.write().unwrap();
+        let mut renderers = self.renderers.write();
         if renderers.contains_key(&name) {
             error!("There's already a renderer named '{}'.", name);
             return;
@@ -121,8 +122,8 @@ impl State {
             }
 
             // apply new size
-            let surface = self.surface.lock().unwrap();
-            let device = self.device.lock().unwrap();
+            let surface = self.surface.lock();
+            let device = self.device.lock();
             surface.configure(&device, &self.config);
         }
     }

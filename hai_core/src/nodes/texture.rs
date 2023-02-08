@@ -1,5 +1,6 @@
+use hai_pal::sync::RwLock;
 use once_cell::sync::OnceCell;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Texture {

@@ -1,8 +1,9 @@
 use hai_macros::node;
+use hai_pal::sync::{Mutex, RwLock};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Arc;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 use winit::dpi::LogicalSize;
@@ -67,7 +68,7 @@ impl Sprite {
     fn calculate_vertices(&mut self, logical_size: LogicalSize<f64>, scale_factor: f64) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-        let texture = self.texture.read().unwrap();
+        let texture = self.texture.read();
         let width =
             (texture.width as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
         let height = (texture.height as f64 * scale_factor)
@@ -152,14 +153,14 @@ impl Renderable for Sprite {
         self.calculate_vertices(payload.logical_size, payload.scale_factor);
 
         let vertices = self.vertices.as_ref().unwrap();
-        let device = arc_device.lock().unwrap();
+        let device = arc_device.lock();
 
         /*
          * bind group and vertex buffer should be created at the same time.
          * if bind_group (as well as vertex_buffer) is none, try to create it.
          */
         if self.bind_group.is_none() {
-            let texture = self.texture.read().unwrap();
+            let texture = self.texture.read();
             if let TextureStatus::Ready = texture.status() {
                 let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                     layout: bind_group_layout,
@@ -220,7 +221,7 @@ impl Renderable for Sprite {
 
 impl Focusable for Sprite {
     fn contains(&self, x: f64, y: f64) -> bool {
-        let texture = self.texture.read().unwrap();
+        let texture = self.texture.read();
 
         let translate = self.translate();
 
@@ -248,8 +249,8 @@ impl UpdateProps for Sprite {
 
         if let Some(src) = props.src {
             let state = get_shared_state();
-            let state = state.lock().unwrap();
-            let mut resource_manager = state.resource_manager.lock().unwrap();
+            let state = state.read();
+            let mut resource_manager = state.resource_manager.lock();
             let texture = resource_manager.get_texture(src);
             self.texture = texture;
 

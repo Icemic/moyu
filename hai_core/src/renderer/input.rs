@@ -1,5 +1,6 @@
+use hai_pal::sync::RwLock;
 use log::debug;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use winit::{dpi::PhysicalSize, event::WindowEvent};
 
 use super::walk::walk_nodes_bottom_top;
@@ -9,11 +10,11 @@ use crate::{
     traits::{Focusable, NodeType},
 };
 
-pub fn input(event: &WindowEvent, state: &Arc<Mutex<State>>) -> bool {
-    let state = state.lock().unwrap();
+pub fn input(event: &WindowEvent, state: &Arc<RwLock<State>>) -> bool {
+    let state = state.read();
     let root_node = state.root_node.clone();
     let current_focused_node = state.current_focused_node.clone();
-    // let root_node = root_node.lock().unwrap();
+    // let root_node = root_node.lock();
 
     let phy_size = PhysicalSize::new(state.physical_size.0, state.physical_size.1);
     let scale_factor = state.scale_factor;
@@ -26,10 +27,10 @@ pub fn input(event: &WindowEvent, state: &Arc<Mutex<State>>) -> bool {
             let global_logical_x = position.x / scale_factor;
             let global_logical_y = position.y / scale_factor;
 
-            let root_node = root_node.lock().unwrap();
+            let root_node = root_node.lock();
 
             walk_nodes_bottom_top(&*root_node, &mut |child, parent| {
-                let child_ref = child.lock().unwrap();
+                let child_ref = child.lock();
                 let hit = match NodeType::node_type(&*child_ref) {
                     "sprite" => {
                         let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
@@ -51,7 +52,7 @@ pub fn input(event: &WindowEvent, state: &Arc<Mutex<State>>) -> bool {
                 };
 
                 if hit.0 {
-                    let mut current_focused_node = current_focused_node.lock().unwrap();
+                    let mut current_focused_node = current_focused_node.lock();
                     *current_focused_node = Some(child.clone());
                     debug!("pointer is over {}", hit.1.unwrap());
                 }
@@ -61,7 +62,7 @@ pub fn input(event: &WindowEvent, state: &Arc<Mutex<State>>) -> bool {
             true
         }
         WindowEvent::CursorLeft { .. } => {
-            let mut current_focused_node = current_focused_node.lock().unwrap();
+            let mut current_focused_node = current_focused_node.lock();
             *current_focused_node = None;
             true
         }

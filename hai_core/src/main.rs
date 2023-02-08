@@ -13,6 +13,7 @@ mod user_event;
 use cgmath::num_traits::ToPrimitive;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
+use hai_pal::sync::{Mutex, RwLock};
 use hai_pal::{env, logger, platform};
 use log::{error, info};
 use renderer::{create_surface, input, Renderer, SpriteRenderer};
@@ -21,7 +22,7 @@ use state::{set_shared_state, State};
 use std::thread;
 use std::{
     process::exit,
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 use user_event::UserEvent;
@@ -77,6 +78,7 @@ fn main() {
     let queue = Arc::new(Mutex::new(queue));
 
     let event_proxy = event_loop.create_proxy();
+    let event_proxy = Arc::new(Mutex::new(event_proxy));
 
     // create multithread shared state
     let mut state = State::new(surface, device, queue, config, event_proxy);
@@ -90,7 +92,7 @@ fn main() {
     state.set_screen_size((size.width, size.height), scale_factor);
 
     // make state sharable among threads
-    let state = Arc::new(Mutex::new(state));
+    let state = Arc::new(RwLock::new(state));
 
     set_shared_state(state.clone());
 
@@ -106,7 +108,7 @@ fn main() {
                 .build()
                 .unwrap();
             let resource_manager = {
-                let state = state.lock().unwrap();
+                let state = state.read();
                 state.resource_manager.clone()
             };
             runtime.block_on(async {
@@ -122,7 +124,7 @@ fn main() {
                 };
 
                 vm.run_event_loop(|cx| {
-                    let mut resource_manager = resource_manager.lock().unwrap();
+                    let mut resource_manager = resource_manager.lock();
                     resource_manager.poll(cx)
                 })
                 .await;
@@ -170,7 +172,7 @@ fn main() {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
                     Err(wgpu::SurfaceError::Lost) => {
-                        let mut state = state.lock().unwrap();
+                        let mut state = state.write();
                         state.refresh();
                     }
                     // The system is out of memory, we should probably quit
@@ -231,7 +233,7 @@ fn main() {
                             ..
                         } => *control_flow = ControlFlow::Exit,
                         WindowEvent::Resized(physical_size) => {
-                            let mut state = state.lock().unwrap();
+                            let mut state = state.write();
                             state.resize((physical_size.width, physical_size.height), None);
                         }
                         WindowEvent::ScaleFactorChanged {
@@ -239,7 +241,7 @@ fn main() {
                             new_inner_size,
                             ..
                         } => {
-                            let mut state = state.lock().unwrap();
+                            let mut state = state.write();
                             state.resize(
                                 (new_inner_size.width, new_inner_size.height),
                                 Some(*scale_factor),
@@ -252,7 +254,7 @@ fn main() {
             Event::UserEvent(user_event) => match user_event {
                 UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
                     let factor = factor.unwrap_or(window.scale_factor());
-                    let mut state = state.lock().unwrap();
+                    let mut state = state.write();
                     state.resize(
                         (
                             (logical_width * factor).to_u32().unwrap(),

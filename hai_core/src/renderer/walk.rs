@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use hai_pal::sync::Mutex;
+use std::sync::Arc;
 
 use crate::traits::Node;
 
@@ -17,7 +18,7 @@ where
             return true;
         }
 
-        let child = child.lock().unwrap();
+        let child = child.lock();
 
         if child.children().len() > 0 {
             let should_end = walk_nodes_top_bottom(&*child, func);
@@ -39,7 +40,7 @@ where
     let children = root_node.children();
     for child in children.iter().rev() {
         {
-            let child = child.lock().unwrap();
+            let child = child.lock();
 
             if child.children().len() > 0 {
                 let should_end = walk_nodes_bottom_top(&*child, func);

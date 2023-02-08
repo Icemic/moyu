@@ -1,7 +1,8 @@
 use hai_macros::node;
+use hai_pal::sync::Mutex;
 use log::warn;
 use std::any::Any;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use winit::dpi::LogicalSize;
 
 use crate::traits::{Node, NodeType, UpdateProps, NODE_ID};
