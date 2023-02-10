@@ -1,6 +1,4 @@
-use hai_pal::sync::Mutex;
 use std::sync::Arc;
-
 use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 use winit::dpi::LogicalSize;
 
@@ -12,8 +10,8 @@ where
 {
     fn update(
         &mut self,
-        arc_device: &Arc<Mutex<Device>>,
-        arc_queue: &Arc<Mutex<Queue>>,
+        arc_device: &Arc<Device>,
+        arc_queue: &Arc<Queue>,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         bind_group_layout: &BindGroupLayout,

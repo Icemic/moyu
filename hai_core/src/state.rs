@@ -37,9 +37,9 @@ pub fn set_shared_state(state: Arc<RwLock<State>>) {
 pub struct State {
     pub physical_size: (u32, u32),
     pub scale_factor: f64,
-    pub surface: Arc<Mutex<Surface>>,
-    pub device: Arc<Mutex<Device>>,
-    pub queue: Arc<Mutex<Queue>>,
+    pub surface: Arc<Surface>,
+    pub device: Arc<Device>,
+    pub queue: Arc<Queue>,
     pub config: SurfaceConfiguration,
     pub event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
     pub resource_manager: Arc<Mutex<ResourceManager>>,
@@ -52,9 +52,9 @@ pub struct State {
 
 impl State {
     pub fn new(
-        surface: Arc<Mutex<Surface>>,
-        device: Arc<Mutex<Device>>,
-        queue: Arc<Mutex<Queue>>,
+        surface: Arc<Surface>,
+        device: Arc<Device>,
+        queue: Arc<Queue>,
         config: SurfaceConfiguration,
         event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
     ) -> Self {
@@ -122,9 +122,7 @@ impl State {
             }
 
             // apply new size
-            let surface = self.surface.lock();
-            let device = self.device.lock();
-            surface.configure(&device, &self.config);
+            self.surface.configure(&self.device, &self.config);
         }
     }
 }

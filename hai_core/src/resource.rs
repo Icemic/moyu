@@ -2,7 +2,7 @@ use anyhow::Result;
 use futures::{stream::FuturesUnordered, task::AtomicWaker, StreamExt};
 use hai_pal::env::entry_dir;
 use hai_pal::fs;
-use hai_pal::sync::{Mutex, RwLock};
+use hai_pal::sync::RwLock;
 use image::GenericImageView;
 use log::{debug, error};
 use std::{
@@ -16,8 +16,8 @@ use wgpu::{Device, Queue};
 use crate::nodes::{Texture, TextureStatus};
 
 pub struct ResourceManager {
-    device: Arc<Mutex<Device>>,
-    queue: Arc<Mutex<Queue>>,
+    device: Arc<Device>,
+    queue: Arc<Queue>,
     texture_map: HashMap<String, Weak<RwLock<Texture>>>,
     #[cfg(not(target_arch = "wasm32"))]
     tasks: FuturesUnordered<JoinHandle<Result<()>>>,
@@ -27,7 +27,7 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
-    pub fn new(device: Arc<Mutex<Device>>, queue: Arc<Mutex<Queue>>) -> Self {
+    pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Self {
         Self {
             device,
             queue,
@@ -96,9 +96,6 @@ impl ResourceManager {
                 height: dimensions.1,
                 depth_or_array_layers: 1,
             };
-
-            let device = device.lock();
-            let queue = queue.lock();
 
             let texture_gpu = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(asset_relative_path.as_str()),
