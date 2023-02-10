@@ -1,4 +1,4 @@
-use hai_pal::sync::{Mutex, MutexGuard, RwLock};
+use hai_pal::sync::{RwLock, RwLockReadGuard};
 use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use winit::dpi::PhysicalSize;
@@ -54,16 +54,16 @@ impl Renderer {
         };
 
         {
-            let root_node = root_node_arc.lock();
+            let root_node = root_node_arc.read();
             let upload_payload = RendererUpdatePayload {
                 logical_size,
                 scale_factor,
             };
 
-            let mut nodes: Vec<Arc<Mutex<dyn Node>>> = vec![];
+            let mut nodes: Vec<Arc<RwLock<dyn Node>>> = vec![];
 
             walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
-                let mut _child = child.lock();
+                let mut _child = child.write();
                 _child.update_transform(
                     parent.global_transform(),
                     logical_size,
@@ -71,14 +71,29 @@ impl Renderer {
                     false,
                 );
 
+                if let Some(child) = _child.try_as_renderable_mut() {
+                    let node_type = NodeType::node_type(child);
+
+                    let current_renderer = { renderers.get(node_type).unwrap() };
+
+                    child.update(
+                        &device,
+                        &queue,
+                        &mut belt_encoder,
+                        &mut self.staging_belt,
+                        current_renderer.bind_group_layout(),
+                        &upload_payload,
+                    );
+                }
+
                 drop(_child);
                 nodes.push(child);
 
                 false
             });
 
-            let mut childs: Vec<MutexGuard<dyn Node>> =
-                nodes.iter_mut().map(|n| n.lock()).collect();
+            // FIXME: too many loops
+            let childs: Vec<RwLockReadGuard<dyn Node>> = nodes.iter().map(|n| n.read()).collect();
 
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -98,24 +113,15 @@ impl Renderer {
                 depth_stencil_attachment: None,
             });
 
-            let childs: Vec<&mut dyn Renderable> = childs
-                .iter_mut()
-                .filter_map(|n| n.try_as_renderable_mut())
+            let childs: Vec<&dyn Renderable> = childs
+                .iter()
+                .filter_map(|n| n.try_as_renderable())
                 .collect();
 
             for child in childs {
                 let node_type = NodeType::node_type(child);
 
                 let current_renderer = { renderers.get(node_type).unwrap() };
-
-                child.update(
-                    &device,
-                    &queue,
-                    &mut belt_encoder,
-                    &mut self.staging_belt,
-                    current_renderer.bind_group_layout(),
-                    &upload_payload,
-                );
 
                 render_pass.set_pipeline(current_renderer.render_pipeline());
                 render_pass.set_index_buffer(
@@ -136,8 +142,9 @@ impl Renderer {
         self.staging_belt.finish();
 
         let queue = queue.lock();
-        queue.submit(std::iter::once(belt_encoder.finish()));
-        queue.submit(std::iter::once(encoder.finish()));
+        queue.submit(
+            std::iter::once(belt_encoder.finish()).chain(std::iter::once(encoder.finish())),
+        );
         output.present();
 
         self.staging_belt.recall();

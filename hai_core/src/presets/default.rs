@@ -10,7 +10,7 @@ use crate::{
 pub fn add_preset_default(state: &Arc<RwLock<State>>) {
     let state = state.read();
     let root_node = state.root_node.clone();
-    let mut root_node = root_node.lock();
+    let mut root_node = root_node.read();
     let device = state.device.clone();
     let device = device.lock();
     let queue = state.queue.clone();

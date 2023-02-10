@@ -1,4 +1,4 @@
-use hai_pal::sync::Mutex;
+use hai_pal::sync::RwLock;
 use std::sync::Arc;
 
 use crate::traits::Node;
@@ -8,7 +8,7 @@ use crate::traits::Node;
 pub fn walk_nodes_top_bottom<T>(root_node: &(dyn Node), func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Arc<Mutex<dyn Node>>, &(dyn Node)) -> bool,
+    T: FnMut(Arc<RwLock<dyn Node>>, &(dyn Node)) -> bool,
 {
     let children = root_node.children();
     for child in children.iter() {
@@ -18,7 +18,7 @@ where
             return true;
         }
 
-        let child = child.lock();
+        let child = child.read();
 
         if child.children().len() > 0 {
             let should_end = walk_nodes_top_bottom(&*child, func);
@@ -35,12 +35,12 @@ where
 pub fn walk_nodes_bottom_top<T>(root_node: &(dyn Node), func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Arc<Mutex<dyn Node>>, &(dyn Node)) -> bool,
+    T: FnMut(Arc<RwLock<dyn Node>>, &(dyn Node)) -> bool,
 {
     let children = root_node.children();
     for child in children.iter().rev() {
         {
-            let child = child.lock();
+            let child = child.read();
 
             if child.children().len() > 0 {
                 let should_end = walk_nodes_bottom_top(&*child, func);

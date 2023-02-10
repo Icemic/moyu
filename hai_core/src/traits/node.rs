@@ -1,4 +1,4 @@
-use hai_pal::sync::Mutex;
+use hai_pal::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{any::Any, fmt::Debug, sync::Arc};
 use winit::dpi::LogicalSize;
@@ -24,7 +24,7 @@ pub struct NodeProps {
     pub skew_y: Option<f64>,
 }
 
-pub trait Node: NodeType + UpdateProps + Send + Debug {
+pub trait Node: NodeType + UpdateProps + Send + Sync + Debug {
     fn id(&self) -> &u32;
     fn label(&self) -> &String;
 
@@ -50,7 +50,7 @@ pub trait Node: NodeType + UpdateProps + Send + Debug {
 
     fn transform(&self) -> &Transform;
     fn global_transform(&self) -> &Transform;
-    fn children(&self) -> &Vec<Arc<Mutex<dyn Node>>>;
+    fn children(&self) -> &Vec<Arc<RwLock<dyn Node>>>;
 
     fn node_type(&self) -> &'static str;
     fn as_any(&self) -> &dyn Any;
@@ -62,21 +62,21 @@ pub trait Node: NodeType + UpdateProps + Send + Debug {
         None
     }
 
-    fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node>>>;
+    fn get_child(&self, index: usize) -> Option<Arc<RwLock<dyn Node>>>;
 
-    fn add_child(&mut self, child: Arc<Mutex<dyn Node>>);
+    fn add_child(&mut self, child: Arc<RwLock<dyn Node>>);
 
-    fn insert_child(&mut self, index: usize, child: Arc<Mutex<dyn Node>>);
+    fn insert_child(&mut self, index: usize, child: Arc<RwLock<dyn Node>>);
 
     fn insert_child_before(
         &mut self,
-        before_child: Arc<Mutex<dyn Node>>,
-        child: Arc<Mutex<dyn Node>>,
+        before_child: Arc<RwLock<dyn Node>>,
+        child: Arc<RwLock<dyn Node>>,
     );
 
-    fn remove_child(&mut self, child: Arc<Mutex<dyn Node>>) -> Option<Arc<Mutex<dyn Node>>>;
+    fn remove_child(&mut self, child: Arc<RwLock<dyn Node>>) -> Option<Arc<RwLock<dyn Node>>>;
 
-    fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node>>>;
+    fn remove_child_at(&mut self, index: usize) -> Option<Arc<RwLock<dyn Node>>>;
 
     fn move_to(&mut self, x: f64, y: f64);
 
