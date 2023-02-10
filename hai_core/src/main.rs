@@ -73,9 +73,9 @@ fn main() {
 
     let sprite_renderer = SpriteRenderer::new(&device, &config);
 
-    let surface = Arc::new(Mutex::new(surface));
-    let device = Arc::new(Mutex::new(device));
-    let queue = Arc::new(Mutex::new(queue));
+    let surface = Arc::new(surface);
+    let device = Arc::new(device);
+    let queue = Arc::new(queue);
 
     let event_proxy = event_loop.create_proxy();
     let event_proxy = Arc::new(Mutex::new(event_proxy));

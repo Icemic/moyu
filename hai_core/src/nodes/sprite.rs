@@ -1,5 +1,5 @@
 use hai_macros::node;
-use hai_pal::sync::{Mutex, RwLock};
+use hai_pal::sync::RwLock;
 use log::warn;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
@@ -143,8 +143,8 @@ impl NodeType for Sprite {
 impl Renderable for Sprite {
     fn update(
         &mut self,
-        arc_device: &Arc<Mutex<Device>>,
-        _: &Arc<Mutex<Queue>>,
+        device: &Arc<Device>,
+        _: &Arc<Queue>,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         bind_group_layout: &BindGroupLayout,
@@ -153,7 +153,6 @@ impl Renderable for Sprite {
         self.calculate_vertices(payload.logical_size, payload.scale_factor);
 
         let vertices = self.vertices.as_ref().unwrap();
-        let device = arc_device.lock();
 
         /*
          * bind group and vertex buffer should be created at the same time.

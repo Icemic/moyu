@@ -22,10 +22,9 @@ impl Renderer {
     pub fn render(&mut self, _state: &Arc<RwLock<State>>) -> Result<(), wgpu::SurfaceError> {
         let state = _state.read();
         let surface = state.surface.clone();
-        let surface = surface.lock();
         let device = state.device.clone();
         let queue = state.queue.clone();
-        let root_node_arc = state.root_node.clone();
+        let root_node = state.root_node.clone();
 
         let renderers = state.renderers.clone();
         let renderers = renderers.read();
@@ -40,21 +39,19 @@ impl Renderer {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
         let mut encoder = {
-            let device = device.lock();
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Command Encoder"),
             })
         };
 
         let mut belt_encoder = {
-            let device = device.lock();
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Belt Command Encoder"),
             })
         };
 
         {
-            let root_node = root_node_arc.read();
+            let root_node = root_node.read();
             let upload_payload = RendererUpdatePayload {
                 logical_size,
                 scale_factor,
@@ -141,7 +138,6 @@ impl Renderer {
 
         self.staging_belt.finish();
 
-        let queue = queue.lock();
         queue.submit(
             std::iter::once(belt_encoder.finish()).chain(std::iter::once(encoder.finish())),
         );
