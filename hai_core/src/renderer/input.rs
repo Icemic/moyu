@@ -27,10 +27,10 @@ pub fn input(event: &WindowEvent, state: &Arc<RwLock<State>>) -> bool {
             let global_logical_x = position.x / scale_factor;
             let global_logical_y = position.y / scale_factor;
 
-            let root_node = root_node.lock();
+            let root_node = root_node.read();
 
             walk_nodes_bottom_top(&*root_node, &mut |child, parent| {
-                let child_ref = child.lock();
+                let child_ref = child.read();
                 let hit = match NodeType::node_type(&*child_ref) {
                     "sprite" => {
                         let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
@@ -52,7 +52,7 @@ pub fn input(event: &WindowEvent, state: &Arc<RwLock<State>>) -> bool {
                 };
 
                 if hit.0 {
-                    let mut current_focused_node = current_focused_node.lock();
+                    let mut current_focused_node = current_focused_node.write();
                     *current_focused_node = Some(child.clone());
                     debug!("pointer is over {}", hit.1.unwrap());
                 }
@@ -62,7 +62,7 @@ pub fn input(event: &WindowEvent, state: &Arc<RwLock<State>>) -> bool {
             true
         }
         WindowEvent::CursorLeft { .. } => {
-            let mut current_focused_node = current_focused_node.lock();
+            let mut current_focused_node = current_focused_node.write();
             *current_focused_node = None;
             true
         }

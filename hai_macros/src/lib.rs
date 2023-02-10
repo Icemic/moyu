@@ -68,7 +68,7 @@ fn get_node_fields() -> Vec<Field> {
         // transform matrix relative to global
         quote! { pub global_transform: Transform },
         // children
-        quote! { pub children: Vec<Arc<Mutex<dyn Node>>> },
+        quote! { pub children: Vec<Arc<RwLock<dyn Node>>> },
     ];
 
     fields
@@ -188,7 +188,7 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
         fn global_transform(&self) -> &Transform {
             &self.global_transform
         }
-        fn children(&self) -> &Vec<Arc<Mutex<dyn Node>>> {
+        fn children(&self) -> &Vec<Arc<RwLock<dyn Node>>> {
             &self.children
         }
 
@@ -200,29 +200,29 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
             self
         }
 
-        fn get_child(&self, index: usize) -> Option<Arc<Mutex<dyn Node>>> {
+        fn get_child(&self, index: usize) -> Option<Arc<RwLock<dyn Node>>> {
             if let Some(child) = self.children.get(index) {
                 return Some(child.clone());
             }
             None
         }
 
-        fn add_child(&mut self, child: Arc<Mutex<dyn Node>>) {
+        fn add_child(&mut self, child: Arc<RwLock<dyn Node>>) {
             self.children.push(child);
         }
 
-        fn insert_child(&mut self, index: usize, child: Arc<Mutex<dyn Node>>) {
+        fn insert_child(&mut self, index: usize, child: Arc<RwLock<dyn Node>>) {
             self.children.insert(index, child);
         }
 
         fn insert_child_before(
             &mut self,
-            before_child: Arc<Mutex<dyn Node>>,
-            child: Arc<Mutex<dyn Node>>,
+            before_child: Arc<RwLock<dyn Node>>,
+            child: Arc<RwLock<dyn Node>>,
         ) {
             let index = self.children.iter().position(|item| {
-                let l = item.lock();
-                let r = child.lock();
+                let l = item.read();
+                let r = child.read();
                 *l == *r
             });
             if index.is_none() {
@@ -231,10 +231,10 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
             self.children.insert(index.unwrap_or(0), child);
         }
 
-        fn remove_child(&mut self, child: Arc<Mutex<dyn Node>>) -> Option<Arc<Mutex<dyn Node>>> {
+        fn remove_child(&mut self, child: Arc<RwLock<dyn Node>>) -> Option<Arc<RwLock<dyn Node>>> {
             if let Some(index) = self.children.iter().position(|item| {
-                let l = item.lock();
-                let r = child.lock();
+                let l = item.read();
+                let r = child.read();
                 *l == *r
             }) {
                 return Some(self.children.remove(index));
@@ -242,7 +242,7 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
             None
         }
 
-        fn remove_child_at(&mut self, index: usize) -> Option<Arc<Mutex<dyn Node>>> {
+        fn remove_child_at(&mut self, index: usize) -> Option<Arc<RwLock<dyn Node>>> {
             if index < self.children.len() {
                 return Some(self.children.remove(index));
             }
@@ -315,12 +315,16 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
                 #base
                 #renderable_impls
             }
+
+            unsafe impl Send for #struct_name {}
         }
     } else {
         quote! {
             impl Node for #struct_name {
                 #base
             }
+
+            unsafe impl Send for #struct_name {}
         }
     }
 }

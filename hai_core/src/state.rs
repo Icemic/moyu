@@ -45,9 +45,9 @@ pub struct State {
     pub resource_manager: Arc<Mutex<ResourceManager>>,
     pub renderers: Arc<RwLock<HashMap<String, Box<dyn Renderer>>>>,
 
-    pub root_node: Arc<Mutex<dyn Node>>,
-    pub current_focused_node: Arc<Mutex<Option<Arc<Mutex<dyn Node>>>>>,
-    pub node_map: Arc<Mutex<HashMap<u32, Arc<Mutex<dyn Node>>>>>,
+    pub root_node: Arc<RwLock<dyn Node>>,
+    pub current_focused_node: Arc<RwLock<Option<Arc<RwLock<dyn Node>>>>>,
+    pub node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
 }
 
 impl State {
@@ -60,9 +60,9 @@ impl State {
     ) -> Self {
         // create root node
         let root_node = Container::new("Root Node".to_string());
-        let root_node = Arc::new(Mutex::new(root_node));
+        let root_node = Arc::new(RwLock::new(root_node));
 
-        let mut node_map: HashMap<u32, Arc<Mutex<dyn Node>>> = Default::default();
+        let mut node_map: HashMap<u32, Arc<RwLock<dyn Node>>> = Default::default();
         node_map.insert(0, root_node.clone());
 
         let resource_manager = ResourceManager::new(device.clone(), queue.clone());
@@ -79,8 +79,8 @@ impl State {
             resource_manager: Arc::new(Mutex::new(resource_manager)),
             renderers: Arc::new(RwLock::new(renderers)),
             root_node,
-            current_focused_node: Arc::new(Mutex::new(None)),
-            node_map: Arc::new(Mutex::new(node_map)),
+            current_focused_node: Arc::new(RwLock::new(None)),
+            node_map: Arc::new(RwLock::new(node_map)),
         }
     }
 
