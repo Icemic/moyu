@@ -1,9 +1,10 @@
 use anyhow::Result;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::{prelude::*, *};
-use hai_pal::sync::RwLock;
+use hai_pal::sync::{RwLock, RwLockReadGuard};
 #[cfg(target_arch = "wasm32")]
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
@@ -14,6 +15,20 @@ use crate::{
     nodes::{Container, Sprite},
     types::Point,
 };
+
+#[inline]
+fn get_node<'a>(
+    node_map: &'a RwLockReadGuard<HashMap<u32, Arc<RwLock<dyn Node>>>>,
+    node_id: u32,
+) -> Result<&'a Arc<RwLock<dyn Node>>, std::string::String> {
+    let node = node_map.get(&node_id);
+
+    if let Some(node) = node {
+        Ok(node)
+    } else {
+        return Err(format!("Cannot find node by id {}", node_id));
+    }
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn create_instance(
@@ -133,19 +148,11 @@ pub fn add_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::stri
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
-    let node = node_map.get(&node_id);
-    let child_node = node_map.get(&child_node_id);
+    let node = get_node(&node_map, node_id)?;
+    let child_node = get_node(&node_map, child_node_id)?;
 
-    if node.is_none() {
-        return Err(format!("Cannot find node by id {}", node_id));
-    }
-
-    if child_node.is_none() {
-        return Err(format!("Cannot find node by id {}", child_node_id));
-    }
-
-    let mut node = node.unwrap().write();
-    let child_node = child_node.unwrap().clone();
+    let mut node = node.write();
+    let child_node = child_node.clone();
 
     node.add_child(child_node);
 
@@ -195,19 +202,11 @@ pub fn insert_child_inner(
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
-    let node = node_map.get(&node_id);
-    let child_node = node_map.get(&child_node_id);
+    let node = get_node(&node_map, node_id)?;
+    let child_node = get_node(&node_map, child_node_id)?;
 
-    if node.is_none() {
-        return Err(format!("Cannot find node by id {}", node_id));
-    }
-
-    if child_node.is_none() {
-        return Err(format!("Cannot find node by id {}", child_node_id));
-    }
-
-    let mut node = node.unwrap().write();
-    let child_node = child_node.unwrap().clone();
+    let mut node = node.write();
+    let child_node = child_node.clone();
 
     node.insert_child(index, child_node);
 
@@ -261,25 +260,13 @@ pub fn insert_child_before_inner(
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
-    let node = node_map.get(&node_id);
-    let before_node = node_map.get(&before_node_id);
-    let child_node = node_map.get(&child_node_id);
+    let node = get_node(&node_map, node_id)?;
+    let before_node = get_node(&node_map, before_node_id)?;
+    let child_node = get_node(&node_map, child_node_id)?;
 
-    if node.is_none() {
-        return Err(format!("Cannot find node by id {}", node_id));
-    }
-
-    if before_node.is_none() {
-        return Err(format!("Cannot find node by id {}", before_node_id));
-    }
-
-    if child_node.is_none() {
-        return Err(format!("Cannot find node by id {}", child_node_id));
-    }
-
-    let mut node = node.unwrap().write();
-    let before_node = before_node.unwrap().clone();
-    let child_node = child_node.unwrap().clone();
+    let mut node = node.write();
+    let before_node = before_node.clone();
+    let child_node = child_node.clone();
 
     node.insert_child_before(before_node, child_node);
 
@@ -314,19 +301,11 @@ pub fn remove_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::s
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
-    let node = node_map.get(&node_id);
-    let child_node = node_map.get(&child_node_id);
+    let node = get_node(&node_map, node_id)?;
+    let child_node = get_node(&node_map, child_node_id)?;
 
-    if node.is_none() {
-        return Err(format!("Cannot find node by id {}", node_id));
-    }
-
-    if child_node.is_none() {
-        return Err(format!("Cannot find node by id {}", child_node_id));
-    }
-
-    let mut node = node.unwrap().write();
-    let child_node = child_node.unwrap().clone();
+    let mut node = node.write();
+    let child_node = child_node.clone();
 
     node.remove_child(child_node).unwrap();
 
@@ -361,13 +340,9 @@ pub fn remove_child_at_inner(node_id: u32, index: usize) -> Result<(), std::stri
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
-    let node = node_map.get(&node_id);
+    let node = get_node(&node_map, node_id)?;
 
-    if node.is_none() {
-        return Err(format!("Cannot find node by id {}", node_id));
-    }
-
-    let mut node = node.unwrap().write();
+    let mut node = node.write();
 
     node.remove_child_at(index).unwrap();
 
@@ -406,13 +381,9 @@ pub fn move_to_inner(node_id: u32, x: f64, y: f64) -> Result<(), std::string::St
         state.node_map.clone()
     };
     let node_map = node_map.read();
+    let node = get_node(&node_map, node_id)?;
 
-    let node = node_map.get(&node_id);
-    if node.is_none() {
-        return Err(format!("Cannot find node by id {}", node_id));
-    }
-
-    let mut node = node.unwrap().write();
+    let mut node = node.write();
     node.move_to(x, y);
 
     Ok(())
@@ -459,13 +430,8 @@ pub fn get_translate_inner(node_id: u32) -> Result<[f64; 2], std::string::String
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
-    let node = node_map.get(&node_id);
-
-    if node.is_none() {
-        return Err(format!("Cannot find node by id {}", node_id));
-    }
-
-    let node = node.unwrap().write();
+    let node = get_node(&node_map, node_id)?;
+    let node = node.write();
 
     let &Point { x, y } = node.translate();
 
@@ -499,17 +465,12 @@ pub fn update_props_inner(node_id: u32, mut props: JSValue) -> Result<(), std::s
     let state = get_shared_state();
     let state = state.read();
     let node_map = state.node_map.clone();
-    let node_map = node_map.read();
-
-    let node = node_map.get(&node_id);
-
-    if node.is_none() {
-        return Err(format!("Cannot find node by id {}", node_id));
-    }
 
     drop(state);
 
-    let mut node = node.unwrap().write();
+    let node_map = node_map.read();
+    let node = get_node(&node_map, node_id)?;
+    let mut node = node.write();
 
     // set node props
     Node::update_properties(&mut *node, &mut props);
