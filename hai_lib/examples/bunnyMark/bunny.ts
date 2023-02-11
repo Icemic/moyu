@@ -56,10 +56,10 @@ export default class Bunny {
    * Update the position of the bunny
    * @method update
    */
-  update() {
-    this.position.x += this.speedX;
-    this.position.y += this.speedY;
-    this.speedY += this.gravity;
+  update(deltaFrame: number) {
+    this.position.x += this.speedX * deltaFrame;
+    this.position.y += this.speedY * deltaFrame;
+    this.speedY += this.gravity * deltaFrame;
 
     if (this.position.x > this.bounds.right) {
       this.speedX *= -1;
@@ -80,7 +80,10 @@ export default class Bunny {
       this.position.y = this.bounds.top;
     }
 
-    hai.moveTo(this.id, this.position.x, this.position.y);
+    hai.updateProps(this.id, {
+      x: this.position.x,
+      y: this.position.y,
+    });
   }
 
   /**
