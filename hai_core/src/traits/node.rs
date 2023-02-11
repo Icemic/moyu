@@ -118,6 +118,14 @@ pub trait Node: NodeType + UpdateProps + Send + Sync + Debug {
         if let Some(y) = props.skew_y {
             self.set_skew_y(y);
         }
+
+        if let Some(point) = props.anchor {
+            self.set_anchor(point[0], point[1]);
+        }
+
+        if let Some(point) = props.pivot {
+            self.set_pivot(point[0], point[1]);
+        }
     }
 
     fn update_transform(
