@@ -2,5 +2,8 @@
   "private": true,
   "workspaces": [
     "hai_lib"
-  ]
+  ],
+  "scripts": {
+    "dev": "yarn workspace @hai/lib dev"
+  }
 }

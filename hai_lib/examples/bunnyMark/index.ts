@@ -16,24 +16,29 @@ const bunnies = [
   'bunny/rabbitv3.png',
 ];
 
+// bunny size is 25x32 with anchor [0.5, 1.0]
 const bunnyMark = new BunnyMark(bunnies, {
-  left: 0,
-  right: 800,
-  top: 0,
-  bottom: 600,
+  left: 12,
+  right: 1280 - 12,
+  top: 32,
+  bottom: 720,
 });
 
-bunnyMark.addBunny(50);
+bunnyMark.addBunny(200);
 
-hai.resizeWindow(800, 600);
+// hai.resizeWindow(800, 600);
 
+let t = Date.now();
 const loop = () => {
-  bunnyMark.update();
   setTimeout(loop, 16);
+  bunnyMark.update();
+  const t2 = Date.now();
+  console.info(t2 - t);
+  t = t2;
 };
 
 setInterval(() => {
   bunnyMark.addBunny(10);
-}, 800);
+}, 1600);
 
 loop();
