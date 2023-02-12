@@ -8,8 +8,15 @@ pub async fn create_surface(
 ) -> (Surface, Device, Queue, SurfaceConfiguration) {
     // The instance is a handle to our GPU
     // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
-    let instance = wgpu::Instance::new(wgpu::Backends::all());
-    let surface = unsafe { instance.create_surface(window) };
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
+    });
+    let surface = unsafe {
+        instance
+            .create_surface(window)
+            .expect("Failed to create surface.")
+    };
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
@@ -44,13 +51,22 @@ pub async fn create_surface(
         .await
         .expect("Unable to find a suitable GPU adapter.");
 
-    let format = *surface
-        .get_supported_formats(&adapter)
+    let caps = surface.get_capabilities(&adapter);
+
+    let format = *caps
+        .formats
         .iter()
         .find(|f| f.describe().srgb)
         .expect("Cannot find a proper surface format.");
 
     info!("Surface format: {:?}", format);
+
+    let alpha_mode = *caps
+        .alpha_modes
+        .get(0)
+        .expect("Cannot find a proper surface alpha mode.");
+
+    info!("Alpha mode: {:?}", alpha_mode);
 
     // define how the surface creates its underlying SurfaceTextures
     let config = wgpu::SurfaceConfiguration {
@@ -61,6 +77,8 @@ pub async fn create_surface(
         height: size.height,
         // determines how to sync the surface with the display
         present_mode: wgpu::PresentMode::Fifo,
+        alpha_mode,
+        view_formats: vec![],
     };
     surface.configure(&device, &config);
 
