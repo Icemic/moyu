@@ -6,6 +6,10 @@ export interface HaiNodeAttributes {
   label?: string;
   x?: number;
   y?: number;
+  // the anchor for node, values range from 0.0 to 1.0.
+  anchor?: [number, number];
+  // the pivot on ratation, values in pixels.
+  pivot?: [number, number];
   scale?: number;
   scaleX?: number;
   scaley?: number;
