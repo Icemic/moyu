@@ -1,16 +1,17 @@
 #![feature(drain_filter)]
 
+mod core;
 mod hai;
 mod nodes;
 mod ops;
 mod presets;
 mod renderer;
 mod resource;
-mod state;
 mod surface;
 mod traits;
 mod types;
 mod user_event;
+mod utils;
 
 use hai::create_hai_state;
 #[cfg(not(target_arch = "wasm32"))]
@@ -18,7 +19,6 @@ use hai_js_runtime::JSRuntime;
 use hai_pal::sync::Mutex;
 use hai_pal::{env, logger, platform};
 use log::{error, info};
-use renderer::{input, Renderer};
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 use std::{
@@ -139,12 +139,12 @@ fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     let mut last_fps_timestamp = 0.;
 
-    let mut renderer = Renderer::new();
+    // let mut renderer = Renderer::new();
 
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                match renderer.render(&state) {
+                match state.render() {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
                     Err(wgpu::SurfaceError::Lost) => {
@@ -194,7 +194,7 @@ fn main() {
                 window_id,
             } if window_id == window.id() => {
                 // makes State to have priority over main()
-                if !input(event, &state) {
+                if !state.input(event) {
                     // UPDATED!
                     match event {
                         WindowEvent::CloseRequested

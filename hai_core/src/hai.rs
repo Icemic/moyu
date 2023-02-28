@@ -5,7 +5,7 @@ use winit::event_loop::EventLoopProxy;
 use winit::window::Window;
 
 use crate::renderer::SpriteRenderer;
-use crate::state::{set_shared_state, State};
+use crate::core::{set_shared_state, State};
 use crate::user_event::UserEvent;
 
 pub fn create_hai_state(

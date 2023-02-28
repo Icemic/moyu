@@ -7,7 +7,7 @@ use std::sync::Arc;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
-use crate::state::get_shared_state;
+use crate::core::get_shared_state;
 use crate::traits::{
     parse_props, Focusable, JSValue, Node, NodeType, Renderable, RendererUpdatePayload,
     UpdateProps, NODE_ID,
