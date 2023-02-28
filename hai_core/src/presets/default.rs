@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::{
     nodes::{Container, Sprite},
-    state::State,
+    core::State,
     traits::Node,
 };
 

@@ -4,7 +4,7 @@ use log::warn;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::state::get_shared_state;
+use crate::core::get_shared_state;
 #[cfg(target_arch = "wasm32")]
 use crate::web::get_shared_state;
 use crate::{presets::add_preset_default, user_event::UserEvent};

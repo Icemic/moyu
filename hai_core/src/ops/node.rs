@@ -9,7 +9,7 @@ use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
-use crate::state::get_shared_state;
+use crate::core::get_shared_state;
 use crate::traits::{JSValue, Node, UpdateProps};
 use crate::{
     nodes::{Container, Sprite},
