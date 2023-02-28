@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
-use winit::dpi::LogicalSize;
+
+use crate::types::SurfaceSize;
 
 use super::Node;
 
@@ -24,6 +25,5 @@ where
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RendererUpdatePayload {
-    pub logical_size: LogicalSize<f64>,
-    pub scale_factor: f64,
+    pub surface_size: SurfaceSize,
 }

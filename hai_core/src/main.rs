@@ -12,15 +12,13 @@ mod traits;
 mod types;
 mod user_event;
 
-use cgmath::num_traits::ToPrimitive;
 use hai::create_hai_state;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
-use hai_pal::sync::{Mutex, RwLock};
+use hai_pal::sync::Mutex;
 use hai_pal::{env, logger, platform};
 use log::{error, info};
-use renderer::{input, Renderer, SpriteRenderer};
-use state::{set_shared_state, State};
+use renderer::{input, Renderer};
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
 use std::{
@@ -29,6 +27,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 use surface::create_wgpu_surface;
+use types::SurfaceSize;
 use user_event::UserEvent;
 use winit::{
     dpi::{LogicalSize, Size},
@@ -152,7 +151,7 @@ fn main() {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
                     Err(wgpu::SurfaceError::Lost) => {
-                        let mut state = state.write();
+                        let state = state.write();
                         state.refresh();
                     }
                     // The system is out of memory, we should probably quit
@@ -213,19 +212,24 @@ fn main() {
                             ..
                         } => *control_flow = ControlFlow::Exit,
                         WindowEvent::Resized(physical_size) => {
+                            let surface_size = SurfaceSize::from_physical_size(
+                                physical_size,
+                                window.scale_factor(),
+                            );
                             let mut state = state.write();
-                            state.resize((physical_size.width, physical_size.height), None);
+                            state.resize(surface_size);
                         }
                         WindowEvent::ScaleFactorChanged {
                             scale_factor,
                             new_inner_size,
                             ..
                         } => {
-                            let mut state = state.write();
-                            state.resize(
-                                (new_inner_size.width, new_inner_size.height),
-                                Some(*scale_factor),
+                            let surface_size = SurfaceSize::from_physical_size(
+                                new_inner_size.to_owned(),
+                                scale_factor.clone(),
                             );
+                            let mut state = state.write();
+                            state.resize(surface_size);
                         }
                         _ => {}
                     }
@@ -235,16 +239,15 @@ fn main() {
                 UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
                     let factor = factor.unwrap_or(window.scale_factor());
                     let mut state = state.write();
-                    state.resize(
-                        (
-                            (logical_width * factor).to_u32().unwrap(),
-                            (logical_height * factor).to_u32().unwrap(),
-                        ),
-                        Some(factor),
-                    );
-                    let window_size =
-                        Size::Logical(LogicalSize::new(logical_width, logical_height));
-                    window.set_inner_size(window_size);
+
+                    if logical_width > 0. && logical_height > 0. {
+                        let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
+                        state.resize(surface_size);
+
+                        let window_size =
+                            Size::Logical(LogicalSize::new(logical_width, logical_height));
+                        window.set_inner_size(window_size);
+                    }
                 }
                 UserEvent::Quit => {
                     *control_flow = ControlFlow::Exit;

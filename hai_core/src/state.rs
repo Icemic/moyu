@@ -12,6 +12,7 @@ use crate::{
     nodes::Container,
     resource::ResourceManager,
     traits::{Node, Renderer},
+    types::SurfaceSize,
     user_event::UserEvent,
 };
 
@@ -35,12 +36,11 @@ pub fn set_shared_state(state: Arc<RwLock<State>>) {
 }
 
 pub struct State {
-    pub physical_size: (u32, u32),
-    pub scale_factor: f64,
+    pub surface_size: Arc<Mutex<SurfaceSize>>,
     pub surface: Arc<Surface>,
     pub device: Arc<Device>,
     pub queue: Arc<Queue>,
-    pub config: SurfaceConfiguration,
+    pub config: Arc<Mutex<SurfaceConfiguration>>,
     pub event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
     pub resource_manager: Arc<Mutex<ResourceManager>>,
     pub renderers: Arc<RwLock<HashMap<String, Box<dyn Renderer>>>>,
@@ -69,12 +69,11 @@ impl State {
         let renderers = HashMap::default();
 
         Self {
-            physical_size: Default::default(),
-            scale_factor: Default::default(),
+            surface_size: Default::default(),
             surface,
             device,
             queue,
-            config,
+            config: Arc::new(Mutex::new(config)),
             event_proxy,
             resource_manager: Arc::new(Mutex::new(resource_manager)),
             renderers: Arc::new(RwLock::new(renderers)),
@@ -84,7 +83,7 @@ impl State {
         }
     }
 
-    pub fn register_renderer(&mut self, name: String, renderer: Box<dyn Renderer>) {
+    pub fn register_renderer(&self, name: String, renderer: Box<dyn Renderer>) {
         let mut renderers = self.renderers.write();
         if renderers.contains_key(&name) {
             error!("There's already a renderer named '{}'.", name);
@@ -96,33 +95,31 @@ impl State {
     /**
      * Set screen size before first render, which should not be called after render loop started.
      */
-    pub fn set_screen_size(&mut self, physical_size: (u32, u32), scale_factor: f64) {
-        self.physical_size = physical_size;
-        self.scale_factor = scale_factor;
+    pub fn set_screen_size(&self, physical_size: (u32, u32), scale_factor: f64) {
+        let mut surface_size = self.surface_size.lock();
+
+        surface_size.set_scale_factor(scale_factor);
+        surface_size.set_physical_size(physical_size.0, physical_size.1);
     }
 
     /// reset surface
-    pub fn refresh(&mut self) {
-        self.resize(self.physical_size, None);
+    pub fn refresh(&self) {
+        let config = self.config.lock();
+        self.surface.configure(&self.device, &config);
     }
 
     // reconfigure the surface everytime the window's size changes
-    pub fn resize(&mut self, new_size: (u32, u32), new_scale_factor: Option<f64>) {
-        if new_size.0 > 0 && new_size.1 > 0 {
-            // set new physical size
-            self.physical_size = new_size;
+    pub fn resize(&self, new_size: SurfaceSize) {
+        let (width, height) = new_size.physical_size();
 
-            // set to surface config as well
-            self.config.width = new_size.0;
-            self.config.height = new_size.1;
+        let mut config = self.config.lock();
 
-            // dpi may change together
-            if let Some(new_scale_factor) = new_scale_factor {
-                self.scale_factor = new_scale_factor;
-            }
+        config.width = width;
+        config.height = height;
 
-            // apply new size
-            self.surface.configure(&self.device, &self.config);
-        }
+        *(self.surface_size.lock()) = new_size;
+
+        // apply new size
+        self.surface.configure(&self.device, &config);
     }
 }

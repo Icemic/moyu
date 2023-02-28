@@ -6,14 +6,13 @@ use std::any::Any;
 use std::sync::Arc;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
-use winit::dpi::LogicalSize;
 
 use crate::state::get_shared_state;
 use crate::traits::{
-    parse_props, JSValue, Node, NodeType, Renderable, RendererUpdatePayload, UpdateProps, NODE_ID,
+    parse_props, Focusable, JSValue, Node, NodeType, Renderable, RendererUpdatePayload,
+    UpdateProps, NODE_ID,
 };
-use crate::types::{Point, Transform};
-use crate::{traits::Focusable, types::Vertex};
+use crate::types::{Point, SurfaceSize, Transform, Vertex};
 
 use super::{get_empty_texture, Texture, TextureStatus};
 
@@ -65,15 +64,15 @@ impl Sprite {
         }
     }
 
-    fn calculate_vertices(&mut self, logical_size: LogicalSize<f64>, scale_factor: f64) {
+    fn calculate_vertices(&mut self, surface_size: &SurfaceSize) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
+        let (logical_width, logical_height) = surface_size.logical_size();
+        let scale_factor = surface_size.scale_factor();
         let texture = self.texture.read();
-        let width =
-            (texture.width as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
-        let height = (texture.height as f64 * scale_factor)
-            / (logical_size.height * scale_factor) as f64
-            * 2.;
+        let width = (texture.width as f64 * scale_factor) / (logical_width * scale_factor) * 2.;
+        let height =
+            (texture.height as f64 * scale_factor) / (logical_height * scale_factor) as f64 * 2.;
 
         drop(texture);
 
@@ -150,7 +149,7 @@ impl Renderable for Sprite {
         bind_group_layout: &BindGroupLayout,
         payload: &RendererUpdatePayload,
     ) {
-        self.calculate_vertices(payload.logical_size, payload.scale_factor);
+        self.calculate_vertices(&payload.surface_size);
 
         let vertices = self.vertices.as_ref().unwrap();
 
