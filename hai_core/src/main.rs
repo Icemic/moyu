@@ -1,22 +1,25 @@
 #![feature(drain_filter)]
 
+mod hai;
 mod nodes;
 mod ops;
 mod presets;
 mod renderer;
 mod resource;
 mod state;
+mod surface;
 mod traits;
 mod types;
 mod user_event;
 
 use cgmath::num_traits::ToPrimitive;
+use hai::create_hai_state;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
 use hai_pal::sync::{Mutex, RwLock};
 use hai_pal::{env, logger, platform};
 use log::{error, info};
-use renderer::{create_surface, input, Renderer, SpriteRenderer};
+use renderer::{input, Renderer, SpriteRenderer};
 use state::{set_shared_state, State};
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
@@ -25,6 +28,7 @@ use std::{
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
+use surface::create_wgpu_surface;
 use user_event::UserEvent;
 use winit::{
     dpi::{LogicalSize, Size},
@@ -40,6 +44,11 @@ fn main() {
 
     // create main thread infinity loop
     let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+
+    // create event proxy which allow us to send window events from another thread
+    let event_proxy = event_loop.create_proxy();
+    let event_proxy = Arc::new(Mutex::new(event_proxy));
+
     // create window
     let window = WindowBuilder::new()
         .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
@@ -63,38 +72,9 @@ fn main() {
             .expect("couldn't append canvas to document body");
     }
 
-    // create wgpu surface
-    #[cfg(not(target_arch = "wasm32"))]
-    let (surface, device, queue, config) =
-        futures::executor::block_on(create_surface(&window, &window.inner_size()));
-    #[cfg(target_arch = "wasm32")]
-    let (surface, device, queue, config) =
-        { pollster::block_on(create_surface(&window, &window.inner_size())) };
+    let (surface, device, queue, config) = create_wgpu_surface(&window);
 
-    let sprite_renderer = SpriteRenderer::new(&device, &config);
-
-    let surface = Arc::new(surface);
-    let device = Arc::new(device);
-    let queue = Arc::new(queue);
-
-    let event_proxy = event_loop.create_proxy();
-    let event_proxy = Arc::new(Mutex::new(event_proxy));
-
-    // create multithread shared state
-    let mut state = State::new(surface, device, queue, config, event_proxy);
-
-    // state.register_renderer("null".to_string(), null_renderer);
-    state.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
-
-    // set screen size
-    let size = window.inner_size();
-    let scale_factor = window.scale_factor();
-    state.set_screen_size((size.width, size.height), scale_factor);
-
-    // make state sharable among threads
-    let state = Arc::new(RwLock::new(state));
-
-    set_shared_state(state.clone());
+    let state = create_hai_state(surface, device, queue, config, &window, event_proxy);
 
     // desktop targets only
     // spawn a v8 thread
