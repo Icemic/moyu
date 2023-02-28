@@ -1,8 +1,26 @@
 use log::info;
+use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::{dpi::PhysicalSize, window::Window};
 
-pub async fn create_surface(
+pub fn create_wgpu_surface(
+    window: &Window,
+) -> (Arc<Surface>, Arc<Device>, Arc<Queue>, SurfaceConfiguration) {
+    // create wgpu surface
+    #[cfg(not(target_arch = "wasm32"))]
+    let (surface, device, queue, config) =
+        futures::executor::block_on(create_surface_inner(&window, &window.inner_size()));
+    #[cfg(target_arch = "wasm32")]
+    let (surface, device, queue, config) =
+        { pollster::block_on(create_surface_inner(&window, &window.inner_size())) };
+    let surface = Arc::new(surface);
+    let device = Arc::new(device);
+    let queue = Arc::new(queue);
+
+    (surface, device, queue, config)
+}
+
+pub(self) async fn create_surface_inner(
     window: &Window,
     size: &PhysicalSize<u32>,
 ) -> (Surface, Device, Queue, SurfaceConfiguration) {

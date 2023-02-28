@@ -4,3 +4,6 @@ pub enum UserEvent {
     ResizeWindow(f64, f64, Option<f64>),
     Quit,
 }
+
+unsafe impl Send for UserEvent {}
+unsafe impl Sync for UserEvent {}

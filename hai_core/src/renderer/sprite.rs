@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use wgpu::{util::DeviceExt, *};
 
 use crate::{nodes::SPRITE_INDICES, traits::Renderer, types::Vertex};
@@ -14,7 +15,7 @@ pub struct SpriteRenderer {
 }
 
 impl SpriteRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &Arc<Device>, config: &SurfaceConfiguration) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
                 BindGroupLayoutEntry {
