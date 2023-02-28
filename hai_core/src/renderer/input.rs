@@ -1,4 +1,3 @@
-use hai_pal::sync::RwLock;
 use log::debug;
 use std::sync::Arc;
 use winit::event::WindowEvent;
@@ -10,8 +9,7 @@ use crate::{
     traits::{Focusable, NodeType},
 };
 
-pub fn input(event: &WindowEvent, state: &Arc<RwLock<State>>) -> bool {
-    let state = state.read();
+pub fn input(event: &WindowEvent, state: &Arc<State>) -> bool {
     let root_node = state.root_node.clone();
     let current_focused_node = state.current_focused_node.clone();
 

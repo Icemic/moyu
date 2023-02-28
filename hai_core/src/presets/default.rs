@@ -7,7 +7,7 @@ use crate::{
     traits::Node,
 };
 
-pub fn add_preset_default(state: &Arc<RwLock<State>>) {
+pub fn add_preset_default(state: &Arc<State>) {
     // let state = state.read();
     // let root_node = state.root_node.clone();
     // let mut root_node = root_node.read();

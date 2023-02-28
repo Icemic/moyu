@@ -86,10 +86,7 @@ fn main() {
                 .enable_all()
                 .build()
                 .unwrap();
-            let resource_manager = {
-                let state = state.read();
-                state.resource_manager.clone()
-            };
+            let resource_manager = state.resource_manager.clone();
             runtime.block_on(async {
                 let mut vm = JSRuntime::new(state);
 
@@ -151,7 +148,6 @@ fn main() {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
                     Err(wgpu::SurfaceError::Lost) => {
-                        let state = state.write();
                         state.refresh();
                     }
                     // The system is out of memory, we should probably quit
@@ -216,7 +212,6 @@ fn main() {
                                 physical_size,
                                 window.scale_factor(),
                             );
-                            let mut state = state.write();
                             state.resize(surface_size);
                         }
                         WindowEvent::ScaleFactorChanged {
@@ -228,7 +223,6 @@ fn main() {
                                 new_inner_size.to_owned(),
                                 scale_factor.clone(),
                             );
-                            let mut state = state.write();
                             state.resize(surface_size);
                         }
                         _ => {}
@@ -238,7 +232,6 @@ fn main() {
             Event::UserEvent(user_event) => match user_event {
                 UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
                     let factor = factor.unwrap_or(window.scale_factor());
-                    let mut state = state.write();
 
                     if logical_width > 0. && logical_height > 0. {
                         let surface_size = SurfaceSize::new(logical_width, logical_height, factor);

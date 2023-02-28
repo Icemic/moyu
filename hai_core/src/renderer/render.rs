@@ -18,8 +18,7 @@ impl Renderer {
         let staging_belt = StagingBelt::new(0);
         Self { staging_belt }
     }
-    pub fn render(&mut self, _state: &Arc<RwLock<State>>) -> Result<(), wgpu::SurfaceError> {
-        let state = _state.read();
+    pub fn render(&mut self, state: &Arc<State>) -> Result<(), wgpu::SurfaceError> {
         let surface = state.surface.clone();
         let device = state.device.clone();
         let queue = state.queue.clone();
@@ -29,8 +28,6 @@ impl Renderer {
         let renderers = renderers.read();
 
         let surface_size = state.surface_size.lock().clone();
-
-        drop(state);
 
         let output = surface.get_current_texture()?;
         let view = output

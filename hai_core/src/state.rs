@@ -18,9 +18,9 @@ use crate::{
 
 static STATE: OnceCell<usize> = OnceCell::new();
 
-pub fn get_shared_state() -> Arc<RwLock<State>> {
+pub fn get_shared_state() -> Arc<State> {
     let p = *STATE.get().unwrap() as *const c_void;
-    let ptr = p as *const RwLock<State>;
+    let ptr = p as *const State;
     let r = unsafe { Arc::from_raw(ptr) };
     let r_cloned = r.clone();
 
@@ -30,7 +30,7 @@ pub fn get_shared_state() -> Arc<RwLock<State>> {
     r_cloned
 }
 
-pub fn set_shared_state(state: Arc<RwLock<State>>) {
+pub fn set_shared_state(state: Arc<State>) {
     let p = Arc::into_raw(state) as *const c_void as usize;
     STATE.set(p).expect("Failed to set shared state.");
 }
