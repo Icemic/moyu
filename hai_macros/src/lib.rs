@@ -256,8 +256,7 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
         fn update_transform(
             &mut self,
             parent_transform: &Transform,
-            logical_size: LogicalSize<f64>,
-            scale_factor: f64,
+            surface_size: &SurfaceSize,
             force: bool,
         ) {
             if force || self._update_id != self._current_update_id {
@@ -278,9 +277,12 @@ fn get_node_trait_impl(struct_name: &Ident2, renderable: bool) -> TokenStream2 {
                 let tx = x - ((pivot_x * a) + (pivot_y * c));
                 let ty = y - ((pivot_x * b) + (pivot_y * d));
 
+                let (logical_width, logical_height) = surface_size.logical_size();
+                let scale_factor = surface_size.scale_factor();
+
                 // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-                let tx = (x as f64 * scale_factor) / (logical_size.width * scale_factor) * 2.;
-                let ty = (y as f64 * scale_factor) / (logical_size.height * scale_factor) * 2.;
+                let tx = (x as f64 * scale_factor) / (logical_width * scale_factor) * 2.;
+                let ty = (y as f64 * scale_factor) / (logical_height * scale_factor) * 2.;
 
                 self.transform.a = a;
                 self.transform.b = b;

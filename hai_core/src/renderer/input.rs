@@ -1,7 +1,7 @@
 use hai_pal::sync::RwLock;
 use log::debug;
 use std::sync::Arc;
-use winit::{dpi::PhysicalSize, event::WindowEvent};
+use winit::event::WindowEvent;
 
 use super::walk::walk_nodes_bottom_top;
 use crate::{
@@ -14,12 +14,12 @@ pub fn input(event: &WindowEvent, state: &Arc<RwLock<State>>) -> bool {
     let state = state.read();
     let root_node = state.root_node.clone();
     let current_focused_node = state.current_focused_node.clone();
-    // let root_node = root_node.lock();
 
-    let phy_size = PhysicalSize::new(state.physical_size.0, state.physical_size.1);
-    let scale_factor = state.scale_factor;
-    let logical_size = phy_size.to_logical::<f64>(scale_factor);
+    let surface_size = state.surface_size.lock();
+    let (logical_width, logical_height) = surface_size.logical_size();
+    let scale_factor = surface_size.scale_factor();
 
+    drop(surface_size);
     drop(state);
 
     match event {
@@ -35,10 +35,8 @@ pub fn input(event: &WindowEvent, state: &Arc<RwLock<State>>) -> bool {
                     "sprite" => {
                         let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
                         // calculate relative coordinate
-                        let parent_global_x =
-                            parent.global_transform().tx * logical_size.width / 2.;
-                        let parent_global_y =
-                            parent.global_transform().ty * logical_size.height / 2.;
+                        let parent_global_x = parent.global_transform().tx * logical_width / 2.;
+                        let parent_global_y = parent.global_transform().ty * logical_height / 2.;
 
                         let relative_logical_x = (global_logical_x - parent_global_x).round();
                         let relative_logical_y = (global_logical_y - parent_global_y).round();

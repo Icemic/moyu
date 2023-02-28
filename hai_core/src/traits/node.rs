@@ -1,10 +1,9 @@
 use hai_pal::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{any::Any, fmt::Debug, sync::Arc};
-use winit::dpi::LogicalSize;
 
 use super::{parse_props, JSValue, Renderable, UpdateProps};
-use crate::types::{Point, Transform};
+use crate::types::{Point, SurfaceSize, Transform};
 
 pub static mut NODE_ID: u32 = 0;
 
@@ -131,8 +130,7 @@ pub trait Node: NodeType + UpdateProps + Send + Sync + Debug {
     fn update_transform(
         &mut self,
         parent_transform: &Transform,
-        logical_size: LogicalSize<f64>,
-        scale_factor: f64,
+        surface_size: &SurfaceSize,
         force: bool,
     );
 }

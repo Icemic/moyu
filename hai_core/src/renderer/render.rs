@@ -1,7 +1,6 @@
 use hai_pal::sync::{RwLock, RwLockReadGuard};
 use std::sync::Arc;
 use wgpu::util::StagingBelt;
-use winit::dpi::PhysicalSize;
 
 use crate::{
     state::State,
@@ -28,9 +27,8 @@ impl Renderer {
 
         let renderers = state.renderers.clone();
         let renderers = renderers.read();
-        let phy_size = PhysicalSize::new(state.physical_size.0, state.physical_size.1);
-        let scale_factor = state.scale_factor;
-        let logical_size = phy_size.to_logical::<f64>(scale_factor);
+
+        let surface_size = state.surface_size.lock().clone();
 
         drop(state);
 
@@ -53,20 +51,14 @@ impl Renderer {
         {
             let root_node = root_node.read();
             let upload_payload = RendererUpdatePayload {
-                logical_size,
-                scale_factor,
+                surface_size: surface_size.clone(),
             };
 
             let mut nodes: Vec<Arc<RwLock<dyn Node>>> = vec![];
 
             walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
                 let mut _child = child.write();
-                _child.update_transform(
-                    parent.global_transform(),
-                    logical_size,
-                    scale_factor,
-                    false,
-                );
+                _child.update_transform(parent.global_transform(), &surface_size, false);
 
                 if let Some(child) = _child.try_as_renderable_mut() {
                     let node_type = NodeType::node_type(child);
