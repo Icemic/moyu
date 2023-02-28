@@ -72,7 +72,6 @@ pub fn resize_window(width: f64, height: f64, factor: Option<f64>) {
 
 pub fn resize_window_inner(width: f64, height: f64, factor: Option<f64>) {
     let state = get_shared_state();
-    let state = state.read();
     state
         .event_proxy
         .lock()
@@ -93,7 +92,6 @@ pub fn quit() {
 
 pub fn quit_inner() {
     let state = get_shared_state();
-    let state = state.read();
     state
         .event_proxy
         .lock()
@@ -109,8 +107,7 @@ pub fn load_resources() {
     wasm_bindgen_futures::spawn_local(async {
         let resource_manager = {
             let state = get_shared_state();
-            let state = state.read();
-            state.resource_manager.clone()
+                    state.resource_manager.clone()
         };
         let mut resource_manager = resource_manager.lock().unwrap();
         poll_fn(|cx| resource_manager.poll(cx)).await;

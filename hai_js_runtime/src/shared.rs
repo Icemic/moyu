@@ -14,7 +14,7 @@ pub struct Shared {
 }
 
 impl Shared {
-    pub fn new<T>(state: Arc<RwLock<T>>) -> Self {
+    pub fn new<T>(state: Arc<T>) -> Self {
         let module_loader = ModuleLoader::new();
         let timer = TimerScheduler::new();
 

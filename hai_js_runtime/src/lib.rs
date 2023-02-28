@@ -11,7 +11,6 @@ pub mod utils;
 use anyhow::Result;
 use futures::{future::poll_fn, StreamExt};
 use hai_pal::env::entry_dir;
-use hai_pal::sync::RwLock;
 use log::{error, info};
 use module::promise_reject_callback;
 pub use serde_v8;
@@ -33,7 +32,7 @@ pub struct JSRuntime {
 }
 
 impl JSRuntime {
-    pub fn new<T>(state: Arc<RwLock<T>>) -> Self {
+    pub fn new<T>(state: Arc<T>) -> Self {
         let platform = v8::new_default_platform(0, false).make_shared();
         v8::V8::initialize_platform(platform);
         v8::V8::initialize();

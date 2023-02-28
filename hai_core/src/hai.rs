@@ -1,4 +1,4 @@
-use hai_pal::sync::{Mutex, RwLock};
+use hai_pal::sync::Mutex;
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;
@@ -15,11 +15,11 @@ pub fn create_hai_state(
     config: SurfaceConfiguration,
     window: &Window,
     event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
-) -> Arc<RwLock<State>> {
+) -> Arc<State> {
     let sprite_renderer = SpriteRenderer::new(&device, &config);
 
     // create multithread shared state
-    let mut state = State::new(surface, device, queue, config, event_proxy);
+    let state = State::new(surface, device, queue, config, event_proxy);
 
     // state.register_renderer("null".to_string(), null_renderer);
     state.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
@@ -30,7 +30,7 @@ pub fn create_hai_state(
     state.set_screen_size((size.width, size.height), scale_factor);
 
     // make state sharable among threads
-    let state = Arc::new(RwLock::new(state));
+    let state = Arc::new(state);
 
     set_shared_state(state.clone());
 

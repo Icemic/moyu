@@ -247,7 +247,6 @@ impl UpdateProps for Sprite {
 
         if let Some(src) = props.src {
             let state = get_shared_state();
-            let state = state.read();
             let mut resource_manager = state.resource_manager.lock();
             let texture = resource_manager.get_texture(src);
             self.texture = texture;

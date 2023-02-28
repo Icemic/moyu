@@ -84,7 +84,6 @@ pub fn create_instance_inner(
     mut props: JSValue,
 ) -> Result<u32, std::string::String> {
     let state = get_shared_state();
-    let state = state.read();
     let node_map = state.node_map.clone();
     let mut node_map = node_map.write();
 
@@ -144,7 +143,6 @@ pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::St
 
 pub fn add_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.read();
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
@@ -198,7 +196,6 @@ pub fn insert_child_inner(
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.read();
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
@@ -256,7 +253,6 @@ pub fn insert_child_before_inner(
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.read();
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
@@ -297,7 +293,6 @@ pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string:
 
 pub fn remove_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.read();
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
@@ -336,7 +331,6 @@ pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::St
 
 pub fn remove_child_at_inner(node_id: u32, index: usize) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.read();
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
@@ -377,7 +371,7 @@ pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> 
 pub fn move_to_inner(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> {
     let node_map = {
         let state = get_shared_state();
-        let state = state.read();
+
         state.node_map.clone()
     };
     let node_map = node_map.read();
@@ -426,7 +420,6 @@ pub fn get_translate(node_id: u32) -> Result<Vec<i32>, std::string::String> {
 
 pub fn get_translate_inner(node_id: u32) -> Result<[f64; 2], std::string::String> {
     let state = get_shared_state();
-    let state = state.read();
     let node_map = state.node_map.clone();
     let node_map = node_map.read();
 
@@ -463,7 +456,6 @@ pub fn update_props(node_id: u32, props: JsValue) -> Result<(), std::string::Str
 
 pub fn update_props_inner(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
     let state = get_shared_state();
-    let state = state.read();
     let node_map = state.node_map.clone();
 
     drop(state);
