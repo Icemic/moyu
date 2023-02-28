@@ -13,7 +13,7 @@ mod types;
 mod user_event;
 mod utils;
 
-use hai::create_hai_state;
+use hai::create_hai_core;
 #[cfg(not(target_arch = "wasm32"))]
 use hai_js_runtime::JSRuntime;
 use hai_pal::sync::Mutex;
@@ -73,22 +73,22 @@ fn main() {
 
     let (surface, device, queue, config) = create_wgpu_surface(&window);
 
-    let state = create_hai_state(surface, device, queue, config, &window, event_proxy);
+    let core = create_hai_core(surface, device, queue, config, &window, event_proxy);
 
     // desktop targets only
     // spawn a v8 thread
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let state = state.clone();
+        let core = core.clone();
 
         thread::spawn(|| {
             let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .unwrap();
-            let resource_manager = state.resource_manager.clone();
+            let resource_manager = core.resource_manager.clone();
             runtime.block_on(async {
-                let mut vm = JSRuntime::new(state);
+                let mut vm = JSRuntime::new(core);
 
                 vm.with_global(|scope, global| {
                     ops::init(scope, global);
@@ -144,11 +144,11 @@ fn main() {
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
-                match state.render() {
+                match core.render() {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
                     Err(wgpu::SurfaceError::Lost) => {
-                        state.refresh();
+                        core.refresh();
                     }
                     // The system is out of memory, we should probably quit
                     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
@@ -194,7 +194,7 @@ fn main() {
                 window_id,
             } if window_id == window.id() => {
                 // makes State to have priority over main()
-                if !state.input(event) {
+                if !core.input(event) {
                     // UPDATED!
                     match event {
                         WindowEvent::CloseRequested
@@ -212,7 +212,7 @@ fn main() {
                                 physical_size,
                                 window.scale_factor(),
                             );
-                            state.resize(surface_size);
+                            core.resize(surface_size);
                         }
                         WindowEvent::ScaleFactorChanged {
                             scale_factor,
@@ -223,7 +223,7 @@ fn main() {
                                 new_inner_size.to_owned(),
                                 scale_factor.clone(),
                             );
-                            state.resize(surface_size);
+                            core.resize(surface_size);
                         }
                         _ => {}
                     }
@@ -235,7 +235,7 @@ fn main() {
 
                     if logical_width > 0. && logical_height > 0. {
                         let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
-                        state.resize(surface_size);
+                        core.resize(surface_size);
 
                         let window_size =
                             Size::Logical(LogicalSize::new(logical_width, logical_height));

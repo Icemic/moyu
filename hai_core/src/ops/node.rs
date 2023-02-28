@@ -9,7 +9,7 @@ use std::sync::Arc;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
-use crate::core::get_shared_state;
+use crate::core::get_core;
 use crate::traits::{JSValue, Node, UpdateProps};
 use crate::{
     nodes::{Container, Sprite},
@@ -83,8 +83,8 @@ pub fn create_instance_inner(
     label: Option<std::string::String>,
     mut props: JSValue,
 ) -> Result<u32, std::string::String> {
-    let state = get_shared_state();
-    let node_map = state.node_map.clone();
+    let core = get_core();
+    let node_map = core.node_map.clone();
     let mut node_map = node_map.write();
 
     let label = label.unwrap_or_default();
@@ -109,7 +109,7 @@ pub fn create_instance_inner(
 
     node_map.insert(node_id, node.clone());
 
-    drop(state);
+    drop(core);
 
     let mut node = node.write();
 
@@ -142,8 +142,8 @@ pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::St
 }
 
 pub fn add_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    let node_map = state.node_map.clone();
+    let core = get_core();
+    let node_map = core.node_map.clone();
     let node_map = node_map.read();
 
     let node = get_node(&node_map, node_id)?;
@@ -195,8 +195,8 @@ pub fn insert_child_inner(
     index: usize,
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    let node_map = state.node_map.clone();
+    let core = get_core();
+    let node_map = core.node_map.clone();
     let node_map = node_map.read();
 
     let node = get_node(&node_map, node_id)?;
@@ -252,8 +252,8 @@ pub fn insert_child_before_inner(
     before_node_id: u32,
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    let node_map = state.node_map.clone();
+    let core = get_core();
+    let node_map = core.node_map.clone();
     let node_map = node_map.read();
 
     let node = get_node(&node_map, node_id)?;
@@ -292,8 +292,8 @@ pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string:
 }
 
 pub fn remove_child_inner(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    let node_map = state.node_map.clone();
+    let core = get_core();
+    let node_map = core.node_map.clone();
     let node_map = node_map.read();
 
     let node = get_node(&node_map, node_id)?;
@@ -330,8 +330,8 @@ pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::St
 }
 
 pub fn remove_child_at_inner(node_id: u32, index: usize) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    let node_map = state.node_map.clone();
+    let core = get_core();
+    let node_map = core.node_map.clone();
     let node_map = node_map.read();
 
     let node = get_node(&node_map, node_id)?;
@@ -370,9 +370,9 @@ pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> 
 
 pub fn move_to_inner(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> {
     let node_map = {
-        let state = get_shared_state();
+        let core = get_core();
 
-        state.node_map.clone()
+        core.node_map.clone()
     };
     let node_map = node_map.read();
     let node = get_node(&node_map, node_id)?;
@@ -419,8 +419,8 @@ pub fn get_translate(node_id: u32) -> Result<Vec<i32>, std::string::String> {
 }
 
 pub fn get_translate_inner(node_id: u32) -> Result<[f64; 2], std::string::String> {
-    let state = get_shared_state();
-    let node_map = state.node_map.clone();
+    let core = get_core();
+    let node_map = core.node_map.clone();
     let node_map = node_map.read();
 
     let node = get_node(&node_map, node_id)?;
@@ -455,10 +455,10 @@ pub fn update_props(node_id: u32, props: JsValue) -> Result<(), std::string::Str
 }
 
 pub fn update_props_inner(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
-    let state = get_shared_state();
-    let node_map = state.node_map.clone();
+    let core = get_core();
+    let node_map = core.node_map.clone();
 
-    drop(state);
+    drop(core);
 
     let node_map = node_map.read();
     let node = get_node(&node_map, node_id)?;

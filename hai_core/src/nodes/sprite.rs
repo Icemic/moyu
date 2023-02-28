@@ -7,7 +7,7 @@ use std::sync::Arc;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
-use crate::core::get_shared_state;
+use crate::core::get_core;
 use crate::traits::{
     parse_props, Focusable, JSValue, Node, NodeType, Renderable, RendererUpdatePayload,
     UpdateProps, NODE_ID,
@@ -246,8 +246,8 @@ impl UpdateProps for Sprite {
         let props: SpriteProps = parse_props(props).unwrap();
 
         if let Some(src) = props.src {
-            let state = get_shared_state();
-            let mut resource_manager = state.resource_manager.lock();
+            let core = get_core();
+            let mut resource_manager = core.resource_manager.lock();
             let texture = resource_manager.get_texture(src);
             self.texture = texture;
 

@@ -4,9 +4,7 @@ use log::warn;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::core::get_shared_state;
-#[cfg(target_arch = "wasm32")]
-use crate::web::get_shared_state;
+use crate::core::get_core;
 use crate::{presets::add_preset_default, user_event::UserEvent};
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -34,8 +32,8 @@ pub fn load_preset(preset_name: String) {
 pub fn load_preset_inner(preset_name: std::string::String) {
     match preset_name.as_str() {
         "default" => {
-            let state = get_shared_state();
-            add_preset_default(&state);
+            let core = get_core();
+            add_preset_default(&core);
         }
         _ => {
             warn!("Unknown preset name '{}'", preset_name);
@@ -71,8 +69,8 @@ pub fn resize_window(width: f64, height: f64, factor: Option<f64>) {
 }
 
 pub fn resize_window_inner(width: f64, height: f64, factor: Option<f64>) {
-    let state = get_shared_state();
-    state
+    let core = get_core();
+    core
         .event_proxy
         .lock()
         .send_event(UserEvent::ResizeWindow(width, height, factor))
@@ -91,8 +89,8 @@ pub fn quit() {
 }
 
 pub fn quit_inner() {
-    let state = get_shared_state();
-    state
+    let core = get_core();
+    core
         .event_proxy
         .lock()
         .send_event(UserEvent::Quit)
@@ -106,8 +104,8 @@ pub fn load_resources() {
 
     wasm_bindgen_futures::spawn_local(async {
         let resource_manager = {
-            let state = get_shared_state();
-                    state.resource_manager.clone()
+            let core = get_core();
+            core.resource_manager.clone()
         };
         let mut resource_manager = resource_manager.lock().unwrap();
         poll_fn(|cx| resource_manager.poll(cx)).await;

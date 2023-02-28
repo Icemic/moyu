@@ -3,20 +3,20 @@ use std::sync::Arc;
 
 use crate::{
     nodes::{Container, Sprite},
-    core::State,
+    core::Core,
     traits::Node,
 };
 
-pub fn add_preset_default(state: &Arc<State>) {
-    // let state = state.read();
-    // let root_node = state.root_node.clone();
+pub fn add_preset_default(core: &Arc<Core>) {
+    // let core = core.read();
+    // let root_node = core.root_node.clone();
     // let mut root_node = root_node.read();
-    // let device = state.device.clone();
+    // let device = core.device.clone();
     // let device = device.lock();
-    // let queue = state.queue.clone();
+    // let queue = core.queue.clone();
     // let queue = queue.lock();
 
-    // drop(state);
+    // drop(core);
 
     // // load and use texture
     // let mut bg = Sprite::new(&device, &queue, "title.png".to_string());
