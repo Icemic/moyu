@@ -20,12 +20,12 @@ use crate::{
     user_event::UserEvent,
 };
 
-static STATE: OnceCell<usize> = OnceCell::new();
+static CORE: OnceCell<usize> = OnceCell::new();
 
 #[inline]
-pub fn get_shared_state() -> Arc<State> {
-    let p = *STATE.get().unwrap() as *const c_void;
-    let ptr = p as *const State;
+pub fn get_core() -> Arc<Core> {
+    let p = *CORE.get().unwrap() as *const c_void;
+    let ptr = p as *const Core;
     let r = unsafe { Arc::from_raw(ptr) };
     let r_cloned = r.clone();
 
@@ -36,12 +36,12 @@ pub fn get_shared_state() -> Arc<State> {
 }
 
 #[inline]
-pub fn set_shared_state(state: Arc<State>) {
-    let p = Arc::into_raw(state) as *const c_void as usize;
-    STATE.set(p).expect("Failed to set shared state.");
+pub fn set_core(core: Arc<Core>) {
+    let p = Arc::into_raw(core) as *const c_void as usize;
+    CORE.set(p).expect("Failed to set core instance.");
 }
 
-pub struct State {
+pub struct Core {
     pub surface_size: Arc<Mutex<SurfaceSize>>,
     pub surface: Arc<Surface>,
     pub device: Arc<Device>,
@@ -58,7 +58,7 @@ pub struct State {
     pub node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
 }
 
-impl State {
+impl Core {
     pub fn new(
         surface: Arc<Surface>,
         device: Arc<Device>,
