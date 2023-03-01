@@ -21,11 +21,7 @@ use hai_pal::{env, logger, platform};
 use log::{error, info};
 #[cfg(not(target_arch = "wasm32"))]
 use std::thread;
-use std::{
-    process::exit,
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{process::exit, sync::Arc};
 use surface::create_wgpu_surface;
 use types::SurfaceSize;
 use user_event::UserEvent;
@@ -132,15 +128,6 @@ fn main() {
 
     window.set_visible(true);
 
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut fps_requested = 0;
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut fps_rendered = 0;
-    #[cfg(not(target_arch = "wasm32"))]
-    let mut last_fps_timestamp = 0.;
-
-    // let mut renderer = Renderer::new();
-
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
@@ -155,39 +142,11 @@ fn main() {
                     // All other errors (Outdated, Timeout) should be resolved by the next frame
                     Err(e) => eprintln!("{:?}", e),
                 }
-
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    fps_rendered += 1;
-                }
             }
             Event::MainEventsCleared => {
                 // RedrawRequested will only trigger once, unless we manually
                 // request it.
                 window.request_redraw();
-
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    fps_requested += 1;
-                    let time = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs_f64();
-                    let delta = time - last_fps_timestamp;
-                    if delta >= 1. {
-                        window.set_title(
-                            format!(
-                                "fps: {:.1} requested, {:.1} rendered",
-                                fps_requested as f64 / delta,
-                                fps_rendered as f64 / delta
-                            )
-                            .as_str(),
-                        );
-                        last_fps_timestamp = time;
-                        fps_rendered = 0;
-                        fps_requested = 0;
-                    }
-                }
             }
             Event::WindowEvent {
                 ref event,
@@ -241,6 +200,9 @@ fn main() {
                             Size::Logical(LogicalSize::new(logical_width, logical_height));
                         window.set_inner_size(window_size);
                     }
+                }
+                UserEvent::SetTitle(title) => {
+                    window.set_title(&title);
                 }
                 UserEvent::Quit => {
                     *control_flow = ControlFlow::Exit;
