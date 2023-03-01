@@ -42,7 +42,7 @@ pub fn set_core(core: Arc<Core>) {
 }
 
 pub struct Core {
-    pub surface_size: Arc<Mutex<SurfaceSize>>,
+    pub surface_size: Arc<RwLock<SurfaceSize>>,
     pub surface: Arc<Surface>,
     pub device: Arc<Device>,
     pub queue: Arc<Queue>,
@@ -109,7 +109,7 @@ impl Core {
      * Set screen size before first render, which should not be called after render loop started.
      */
     pub fn set_screen_size(&self, physical_size: (u32, u32), scale_factor: f64) {
-        let mut surface_size = self.surface_size.lock();
+        let mut surface_size = self.surface_size.write();
 
         surface_size.set_scale_factor(scale_factor);
         surface_size.set_physical_size(physical_size.0, physical_size.1);
@@ -130,7 +130,7 @@ impl Core {
         config.width = width;
         config.height = height;
 
-        *(self.surface_size.lock()) = new_size;
+        *(self.surface_size.write()) = new_size;
 
         // apply new size
         self.surface.configure(&self.device, &config);
@@ -148,7 +148,7 @@ impl Core {
 
         let mut staging_belt = self.staging_belt.lock();
 
-        let surface_size = self.surface_size.lock().clone();
+        let surface_size = self.surface_size.read();
 
         let output = surface.get_current_texture()?;
         let view = output
@@ -263,7 +263,7 @@ impl Core {
         let root_node = self.root_node.clone();
         let current_focused_node = self.current_focused_node.clone();
 
-        let surface_size = self.surface_size.lock();
+        let surface_size = self.surface_size.read();
         let (logical_width, logical_height) = surface_size.logical_size();
         let scale_factor = surface_size.scale_factor();
 
