@@ -10,8 +10,8 @@ type JSValue = wasm_bindgen::JsValue;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub struct JSValue<'a, 'b> {
-    scope: &'b mut HandleScope<'a>,
-    value: Local<'b, Value>,
+    pub scope: &'b mut HandleScope<'a>,
+    pub value: Local<'b, Value>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]

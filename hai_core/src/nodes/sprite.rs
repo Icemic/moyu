@@ -9,10 +9,10 @@ use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
 use crate::core::get_core;
 use crate::traits::{
-    parse_props, Focusable, JSValue, Node, NodeType, Renderable, RendererUpdatePayload,
-    UpdateProps, NODE_ID,
+    Focusable, Node, NodeType, Renderable, RendererUpdatePayload, UpdateProps, NODE_ID,
 };
 use crate::types::{Point, SurfaceSize, Transform, Vertex};
+use crate::utils::convert::{from_js, JSValue};
 
 use super::{get_empty_texture, Texture, TextureStatus};
 
@@ -243,7 +243,7 @@ pub struct SpriteProps {
 
 impl UpdateProps for Sprite {
     fn update_properties(&mut self, props: &mut JSValue) {
-        let props: SpriteProps = parse_props(props).unwrap();
+        let props: SpriteProps = from_js(props.scope, props.value).unwrap();
 
         if let Some(src) = props.src {
             let core = get_core();
