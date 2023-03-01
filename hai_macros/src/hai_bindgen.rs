@@ -1,3 +1,4 @@
+use darling::ToTokens;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
@@ -144,7 +145,9 @@ pub fn entry(args: TokenStream, func_body: TokenStream) -> TokenStream {
 
 fn get_type_string(_type: &Box<Type>) -> std::string::String {
     match &**_type {
-        Type::Array(_) => panic!("Unsupported Array type."),
+        Type::Array(arr) => {
+            arr.into_token_stream().to_string()
+        },
         Type::BareFn(_) => panic!("Unsupported BareFn type."),
         Type::Group(_) => panic!("Unsupported Group type."),
         Type::ImplTrait(_) => panic!("Unsupported ImplTrait type."),
@@ -201,30 +204,12 @@ fn get_type_string(_type: &Box<Type>) -> std::string::String {
         }
         Type::Ptr(_) => panic!("Unsupported Ptr type."),
         Type::Reference(a) => {
-            if get_type_string(&a.elem) == "str" {
-                return "str".to_owned();
-            }
-            // if let Some(_) = a.mutability {
-            //     if get_type_string(a.elem.clone()).0 == "Self" {
-            //         return ("Self".to_string(), false);
-            //     }
-            // }
-            panic!("Unsupported Reference type.");
+            a.to_token_stream().to_string()
         }
         Type::Slice(_) => panic!("Unsupported Slice type."),
         Type::TraitObject(_) => panic!("Unsupported TraitObject type."),
         Type::Tuple(tuple) => {
-            let mut s = "(".to_string();
-            for el in tuple.elems.iter() {
-                let ident = get_type_string(&Box::new(el.clone()));
-                s.push_str(ident.as_str());
-                s.push_str(",");
-            }
-            if tuple.elems.len() > 0 {
-                s.pop();
-            }
-            s.push(')');
-            s
+            tuple.to_token_stream().to_string()
         }
         Type::Verbatim(a) => a.to_string(),
         _ => panic!("unsupport type!"),
