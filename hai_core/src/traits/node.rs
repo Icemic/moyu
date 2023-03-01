@@ -2,8 +2,9 @@ use hai_pal::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{any::Any, fmt::Debug, sync::Arc};
 
-use super::{parse_props, JSValue, Renderable, UpdateProps};
+use super::{Renderable, UpdateProps};
 use crate::types::{Point, SurfaceSize, Transform};
+use crate::utils::convert::{JSValue, from_js};
 
 pub static mut NODE_ID: u32 = 0;
 
@@ -80,7 +81,7 @@ pub trait Node: NodeType + UpdateProps + Send + Sync + Debug {
     fn move_to(&mut self, x: f64, y: f64);
 
     fn update_properties(&mut self, props: &mut JSValue) {
-        let props: NodeProps = parse_props(props).unwrap();
+        let props: NodeProps = from_js(props.scope, props.value).unwrap();
 
         if let Some(x) = props.x {
             self.set_x(x);
