@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::forget;
 use std::sync::Arc;
+use std::time::Instant;
 use wgpu::util::StagingBelt;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::event::WindowEvent;
@@ -52,6 +53,8 @@ pub struct Core {
     pub renderers: Arc<RwLock<HashMap<String, Box<dyn Renderer>>>>,
 
     staging_belt: Arc<Mutex<StagingBelt>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    frames_in_duration: Arc<Mutex<(Instant, u32)>>,
 
     pub root_node: Arc<RwLock<dyn Node>>,
     pub current_focused_node: Arc<RwLock<Option<Arc<RwLock<dyn Node>>>>>,
@@ -89,6 +92,8 @@ impl Core {
             renderers: Arc::new(RwLock::new(renderers)),
 
             staging_belt,
+            #[cfg(not(target_arch = "wasm32"))]
+            frames_in_duration: Arc::new(Mutex::new((Instant::now(), 0))),
 
             root_node,
             current_focused_node: Arc::new(RwLock::new(None)),
@@ -138,6 +143,26 @@ impl Core {
 
     #[inline]
     pub fn render(&self) -> Result<(), wgpu::SurfaceError> {
+        // fps
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let (instant, frames) = &mut *self.frames_in_duration.lock();
+            let duration = instant.elapsed().as_secs_f32();
+            if duration >= 1. {
+                let fps = *frames as f32 / duration;
+
+                self.event_proxy
+                    .lock()
+                    .send_event(UserEvent::SetTitle(format!("fps: {:.1}", fps)))
+                    .unwrap();
+
+                *frames = 1;
+                *instant = Instant::now();
+            } else {
+                *frames += 1;
+            }
+        }
+
         let surface = self.surface.clone();
         let device = self.device.clone();
         let queue = self.queue.clone();
