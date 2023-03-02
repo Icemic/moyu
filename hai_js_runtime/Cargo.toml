@@ -7,13 +7,11 @@ version = "0.1.0"
 anyhow = "1.0"
 futures = "0.3"
 log = "0.4"
-
-[dependencies.hai_pal]
-path = "../hai_pal"
-version = "0.1"
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 serde_v8 = "0.81"
 spin_sleep = {version = "1.1.1"}
 tokio = {version = "1", features = ["full"]}
 v8 = {version = "0.60"}
+
+[dependencies.hai_pal]
+path = "../hai_pal"
+version = "0.1"

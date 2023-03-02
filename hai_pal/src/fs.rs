@@ -1,10 +1,10 @@
 use anyhow::Result;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(feature = "web"))]
 use tokio::fs;
 use url::Url;
 
 pub async fn read(url: &Url) -> Result<Vec<u8>> {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "web"))]
     if url.scheme() == "file" {
         return match fs::read(url.to_file_path().unwrap()).await {
             Ok(v) => Ok(v),

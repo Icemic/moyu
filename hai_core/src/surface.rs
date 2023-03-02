@@ -7,10 +7,10 @@ pub fn create_wgpu_surface(
     window: &Window,
 ) -> (Arc<Surface>, Arc<Device>, Arc<Queue>, SurfaceConfiguration) {
     // create wgpu surface
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "web"))]
     let (surface, device, queue, config) =
         futures::executor::block_on(create_surface_inner(&window, &window.inner_size()));
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(feature = "web")]
     let (surface, device, queue, config) =
         { pollster::block_on(create_surface_inner(&window, &window.inner_size())) };
     let surface = Arc::new(surface);
@@ -44,13 +44,13 @@ pub(self) async fn create_surface_inner(
         .await
         .expect("No suitable GPU adapters found on the system.");
 
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "web"))]
     {
         let adapter_info = adapter.get_info();
         info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
     }
 
-    let limits = if !cfg!(target_arch = "wasm32") {
+    let limits = if !cfg!(feature = "web") {
         wgpu::Limits::default()
     } else {
         wgpu::Limits::downlevel_webgl2_defaults()

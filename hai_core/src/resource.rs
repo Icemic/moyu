@@ -1,20 +1,20 @@
 use anyhow::Result;
 use futures::{stream::FuturesUnordered, task::AtomicWaker, StreamExt};
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 use futures::{Future, FutureExt};
 use hai_pal::env::entry_dir;
 use hai_pal::fs;
 use hai_pal::sync::RwLock;
 use image::GenericImageView;
 use log::{debug, error};
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 use std::pin::Pin;
 use std::{
     collections::HashMap,
     sync::{Arc, Weak},
     task::{Context, Poll},
 };
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(feature = "web"))]
 use tokio::task::JoinHandle;
 use wgpu::{Device, Queue};
 
@@ -24,9 +24,9 @@ pub struct ResourceManager {
     device: Arc<Device>,
     queue: Arc<Queue>,
     texture_map: HashMap<String, Weak<RwLock<Texture>>>,
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "web"))]
     tasks: FuturesUnordered<JoinHandle<Result<()>>>,
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(feature = "web")]
     tasks: FuturesUnordered<Pin<Box<dyn Future<Output = Result<()>>>>>,
     waker: AtomicWaker,
 }
@@ -151,9 +151,9 @@ impl ResourceManager {
             Ok(())
         };
 
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "web"))]
         let task_fn = tokio::spawn(task_fn);
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(feature = "web")]
         let task_fn = task_fn.boxed_local();
 
         self.tasks.push(task_fn);
@@ -170,12 +170,12 @@ impl ResourceManager {
                 error!("{}", err.to_string());
                 Poll::Ready(())
             }
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(feature = "web"))]
             Poll::Ready(Some(Ok(Err(err)))) => {
                 error!("{}", err.to_string());
                 Poll::Ready(())
             }
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(feature = "web")]
             Poll::Ready(Some(Err(err))) => {
                 error!("{}", err.to_string());
                 Poll::Ready(())
