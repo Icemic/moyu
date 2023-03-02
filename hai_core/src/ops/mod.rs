@@ -39,7 +39,7 @@ fn receive_command(scope: &mut HandleScope, args: FunctionCallbackArguments, ret
         "remove_child" => remove_child(scope, command_args, ret),
         "remove_child_at" => remove_child_at(scope, command_args, ret),
         "move_to" => move_to(scope, command_args, ret),
-        "get_translate" => get_translate(scope, command_args, ret),
+        // "get_translate" => get_translate(scope, command_args, ret),
         "update_props" => update_props(scope, command_args, ret),
         _ => {
             let error_message: Local<String> =
