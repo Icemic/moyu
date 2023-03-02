@@ -57,7 +57,8 @@ pub fn entry(args: TokenStream, func_body: TokenStream) -> TokenStream {
                             quote! {
                                 let #ident: #t = {
                                     let value = get_from_v8_array!(__scope, __args, #i);
-                                    match from_js(__scope, value) {
+                                    let mut value = JSValue::new(__scope, value);
+                                    match from_js(&mut value) {
                                         Ok(v) => v,
                                         Err(msg) => {
                                             throw_exception!(__scope, msg.to_string());
@@ -95,18 +96,22 @@ pub fn entry(args: TokenStream, func_body: TokenStream) -> TokenStream {
     let mut return_block = quote! {};
 
     if let ReturnType::Type(_, ty) = output {
-        if let Type::Path(_) = &*ty {
+        if let Type::Path(t) = &*ty {
             let name = get_type_string(&ty);
 
             if name.starts_with("Result<") {
                 if !name.starts_with("Result<()") {
-                    return_block = quote! {
-                        match to_js(__scope, ret) {
-                            Ok(v) => __ret.set(v),
-                            Err(msg) => {
-                                throw_exception!(__scope, msg.to_string());
-                                return;
-                            }
+                    let return_type = &t.path.segments[0];
+                    if let PathArguments::AngleBracketed(a) = &return_type.arguments {
+                        let result_ok_type = a.args[0].to_token_stream();
+                        return_block = quote! {
+                            match to_js::<#result_ok_type>(__scope, &ret) {
+                                Ok(v) => __ret.set(v),
+                                Err(msg) => {
+                                    throw_exception!(__scope, msg.to_string());
+                                    return;
+                                }
+                            };
                         };
                     }
                 }
@@ -145,9 +150,7 @@ pub fn entry(args: TokenStream, func_body: TokenStream) -> TokenStream {
 
 fn get_type_string(_type: &Box<Type>) -> std::string::String {
     match &**_type {
-        Type::Array(arr) => {
-            arr.into_token_stream().to_string()
-        },
+        Type::Array(arr) => arr.into_token_stream().to_string(),
         Type::BareFn(_) => panic!("Unsupported BareFn type."),
         Type::Group(_) => panic!("Unsupported Group type."),
         Type::ImplTrait(_) => panic!("Unsupported ImplTrait type."),
@@ -203,14 +206,10 @@ fn get_type_string(_type: &Box<Type>) -> std::string::String {
             s
         }
         Type::Ptr(_) => panic!("Unsupported Ptr type."),
-        Type::Reference(a) => {
-            a.to_token_stream().to_string()
-        }
+        Type::Reference(a) => a.to_token_stream().to_string(),
         Type::Slice(_) => panic!("Unsupported Slice type."),
         Type::TraitObject(_) => panic!("Unsupported TraitObject type."),
-        Type::Tuple(tuple) => {
-            tuple.to_token_stream().to_string()
-        }
+        Type::Tuple(tuple) => tuple.to_token_stream().to_string(),
         Type::Verbatim(a) => a.to_string(),
         _ => panic!("unsupport type!"),
     }

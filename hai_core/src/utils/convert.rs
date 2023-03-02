@@ -25,13 +25,10 @@ impl<'a, 'b> JSValue<'a, 'b> {
 }
 
 #[cfg(not(feature = "web"))]
-pub fn from_js<'a, 'b, T: Deserialize<'a>>(
-    scope: &'b mut HandleScope<'a>,
-    value: Local<'b, Value>,
-) -> Result<T> {
+pub fn from_js<'a, 'b, T: Deserialize<'a>>(value: &mut JSValue<'a, 'b>) -> Result<T> {
     use anyhow::format_err;
 
-    match serde_v8::from_v8(scope, value) {
+    match serde_v8::from_v8(value.scope, value.value) {
         Ok(v) => Ok(v),
         Err(serde_v8::Error::Message(msg)) => Err(format_err!(msg)),
         Err(err) => Err(format_err!(err)),
@@ -48,9 +45,11 @@ pub fn from_js<'a, T: DeserializeOwned>(
 #[cfg(not(feature = "web"))]
 pub fn to_js<'a, 'b, T: Serialize>(
     scope: &'b mut HandleScope<'a>,
-    value: &mut T,
+    value: &T,
 ) -> Result<Local<'b, Value>> {
-    match serde_v8::to_v8(value.scope, value.value) {
+    use anyhow::format_err;
+
+    match serde_v8::to_v8(scope, value) {
         Ok(v) => Ok(v),
         Err(serde_v8::Error::Message(msg)) => Err(format_err!(msg)),
         Err(err) => Err(format_err!(err)),

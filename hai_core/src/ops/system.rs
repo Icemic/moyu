@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::core::get_core;
 #[cfg(not(feature = "web"))]
-use crate::utils::convert::from_js;
+use crate::utils::convert::{from_js, JSValue};
 use crate::{presets::add_preset_default, user_event::UserEvent};
 
 #[cfg_attr(feature = "web", wasm_bindgen)]
