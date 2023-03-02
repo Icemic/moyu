@@ -1,13 +1,13 @@
 use anyhow::Result;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(feature = "web"))]
 use hai_js_runtime::{prelude::*, *};
 use hai_macros::hai_bindgen;
 use hai_pal::sync::{RwLock, RwLockReadGuard};
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::core::get_core;
@@ -32,8 +32,8 @@ fn get_node<'a>(
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn create_instance(
     node_type: std::string::String,
     label: Option<std::string::String>,
@@ -75,8 +75,8 @@ pub fn create_instance(
     Ok(node_id)
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map.clone();
@@ -93,8 +93,8 @@ pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::St
     Ok(())
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn insert_child(
     node_id: u32,
     index: usize,
@@ -115,8 +115,8 @@ pub fn insert_child(
     Ok(())
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn insert_child_before(
     node_id: u32,
     before_node_id: u32,
@@ -139,8 +139,8 @@ pub fn insert_child_before(
     Ok(())
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map.clone();
@@ -157,8 +157,8 @@ pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string:
     Ok(())
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map.clone();
@@ -173,8 +173,8 @@ pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::St
     Ok(())
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> {
     let node_map = {
         let core = get_core();
@@ -190,8 +190,8 @@ pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> 
     Ok(())
 }
 
-// #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-// #[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+// #[cfg_attr(feature = "web", wasm_bindgen)]
+// #[cfg_attr(not(feature = "web"), hai_bindgen)]
 // pub fn get_translate(node_id: u32) -> Result<[f64; 2], std::string::String> {
 //     let core = get_core();
 //     let node_map = core.node_map.clone();
@@ -205,8 +205,8 @@ pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> 
 //     Ok([x, y])
 // }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map.clone();

@@ -3,22 +3,33 @@ edition = "2021"
 name = "hai_pal"
 version = "0.1.0"
 
+[features]
+default = []
+desktop = [
+  "dotenv",
+  "env_logger",
+  "node-resolve",
+  "parking_lot",
+  "tokio",
+  "parking_lot/hardware-lock-elision",
+]
+web = [
+  "console_error_panic_hook",
+  "console_log",
+  "parking_lot",
+]
+
 [dependencies]
 anyhow = "1.0"
 log = "0.4"
+parking_lot = {version = "0.12", optional = true}
 reqwest = {version = "0.11", features = ["rustls-tls", "gzip", "deflate", "brotli"]}
 url = "2.2"
-
 # deps for desktop platforms
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-dotenv = "0.15.0"
-env_logger = "0.9"
-node-resolve = "2.2"
-parking_lot = {version = "0.12", features = ["hardware-lock-elision"]}
-tokio = {version = "1", features = ["full"]}
-
+dotenv = {version = "0.15.0", optional = true}
+env_logger = {version = "0.9", optional = true}
+node-resolve = {version = "2.2", optional = true}
+tokio = {version = "1", features = ["full"], optional = true}
 # deps for web
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-console_error_panic_hook = "0.1"
-console_log = {version = "0.2.0", features = ["color"]}
-parking_lot = {version = "0.12"}
+console_error_panic_hook = {version = "0.1", optional = true}
+console_log = {version = "0.2.0", features = ["color"], optional = true}

@@ -1,16 +1,16 @@
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(feature = "web"))]
 use hai_js_runtime::{prelude::*, *};
 use hai_macros::hai_bindgen;
 use log::warn;
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::core::get_core;
 use crate::utils::convert::from_js;
 use crate::{presets::add_preset_default, user_event::UserEvent};
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn load_preset(preset_name: std::string::String) -> Result<(), std::string::String> {
     match preset_name.as_str() {
         "default" => {
@@ -24,8 +24,8 @@ pub fn load_preset(preset_name: std::string::String) -> Result<(), std::string::
     Ok(())
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn resize_window(
     width: f64,
     height: f64,
@@ -39,8 +39,8 @@ pub fn resize_window(
     Ok(())
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn quit() -> Result<(), std::string::String> {
     let core = get_core();
     core.event_proxy.lock().send_event(UserEvent::Quit).unwrap();
@@ -48,7 +48,7 @@ pub fn quit() -> Result<(), std::string::String> {
 }
 
 #[wasm_bindgen]
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 pub fn load_resources() {
     use futures::future::poll_fn;
 

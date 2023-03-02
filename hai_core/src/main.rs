@@ -12,18 +12,18 @@ mod user_event;
 mod utils;
 
 use hai::create_hai_core;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(feature = "web"))]
 use hai_js_runtime::JSRuntime;
 use hai_pal::sync::Mutex;
 use hai_pal::{env, logger, platform};
 use log::{error, info};
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(feature = "web"))]
 use std::thread;
 use std::{process::exit, sync::Arc};
 use surface::create_wgpu_surface;
 use types::SurfaceSize;
 use user_event::UserEvent;
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 use wasm_bindgen::prelude::wasm_bindgen;
 use winit::{
     dpi::{LogicalSize, Size},
@@ -54,7 +54,7 @@ fn main() {
 
     // web target only
     // add a canvas element to dom as 'window'
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(all(feature = "web", target_arch = "wasm32"))]
     {
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()
@@ -73,7 +73,7 @@ fn main() {
 
     // desktop targets only
     // spawn a v8 thread
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "web"))]
     {
         let core = core.clone();
 
@@ -104,7 +104,7 @@ fn main() {
         });
     }
 
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(feature = "web")]
     {
         use log::debug;
         use std::str::FromStr;
@@ -214,7 +214,7 @@ fn main() {
     });
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+#[cfg_attr(feature = "web", wasm_bindgen)]
 pub fn wasm_start() {
     main();
 }

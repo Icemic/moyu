@@ -1,4 +1,4 @@
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(feature = "web"))]
 pub fn setup() {
     #[cfg(debug_assertions)]
     let env = env_logger::Env::default().default_filter_or("hai=debug");
@@ -7,7 +7,7 @@ pub fn setup() {
     env_logger::init_from_env(env);
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "web")]
 pub fn setup() {
     use log::Level;
     #[cfg(debug_assertions)]

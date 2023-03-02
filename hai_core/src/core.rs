@@ -54,7 +54,7 @@ pub struct Core {
 
     staging_belt: Arc<Mutex<StagingBelt>>,
     // std::time not implemented on wasm32 target
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(feature = "web"))]
     frames_in_duration: Arc<Mutex<(Instant, u32)>>,
 
     pub root_node: Arc<RwLock<dyn Node>>,
@@ -93,7 +93,7 @@ impl Core {
             renderers: Arc::new(RwLock::new(renderers)),
 
             staging_belt,
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(feature = "web"))]
             frames_in_duration: Arc::new(Mutex::new((Instant::now(), 0))),
 
             root_node,
@@ -145,7 +145,7 @@ impl Core {
     #[inline]
     pub fn render(&self) -> Result<(), wgpu::SurfaceError> {
         // fps
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(feature = "web"))]
         {
             let (instant, frames) = &mut *self.frames_in_duration.lock();
             let duration = instant.elapsed().as_secs_f32();

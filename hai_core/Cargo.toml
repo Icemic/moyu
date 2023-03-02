@@ -6,9 +6,17 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["desktop"]
-desktop = ["hai_js_runtime"]
-web = ["wgpu/webgl"]
+default = ["web"]
+desktop = ["hai_pal/desktop", "hai_js_runtime", "dep:tokio"]
+web = [
+  "hai_pal/web",
+  "wgpu/webgl",
+  "dep:pollster",
+  "dep:serde-wasm-bindgen",
+  "dep:wasm-bindgen",
+  "dep:wasm-bindgen-futures",
+  "dep:web-sys",
+]
 
 [dependencies]
 anyhow = "1.0"
@@ -18,9 +26,16 @@ futures = "0.3"
 image = "0.23"
 log = "0.4"
 once_cell = "1.16"
-serde = {version = "1.0", features = ["derive"]}
 wgpu = "0.15"
 winit = "0.28"
+
+pollster = {version = "0.2.5", optional = true}
+serde = {version = "1.0", features = ["derive"]}
+serde-wasm-bindgen = {version = "0.4", optional = true}
+tokio = {version = "1", features = ["full"], optional = true}
+wasm-bindgen = {version = "0.2.83", default-features = false, optional = true}
+wasm-bindgen-futures = {version = "0.4.33", optional = true}
+web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"], optional = true}
 
 [dependencies.hai_js_runtime]
 optional = true
@@ -34,15 +49,3 @@ version = "0.1"
 [dependencies.hai_macros]
 path = "../hai_macros"
 version = "0.1"
-
-# deps for desktop platforms
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = {version = "1", features = ["full"]}
-
-# deps for web
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-pollster = "0.2.5"
-serde-wasm-bindgen = "0.4"
-wasm-bindgen = {version = "0.2.83", default-features = false}
-wasm-bindgen-futures = "0.4.33"
-web-sys = "0.3.56"
