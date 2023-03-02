@@ -1,7 +1,41 @@
 use log::info;
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
+use winit::dpi::{LogicalSize, Size};
+use winit::event_loop::{EventLoop, EventLoopBuilder};
+use winit::window::WindowBuilder;
 use winit::{dpi::PhysicalSize, window::Window};
+
+use crate::user_event::UserEvent;
+
+pub fn create_window() -> (EventLoop<UserEvent>, Window) {
+    // create main thread infinity loop
+    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+    // create window
+    let window = WindowBuilder::new()
+        .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
+        .with_resizable(false)
+        .with_visible(false)
+        .build(&event_loop)
+        .unwrap();
+
+    // web target only
+    // add a canvas element to dom as 'window'
+    #[cfg(all(feature = "web", target_arch = "wasm32"))]
+    {
+        use winit::platform::web::WindowExtWebSys;
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| doc.body())
+            .and_then(|body| {
+                body.append_child(&web_sys::Element::from(window.canvas()))
+                    .ok()
+            })
+            .expect("couldn't append canvas to document body");
+    }
+
+    (event_loop, window)
+}
 
 pub fn create_wgpu_surface(
     window: &Window,

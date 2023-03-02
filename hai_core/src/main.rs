@@ -20,7 +20,7 @@ use log::info;
 use std::sync::Arc;
 #[cfg(not(feature = "web"))]
 use std::thread;
-use surface::create_wgpu_surface;
+use surface::{create_wgpu_surface, create_window};
 use types::SurfaceSize;
 use user_event::UserEvent;
 #[cfg(feature = "web")]
@@ -28,8 +28,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use winit::{
     dpi::{LogicalSize, Size},
     event::*,
-    event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
-    window::WindowBuilder,
+    event_loop::ControlFlow,
 };
 
 fn main() {
@@ -37,35 +36,11 @@ fn main() {
     logger::setup();
     platform::setup();
 
-    // create main thread infinity loop
-    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+    let (event_loop, window) = create_window();
 
     // create event proxy which allow us to send window events from another thread
     let event_proxy = event_loop.create_proxy();
     let event_proxy = Arc::new(Mutex::new(event_proxy));
-
-    // create window
-    let window = WindowBuilder::new()
-        .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
-        .with_resizable(false)
-        .with_visible(false)
-        .build(&event_loop)
-        .unwrap();
-
-    // web target only
-    // add a canvas element to dom as 'window'
-    #[cfg(all(feature = "web", target_arch = "wasm32"))]
-    {
-        use winit::platform::web::WindowExtWebSys;
-        web_sys::window()
-            .and_then(|win| win.document())
-            .and_then(|doc| doc.body())
-            .and_then(|body| {
-                body.append_child(&web_sys::Element::from(window.canvas()))
-                    .ok()
-            })
-            .expect("couldn't append canvas to document body");
-    }
 
     let (surface, device, queue, config) = create_wgpu_surface(&window);
 
@@ -216,6 +191,7 @@ fn main() {
     });
 }
 
+#[cfg(feature = "web")]
 #[cfg_attr(feature = "web", wasm_bindgen)]
 pub fn wasm_start() {
     main();
