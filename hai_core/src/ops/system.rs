@@ -57,7 +57,7 @@ pub fn load_resources() {
             let core = get_core();
             core.resource_manager.clone()
         };
-        let mut resource_manager = resource_manager.lock().unwrap();
+        let mut resource_manager = resource_manager.lock();
         poll_fn(|cx| resource_manager.poll(cx)).await;
     });
 }

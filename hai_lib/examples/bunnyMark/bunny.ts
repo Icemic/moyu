@@ -1,6 +1,6 @@
 import { hai } from '../..';
 
-export class Bounds {
+export interface Bounds {
   left: number;
   right: number;
   top: number;

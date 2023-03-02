@@ -190,20 +190,20 @@ pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> 
     Ok(())
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
-pub fn get_translate(node_id: u32) -> Result<[f64; 2], std::string::String> {
-    let core = get_core();
-    let node_map = core.node_map.clone();
-    let node_map = node_map.read();
+// #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+// #[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]
+// pub fn get_translate(node_id: u32) -> Result<[f64; 2], std::string::String> {
+//     let core = get_core();
+//     let node_map = core.node_map.clone();
+//     let node_map = node_map.read();
 
-    let node = get_node(&node_map, node_id)?;
-    let node = node.write();
+//     let node = get_node(&node_map, node_id)?;
+//     let node = node.write();
 
-    let &Point { x, y } = node.translate();
+//     let &Point { x, y } = node.translate();
 
-    Ok([x, y])
-}
+//     Ok([x, y])
+// }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[cfg_attr(not(target_arch = "wasm32"), hai_bindgen)]

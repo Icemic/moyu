@@ -1,5 +1,3 @@
-#![feature(drain_filter)]
-
 mod core;
 mod hai;
 mod nodes;
@@ -25,6 +23,8 @@ use std::{process::exit, sync::Arc};
 use surface::create_wgpu_surface;
 use types::SurfaceSize;
 use user_event::UserEvent;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::wasm_bindgen;
 use winit::{
     dpi::{LogicalSize, Size},
     event::*,
@@ -212,4 +212,9 @@ fn main() {
             _ => {}
         }
     });
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+pub fn wasm_start() {
+    main();
 }

@@ -3,8 +3,10 @@
 declare const hai: any;
 
 if (hai && typeof hai.pushCommand === 'undefined') {
+  const __hai = hai;
+  window.hai = {};
   hai.pushCommand = function pushCommand(name: string, args: any[]) {
-    return hai[name](...args);
+    return __hai[name](...args);
   };
 }
 

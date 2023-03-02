@@ -53,6 +53,7 @@ pub struct Core {
     pub renderers: Arc<RwLock<HashMap<String, Box<dyn Renderer>>>>,
 
     staging_belt: Arc<Mutex<StagingBelt>>,
+    // std::time not implemented on wasm32 target
     #[cfg(not(target_arch = "wasm32"))]
     frames_in_duration: Arc<Mutex<(Instant, u32)>>,
 

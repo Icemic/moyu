@@ -8,16 +8,24 @@
 </head>
 
 <body>
-  <script src="./{{name}}.js"></script>
+  <!-- <script type="module" src="./{{name}}.js"></script> -->
   <script>
-    window.hai = wasm_bindgen;
-    wasm_bindgen("./{{name}}_bg.wasm")
+    // window.hai = wasm_bindgen;
+    // wasm_bindgen("./{{name}}_bg.wasm")
   </script>
   <script type="module">
     // import init from "./{{name}}.js";
     // window.addEventListener("load", async () => {
     //   window.hai = await init();
     // });
+  </script>
+  <script type="module">
+    import * as hai from "./hai_core.js";
+    window.addEventListener("load", async () => {
+      await hai.default();
+      window.hai = hai;
+      hai.wasm_start();
+    });
   </script>
 
 </body>
