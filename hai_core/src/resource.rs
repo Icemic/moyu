@@ -1,15 +1,20 @@
 use anyhow::Result;
 use futures::{stream::FuturesUnordered, task::AtomicWaker, StreamExt};
+#[cfg(target_arch = "wasm32")]
+use futures::{Future, FutureExt};
 use hai_pal::env::entry_dir;
 use hai_pal::fs;
 use hai_pal::sync::RwLock;
 use image::GenericImageView;
 use log::{debug, error};
+#[cfg(target_arch = "wasm32")]
+use std::pin::Pin;
 use std::{
     collections::HashMap,
     sync::{Arc, Weak},
     task::{Context, Poll},
 };
+#[cfg(not(target_arch = "wasm32"))]
 use tokio::task::JoinHandle;
 use wgpu::{Device, Queue};
 
@@ -165,7 +170,13 @@ impl ResourceManager {
                 error!("{}", err.to_string());
                 Poll::Ready(())
             }
+            #[cfg(not(target_arch = "wasm32"))]
             Poll::Ready(Some(Ok(Err(err)))) => {
+                error!("{}", err.to_string());
+                Poll::Ready(())
+            }
+            #[cfg(target_arch = "wasm32")]
+            Poll::Ready(Some(Err(err))) => {
                 error!("{}", err.to_string());
                 Poll::Ready(())
             }

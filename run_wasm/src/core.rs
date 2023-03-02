@@ -149,8 +149,11 @@ pub fn run_wasm() {
     std::fs::create_dir_all(&example_dest).unwrap();
     let mut bindgen = wasm_bindgen_cli_support::Bindgen::new();
     bindgen
-        .no_modules(true)
+        .web(true)
         .unwrap()
+        .emit_start(false)
+        // .no_modules(true)
+        // .unwrap()
         .omit_default_module_path(false)
         .input_path(&wasm_source)
         .generate(&example_dest)

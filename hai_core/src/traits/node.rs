@@ -81,7 +81,7 @@ pub trait Node: NodeType + UpdateProps + Send + Sync + Debug {
     fn move_to(&mut self, x: f64, y: f64);
 
     fn update_properties(&mut self, props: &mut JSValue) {
-        let props: NodeProps = from_js(props.scope, props.value).unwrap();
+        let props: NodeProps = from_js(props).unwrap();
 
         if let Some(x) = props.x {
             self.set_x(x);

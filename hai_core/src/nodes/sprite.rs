@@ -243,7 +243,7 @@ pub struct SpriteProps {
 
 impl UpdateProps for Sprite {
     fn update_properties(&mut self, props: &mut JSValue) {
-        let props: SpriteProps = from_js(props.scope, props.value).unwrap();
+        let props: SpriteProps = from_js(props).unwrap();
 
         if let Some(src) = props.src {
             let core = get_core();
