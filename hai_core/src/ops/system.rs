@@ -1,11 +1,13 @@
 #[cfg(not(feature = "web"))]
 use hai_js_runtime::{prelude::*, *};
+#[cfg(not(feature = "web"))]
 use hai_macros::hai_bindgen;
 use log::warn;
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::core::get_core;
+#[cfg(not(feature = "web"))]
 use crate::utils::convert::from_js;
 use crate::{presets::add_preset_default, user_event::UserEvent};
 

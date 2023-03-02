@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::forget;
 use std::sync::Arc;
+#[cfg(not(feature = "web"))]
 use std::time::Instant;
 use wgpu::util::StagingBelt;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};

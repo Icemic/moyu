@@ -1,9 +1,11 @@
+#![allow(dead_code, unused)]
+
 use hai_pal::sync::RwLock;
 use std::sync::Arc;
 
 use crate::{
-    nodes::{Container, Sprite},
     core::Core,
+    nodes::{Container, Sprite},
     traits::Node,
 };
 

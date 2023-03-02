@@ -3,8 +3,10 @@ mod system;
 
 #[cfg(not(feature = "web"))]
 use hai_js_runtime::{prelude::*, utils::IntoV8, *};
+#[cfg(not(feature = "web"))]
 use log::debug;
 
+#[cfg(not(feature = "web"))]
 use self::{node::*, system::*};
 
 #[cfg(not(feature = "web"))]

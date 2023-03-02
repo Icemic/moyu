@@ -16,10 +16,10 @@ use hai::create_hai_core;
 use hai_js_runtime::JSRuntime;
 use hai_pal::sync::Mutex;
 use hai_pal::{env, logger, platform};
-use log::{error, info};
+use log::info;
+use std::sync::Arc;
 #[cfg(not(feature = "web"))]
 use std::thread;
-use std::{process::exit, sync::Arc};
 use surface::create_wgpu_surface;
 use types::SurfaceSize;
 use user_event::UserEvent;
@@ -75,6 +75,9 @@ fn main() {
     // spawn a v8 thread
     #[cfg(not(feature = "web"))]
     {
+        use log::error;
+        use std::process::exit;
+
         let core = core.clone();
 
         thread::spawn(|| {
@@ -107,7 +110,6 @@ fn main() {
     #[cfg(feature = "web")]
     {
         use log::debug;
-        use std::str::FromStr;
         wasm_bindgen_futures::spawn_local(async move {
             debug!("Injecting entry script.");
             let window = web_sys::window().expect("Cannot get global `window` object.");

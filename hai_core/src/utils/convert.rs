@@ -1,4 +1,3 @@
-use anyhow::format_err;
 use anyhow::Result;
 #[cfg(not(feature = "web"))]
 use hai_js_runtime::serde_v8;
@@ -6,7 +5,9 @@ use hai_js_runtime::serde_v8;
 use hai_js_runtime::v8::{HandleScope, Local, Value};
 #[cfg(feature = "web")]
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+#[cfg(not(feature = "web"))]
+use serde::Deserialize;
+use serde::Serialize;
 #[cfg(feature = "web")]
 pub type JSValue = wasm_bindgen::JsValue;
 
@@ -28,6 +29,8 @@ pub fn from_js<'a, 'b, T: Deserialize<'a>>(
     scope: &'b mut HandleScope<'a>,
     value: Local<'b, Value>,
 ) -> Result<T> {
+    use anyhow::format_err;
+
     match serde_v8::from_v8(scope, value) {
         Ok(v) => Ok(v),
         Err(serde_v8::Error::Message(msg)) => Err(format_err!(msg)),
@@ -54,6 +57,7 @@ pub fn to_js<'a, 'b, T: Serialize>(
     }
 }
 
+#[allow(dead_code)]
 #[cfg(feature = "web")]
 pub fn to_js<'a, T: Serialize>(value: &T) -> Result<JSValue, serde_wasm_bindgen::Error> {
     serde_wasm_bindgen::to_value(value)
