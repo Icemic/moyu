@@ -49,6 +49,7 @@ impl Texture {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum TextureStatus {
     /// reading image file from file system

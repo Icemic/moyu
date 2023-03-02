@@ -175,6 +175,8 @@ impl ResourceManager {
                 error!("{}", err.to_string());
                 Poll::Ready(())
             }
+            // FIXME: unreachable? why
+            #[allow(unreachable_patterns)]
             #[cfg(feature = "web")]
             Poll::Ready(Some(Err(err))) => {
                 error!("{}", err.to_string());

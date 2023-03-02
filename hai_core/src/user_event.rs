@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum UserEvent {
     // logical_width, logical_height, factor
