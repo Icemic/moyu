@@ -1,12 +1,12 @@
 use std::sync::Arc;
 use wgpu::{util::DeviceExt, *};
 
-use crate::{nodes::SPRITE_INDICES, traits::Renderer, types::Vertex};
+use crate::{traits::Renderer, types::Vertex, utils::constants::RECTANGLE_INDICES};
 
 /// the number of vertices in a sprite is always 4.
 // pub static NUM_VERTICES: u32 = 4;
 
-pub static NUM_INDICES: u32 = SPRITE_INDICES.len() as u32;
+pub static NUM_INDICES: u32 = RECTANGLE_INDICES.len() as u32;
 
 pub struct SpriteRenderer {
     pipeline: RenderPipeline,
@@ -97,7 +97,7 @@ impl SpriteRenderer {
         // index buffers for each sprite are always the same.
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Sprite Renderer Index Buffer"),
-            contents: bytemuck::cast_slice(SPRITE_INDICES),
+            contents: bytemuck::cast_slice(RECTANGLE_INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
 

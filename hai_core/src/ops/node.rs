@@ -10,6 +10,8 @@ use std::sync::Arc;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::core::get_core;
+#[cfg(feature = "video")]
+use crate::nodes::Video;
 use crate::nodes::{Container, Sprite};
 use crate::traits::{Node, UpdateProps};
 use crate::utils::convert::JSValue;
@@ -53,6 +55,12 @@ pub fn create_instance(
         }
         "sprite" => {
             let n = Sprite::new(label);
+            node_id = n.id;
+            node = Arc::new(RwLock::new(n));
+        }
+        #[cfg(feature = "video")]
+        "video" => {
+            let n = Video::new(label);
             node_id = n.id;
             node = Arc::new(RwLock::new(n));
         }

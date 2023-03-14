@@ -26,11 +26,18 @@ export interface HaiSpriteAttribute extends HaiNodeAttributes {
   area?: [number, number, number, number];
 }
 
+export interface HaiVideoAttribute extends HaiSpriteAttribute {
+  src: string;
+  area?: [number, number, number, number];
+  autoplay?: boolean;
+}
+
 declare global {
   namespace JSX {
     interface IntrinsicElements {
       container: DetailedHaiProps<HaiContainerAttributes>;
       sprite: DetailedHaiProps<HaiSpriteAttribute>;
+      video: DetailedHaiProps<HaiVideoAttribute>;
     }
   }
 }

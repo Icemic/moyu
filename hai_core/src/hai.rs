@@ -17,12 +17,17 @@ pub fn create_hai_core(
     event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
 ) -> Arc<Core> {
     let sprite_renderer = SpriteRenderer::new(&device, &config);
+    // use sprite renderer on video node
+    #[cfg(feature = "video")]
+    let video_renderer = SpriteRenderer::new(&device, &config);
 
     // create multithread shared core
     let core = Core::new(surface, device, queue, config, event_proxy);
 
     // core.register_renderer("null".to_string(), null_renderer);
     core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
+    #[cfg(feature = "video")]
+    core.register_renderer("video".to_string(), Box::new(video_renderer));
 
     // set screen size
     let size = window.inner_size();

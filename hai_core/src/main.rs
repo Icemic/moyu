@@ -36,6 +36,17 @@ fn main() {
     logger::setup();
     platform::setup();
 
+    #[cfg(feature = "video")]
+    {
+        use log::{debug, info};
+        ffmpeg_rs::init().unwrap();
+        info!(
+            "FFmpeg initialized, license: {}",
+            ffmpeg_rs::util::license()
+        );
+        debug!("FFmpeg configuration: {}", ffmpeg_rs::util::configuration());
+    }
+
     let (event_loop, window) = create_window();
 
     // create event proxy which allow us to send window events from another thread
