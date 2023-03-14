@@ -47,6 +47,10 @@ impl Texture {
         self.view = Some(view);
         self.sampler = Some(sampler);
     }
+
+    pub fn texture_unwrap(&self) -> &wgpu::Texture {
+        self.texture.as_ref().unwrap()
+    }
 }
 
 #[allow(dead_code)]

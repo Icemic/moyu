@@ -12,6 +12,7 @@ function App() {
   return (
     <container>
       <sprite label="title" src={src} />
+      <video label="video" src={'sample.mp4'} scale={0.5} x={0} />
     </container>
   );
 }

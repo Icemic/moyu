@@ -11,6 +11,8 @@ target/
 
 /local-test
 .env
+/3rdparty
+*.dll
 
 # keep it local-only
 .vscode

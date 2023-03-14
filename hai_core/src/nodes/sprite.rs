@@ -12,11 +12,10 @@ use crate::traits::{
     Focusable, Node, NodeType, Renderable, RendererUpdatePayload, UpdateProps, NODE_ID,
 };
 use crate::types::{Point, SurfaceSize, Transform, Vertex};
+use crate::utils::calculate::calculate_rect_vertices;
 use crate::utils::convert::{from_js, JSValue};
 
 use super::{get_empty_texture, Texture, TextureStatus};
-
-pub const SPRITE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 
 #[node(renderable)]
 #[derive(Debug)]
@@ -76,60 +75,9 @@ impl Sprite {
 
         drop(texture);
 
-        let [x0, y0, x1, y1] = self.area;
+        let vertices = calculate_rect_vertices(self, width, height, &self.area);
 
-        // scale size to fit area
-        let width = width * (x1 - x0);
-        let height = height * (y1 - y0);
-
-        let a = self.global_transform.a;
-        let b = self.global_transform.b;
-        let c = self.global_transform.c;
-        let d = self.global_transform.d;
-        let tx = self.global_transform.tx;
-        let ty = 1. - self.global_transform.ty;
-
-        let w1 = -self.anchor.x * width;
-        let w0 = w1 + width;
-        let h1 = (-1. + self.anchor.y) * height;
-        let h0 = h1 + height;
-
-        // left top
-        let p0x = a * w1 + c * h1 + tx - 1.;
-        let p0y = b * w1 + d * h1 + ty;
-
-        // left bottom
-        let p1x = a * w0 + c * h1 + tx - 1.;
-        let p1y = b * w0 + d * h1 + ty;
-
-        // right top
-        let p2x = a * w0 + c * h0 + tx - 1.;
-        let p2y = b * w0 + d * h0 + ty;
-
-        // right bottom
-        let p3x = a * w1 + c * h0 + tx - 1.;
-        let p3y = b * w1 + d * h0 + ty;
-
-        let v = [
-            Vertex {
-                position: [p0x as f32, p0y as f32, 0.0],
-                tex_coords: [x0 as f32, y1 as f32],
-            },
-            Vertex {
-                position: [p1x as f32, p1y as f32, 0.0],
-                tex_coords: [x1 as f32, y1 as f32],
-            },
-            Vertex {
-                position: [p2x as f32, p2y as f32, 0.0],
-                tex_coords: [x1 as f32, y0 as f32],
-            },
-            Vertex {
-                position: [p3x as f32, p3y as f32, 0.0],
-                tex_coords: [x0 as f32, y0 as f32],
-            },
-        ];
-
-        self.vertices = Some(v);
+        self.vertices = Some(vertices);
     }
 }
 

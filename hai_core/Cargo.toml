@@ -7,7 +7,8 @@ version = "0.1.0"
 
 [features]
 default = ["desktop"]
-desktop = ["hai_pal/desktop", "hai_js_runtime", "dep:tokio"]
+desktop = ["hai_pal/desktop", "hai_js_runtime", "dep:tokio", "video"]
+video = ["dep:ffmpeg-rs"]
 web = [
   "hai_pal/web",
   "wgpu/webgl",
@@ -36,6 +37,8 @@ tokio = {version = "1", features = ["full"], optional = true}
 wasm-bindgen = {version = "0.2.83", default-features = false, optional = true}
 wasm-bindgen-futures = {version = "0.4.33", optional = true}
 web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"], optional = true}
+
+ffmpeg-rs = {version = "5.2.1", optional = true}
 
 [dependencies.hai_js_runtime]
 optional = true
