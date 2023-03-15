@@ -12,7 +12,7 @@ function App() {
   return (
     <container>
       <sprite label="title" src={src} />
-      <video label="video" src={'sample.mp4'} scale={0.5} x={0} />
+      <video label="video" src={'D:\\Workspace\\epic-rs\\output\\video.mp4'} scale={0.5} x={0} mode="stream" />
     </container>
   );
 }
