@@ -1,6 +1,11 @@
 use anyhow::Result;
 use ffmpeg_rs::decoder::Check;
-use ffmpeg_rs::format::{input, Pixel};
+use ffmpeg_rs::ffi::{
+    av_malloc, avformat_alloc_context, avformat_close_input, avformat_find_stream_info,
+    avformat_open_input, avio_alloc_context,
+};
+use ffmpeg_rs::format::context::Input;
+use ffmpeg_rs::format::Pixel;
 use ffmpeg_rs::media::Type;
 use ffmpeg_rs::software::scaling::{context::Context, flag::Flags};
 use ffmpeg_rs::util::frame::video::Video as FFmpegVideo;
@@ -10,10 +15,13 @@ use hai_pal::sync::RwLock;
 use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
+use std::ffi::{c_int, c_void};
 use std::fmt::Debug;
+use std::fs::File;
+use std::io::Seek;
 use std::ops::{Deref, Mul};
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::os::windows::prelude::{AsRawHandle, FromRawHandle, IntoRawHandle};
+use std::ptr::null_mut;
 use std::sync::Arc;
 use std::time::Instant;
 use wgpu::util::{DeviceExt, StagingBelt};
@@ -48,6 +56,30 @@ impl Deref for VideoFrame {
     }
 }
 
+unsafe extern "C" fn read_packet(opaque: *mut c_void, buf: *mut u8, buf_size: c_int) -> c_int {
+    use std::io::Read;
+
+    let mut file = File::from_raw_handle(opaque);
+    if buf_size < 0 {
+        return -1;
+    }
+
+    let buf: &mut [u8] = std::slice::from_raw_parts_mut(buf, buf_size as usize);
+
+    let ret = match file.read(buf) {
+        Ok(size) => size as c_int,
+        Err(err) => {
+            error!("read_packet error: {}", err);
+            -1
+        }
+    };
+
+    // release ownership
+    file.into_raw_handle();
+
+    ret
+}
+
 #[node(renderable)]
 #[derive(Debug)]
 pub struct Video {
@@ -64,6 +96,7 @@ pub struct Video {
     pending_frame: Arc<RwLock<Option<VideoFrame>>>,
     src: String,
     mode: VideoPlayingMode,
+    file: Option<File>,
 }
 
 impl Video {
@@ -101,6 +134,7 @@ impl Video {
             pending_frame: Arc::new(RwLock::new(None)),
             src: String::new(),
             mode: VideoPlayingMode::File,
+            file: None,
         }
     }
 
@@ -122,7 +156,50 @@ impl Video {
     }
 
     fn play(&mut self) -> Result<()> {
-        let mut ictx = input(&PathBuf::from_str(&self.src)?)?;
+        let mut file =
+            File::open(&self.src).expect(&format!("Failed to open file '{}'", &self.src));
+
+        // start from lastest pos if mode == stream
+        if self.mode == VideoPlayingMode::Stream {
+            file.seek(std::io::SeekFrom::End(0)).unwrap();
+        }
+
+        let buffer_size = 4096;
+
+        let mut ictx = unsafe {
+            // FIXME: should it be release by hand?
+            let fd = file.as_raw_handle();
+            let buf = av_malloc(buffer_size);
+            let avio_in = avio_alloc_context(
+                buf as *mut u8,
+                buffer_size as i32,
+                0,
+                fd,
+                Some(read_packet),
+                None,
+                None,
+            );
+
+            let mut fmt_ctx = avformat_alloc_context();
+            (*fmt_ctx).pb = avio_in;
+
+            match avformat_open_input(&mut fmt_ctx, null_mut(), null_mut(), null_mut()) {
+                0 => match avformat_find_stream_info(fmt_ctx, null_mut()) {
+                    r if r >= 0 => Ok(Input::wrap(fmt_ctx)),
+                    e => {
+                        avformat_close_input(&mut fmt_ctx);
+                        Err(ffmpeg_rs::util::error::Error::from(e))
+                    }
+                },
+
+                e => Err(ffmpeg_rs::util::error::Error::from(e)),
+            }
+        }?;
+
+        // keep reference of file descriptor
+        self.file = Some(file);
+
+        // let mut ictx = input(&PathBuf::from_str(&self.src)?)?;
         let input = ictx
             .streams()
             .best(Type::Video)
@@ -131,7 +208,7 @@ impl Video {
 
         let mut packet = Packet::new(0);
 
-        let codec = ffmpeg_rs::codec::decoder::find_by_name("h264").unwrap();
+        let codec = ffmpeg_rs::codec::decoder::find_by_name("h264_cuvid").unwrap();
         let mut context_decoder = ffmpeg_rs::codec::context::Context::new_with_codec(&codec);
         let mut params = input.parameters();
         params.set_codec_id(codec.id());
@@ -177,9 +254,6 @@ impl Video {
                         while decoder.receive_frame(&mut decoded).is_ok() {
                             let mut rgb_frame = FFmpegVideo::empty();
                             scaler.run(&decoded, &mut rgb_frame)?;
-                            if unsafe { decoded.is_empty() } {
-                                println!("aaa");
-                            }
 
                             if let Some(current_pts) = decoded.pts() {
                                 //  a streaming file will have a negative start_pts, so do not control time
