@@ -7,7 +7,7 @@ use ffmpeg_rs::util::frame::video::Video as FFmpegVideo;
 use ffmpeg_rs::Packet;
 use hai_macros::node;
 use hai_pal::sync::RwLock;
-use log::{error, warn};
+use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::fmt::Debug;
@@ -63,6 +63,7 @@ pub struct Video {
 
     pending_frame: Arc<RwLock<Option<VideoFrame>>>,
     src: String,
+    mode: VideoPlayingMode,
 }
 
 impl Video {
@@ -99,6 +100,7 @@ impl Video {
 
             pending_frame: Arc::new(RwLock::new(None)),
             src: String::new(),
+            mode: VideoPlayingMode::File,
         }
     }
 
@@ -129,7 +131,7 @@ impl Video {
 
         let mut packet = Packet::new(0);
 
-        let codec = ffmpeg_rs::codec::decoder::find_by_name("h264_cuvid").unwrap();
+        let codec = ffmpeg_rs::codec::decoder::find_by_name("h264").unwrap();
         let mut context_decoder = ffmpeg_rs::codec::context::Context::new_with_codec(&codec);
         let mut params = input.parameters();
         params.set_codec_id(codec.id());
@@ -160,30 +162,45 @@ impl Video {
         let start_pts = input.start_time();
         let start_time = Instant::now();
 
+        let mode = self.mode.clone();
+
         // use dedicated thread instead of tokio thread pool (including spawn_blocking)
         // ref: https://stackoverflow.com/questions/74547541/when-should-you-use-tokios-spawn-blocking
         std::thread::spawn(move || -> Result<()> {
-            while let Ok(()) = packet.read(&mut ictx) {
-                if packet.stream() == video_stream_index {
-                    decoder.send_packet(&packet).unwrap_or_else(|err| {
-                        warn!("decoder error: {}", err);
-                    });
-                    let mut decoded = FFmpegVideo::empty();
-                    while decoder.receive_frame(&mut decoded).is_ok() {
-                        let mut rgb_frame = FFmpegVideo::empty();
-                        scaler.run(&decoded, &mut rgb_frame)?;
+            loop {
+                if let Ok(()) = packet.read(&mut ictx) {
+                    if packet.stream() == video_stream_index {
+                        decoder.send_packet(&packet).unwrap_or_else(|err| {
+                            warn!("decoder error: {}", err);
+                        });
+                        let mut decoded = FFmpegVideo::empty();
+                        while decoder.receive_frame(&mut decoded).is_ok() {
+                            let mut rgb_frame = FFmpegVideo::empty();
+                            scaler.run(&decoded, &mut rgb_frame)?;
+                            if unsafe { decoded.is_empty() } {
+                                println!("aaa");
+                            }
 
-                        let current_pts = decoded.pts().unwrap();
+                            if let Some(current_pts) = decoded.pts() {
+                                //  a streaming file will have a negative start_pts, so do not control time
+                                if start_pts >= 0 {
+                                    while start_time.elapsed()
+                                        < time_base.mul((current_pts - start_pts) as u32)
+                                    {
+                                        std::thread::yield_now();
+                                    }
+                                }
+                            }
 
-                        while start_time.elapsed() < time_base.mul((current_pts - start_pts) as u32)
-                        {
-                            std::thread::yield_now();
+                            *pending_frame.write() = Some(VideoFrame(rgb_frame));
                         }
-
-                        *pending_frame.write() = Some(VideoFrame(rgb_frame));
                     }
+                } else if mode == VideoPlayingMode::File {
+                    break;
                 }
             }
+
+            debug!("file ended.");
 
             Ok(())
         });
@@ -352,17 +369,33 @@ impl Focusable for Video {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum VideoPlayingMode {
+    File,
+    Stream,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoProps {
     pub src: Option<String>,
     pub area: Option<[f64; 4]>,
     pub autoplay: Option<bool>,
+    pub mode: Option<VideoPlayingMode>,
 }
 
 impl UpdateProps for Video {
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: VideoProps = from_js(props).unwrap();
+
+        if let Some(area) = props.area {
+            self.area = area;
+        }
+
+        if let Some(mode) = props.mode {
+            self.mode = mode;
+        }
 
         if let Some(src) = props.src {
             // FIXME: path should be relative to assets/
@@ -371,10 +404,6 @@ impl UpdateProps for Video {
             if let Err(err) = self.play() {
                 error!("{}", err);
             }
-        }
-
-        if let Some(area) = props.area {
-            self.area = area;
         }
 
         // force update vertices
