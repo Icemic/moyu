@@ -26,14 +26,22 @@ const bunnyMark = new BunnyMark(bunnies, {
 
 bunnyMark.addBunny(200);
 
-// hai.resizeWindow(800, 600);
+hai.resizeWindow(800, 600);
+
+// setInterval(() => hai.loadResources(), 500);
+
+let i = 0;
+let cc = 0;
 
 let t = Date.now();
 const loop = () => {
   setTimeout(loop, 16);
   bunnyMark.update();
   const t2 = Date.now();
-  console.info(t2 - t);
+  // console.info(t2 - t);
+  cc += t2 - t;
+  i += 1;
+  console.info((cc / i) << 0);
   t = t2;
 };
 
