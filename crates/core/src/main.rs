@@ -38,7 +38,7 @@ fn main() {
 
     #[cfg(feature = "video")]
     {
-        use log::{debug, info};
+        use log::debug;
         ffmpeg_rs::init().unwrap();
         info!(
             "FFmpeg initialized, license: {}",
