@@ -42,13 +42,13 @@ ffmpeg-rs = {version = "5.2.1", optional = true}
 
 [dependencies.hai_js_runtime]
 optional = true
-path = "../hai_js_runtime"
+path = "../js_runtime"
 version = "0.1"
 
 [dependencies.hai_pal]
-path = "../hai_pal"
+path = "../platform"
 version = "0.1"
 
 [dependencies.hai_macros]
-path = "../hai_macros"
+path = "../macros"
 version = "0.1"

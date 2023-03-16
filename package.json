@@ -1,7 +1,7 @@
 {
   "private": true,
   "workspaces": [
-    "hai_lib"
+    "packages/*"
   ],
   "scripts": {
     "dev": "yarn workspace @hai/lib dev"
