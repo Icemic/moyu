@@ -1,10 +1,10 @@
 [workspace]
-default-members = ["hai_core"]
+default-members = ["crates/core"]
 members = [
-  "hai_core",
-  "hai_js_runtime",
-  "hai_pal",
-  "hai_macros",
-  "run_wasm",
+  "crates/core",
+  "crates/js_runtime",
+  "crates/platform",
+  "crates/macros",
+  "crates/run_wasm",
 ]
 resolver = "2"

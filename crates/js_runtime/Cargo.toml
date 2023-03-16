@@ -13,5 +13,5 @@ tokio = {version = "1", features = ["full"]}
 v8 = {version = "0.60"}
 
 [dependencies.hai_pal]
-path = "../hai_pal"
+path = "../platform"
 version = "0.1"
