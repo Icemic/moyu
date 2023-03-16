@@ -11,19 +11,19 @@ use ffmpeg_rs::software::scaling::{context::Context, flag::Flags};
 use ffmpeg_rs::util::frame::video::Video as FFmpegVideo;
 use ffmpeg_rs::Packet;
 use hai_macros::node;
-use hai_pal::sync::RwLock;
+use hai_pal::sync::{Mutex, RwLock};
 use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::ffi::{c_int, c_void};
 use std::fmt::Debug;
-use std::fs::File;
-use std::io::Seek;
 use std::ops::{Deref, Mul};
 use std::os::windows::prelude::{AsRawHandle, FromRawHandle, IntoRawHandle};
 use std::ptr::null_mut;
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::fs::File;
+use tokio::io::AsyncSeekExt;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
@@ -59,7 +59,7 @@ impl Deref for VideoFrame {
 unsafe extern "C" fn read_packet(opaque: *mut c_void, buf: *mut u8, buf_size: c_int) -> c_int {
     use std::io::Read;
 
-    let mut file = File::from_raw_handle(opaque);
+    let mut file = std::fs::File::from_raw_handle(opaque);
     if buf_size < 0 {
         return -1;
     }
@@ -96,7 +96,7 @@ pub struct Video {
     pending_frame: Arc<RwLock<Option<VideoFrame>>>,
     src: String,
     mode: VideoPlayingMode,
-    file: Option<File>,
+    file: Arc<Mutex<Option<File>>>,
 }
 
 impl Video {
@@ -134,7 +134,7 @@ impl Video {
             pending_frame: Arc::new(RwLock::new(None)),
             src: String::new(),
             mode: VideoPlayingMode::File,
-            file: None,
+            file: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -156,127 +156,137 @@ impl Video {
     }
 
     fn play(&mut self) -> Result<()> {
-        let mut file =
-            File::open(&self.src).expect(&format!("Failed to open file '{}'", &self.src));
-
-        // start from lastest pos if mode == stream
-        if self.mode == VideoPlayingMode::Stream {
-            file.seek(std::io::SeekFrom::End(0)).unwrap();
-        }
-
-        let buffer_size = 4096;
-
-        let mut ictx = unsafe {
-            // FIXME: should it be release by hand?
-            let fd = file.as_raw_handle();
-            let buf = av_malloc(buffer_size);
-            let avio_in = avio_alloc_context(
-                buf as *mut u8,
-                buffer_size as i32,
-                0,
-                fd,
-                Some(read_packet),
-                None,
-                None,
-            );
-
-            let mut fmt_ctx = avformat_alloc_context();
-            (*fmt_ctx).pb = avio_in;
-
-            match avformat_open_input(&mut fmt_ctx, null_mut(), null_mut(), null_mut()) {
-                0 => match avformat_find_stream_info(fmt_ctx, null_mut()) {
-                    r if r >= 0 => Ok(Input::wrap(fmt_ctx)),
-                    e => {
-                        avformat_close_input(&mut fmt_ctx);
-                        Err(ffmpeg_rs::util::error::Error::from(e))
-                    }
-                },
-
-                e => Err(ffmpeg_rs::util::error::Error::from(e)),
-            }
-        }?;
-
-        // keep reference of file descriptor
-        self.file = Some(file);
-
-        // let mut ictx = input(&PathBuf::from_str(&self.src)?)?;
-        let input = ictx
-            .streams()
-            .best(Type::Video)
-            .ok_or(ffmpeg_rs::Error::StreamNotFound)?;
-        let video_stream_index = input.index();
-
-        let mut packet = Packet::new(0);
-
-        let codec = ffmpeg_rs::codec::decoder::find_by_name("h264_cuvid").unwrap();
-        let mut context_decoder = ffmpeg_rs::codec::context::Context::new_with_codec(&codec);
-        let mut params = input.parameters();
-        params.set_codec_id(codec.id());
-        context_decoder.set_parameters(params)?;
-
-        let decoder = context_decoder.decoder();
-        let mut decoder = decoder.open_as(codec).and_then(|o| o.video()).unwrap();
-
-        decoder.check(Check::IGNORE_ERROR);
-
-        let mut scaler = Context::get(
-            decoder.format(),
-            decoder.width(),
-            decoder.height(),
-            Pixel::RGBA,
-            decoder.width(),
-            decoder.height(),
-            Flags::LANCZOS,
-        )?;
-
-        let pending_frame = self.pending_frame.clone();
-
-        let time_base = input.time_base();
-        let time_base = std::time::Duration::from_nanos(
-            1_000_000_000 * time_base.0 as u64 / time_base.1 as u64,
-        );
-
-        let start_pts = input.start_time();
-        let start_time = Instant::now();
-
+        let src = self.src.clone();
         let mode = self.mode.clone();
 
-        // use dedicated thread instead of tokio thread pool (including spawn_blocking)
-        // ref: https://stackoverflow.com/questions/74547541/when-should-you-use-tokios-spawn-blocking
-        std::thread::spawn(move || -> Result<()> {
-            loop {
-                if let Ok(()) = packet.read(&mut ictx) {
-                    if packet.stream() == video_stream_index {
-                        decoder.send_packet(&packet).unwrap_or_else(|err| {
-                            warn!("decoder error: {}", err);
-                        });
-                        let mut decoded = FFmpegVideo::empty();
-                        while decoder.receive_frame(&mut decoded).is_ok() {
-                            let mut rgb_frame = FFmpegVideo::empty();
-                            scaler.run(&decoded, &mut rgb_frame)?;
+        let self_file = self.file.clone();
+        let pending_frame = self.pending_frame.clone();
 
-                            if let Some(current_pts) = decoded.pts() {
-                                //  a streaming file will have a negative start_pts, so do not control time
-                                if start_pts >= 0 {
-                                    while start_time.elapsed()
-                                        < time_base.mul((current_pts - start_pts) as u32)
-                                    {
-                                        std::thread::yield_now();
-                                    }
-                                }
-                            }
+        tokio::spawn(async move {
+            let mut file = File::open(&src)
+                .await
+                .expect(&format!("Failed to open file '{}'", &src));
 
-                            *pending_frame.write() = Some(VideoFrame(rgb_frame));
-                        }
-                    }
-                } else if mode == VideoPlayingMode::File {
-                    break;
-                }
+            // start from lastest pos if mode == stream
+            if mode == VideoPlayingMode::Stream {
+                file.seek(std::io::SeekFrom::End(0)).await.unwrap();
             }
 
-            debug!("file ended.");
+            let buffer_size = 4096;
 
-            Ok(())
+            let mut ictx = unsafe {
+                // FIXME: should it be release by hand?
+                let fd = file.as_raw_handle();
+                let buf = av_malloc(buffer_size);
+                let avio_in = avio_alloc_context(
+                    buf as *mut u8,
+                    buffer_size as i32,
+                    0,
+                    fd,
+                    Some(read_packet),
+                    None,
+                    None,
+                );
+
+                let mut fmt_ctx = avformat_alloc_context();
+                (*fmt_ctx).pb = avio_in;
+
+                match avformat_open_input(&mut fmt_ctx, null_mut(), null_mut(), null_mut()) {
+                    0 => match avformat_find_stream_info(fmt_ctx, null_mut()) {
+                        r if r >= 0 => Ok(Input::wrap(fmt_ctx)),
+                        e => {
+                            avformat_close_input(&mut fmt_ctx);
+                            Err(ffmpeg_rs::util::error::Error::from(e))
+                        }
+                    },
+
+                    e => Err(ffmpeg_rs::util::error::Error::from(e)),
+                }
+            }
+            .unwrap();
+
+            // keep reference of file descriptor
+            *self_file.lock() = Some(file);
+
+            drop(self_file);
+
+            // let mut ictx = input(&PathBuf::from_str(&self.src)?)?;
+            let input = ictx
+                .streams()
+                .best(Type::Video)
+                .ok_or(ffmpeg_rs::Error::StreamNotFound)
+                .unwrap();
+            let video_stream_index = input.index();
+
+            let mut packet = Packet::new(0);
+
+            let codec = ffmpeg_rs::codec::decoder::find_by_name("h264_cuvid").unwrap();
+            let mut context_decoder = ffmpeg_rs::codec::context::Context::new_with_codec(&codec);
+            let mut params = input.parameters();
+            params.set_codec_id(codec.id());
+            context_decoder.set_parameters(params).unwrap();
+
+            let decoder = context_decoder.decoder();
+            let mut decoder = decoder.open_as(codec).and_then(|o| o.video()).unwrap();
+
+            decoder.check(Check::IGNORE_ERROR);
+
+            let mut scaler = Context::get(
+                decoder.format(),
+                decoder.width(),
+                decoder.height(),
+                Pixel::RGBA,
+                decoder.width(),
+                decoder.height(),
+                Flags::LANCZOS,
+            )
+            .unwrap();
+
+            let time_base = input.time_base();
+            let time_base = std::time::Duration::from_nanos(
+                1_000_000_000 * time_base.0 as u64 / time_base.1 as u64,
+            );
+
+            let start_pts = input.start_time();
+            let start_time = Instant::now();
+
+            // use dedicated thread instead of tokio thread pool (including spawn_blocking)
+            // ref: https://stackoverflow.com/questions/74547541/when-should-you-use-tokios-spawn-blocking
+            std::thread::spawn(move || -> Result<()> {
+                loop {
+                    if let Ok(()) = packet.read(&mut ictx) {
+                        if packet.stream() == video_stream_index {
+                            decoder.send_packet(&packet).unwrap_or_else(|err| {
+                                warn!("decoder error: {}", err);
+                            });
+                            let mut decoded = FFmpegVideo::empty();
+                            while decoder.receive_frame(&mut decoded).is_ok() {
+                                let mut rgb_frame = FFmpegVideo::empty();
+                                scaler.run(&decoded, &mut rgb_frame)?;
+
+                                if let Some(current_pts) = decoded.pts() {
+                                    //  a streaming file will have a negative start_pts, so do not control time
+                                    if start_pts >= 0 {
+                                        while start_time.elapsed()
+                                            < time_base.mul((current_pts - start_pts) as u32)
+                                        {
+                                            std::thread::yield_now();
+                                        }
+                                    }
+                                }
+
+                                *pending_frame.write() = Some(VideoFrame(rgb_frame));
+                            }
+                        }
+                    } else if mode == VideoPlayingMode::File {
+                        break;
+                    }
+                }
+
+                debug!("file ended.");
+
+                Ok(())
+            });
         });
 
         Ok(())
