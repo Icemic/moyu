@@ -31,7 +31,7 @@ rustc-wrapper = "/usr/local/bin/sccache"
 FFMPEG_DIR = {value = "3rdparty/ffmpeg", relative = true}
 
 [alias]
-run-wasm = "run --release --package run-wasm -- hai_core --features web"
-run-desktop = "run --package hai_core --features desktop"
+run-wasm = "run --release --package run-wasm -- hai --features web"
+run-desktop = "run --package hai --features desktop"
 # should have "sudo CARGO_PROFILE_RELEASE_DEBUG=true" before `cargo`
-run-flamegraph = "flamegraph --package hai_core --features desktop"
+run-flamegraph = "flamegraph --package hai --features desktop"

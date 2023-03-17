@@ -970,6 +970,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "hai"
+version = "0.1.0"
+dependencies = [
+ "hai_core",
+ "hai_js_runtime",
+ "hai_pal",
+ "log",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "hai_core"
 version = "0.1.0"
 dependencies = [
