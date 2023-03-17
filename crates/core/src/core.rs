@@ -1,5 +1,5 @@
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
-use log::{debug, error};
+use log::{debug, error, info};
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -9,8 +9,10 @@ use std::sync::Arc;
 use std::time::Instant;
 use wgpu::util::StagingBelt;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
-use winit::event::WindowEvent;
-use winit::event_loop::EventLoopProxy;
+use winit::dpi::{LogicalSize, Size};
+use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
+use winit::event_loop::{ControlFlow, EventLoopProxy};
+use winit::window::Window;
 
 use crate::renderer::NUM_INDICES;
 use crate::utils::walk::{walk_nodes_bottom_top, walk_nodes_top_bottom};
@@ -141,6 +143,100 @@ impl Core {
 
         // apply new size
         self.surface.configure(&self.device, &config);
+    }
+
+    #[inline]
+    pub fn handle_events(
+        &self,
+        event: Event<UserEvent>,
+        window: &Window,
+    ) -> (Option<ControlFlow>,) {
+        let mut control_flow = None;
+
+        match event {
+            Event::RedrawRequested(window_id) if window_id == window.id() => {
+                match self.render() {
+                    Ok(_) => {}
+                    // Reconfigure the surface if lost
+                    Err(wgpu::SurfaceError::Lost) => {
+                        self.refresh();
+                    }
+                    // The system is out of memory, we should probably quit
+                    Err(wgpu::SurfaceError::OutOfMemory) => control_flow = Some(ControlFlow::Exit),
+                    // All other errors (Outdated, Timeout) should be resolved by the next frame
+                    Err(e) => eprintln!("{:?}", e),
+                }
+            }
+            Event::MainEventsCleared => {
+                // RedrawRequested will only trigger once, unless we manually
+                // request it.
+                window.request_redraw();
+            }
+            Event::WindowEvent {
+                ref event,
+                window_id,
+            } if window_id == window.id() => {
+                // makes State to have priority over main()
+                if !self.input(event) {
+                    // UPDATED!
+                    match event {
+                        WindowEvent::CloseRequested
+                        | WindowEvent::KeyboardInput {
+                            input:
+                                KeyboardInput {
+                                    state: ElementState::Pressed,
+                                    virtual_keycode: Some(VirtualKeyCode::Escape),
+                                    ..
+                                },
+                            ..
+                        } => control_flow = Some(ControlFlow::Exit),
+                        WindowEvent::Resized(physical_size) => {
+                            let surface_size = SurfaceSize::from_physical_size(
+                                physical_size,
+                                window.scale_factor(),
+                            );
+                            self.resize(surface_size);
+                        }
+                        WindowEvent::ScaleFactorChanged {
+                            scale_factor,
+                            new_inner_size,
+                            ..
+                        } => {
+                            let surface_size = SurfaceSize::from_physical_size(
+                                new_inner_size.to_owned(),
+                                scale_factor.clone(),
+                            );
+                            self.resize(surface_size);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Event::UserEvent(user_event) => match user_event {
+                UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
+                    let factor = factor.unwrap_or(window.scale_factor());
+
+                    if logical_width > 0. && logical_height > 0. {
+                        let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
+                        self.resize(surface_size);
+
+                        let window_size =
+                            Size::Logical(LogicalSize::new(logical_width, logical_height));
+                        window.set_inner_size(window_size);
+                    }
+                }
+                UserEvent::SetTitle(title) => {
+                    window.set_title(&title);
+                }
+                UserEvent::Quit => {
+                    control_flow = Some(ControlFlow::Exit);
+                    info!("Goodbye.");
+                }
+            },
+            _ => {}
+        }
+
+        (control_flow,)
     }
 
     #[inline]

@@ -15,8 +15,6 @@ web = [
 
 [dependencies]
 log = "0.4"
-wgpu = "0.15"
-winit = "0.28"
 
 [dependencies.hai_core]
 path = "../core"
