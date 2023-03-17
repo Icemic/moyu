@@ -145,14 +145,13 @@ impl Core {
         self.surface.configure(&self.device, &config);
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn handle_events(
         &self,
         event: Event<UserEvent>,
         window: &Window,
     ) -> (Option<ControlFlow>,) {
         let mut control_flow = None;
-
         match event {
             Event::RedrawRequested(window_id) if window_id == window.id() => {
                 match self.render() {
@@ -163,6 +162,9 @@ impl Core {
                     }
                     // The system is out of memory, we should probably quit
                     Err(wgpu::SurfaceError::OutOfMemory) => control_flow = Some(ControlFlow::Exit),
+                    Err(wgpu::SurfaceError::Outdated) => {
+                        // ignore
+                    }
                     // All other errors (Outdated, Timeout) should be resolved by the next frame
                     Err(e) => eprintln!("{:?}", e),
                 }
@@ -195,7 +197,12 @@ impl Core {
                                 physical_size,
                                 window.scale_factor(),
                             );
-                            self.resize(surface_size);
+
+                            if physical_size.width == 0 || physical_size.height == 0 {
+                                // window minimized, ignore
+                            } else {
+                                self.resize(surface_size);
+                            }
                         }
                         WindowEvent::ScaleFactorChanged {
                             scale_factor,
@@ -239,7 +246,7 @@ impl Core {
         (control_flow,)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn render(&self) -> Result<(), wgpu::SurfaceError> {
         // fps
         #[cfg(not(feature = "web"))]
@@ -381,7 +388,7 @@ impl Core {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn input(&self, event: &WindowEvent) -> bool {
         let root_node = self.root_node.clone();
         let current_focused_node = self.current_focused_node.clone();

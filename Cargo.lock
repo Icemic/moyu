@@ -977,6 +977,7 @@ dependencies = [
  "hai_js_runtime",
  "hai_pal",
  "log",
+ "winit",
 ]
 
 [[package]]

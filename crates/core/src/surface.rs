@@ -2,21 +2,25 @@ use log::info;
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, Size};
-use winit::event_loop::{EventLoop, EventLoopBuilder};
+use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopWindowTarget};
 use winit::window::WindowBuilder;
 use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::user_event::UserEvent;
 
-pub fn create_window() -> (EventLoop<UserEvent>, Window) {
+pub fn create_eventloop() -> EventLoop<UserEvent> {
     // create main thread infinity loop
     let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+    event_loop
+}
+
+pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Window {
     // create window
     let window = WindowBuilder::new()
         .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
         .with_resizable(false)
         .with_visible(false)
-        .build(&event_loop)
+        .build(event_loop)
         .unwrap();
 
     // web target only
@@ -34,7 +38,7 @@ pub fn create_window() -> (EventLoop<UserEvent>, Window) {
             .expect("couldn't append canvas to document body");
     }
 
-    (event_loop, window)
+    window
 }
 
 pub fn create_wgpu_surface(
