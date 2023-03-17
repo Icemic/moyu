@@ -1,51 +1,25 @@
-mod core;
-mod hai;
-mod nodes;
-mod ops;
-mod presets;
-mod renderer;
-mod resource;
-mod surface;
-mod traits;
-mod types;
-mod user_event;
-mod utils;
-
-use hai::create_hai_core;
-#[cfg(not(feature = "web"))]
-use hai_js_runtime::JSRuntime;
-use hai_pal::sync::Mutex;
-use hai_pal::{env, logger, platform};
 use log::info;
 use std::sync::Arc;
-#[cfg(not(feature = "web"))]
-use std::thread;
-use surface::{create_wgpu_surface, create_window};
-use types::SurfaceSize;
-use user_event::UserEvent;
-#[cfg(feature = "web")]
-use wasm_bindgen::prelude::wasm_bindgen;
+
 use winit::{
     dpi::{LogicalSize, Size},
     event::*,
     event_loop::ControlFlow,
 };
 
+use hai_core::surface::{create_wgpu_surface, create_window};
+use hai_core::types::SurfaceSize;
+use hai_core::user_event::UserEvent;
+use hai_core::{create_hai_core, setup, spawn_runtime_with_core};
+use hai_pal::sync::Mutex;
+use hai_pal::{env, logger, platform};
+
 fn main() {
     env::setup();
     logger::setup();
     platform::setup();
 
-    #[cfg(feature = "video")]
-    {
-        use log::debug;
-        ffmpeg_rs::init().unwrap();
-        info!(
-            "FFmpeg initialized, license: {}",
-            ffmpeg_rs::util::license()
-        );
-        debug!("FFmpeg configuration: {}", ffmpeg_rs::util::configuration());
-    }
+    setup();
 
     let (event_loop, window) = create_window();
 
@@ -57,62 +31,7 @@ fn main() {
 
     let core = create_hai_core(surface, device, queue, config, &window, event_proxy);
 
-    // desktop targets only
-    // spawn a v8 thread
-    #[cfg(not(feature = "web"))]
-    {
-        use log::error;
-        use std::process::exit;
-
-        let core = core.clone();
-
-        thread::spawn(|| {
-            let runtime = tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            let resource_manager = core.resource_manager.clone();
-            runtime.block_on(async {
-                let mut vm = JSRuntime::new(core);
-
-                vm.with_global(|scope, global| {
-                    ops::init(scope, global);
-                });
-
-                if let Err(err) = vm.prepare_entry().await {
-                    error!("{}", err.to_string());
-                    exit(-1);
-                };
-
-                vm.run_event_loop(|cx| {
-                    let mut resource_manager = resource_manager.lock();
-                    resource_manager.poll(cx)
-                })
-                .await;
-            });
-        });
-    }
-
-    #[cfg(feature = "web")]
-    {
-        use log::debug;
-        wasm_bindgen_futures::spawn_local(async move {
-            debug!("Injecting entry script.");
-            let window = web_sys::window().expect("Cannot get global `window` object.");
-            let document = window.document().expect("No document found.");
-            let body = document.body().expect("No body found.");
-
-            let root_script = document
-                .create_element("script")
-                .expect("Cannot create script element.");
-            root_script
-                .set_attribute("src", env::entry_dir().as_str())
-                .unwrap();
-            root_script.set_attribute("type", "module").unwrap();
-
-            body.append_child(&root_script).unwrap();
-        });
-    }
+    spawn_runtime_with_core(&core);
 
     window.set_visible(true);
 
@@ -201,6 +120,9 @@ fn main() {
         }
     });
 }
+
+#[cfg(feature = "web")]
+use wasm_bindgen::prelude::wasm_bindgen;
 
 #[cfg(feature = "web")]
 #[cfg_attr(feature = "web", wasm_bindgen)]
