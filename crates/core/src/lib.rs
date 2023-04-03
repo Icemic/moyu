@@ -10,6 +10,7 @@ pub mod types;
 pub mod user_event;
 pub mod utils;
 
+use futures::Future;
 use hai_pal::sync::Mutex;
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
@@ -69,8 +70,14 @@ pub fn create_hai_core(
     core
 }
 
+use std::pin::Pin;
+
+pub type SpawnRuntimeCallback =
+    Box<dyn (FnOnce() -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>) + Send + Sync>;
+
 /// spawn a thread with javascript runtime and executes scripts
-pub fn spawn_runtime_with_core(core: &Arc<Core>) {
+/// use `spawn_callback` to do anything else which should be under a async runtime.
+pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
     // desktop targets only
     // spawn a v8 thread
     #[cfg(not(feature = "web"))]
@@ -87,6 +94,12 @@ pub fn spawn_runtime_with_core(core: &Arc<Core>) {
                 .enable_all()
                 .build()
                 .unwrap();
+
+            if let Some(spawn_callback) = spawn_callback {
+                let async_callback = spawn_callback();
+                runtime.spawn(async_callback);
+            }
+
             let resource_manager = core.resource_manager.clone();
             runtime.block_on(async {
                 let mut vm = JSRuntime::new(core);
@@ -112,6 +125,12 @@ pub fn spawn_runtime_with_core(core: &Arc<Core>) {
     #[cfg(feature = "web")]
     {
         use log::debug;
+
+        if let Some(spawn_callback) = spawn_callback {
+            let async_callback = spawn_callback();
+            wasm_bindgen_futures::spawn_local(spawn_callback);
+        }
+
         wasm_bindgen_futures::spawn_local(async move {
             debug!("Injecting entry script.");
             let window = web_sys::window().expect("Cannot get global `window` object.");

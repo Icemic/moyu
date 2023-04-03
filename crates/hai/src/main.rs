@@ -37,7 +37,7 @@ fn main() {
                     event_proxy.clone(),
                 );
 
-                spawn_runtime_with_core(&_core);
+                spawn_runtime_with_core(&_core, None);
 
                 _window.set_visible(true);
 
