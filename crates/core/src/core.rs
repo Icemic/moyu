@@ -27,6 +27,24 @@ use crate::{
 static CORE: OnceCell<usize> = OnceCell::new();
 
 #[inline]
+pub fn get_core_optional() -> Option<Arc<Core>> {
+    let p = if let Some(p) = CORE.get() {
+        *p as *const c_void
+    } else {
+        return None;
+    };
+
+    let ptr = p as *const Core;
+    let r = unsafe { Arc::from_raw(ptr) };
+    let r_cloned = r.clone();
+
+    // keep ptr leaked
+    forget(r);
+
+    Some(r_cloned)
+}
+
+#[inline]
 pub fn get_core() -> Arc<Core> {
     let p = *CORE.get().unwrap() as *const c_void;
     let ptr = p as *const Core;
