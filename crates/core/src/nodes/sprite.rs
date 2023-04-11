@@ -20,13 +20,13 @@ use super::Texture;
 pub struct Sprite {
     /// loaded texture
     pub texture_id: ArcSwapOption<TextureId>,
-    pub texture: ArcSwapOption<RwLock<Texture>>,
+    pub texture: ArcSwapOption<Texture>,
     /// clip area
     pub area: [f64; 4],
     /// calculated vertices
     pub vertices: Option<[Vertex; 4]>,
 
-    pub src: ArcSwapOption<String>,
+    pub src: Option<String>,
 
     pub vertex_buffer: Option<Buffer>,
 }
@@ -59,7 +59,7 @@ impl Sprite {
             texture: ArcSwapOption::default(),
             area: [0., 0., 1., 1.],
             vertices: None,
-            src: ArcSwapOption::default(),
+            src: None,
             vertex_buffer: None,
         }
     }
@@ -74,13 +74,14 @@ impl NodeType for Sprite {
 impl Focusable for Sprite {
     fn contains(&self, x: f64, y: f64) -> bool {
         if let Some(texture) = self.texture.load().as_ref() {
-            let texture = texture.read();
             let translate = self.translate();
 
+            let (width, height) = texture.size();
+
             if x > translate.x
-                && x < texture.width() as f64 + translate.x
+                && x < width as f64 + translate.x
                 && y > translate.y
-                && y < texture.height() as f64 + translate.y
+                && y < height as f64 + translate.y
             {
                 return true;
             }
@@ -102,13 +103,13 @@ impl UpdateProps for Sprite {
         let props: SpriteProps = from_js(props).unwrap();
 
         if let Some(src) = props.src {
-            self.src.store(Some(Arc::new(src.clone())));
             let core = get_core();
             let mut resource_manager = core.resource_manager.lock();
-            let texture_id = Arc::new(TextureId::Path(src));
+            let texture_id = Arc::new(TextureId::Path(src.clone()));
             let texture = resource_manager.get_texture(&texture_id);
             self.texture_id.store(Some(texture_id));
             self.texture.store(Some(texture));
+            self.src = Some(src);
         }
 
         if let Some(area) = props.area {

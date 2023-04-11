@@ -1,67 +1,59 @@
-use hai_pal::sync::RwLock;
+use arc_swap::{ArcSwap, ArcSwapOption};
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct Texture {
-    pub status: TextureStatus,
-    pub texture: Option<wgpu::Texture>,
-    pub view: Option<wgpu::TextureView>,
-    pub sampler: Option<wgpu::Sampler>,
+    pub status: ArcSwap<TextureStatus>,
+    pub texture: ArcSwapOption<wgpu::Texture>,
+    pub view: ArcSwapOption<wgpu::TextureView>,
+    pub sampler: ArcSwapOption<wgpu::Sampler>,
 }
 
 impl Texture {
     pub fn new() -> Self {
         Self {
-            status: Default::default(),
-            texture: None,
-            view: None,
-            sampler: None,
+            status: ArcSwap::default(),
+            texture: ArcSwapOption::default(),
+            view: ArcSwapOption::default(),
+            sampler: ArcSwapOption::default(),
         }
     }
 
-    pub fn width(&self) -> u32 {
-        if let Some(ref texture) = self.texture {
-            texture.width()
+    pub fn size(&self) -> (u32, u32) {
+        if let Some(texture) = self.texture.load().as_ref() {
+            (texture.width(), texture.height())
         } else {
-            0
+            (0, 0)
         }
     }
 
-    pub fn height(&self) -> u32 {
-        if let Some(ref texture) = self.texture {
-            texture.height()
-        } else {
-            0
-        }
+    pub fn status(&self) -> TextureStatus {
+        self.status.load().as_ref().clone()
     }
 
-    pub fn status(&self) -> &TextureStatus {
-        &self.status
-    }
-
-    pub fn set_status(&mut self, status: TextureStatus) {
-        self.status = status;
+    pub fn set_status(&self, status: TextureStatus) {
+        self.status.store(Arc::new(status));
     }
 
     pub fn set_texture(
-        &mut self,
+        &self,
         texture: wgpu::Texture,
         view: wgpu::TextureView,
         sampler: wgpu::Sampler,
     ) {
-        self.texture = Some(texture);
-        self.view = Some(view);
-        self.sampler = Some(sampler);
+        self.texture.store(Some(Arc::new(texture)));
+        self.view.store(Some(Arc::new(view)));
+        self.sampler.store(Some(Arc::new(sampler)));
     }
 
-    pub fn texture_unwrap(&self) -> &wgpu::Texture {
-        self.texture.as_ref().unwrap()
+    pub fn texture_unwrap(&self) -> Arc<wgpu::Texture> {
+        self.texture.load().clone().unwrap()
     }
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum TextureStatus {
     /// reading image file from file system
     #[default]
@@ -74,8 +66,8 @@ pub enum TextureStatus {
     Error,
 }
 
-static EMPTY_TEXTURE: OnceCell<Arc<RwLock<Texture>>> = OnceCell::new();
+static EMPTY_TEXTURE: OnceCell<Arc<Texture>> = OnceCell::new();
 
-pub fn get_empty_texture() -> &'static Arc<RwLock<Texture>> {
-    EMPTY_TEXTURE.get_or_init(|| Arc::new(RwLock::new(Texture::new())))
+pub fn get_empty_texture() -> &'static Arc<Texture> {
+    EMPTY_TEXTURE.get_or_init(|| Arc::new(Texture::new()))
 }

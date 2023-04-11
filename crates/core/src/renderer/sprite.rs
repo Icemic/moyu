@@ -1,4 +1,3 @@
-use hai_pal::sync::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::util::StagingBelt;
@@ -121,18 +120,21 @@ impl SpriteRenderer {
 }
 
 impl SpriteRenderer {
-    fn get_bind_group(&mut self, device: &Device, texture: &Arc<RwLock<Texture>>) -> BindGroup {
-        let _texture = texture.read();
+    fn get_bind_group(&mut self, device: &Device, texture: &Arc<Texture>) -> BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(_texture.view.as_ref().unwrap()),
+                    resource: wgpu::BindingResource::TextureView(
+                        texture.view.load().as_ref().unwrap(),
+                    ),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(_texture.sampler.as_ref().unwrap()),
+                    resource: wgpu::BindingResource::Sampler(
+                        texture.sampler.load().as_ref().unwrap(),
+                    ),
                 },
             ],
             label: Some("bind_group"),
@@ -174,24 +176,21 @@ impl Renderer for SpriteRenderer {
         let mut node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
 
         if let Some(texture_id) = node.texture_id.load().as_ref() {
-            let texture = node.texture.load();
-            let texture = texture
-                .as_ref()
+            let texture = node
+                .texture
+                .load()
+                .clone()
                 .expect("texture must exist when texture_id exists.");
 
-            let texture_ = texture.read();
-
-            if &TextureStatus::Ready != texture_.status() {
+            if TextureStatus::Ready != texture.status() {
                 return;
             }
 
-            let width =
-                (texture_.width() as f64 * scale_factor) / (logical_width * scale_factor) * 2.;
-            let height = (texture_.height() as f64 * scale_factor)
-                / (logical_height * scale_factor) as f64
-                * 2.;
+            let (tex_width, tex_height) = texture.size();
 
-            drop(texture_);
+            let width = (tex_width as f64 * scale_factor) / (logical_width * scale_factor) * 2.;
+            let height =
+                (tex_height as f64 * scale_factor) / (logical_height * scale_factor) as f64 * 2.;
 
             let vertices = calculate_rect_vertices(node, width, height, &node.area);
 
@@ -218,8 +217,7 @@ impl Renderer for SpriteRenderer {
 
             // create bind group if not exist
             if !self.bind_group_map.contains_key(texture_id) {
-                println!("update: {:?}", texture_id);
-                let bind_group = self.get_bind_group(device, texture);
+                let bind_group = self.get_bind_group(device, &texture);
                 self.bind_group_map.insert(texture_id.clone(), bind_group);
             }
         }
