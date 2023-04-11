@@ -4,7 +4,6 @@ use futures::{stream::FuturesUnordered, task::AtomicWaker, StreamExt};
 use futures::{Future, FutureExt};
 use hai_pal::env::entry_dir;
 use hai_pal::fs;
-use hai_pal::sync::RwLock;
 use image::GenericImageView;
 use log::{debug, error};
 #[cfg(feature = "web")]
@@ -34,7 +33,7 @@ pub enum TextureId {
 pub struct ResourceManager {
     device: Arc<Device>,
     queue: Arc<Queue>,
-    texture_map: HashMap<Arc<TextureId>, Weak<RwLock<Texture>>>,
+    texture_map: HashMap<Arc<TextureId>, Weak<Texture>>,
     #[cfg(not(feature = "web"))]
     tasks: FuturesUnordered<JoinHandle<Result<()>>>,
     #[cfg(feature = "web")]
@@ -57,7 +56,7 @@ impl ResourceManager {
     /// if there's already a texture with the same texture id, return it, or:
     ///   1. for `TextureId::Path`, it will add a new task to load a new texture
     ///   2. for `TextureId::Custom`, it will create a empty texture then return
-    pub fn get_texture(&mut self, texture_id: &Arc<TextureId>) -> Arc<RwLock<Texture>> {
+    pub fn get_texture(&mut self, texture_id: &Arc<TextureId>) -> Arc<Texture> {
         if let Some(texture) = self.texture_map.get(texture_id) {
             if let Some(texture) = texture.upgrade() {
                 return texture;
@@ -67,7 +66,7 @@ impl ResourceManager {
         match &**texture_id {
             TextureId::Path(_) => self.add_load_task(texture_id.clone()),
             TextureId::Custom(_) => {
-                let texture = Arc::new(RwLock::new(Texture::new()));
+                let texture = Arc::new(Texture::new());
                 self.texture_map
                     .insert(texture_id.clone(), Arc::downgrade(&texture));
                 texture
@@ -77,7 +76,7 @@ impl ResourceManager {
 
     /// add a task to load a new texture.
     /// it does not check whether a same asset has been loaded.
-    fn add_load_task(&mut self, texture_id: Arc<TextureId>) -> Arc<RwLock<Texture>> {
+    fn add_load_task(&mut self, texture_id: Arc<TextureId>) -> Arc<Texture> {
         if let TextureId::Path(asset_relative_path) = &*texture_id {
             let asset_full_path = entry_dir()
                 .join("assets/")
@@ -86,7 +85,7 @@ impl ResourceManager {
                 .unwrap();
             debug!("texture will load from {}", asset_relative_path);
 
-            let texture = Arc::new(RwLock::new(Texture::new()));
+            let texture = Arc::new(Texture::new());
             self.texture_map
                 .insert(texture_id.clone(), Arc::downgrade(&texture));
             let _texture = texture.clone();
@@ -113,10 +112,7 @@ impl ResourceManager {
                 // TODO: map various color type to wgpu::TextureFormat
                 let rgba = img.into_rgba8();
 
-                {
-                    let mut texture = texture.write();
-                    texture.set_status(TextureStatus::Uploading);
-                }
+                texture.set_status(TextureStatus::Uploading);
 
                 let size = wgpu::Extent3d {
                     width: dimensions.0,
@@ -162,11 +158,8 @@ impl ResourceManager {
                     ..Default::default()
                 });
 
-                {
-                    let mut texture = texture.write();
-                    texture.set_texture(texture_gpu, view, sampler);
-                    texture.set_status(TextureStatus::Ready);
-                }
+                texture.set_texture(texture_gpu, view, sampler);
+                texture.set_status(TextureStatus::Ready);
 
                 debug!("texture '{}' loaded", asset_relative_path);
 
