@@ -22,11 +22,11 @@ export interface HaiNodeAttributes {
 
 export type HaiContainerAttributes = HaiNodeAttributes;
 export interface HaiSpriteAttribute extends HaiNodeAttributes {
-  src: string;
+  src?: string;
   area?: [number, number, number, number];
 }
 
-export interface HaiVideoAttribute extends HaiSpriteAttribute {
+export interface HaiPlayerAttribute extends HaiSpriteAttribute {
   src: string;
   area?: [number, number, number, number];
   autoplay?: boolean;
@@ -37,7 +37,7 @@ declare global {
     interface IntrinsicElements {
       container: DetailedHaiProps<HaiContainerAttributes>;
       sprite: DetailedHaiProps<HaiSpriteAttribute>;
-      video: DetailedHaiProps<HaiVideoAttribute>;
+      player: DetailedHaiProps<HaiPlayerAttribute>;
     }
   }
 }
