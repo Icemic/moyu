@@ -7,7 +7,7 @@ version = "0.1.0"
 
 [features]
 default = ["desktop"]
-desktop = ["hai_pal/desktop", "hai_js_runtime", "dep:tokio", "video"]
+desktop = ["hai_pal/desktop", "hai_js_runtime", "dep:tokio"]
 video = ["dep:ffmpeg-rs"]
 web = [
   "hai_pal/web",
@@ -21,6 +21,7 @@ web = [
 
 [dependencies]
 anyhow = "1.0"
+arc-swap = "1.6"
 bytemuck = {version = "1.12", features = ["derive"]}
 cgmath = "0.18"
 futures = "0.3"

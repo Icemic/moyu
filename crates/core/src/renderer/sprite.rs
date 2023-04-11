@@ -1,6 +1,15 @@
+use hai_pal::sync::RwLock;
+use std::collections::HashMap;
 use std::sync::Arc;
+use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
+#[cfg(feature = "video")]
+use crate::nodes::Video;
+use crate::nodes::{Sprite, Texture, TextureStatus};
+use crate::resource::TextureId;
+use crate::traits::{Node, RendererUpdatePayload};
+use crate::utils::calculate::calculate_rect_vertices;
 use crate::{traits::Renderer, types::Vertex, utils::constants::RECTANGLE_INDICES};
 
 /// the number of vertices in a sprite is always 4.
@@ -12,6 +21,7 @@ pub struct SpriteRenderer {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     index_buffer: Buffer,
+    bind_group_map: HashMap<Arc<TextureId>, BindGroup>,
 }
 
 impl SpriteRenderer {
@@ -105,7 +115,28 @@ impl SpriteRenderer {
             pipeline,
             bind_group_layout,
             index_buffer,
+            bind_group_map: Default::default(),
         }
+    }
+}
+
+impl SpriteRenderer {
+    fn get_bind_group(&mut self, device: &Device, texture: &Arc<RwLock<Texture>>) -> BindGroup {
+        let _texture = texture.read();
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(_texture.view.as_ref().unwrap()),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(_texture.sampler.as_ref().unwrap()),
+                },
+            ],
+            label: Some("bind_group"),
+        })
     }
 }
 
@@ -124,5 +155,106 @@ impl Renderer for SpriteRenderer {
 
     fn index_buffer(&self) -> &Buffer {
         &self.index_buffer
+    }
+
+    fn update(
+        &mut self,
+        node: &mut dyn Node,
+        device: &Arc<Device>,
+        _: &Arc<Queue>,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        payload: &RendererUpdatePayload,
+    ) {
+        // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
+        // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
+        let (logical_width, logical_height) = payload.surface_size.logical_size();
+        let scale_factor = payload.surface_size.scale_factor();
+
+        let mut node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
+
+        if let Some(texture_id) = node.texture_id.load().as_ref() {
+            let texture = node.texture.load();
+            let texture = texture
+                .as_ref()
+                .expect("texture must exist when texture_id exists.");
+
+            let texture_ = texture.read();
+
+            if &TextureStatus::Ready != texture_.status() {
+                return;
+            }
+
+            let width =
+                (texture_.width() as f64 * scale_factor) / (logical_width * scale_factor) * 2.;
+            let height = (texture_.height() as f64 * scale_factor)
+                / (logical_height * scale_factor) as f64
+                * 2.;
+
+            drop(texture_);
+
+            let vertices = calculate_rect_vertices(node, width, height, &node.area);
+
+            if node.vertex_buffer.is_none() {
+                let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Vertex Buffer"),
+                    contents: bytemuck::cast_slice(&vertices),
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                });
+
+                node.vertex_buffer = Some(vertex_buffer);
+            } else {
+                let buf = bytemuck::cast_slice(&vertices);
+                staging_belt
+                    .write_buffer(
+                        encoder,
+                        node.vertex_buffer.as_ref().unwrap(),
+                        0,
+                        (buf.len() as u64).try_into().unwrap(),
+                        &device,
+                    )
+                    .copy_from_slice(buf);
+            }
+
+            // create bind group if not exist
+            if !self.bind_group_map.contains_key(texture_id) {
+                println!("update: {:?}", texture_id);
+                let bind_group = self.get_bind_group(device, texture);
+                self.bind_group_map.insert(texture_id.clone(), bind_group);
+            }
+        }
+    }
+
+    fn begin(&self) {}
+    fn finish(&self) {}
+
+    fn render<'a, 'b: 'a>(&'b self, render_pass: &mut RenderPass<'a>, node: &'b dyn Node) {
+        let mut bind_group = None;
+        let mut vertex_buffer = None;
+
+        if let Some(sprite) = node.as_any().downcast_ref::<Sprite>() {
+            if let Some(texture_id) = sprite.texture_id.load().as_ref() {
+                bind_group = self.bind_group_map.get(texture_id);
+                vertex_buffer = sprite.vertex_buffer.as_ref();
+            }
+        }
+        // else if let Some(video) = node.as_any().downcast_ref::<Video>() {
+        //     bind_group = video.texture.read().bind_group.as_ref().unwrap().clone();
+        //     vertex_buffer = video.vertex_buffer.as_ref().unwrap();
+        // }
+        else {
+            unreachable!()
+        }
+
+        if bind_group.is_some() && vertex_buffer.is_some() {
+            render_pass.set_pipeline(self.render_pipeline());
+            render_pass.set_index_buffer(self.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
+
+            render_pass.set_bind_group(0, bind_group.unwrap(), &[]);
+            render_pass.set_vertex_buffer(0, vertex_buffer.unwrap().slice(..));
+
+            // FIXME: NUM_INDICES depends on which renderer the child matches.
+            render_pass.draw_indexed(0..NUM_INDICES, 0, 0..1);
+        }
     }
 }
