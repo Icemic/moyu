@@ -8,8 +8,6 @@ pub struct Texture {
     pub texture: Option<wgpu::Texture>,
     pub view: Option<wgpu::TextureView>,
     pub sampler: Option<wgpu::Sampler>,
-    pub width: u32,
-    pub height: u32,
 }
 
 impl Texture {
@@ -19,22 +17,31 @@ impl Texture {
             texture: None,
             view: None,
             sampler: None,
-            width: 0,
-            height: 0,
         }
     }
 
-    pub fn status(&self) -> TextureStatus {
-        self.status.clone()
+    pub fn width(&self) -> u32 {
+        if let Some(ref texture) = self.texture {
+            texture.width()
+        } else {
+            0
+        }
+    }
+
+    pub fn height(&self) -> u32 {
+        if let Some(ref texture) = self.texture {
+            texture.height()
+        } else {
+            0
+        }
+    }
+
+    pub fn status(&self) -> &TextureStatus {
+        &self.status
     }
 
     pub fn set_status(&mut self, status: TextureStatus) {
         self.status = status;
-    }
-
-    pub fn set_size(&mut self, width: u32, height: u32) {
-        self.width = width;
-        self.height = height;
     }
 
     pub fn set_texture(

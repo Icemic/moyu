@@ -14,12 +14,11 @@ use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEve
 use winit::event_loop::{ControlFlow, EventLoopProxy};
 use winit::window::Window;
 
-use crate::renderer::NUM_INDICES;
 use crate::utils::walk::{walk_nodes_bottom_top, walk_nodes_top_bottom};
 use crate::{
     nodes::{Container, Sprite},
     resource::ResourceManager,
-    traits::{Focusable, Node, NodeType, Renderable, Renderer, RendererUpdatePayload},
+    traits::{Focusable, Node, NodeType, Renderer, RendererUpdatePayload},
     types::SurfaceSize,
     user_event::UserEvent,
 };
@@ -71,7 +70,7 @@ pub struct Core {
     pub config: Arc<Mutex<SurfaceConfiguration>>,
     pub event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
     pub resource_manager: Arc<Mutex<ResourceManager>>,
-    pub renderers: Arc<RwLock<HashMap<String, Box<dyn Renderer>>>>,
+    pub renderers: Arc<Mutex<HashMap<String, Box<dyn Renderer>>>>,
 
     staging_belt: Arc<Mutex<StagingBelt>>,
     // std::time not implemented on wasm32 target
@@ -111,7 +110,7 @@ impl Core {
             config: Arc::new(Mutex::new(config)),
             event_proxy,
             resource_manager: Arc::new(Mutex::new(resource_manager)),
-            renderers: Arc::new(RwLock::new(renderers)),
+            renderers: Arc::new(Mutex::new(renderers)),
 
             staging_belt,
             #[cfg(not(feature = "web"))]
@@ -124,7 +123,7 @@ impl Core {
     }
 
     pub fn register_renderer(&self, name: String, renderer: Box<dyn Renderer>) {
-        let mut renderers = self.renderers.write();
+        let mut renderers = self.renderers.lock();
         if renderers.contains_key(&name) {
             error!("There's already a renderer named '{}'.", name);
             return;
@@ -292,7 +291,7 @@ impl Core {
         let root_node = self.root_node.clone();
 
         let renderers = self.renderers.clone();
-        let renderers = renderers.read();
+        let mut renderers = renderers.lock();
 
         let mut staging_belt = self.staging_belt.lock();
 
@@ -326,20 +325,18 @@ impl Core {
                 let mut _child = child.write();
                 _child.update_transform(parent.global_transform(), &surface_size, false);
 
-                if let Some(child) = _child.try_as_renderable_mut() {
-                    let node_type = NodeType::node_type(child);
+                let node_type = NodeType::node_type(&*_child);
 
-                    let current_renderer = { renderers.get(node_type).unwrap() };
+                let current_renderer = { renderers.get_mut(node_type).unwrap() };
 
-                    child.update(
-                        &device,
-                        &queue,
-                        &mut belt_encoder,
-                        &mut staging_belt,
-                        current_renderer.bind_group_layout(),
-                        &upload_payload,
-                    );
-                }
+                current_renderer.update(
+                    &mut *_child,
+                    &device,
+                    &queue,
+                    &mut belt_encoder,
+                    &mut staging_belt,
+                    &upload_payload,
+                );
 
                 drop(_child);
                 nodes.push(child);
@@ -368,29 +365,14 @@ impl Core {
                 depth_stencil_attachment: None,
             });
 
-            let childs: Vec<&dyn Renderable> = childs
-                .iter()
-                .filter_map(|n| n.try_as_renderable())
-                .collect();
+            let childs: Vec<&dyn Node> = childs.iter().map(|n| &**n).collect();
 
             for child in childs {
                 let node_type = NodeType::node_type(child);
 
                 let current_renderer = { renderers.get(node_type).unwrap() };
 
-                render_pass.set_pipeline(current_renderer.render_pipeline());
-                render_pass.set_index_buffer(
-                    current_renderer.index_buffer().slice(..),
-                    wgpu::IndexFormat::Uint16,
-                );
-
-                if let Some((bind_group, vertex_buffer)) = child.get_renderable() {
-                    render_pass.set_bind_group(0, &bind_group, &[]);
-                    render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-
-                    // FIXME: NUM_INDICES depends on which renderer the child matches.
-                    render_pass.draw_indexed(0..NUM_INDICES, 0, 0..1);
-                }
+                current_renderer.render(&mut render_pass, child);
             }
         }
 

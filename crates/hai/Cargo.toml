@@ -7,7 +7,7 @@ version = "0.1.0"
 
 [features]
 default = ["desktop"]
-desktop = ["hai_core/desktop", "video"]
+desktop = ["hai_core/desktop"]
 video = ["hai_core/video"]
 web = [
   "hai_core/web",
