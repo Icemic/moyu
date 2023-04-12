@@ -4,6 +4,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspace @hai/lib dev"
+    "dev": "yarn workspace @hai/lib dev",
+    "build": "yarn workspace @hai/lib build"
   }
 }
