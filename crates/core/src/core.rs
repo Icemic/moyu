@@ -327,19 +327,18 @@ impl Core {
 
                 let node_type = NodeType::node_type(&*_child);
 
-                let current_renderer = { renderers.get_mut(node_type).unwrap() };
-
-                current_renderer.update(
-                    &mut *_child,
-                    &device,
-                    &queue,
-                    &mut belt_encoder,
-                    &mut staging_belt,
-                    &upload_payload,
-                );
-
-                drop(_child);
-                nodes.push(child);
+                if let Some(current_renderer) = renderers.get_mut(node_type) {
+                    current_renderer.update(
+                        &mut *_child,
+                        &device,
+                        &queue,
+                        &mut belt_encoder,
+                        &mut staging_belt,
+                        &upload_payload,
+                    );
+                    drop(_child);
+                    nodes.push(child);
+                }
 
                 false
             });
@@ -370,9 +369,9 @@ impl Core {
             for child in childs {
                 let node_type = NodeType::node_type(child);
 
-                let current_renderer = { renderers.get(node_type).unwrap() };
-
-                current_renderer.render(&mut render_pass, child);
+                if let Some(current_renderer) = renderers.get(node_type) {
+                    current_renderer.render(&mut render_pass, child);
+                }
             }
         }
 
