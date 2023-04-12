@@ -109,7 +109,14 @@ impl JSRuntime {
         // resolve entry path
         let entry_specifier = {
             let mut module_loader = module_loader.borrow_mut();
-            module_loader.push_module_loading_task(&entry_dir(), "./index".to_string())?
+            let entry_dir = entry_dir();
+
+            if entry_dir.to_string().ends_with("/") {
+                module_loader.push_module_loading_task(&entry_dir, "./index".to_string())?
+            } else {
+                let specifier = entry_dir.path_segments().unwrap().last().unwrap();
+                module_loader.push_module_loading_task(&entry_dir, format!("./{}",specifier))?
+            }
         };
 
         // entry module must be ready

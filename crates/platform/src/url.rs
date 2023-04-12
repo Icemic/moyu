@@ -8,7 +8,7 @@ pub fn resolve_package_from(target: &str, base_dir: Url) -> Result<Url> {
 
     #[cfg(not(feature = "web"))]
     if scheme == "file" {
-        let path = base_dir.to_file_path().unwrap();
+        let path = base_dir.join("./").unwrap().to_file_path().unwrap();
         return Ok(Url::from_file_path(resolve_from(target, path)?).unwrap());
     }
 
