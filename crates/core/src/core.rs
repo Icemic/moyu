@@ -370,7 +370,7 @@ impl Core {
                 let node_type = NodeType::node_type(child);
 
                 if let Some(current_renderer) = renderers.get(node_type) {
-                    current_renderer.render(&mut render_pass, child);
+                    current_renderer.render(&device, &queue, &mut render_pass, child);
                 }
             }
         }

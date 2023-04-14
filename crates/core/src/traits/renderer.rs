@@ -26,5 +26,11 @@ where
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
     );
-    fn render<'a, 'b: 'a>(&'b self, render_pass: &mut RenderPass<'a>, node: &'b dyn Node);
+    fn render<'a, 'b: 'a>(
+        &'b self,
+        device: &Arc<Device>,
+        queue: &Arc<Queue>,
+        render_pass: &mut RenderPass<'a>,
+        node: &'b dyn Node,
+    );
 }
