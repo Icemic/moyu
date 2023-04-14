@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::core::get_core;
 #[cfg(feature = "video")]
 use crate::nodes::Video;
-use crate::nodes::{Container, Sprite};
+use crate::nodes::{Container, Sprite, YUVSprite};
 use crate::traits::{Node, UpdateProps};
 use crate::utils::convert::JSValue;
 #[cfg(not(feature = "web"))]
@@ -55,6 +55,11 @@ pub fn create_instance(
         }
         "sprite" => {
             let n = Sprite::new(label);
+            node_id = n.id;
+            node = Arc::new(RwLock::new(n));
+        }
+        "yuvsprite" => {
+            let n = YUVSprite::new(label);
             node_id = n.id;
             node = Arc::new(RwLock::new(n));
         }

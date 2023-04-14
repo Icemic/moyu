@@ -26,6 +26,10 @@ export interface HaiSpriteAttribute extends HaiNodeAttributes {
   area?: [number, number, number, number];
 }
 
+export interface HaiYUVSpriteAttribute extends HaiNodeAttributes {
+  area?: [number, number, number, number];
+}
+
 export interface HaiPlayerAttribute extends HaiSpriteAttribute {
   src: string;
   area?: [number, number, number, number];
@@ -37,6 +41,7 @@ declare global {
     interface IntrinsicElements {
       container: DetailedHaiProps<HaiContainerAttributes>;
       sprite: DetailedHaiProps<HaiSpriteAttribute>;
+      yuvsprite: DetailedHaiProps<HaiYUVSpriteAttribute>;
       player: DetailedHaiProps<HaiPlayerAttribute>;
     }
   }
