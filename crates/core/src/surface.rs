@@ -1,3 +1,4 @@
+use hai_pal::env::get_hai_env;
 use log::info;
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
@@ -124,6 +125,18 @@ pub(self) async fn create_surface_inner(
 
     info!("Alpha mode: {:?}", alpha_mode);
 
+    #[cfg(not(feature = "web"))]
+    let present_mode = if get_hai_env().vsync {
+        wgpu::PresentMode::AutoVsync
+    } else {
+        wgpu::PresentMode::AutoNoVsync
+    };
+
+    #[cfg(feature = "web")]
+    let present_mode = wgpu::PresentMode::AutoVsync;
+
+    info!("Present mode: {:?}", alpha_mode);
+
     // define how the surface creates its underlying SurfaceTextures
     let config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -132,7 +145,7 @@ pub(self) async fn create_surface_inner(
         width: size.width,
         height: size.height,
         // determines how to sync the surface with the display
-        present_mode: wgpu::PresentMode::Fifo,
+        present_mode,
         alpha_mode,
         view_formats: vec![],
     };

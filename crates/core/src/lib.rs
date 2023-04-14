@@ -12,6 +12,7 @@ pub mod utils;
 
 use futures::Future;
 use hai_pal::sync::Mutex;
+use renderer::YUVSpriteRenderer;
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;
@@ -45,6 +46,7 @@ pub fn create_hai_core(
     event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
 ) -> Arc<Core> {
     let sprite_renderer = SpriteRenderer::new(&device, &config);
+    let yuv_sprite_renderer = YUVSpriteRenderer::new(&device, &config);
     // use sprite renderer on video node
     #[cfg(feature = "video")]
     let video_renderer = SpriteRenderer::new(&device, &config);
@@ -54,6 +56,7 @@ pub fn create_hai_core(
 
     // core.register_renderer("null".to_string(), null_renderer);
     core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
+    core.register_renderer("yuv_sprite".to_string(), Box::new(yuv_sprite_renderer));
     #[cfg(feature = "video")]
     core.register_renderer("video".to_string(), Box::new(video_renderer));
 
