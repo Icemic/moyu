@@ -14,11 +14,20 @@ use crate::{traits::Renderer, types::Vertex, utils::constants::RECTANGLE_INDICES
 
 pub static NUM_INDICES: u32 = RECTANGLE_INDICES.len() as u32;
 
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct YUVUniforms {
+    // YUVSpriteFormat value
+    mode: i32,
+}
+
 pub struct YUVSpriteRenderer {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     index_buffer: Buffer,
     bind_group_map: HashMap<Arc<TextureId>, BindGroup>,
+    bind_group_uniforms: BindGroup,
+    uniforms_buffer: Buffer,
 }
 
 impl YUVSpriteRenderer {
@@ -77,15 +86,29 @@ impl YUVSpriteRenderer {
             label: None,
         });
 
+        let bind_group_layout2 = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: None,
+        });
+
         // shader
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: None,
-            source: ShaderSource::Wgsl(include_str!("./shaders/i420.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("./shaders/yuv420.wgsl").into()),
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[&bind_group_layout, &bind_group_layout2],
             push_constant_ranges: &[],
         });
 
@@ -134,11 +157,30 @@ impl YUVSpriteRenderer {
             usage: wgpu::BufferUsages::INDEX,
         });
 
+        let uniforms = YUVUniforms::default();
+
+        let uniforms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&[uniforms]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let bind_group_uniforms = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout2,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniforms_buffer.as_entire_binding(),
+            }],
+            label: Some("uniforms bind group"),
+        });
+
         Self {
             pipeline,
             bind_group_layout,
             index_buffer,
             bind_group_map: Default::default(),
+            bind_group_uniforms,
+            uniforms_buffer,
         }
     }
 }
@@ -274,7 +316,13 @@ impl Renderer for YUVSpriteRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn render<'a, 'b: 'a>(&'b self, render_pass: &mut RenderPass<'a>, node: &'b dyn Node) {
+    fn render<'a, 'b: 'a>(
+        &'b self,
+        _: &Arc<Device>,
+        queue: &Arc<Queue>,
+        render_pass: &mut RenderPass<'a>,
+        node: &'b dyn Node,
+    ) {
         let mut bind_group = None;
         let mut vertex_buffer = None;
 
@@ -282,6 +330,13 @@ impl Renderer for YUVSpriteRenderer {
             if let Some(texture_id) = sprite.texture_id.load().as_ref() {
                 bind_group = self.bind_group_map.get(texture_id);
                 vertex_buffer = sprite.vertex_buffer.as_ref();
+
+                let mode = sprite.mode as i32;
+                queue.write_buffer(
+                    &self.uniforms_buffer,
+                    0,
+                    bytemuck::cast_slice(&[YUVUniforms { mode }]),
+                );
             }
         } else {
             unreachable!()
@@ -292,6 +347,7 @@ impl Renderer for YUVSpriteRenderer {
             render_pass.set_index_buffer(self.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
 
             render_pass.set_bind_group(0, bind_group.unwrap(), &[]);
+            render_pass.set_bind_group(1, &self.bind_group_uniforms, &[]);
             render_pass.set_vertex_buffer(0, vertex_buffer.unwrap().slice(..));
 
             // FIXME: NUM_INDICES depends on which renderer the child matches.

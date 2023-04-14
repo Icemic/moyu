@@ -14,6 +14,13 @@ use crate::utils::convert::{from_js, JSValue};
 
 use super::Texture;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub enum YUVSpriteFormat {
+    #[default]
+    I420 = 0,
+    NV12 = 1,
+}
+
 /// Sprite for rendering YUV format images, ex. a ffmpeg AVFrame.
 /// textures should always be set manully, once `textures` is set, rendering will start.
 #[node]
@@ -27,6 +34,7 @@ pub struct YUVSprite {
     /// calculated vertices
     pub vertices: Option<[Vertex; 4]>,
     pub vertex_buffer: Option<Buffer>,
+    pub mode: YUVSpriteFormat,
 }
 
 impl YUVSprite {
@@ -58,6 +66,7 @@ impl YUVSprite {
             area: [0., 0., 1., 1.],
             vertices: None,
             vertex_buffer: None,
+            mode: YUVSpriteFormat::default(),
         }
     }
 }
