@@ -8,7 +8,7 @@ repository = "https://github.com/Icemic/hai"
 version = "0.1.0"
 
 [features]
-default = []
+default = ["desktop"]
 desktop = [
   "dotenv",
   "env_logger",
