@@ -1,9 +1,11 @@
 [package]
+authors = ["Icemic <bingfeng.web@gmail.com>"]
+description = "Core implementation of Hai game engine, and general 2D rendering library using WebGPU as well."
 edition = "2021"
+license = "Apache-2.0"
 name = "hai_core"
+repository = "https://github.com/Icemic/hai"
 version = "0.1.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
 default = ["desktop", "js_runtime"]

@@ -1,7 +1,15 @@
 [package]
+authors = ["Icemic <bingfeng.web@gmail.com>"]
+description = "An experimental game engine for building visual novels."
 edition = "2021"
+license = "Apache-2.0"
 name = "hai"
+repository = "https://github.com/Icemic/hai"
 version = "0.1.0"
+
+[package.metadata.release]
+publish = false
+release = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
