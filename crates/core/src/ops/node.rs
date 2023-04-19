@@ -1,5 +1,5 @@
 use anyhow::Result;
-#[cfg(not(feature = "web"))]
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use hai_js_runtime::{prelude::*, *};
 #[cfg(not(feature = "web"))]
 use hai_macros::hai_bindgen;

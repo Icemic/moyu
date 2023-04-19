@@ -4,7 +4,8 @@ use std::{any::Any, fmt::Debug, sync::Arc};
 
 use super::{Renderable, UpdateProps};
 use crate::types::{Point, SurfaceSize, Transform};
-use crate::utils::convert::{JSValue, from_js};
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
+use crate::utils::convert::{from_js, JSValue};
 
 pub static mut NODE_ID: u32 = 0;
 
@@ -80,6 +81,7 @@ pub trait Node: NodeType + UpdateProps + Send + Sync + Debug {
 
     fn move_to(&mut self, x: f64, y: f64);
 
+    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: NodeProps = from_js(props).unwrap();
 

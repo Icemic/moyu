@@ -1,7 +1,7 @@
 use anyhow::Result;
-#[cfg(not(feature = "web"))]
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use hai_js_runtime::serde_v8;
-#[cfg(not(feature = "web"))]
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use hai_js_runtime::v8::{HandleScope, Local, Value};
 #[cfg(feature = "web")]
 use serde::de::DeserializeOwned;

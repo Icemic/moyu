@@ -1,7 +1,7 @@
 mod node;
 mod system;
 
-#[cfg(not(feature = "web"))]
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use hai_js_runtime::{prelude::*, utils::IntoV8, *};
 #[cfg(not(feature = "web"))]
 use log::debug;

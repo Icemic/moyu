@@ -11,6 +11,7 @@ use crate::core::get_core;
 use crate::resource::TextureId;
 use crate::traits::{Focusable, Node, NodeType, UpdateProps, NODE_ID};
 use crate::types::{Point, SurfaceSize, Transform, Vertex};
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
 
 use super::Texture;
@@ -99,6 +100,7 @@ pub struct SpriteProps {
 }
 
 impl UpdateProps for Sprite {
+    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: SpriteProps = from_js(props).unwrap();
 
