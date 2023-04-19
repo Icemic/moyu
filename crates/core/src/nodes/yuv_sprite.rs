@@ -10,6 +10,7 @@ use wgpu::Buffer;
 use crate::resource::TextureId;
 use crate::traits::{Focusable, Node, NodeType, UpdateProps, NODE_ID};
 use crate::types::{Point, SurfaceSize, Transform, Vertex};
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
 
 use super::Texture;
@@ -105,6 +106,7 @@ pub struct YUVSpriteProps {
 }
 
 impl UpdateProps for YUVSprite {
+    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: YUVSpriteProps = from_js(props).unwrap();
 

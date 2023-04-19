@@ -1,5 +1,6 @@
 pub mod core;
 pub mod nodes;
+#[cfg(any(feature = "web", feature = "js_runtime"))]
 pub mod ops;
 pub mod presets;
 pub mod renderer;
@@ -80,10 +81,11 @@ pub type SpawnRuntimeCallback =
 
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
+#[cfg(any(feature = "web", feature = "js_runtime"))]
 pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
     // desktop targets only
     // spawn a v8 thread
-    #[cfg(not(feature = "web"))]
+    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     {
         use log::error;
         use std::process::exit;

@@ -6,8 +6,9 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["desktop"]
-desktop = ["hai_pal/desktop", "hai_js_runtime", "dep:tokio"]
+default = ["desktop", "js_runtime"]
+desktop = ["hai_pal/desktop", "dep:tokio"]
+js_runtime = ["hai_js_runtime"]
 video = ["dep:ffmpeg-rs"]
 web = [
   "hai_pal/web",
