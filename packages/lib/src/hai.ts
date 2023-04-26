@@ -22,6 +22,22 @@ export function resizeWindow(logicalWidth: number, logicalHeight: number, factor
   hai.pushCommand('resize_window', [logicalWidth, logicalHeight, factor]);
 }
 
+export function setIdle() {
+  hai.pushCommand('set_idle', []);
+}
+
+export function setFullscreen() {
+  hai.pushCommand('set_fullscreen', []);
+}
+
+export function setMaximized() {
+  hai.pushCommand('set_maximized', []);
+}
+
+export function setMinimized() {
+  hai.pushCommand('set_minimized', []);
+}
+
 export function quit() {
   hai.pushCommand('quit', []);
 }
