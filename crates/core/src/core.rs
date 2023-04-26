@@ -1,3 +1,4 @@
+use arc_swap::ArcSwap;
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
 use log::{debug, error, info};
 use once_cell::sync::OnceCell;
@@ -10,10 +11,11 @@ use std::time::Instant;
 use wgpu::util::StagingBelt;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, Size};
-use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
+use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopProxy};
-use winit::window::Window;
+use winit::window::{Fullscreen, Window};
 
+use crate::user_event::WindowState;
 use crate::utils::walk::{walk_nodes_bottom_top, walk_nodes_top_bottom};
 use crate::{
     nodes::{Container, Sprite},
@@ -80,6 +82,8 @@ pub struct Core {
     pub root_node: Arc<RwLock<dyn Node>>,
     pub current_focused_node: Arc<RwLock<Option<Arc<RwLock<dyn Node>>>>>,
     pub node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
+
+    pub window_state: ArcSwap<WindowState>,
 }
 
 impl Core {
@@ -119,6 +123,8 @@ impl Core {
             root_node,
             current_focused_node: Arc::new(RwLock::new(None)),
             node_map: Arc::new(RwLock::new(node_map)),
+
+            window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
         }
     }
 
@@ -232,6 +238,11 @@ impl Core {
                     let factor = factor.unwrap_or(window.scale_factor());
 
                     if logical_width > 0. && logical_height > 0. {
+                        window.set_maximized(false);
+                        window.set_minimized(false);
+                        window.set_fullscreen(None);
+                        self.window_state.store(Arc::new(WindowState::Idle));
+
                         let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
                         self.resize(surface_size);
 
@@ -239,6 +250,36 @@ impl Core {
                             Size::Logical(LogicalSize::new(logical_width, logical_height));
                         window.set_inner_size(window_size);
                     }
+                }
+                UserEvent::WindowState(state) => {
+                    // get current focus state since focus may lost after state changes.
+                    let has_focus = window.has_focus();
+
+                    match state {
+                        WindowState::Idle => {
+                            window.set_maximized(false);
+                            window.set_minimized(false);
+                            window.set_fullscreen(None);
+                        }
+                        WindowState::Maximized => {
+                            window.set_fullscreen(None);
+                            window.set_maximized(true);
+                        }
+                        WindowState::Minimized => {
+                            window.set_fullscreen(None);
+                            window.set_minimized(true);
+                        }
+                        WindowState::Fullscreen => {
+                            window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+                        }
+                    };
+
+                    // restore focus state
+                    if has_focus {
+                        window.focus_window();
+                    }
+
+                    self.window_state.store(Arc::new(state));
                 }
                 UserEvent::SetTitle(title) => {
                     window.set_title(&title);

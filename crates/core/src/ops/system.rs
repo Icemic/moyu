@@ -7,6 +7,7 @@ use log::warn;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::core::get_core;
+use crate::user_event::WindowState;
 #[cfg(not(feature = "web"))]
 use crate::utils::convert::{from_js, JSValue};
 use crate::{presets::add_preset_default, user_event::UserEvent};
@@ -37,6 +38,50 @@ pub fn resize_window(
     core.event_proxy
         .lock()
         .send_event(UserEvent::ResizeWindow(width, height, factor))
+        .unwrap();
+    Ok(())
+}
+
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
+pub fn set_idle() -> Result<(), std::string::String> {
+    let core = get_core();
+    core.event_proxy
+        .lock()
+        .send_event(UserEvent::WindowState(WindowState::Idle))
+        .unwrap();
+    Ok(())
+}
+
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
+pub fn set_fullscreen() -> Result<(), std::string::String> {
+    let core = get_core();
+    core.event_proxy
+        .lock()
+        .send_event(UserEvent::WindowState(WindowState::Fullscreen))
+        .unwrap();
+    Ok(())
+}
+
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
+pub fn set_maximized() -> Result<(), std::string::String> {
+    let core = get_core();
+    core.event_proxy
+        .lock()
+        .send_event(UserEvent::WindowState(WindowState::Maximized))
+        .unwrap();
+    Ok(())
+}
+
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
+pub fn set_minimized() -> Result<(), std::string::String> {
+    let core = get_core();
+    core.event_proxy
+        .lock()
+        .send_event(UserEvent::WindowState(WindowState::Minimized))
         .unwrap();
     Ok(())
 }
