@@ -199,16 +199,7 @@ impl Core {
                 if !self.input(event) {
                     // UPDATED!
                     match event {
-                        WindowEvent::CloseRequested
-                        | WindowEvent::KeyboardInput {
-                            input:
-                                KeyboardInput {
-                                    state: ElementState::Pressed,
-                                    virtual_keycode: Some(VirtualKeyCode::Escape),
-                                    ..
-                                },
-                            ..
-                        } => control_flow = Some(ControlFlow::Exit),
+                        WindowEvent::CloseRequested => control_flow = Some(ControlFlow::Exit),
                         WindowEvent::Resized(physical_size) => {
                             let surface_size = SurfaceSize::from_physical_size(
                                 physical_size,
