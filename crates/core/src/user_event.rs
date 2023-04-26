@@ -11,7 +11,7 @@ pub enum UserEvent {
 unsafe impl Send for UserEvent {}
 unsafe impl Sync for UserEvent {}
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowState {
     Idle,
     Maximized,

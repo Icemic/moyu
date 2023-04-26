@@ -217,6 +217,18 @@ impl Core {
                             } else {
                                 self.resize(surface_size);
                             }
+
+                            if let Some(_) = window.fullscreen() {
+                                self.window_state.store(Arc::new(WindowState::Fullscreen));
+                            } else if window.is_maximized() {
+                                self.window_state.store(Arc::new(WindowState::Maximized));
+                            } else if let Some(true) = window.is_minimized() {
+                                self.window_state.store(Arc::new(WindowState::Minimized));
+                            } else {
+                                self.window_state.store(Arc::new(WindowState::Idle));
+                            }
+
+                            debug!("window state changes to {:?}", self.window_state.load());
                         }
                         WindowEvent::ScaleFactorChanged {
                             scale_factor,
