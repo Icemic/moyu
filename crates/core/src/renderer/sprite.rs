@@ -14,7 +14,7 @@ use crate::{traits::Renderer, types::Vertex, utils::constants::RECTANGLE_INDICES
 /// the number of vertices in a sprite is always 4.
 // pub static NUM_VERTICES: u32 = 4;
 
-pub static NUM_INDICES: u32 = RECTANGLE_INDICES.len() as u32;
+static NUM_INDICES: u32 = RECTANGLE_INDICES.len() as u32;
 
 pub struct SpriteRenderer {
     pipeline: RenderPipeline,
