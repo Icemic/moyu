@@ -3,7 +3,6 @@ use winit::event::Event;
 
 use hai_core::surface::{create_eventloop, create_wgpu_surface, create_window};
 use hai_core::{create_hai_core, setup, spawn_runtime_with_core};
-use hai_pal::sync::Mutex;
 use hai_pal::{env, logger, platform};
 
 fn main() {
@@ -16,7 +15,7 @@ fn main() {
     let event_loop = create_eventloop();
     // create event proxy which allow us to send window events from another thread
     let event_proxy = event_loop.create_proxy();
-    let event_proxy = Arc::new(Mutex::new(event_proxy));
+    let event_proxy = Arc::new(event_proxy);
 
     let mut window = None;
     let mut core = None;
@@ -51,7 +50,7 @@ fn main() {
         }
         if let Some(ref window) = window {
             if let Some(ref core) = core {
-                let (_control_flow,) = core.handle_events(event, &window);
+                let (_control_flow,) = core.handle_events(&event, &window);
                 if _control_flow.is_some() {
                     *control_flow = _control_flow.unwrap();
                 }
