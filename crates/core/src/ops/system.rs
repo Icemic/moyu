@@ -36,7 +36,6 @@ pub fn resize_window(
 ) -> Result<(), std::string::String> {
     let core = get_core();
     core.event_proxy
-        .lock()
         .send_event(UserEvent::ResizeWindow(width, height, factor))
         .unwrap();
     Ok(())
@@ -47,7 +46,6 @@ pub fn resize_window(
 pub fn set_idle() -> Result<(), std::string::String> {
     let core = get_core();
     core.event_proxy
-        .lock()
         .send_event(UserEvent::WindowState(WindowState::Idle))
         .unwrap();
     Ok(())
@@ -58,7 +56,6 @@ pub fn set_idle() -> Result<(), std::string::String> {
 pub fn set_fullscreen() -> Result<(), std::string::String> {
     let core = get_core();
     core.event_proxy
-        .lock()
         .send_event(UserEvent::WindowState(WindowState::Fullscreen))
         .unwrap();
     Ok(())
@@ -69,7 +66,6 @@ pub fn set_fullscreen() -> Result<(), std::string::String> {
 pub fn set_maximized() -> Result<(), std::string::String> {
     let core = get_core();
     core.event_proxy
-        .lock()
         .send_event(UserEvent::WindowState(WindowState::Maximized))
         .unwrap();
     Ok(())
@@ -80,7 +76,6 @@ pub fn set_maximized() -> Result<(), std::string::String> {
 pub fn set_minimized() -> Result<(), std::string::String> {
     let core = get_core();
     core.event_proxy
-        .lock()
         .send_event(UserEvent::WindowState(WindowState::Minimized))
         .unwrap();
     Ok(())
@@ -90,7 +85,7 @@ pub fn set_minimized() -> Result<(), std::string::String> {
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn quit() -> Result<(), std::string::String> {
     let core = get_core();
-    core.event_proxy.lock().send_event(UserEvent::Quit).unwrap();
+    core.event_proxy.send_event(UserEvent::Quit).unwrap();
     Ok(())
 }
 

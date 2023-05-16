@@ -12,7 +12,6 @@ pub mod user_event;
 pub mod utils;
 
 use futures::Future;
-use hai_pal::sync::Mutex;
 use renderer::YUVSpriteRenderer;
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
@@ -44,7 +43,7 @@ pub fn create_hai_core(
     queue: Arc<Queue>,
     config: SurfaceConfiguration,
     window: &Window,
-    event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
+    event_proxy: Arc<EventLoopProxy<UserEvent>>,
 ) -> Arc<Core> {
     let sprite_renderer = SpriteRenderer::new(&device, &config);
     let yuv_sprite_renderer = YUVSpriteRenderer::new(&device, &config);

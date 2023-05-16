@@ -70,7 +70,7 @@ pub struct Core {
     pub device: Arc<Device>,
     pub queue: Arc<Queue>,
     pub config: Arc<Mutex<SurfaceConfiguration>>,
-    pub event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
+    pub event_proxy: Arc<EventLoopProxy<UserEvent>>,
     pub resource_manager: Arc<Mutex<ResourceManager>>,
     pub renderers: Arc<Mutex<HashMap<String, Box<dyn Renderer>>>>,
 
@@ -86,13 +86,16 @@ pub struct Core {
     pub window_state: ArcSwap<WindowState>,
 }
 
+unsafe impl Send for Core {}
+unsafe impl Sync for Core {}
+
 impl Core {
     pub fn new(
         surface: Arc<Surface>,
         device: Arc<Device>,
         queue: Arc<Queue>,
         config: SurfaceConfiguration,
-        event_proxy: Arc<Mutex<EventLoopProxy<UserEvent>>>,
+        event_proxy: Arc<EventLoopProxy<UserEvent>>,
     ) -> Self {
         // create root node
         let root_node = Container::new("Root Node".to_string());
@@ -318,7 +321,6 @@ impl Core {
                 let fps = *frames as f32 / duration;
 
                 self.event_proxy
-                    .lock()
                     .send_event(UserEvent::SetTitle(format!("fps: {:.1}", fps)))
                     .unwrap();
 
