@@ -174,12 +174,12 @@ impl Core {
     #[inline(always)]
     pub fn handle_events(
         &self,
-        event: Event<UserEvent>,
+        event: &Event<UserEvent>,
         window: &Window,
     ) -> (Option<ControlFlow>,) {
         let mut control_flow = None;
         match event {
-            Event::RedrawRequested(window_id) if window_id == window.id() => {
+            &Event::RedrawRequested(window_id) if window_id == window.id() => {
                 match self.render() {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
@@ -195,12 +195,12 @@ impl Core {
                     Err(e) => eprintln!("{:?}", e),
                 }
             }
-            Event::MainEventsCleared => {
+            &Event::MainEventsCleared => {
                 // RedrawRequested will only trigger once, unless we manually
                 // request it.
                 window.request_redraw();
             }
-            Event::WindowEvent {
+            &Event::WindowEvent {
                 ref event,
                 window_id,
             } if window_id == window.id() => {
@@ -248,8 +248,8 @@ impl Core {
                     }
                 }
             }
-            Event::UserEvent(user_event) => match user_event {
-                UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
+            &Event::UserEvent(ref user_event) => match user_event {
+                &UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
                     let factor = factor.unwrap_or(window.scale_factor());
 
                     if logical_width > 0. && logical_height > 0. {
@@ -266,7 +266,7 @@ impl Core {
                         window.set_inner_size(window_size);
                     }
                 }
-                UserEvent::WindowState(state) => {
+                &UserEvent::WindowState(state) => {
                     // get current focus state since focus may lost after state changes.
                     let has_focus = window.has_focus();
 
@@ -296,10 +296,10 @@ impl Core {
 
                     self.window_state.store(Arc::new(state));
                 }
-                UserEvent::SetTitle(title) => {
+                &UserEvent::SetTitle(ref title) => {
                     window.set_title(&title);
                 }
-                UserEvent::Quit => {
+                &UserEvent::Quit => {
                     control_flow = Some(ControlFlow::Exit);
                     info!("Goodbye.");
                 }
