@@ -1,15 +1,13 @@
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-pub enum UserEvent {
+pub enum UserEvent<T = ()> {
     // logical_width, logical_height, factor
     ResizeWindow(f64, f64, Option<f64>),
     WindowState(WindowState),
     SetTitle(String),
     Quit,
+    Custom(T),
 }
-
-unsafe impl Send for UserEvent {}
-unsafe impl Sync for UserEvent {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowState {
