@@ -296,12 +296,15 @@ impl Core {
 
                     self.window_state.store(Arc::new(state));
                 }
-                &UserEvent::SetTitle(ref title) => {
+                UserEvent::SetTitle(ref title) => {
                     window.set_title(&title);
                 }
-                &UserEvent::Quit => {
+                UserEvent::Quit => {
                     control_flow = Some(ControlFlow::Exit);
                     info!("Goodbye.");
+                }
+                UserEvent::Custom(_) => {
+                    // do nothing
                 }
             },
             _ => {}
