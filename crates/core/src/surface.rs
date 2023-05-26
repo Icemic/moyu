@@ -9,13 +9,13 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use crate::user_event::UserEvent;
 
-pub fn create_eventloop() -> EventLoop<UserEvent> {
+pub fn create_eventloop<T>() -> EventLoop<UserEvent<T>> {
     // create main thread infinity loop
-    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+    let event_loop: EventLoop<UserEvent<T>> = EventLoopBuilder::with_user_event().build();
     event_loop
 }
 
-pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Window {
+pub fn create_window<T>(event_loop: &EventLoopWindowTarget<UserEvent<T>>) -> Window {
     // create window
     let window = WindowBuilder::new()
         .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
