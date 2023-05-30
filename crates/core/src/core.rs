@@ -299,6 +299,12 @@ impl Core {
                 UserEvent::SetTitle(ref title) => {
                     window.set_title(&title);
                 }
+                &UserEvent::SetCursorIcon(icon) => {
+                    window.set_cursor_icon(icon);
+                }
+                &UserEvent::SetCursorVisible(visible) => {
+                    window.set_cursor_visible(visible);
+                }
                 UserEvent::Quit => {
                     control_flow = Some(ControlFlow::Exit);
                     info!("Goodbye.");
