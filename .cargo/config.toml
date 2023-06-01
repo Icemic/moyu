@@ -25,7 +25,7 @@ rustflags = ["-Zshare-generics=y"]
 debug = 1
 
 [build]
-rustc-wrapper = "/usr/local/bin/sccache"
+# rustc-wrapper = "/usr/local/bin/sccache"
 
 [env]
 FFMPEG_DIR = {value = "3rdparty/ffmpeg", relative = true}
