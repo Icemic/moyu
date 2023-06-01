@@ -18,6 +18,8 @@ use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;
 use winit::window::Window;
 
+pub use winit;
+
 use crate::core::{set_core, Core};
 use crate::renderer::SpriteRenderer;
 use crate::user_event::UserEvent;

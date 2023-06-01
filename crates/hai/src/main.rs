@@ -1,7 +1,7 @@
 use std::sync::Arc;
-use winit::event::Event;
 
 use hai_core::surface::{create_eventloop, create_wgpu_surface, create_window};
+use hai_core::winit::event::Event;
 use hai_core::{create_hai_core, setup, spawn_runtime_with_core};
 use hai_pal::{env, logger, platform};
 
