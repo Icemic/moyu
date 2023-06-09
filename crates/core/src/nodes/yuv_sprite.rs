@@ -56,7 +56,7 @@ impl YUVSprite {
             skew: Point::default(),
 
             _update_id: 0,
-            _current_update_id: 1,
+            _current_update_id: 0,
 
             transform: Transform::default(),
             global_transform: Transform::default(),
