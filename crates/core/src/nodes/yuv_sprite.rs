@@ -1,10 +1,10 @@
 use arc_swap::ArcSwapOption;
+use hai_macros::Node;
 use serde::{Deserialize, Serialize};
-use std::any::Any;
 use wgpu::Buffer;
 
 use crate::resource::TextureId;
-use crate::traits::{Focusable, GetNodeBase, Node, NodeType, UpdateProps};
+use crate::traits::{Focusable, Node, NodeBaseTrait};
 use crate::types::Vertex;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
@@ -20,7 +20,7 @@ pub enum YUVSpriteFormat {
 
 /// Sprite for rendering YUV format images, ex. a ffmpeg AVFrame.
 /// textures should always be set manully, once `textures` is set, rendering will start.
-#[derive(Debug)]
+#[derive(Debug, Node)]
 pub struct YUVSprite {
     pub texture_id: ArcSwapOption<TextureId>,
     /// (Y, U, V) or (Y, UV, _)
@@ -32,6 +32,7 @@ pub struct YUVSprite {
     pub vertex_buffer: Option<Buffer>,
     pub mode: YUVSpriteFormat,
 
+    #[base]
     node_base: NodeBase,
 }
 
@@ -46,12 +47,6 @@ impl YUVSprite {
             mode: YUVSpriteFormat::default(),
             node_base: NodeBase::new(label),
         }
-    }
-}
-
-impl NodeType for YUVSprite {
-    fn node_type(&self) -> &'static str {
-        "yuv_sprite"
     }
 }
 
@@ -82,8 +77,14 @@ pub struct YUVSpriteProps {
     pub area: Option<[f64; 4]>,
 }
 
-impl UpdateProps for YUVSprite {
+impl Node for YUVSprite {
+    #[inline]
+    fn node_type(&self) -> &'static str {
+        "yuv_sprite"
+    }
+
     #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
+    #[inline]
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: YUVSpriteProps = from_js(props).unwrap();
 
@@ -93,29 +94,5 @@ impl UpdateProps for YUVSprite {
 
         // force update vertices
         self.base_mut().pend_update();
-    }
-}
-
-impl GetNodeBase for YUVSprite {
-    #[inline]
-    fn base(&self) -> &NodeBase {
-        &self.node_base
-    }
-
-    #[inline]
-    fn base_mut(&mut self) -> &mut NodeBase {
-        &mut self.node_base
-    }
-}
-
-impl Node for YUVSprite {
-    #[inline]
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }

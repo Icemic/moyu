@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::{any::Any, fmt::Debug};
 
-use super::{Renderable, UpdateProps};
 use crate::nodes::NodeBase;
-use crate::types::{SurfaceSize, Transform};
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
+use crate::utils::convert::JSValue;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,40 +21,25 @@ pub struct NodeProps {
     pub skew_y: Option<f64>,
 }
 
-pub trait Node: NodeType + UpdateProps + GetNodeBase + Send + Sync + Debug {
-    fn as_any(&self) -> &dyn Any;
+pub trait Node: NodeBaseTrait + Send + Sync + Debug {
+    fn node_type(&self) -> &'static str;
 
+    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
+    fn update_properties(&mut self, _props: &mut JSValue) {
+        // defaults to do nothing
+    }
+}
+
+pub trait NodeBaseTrait {
+    fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    fn try_as_renderable(&self) -> Option<&dyn Renderable> {
-        None
-    }
-    fn try_as_renderable_mut(&mut self) -> Option<&mut dyn Renderable> {
-        None
-    }
-
-    fn update_transform(
-        &mut self,
-        parent_transform: &Transform,
-        surface_size: &SurfaceSize,
-        force: bool,
-    ) {
-        self.base_mut()
-            .update_transform(parent_transform, surface_size, force)
-    }
+    fn base(&self) -> &NodeBase;
+    fn base_mut(&mut self) -> &mut NodeBase;
 }
 
 impl PartialEq for dyn Node {
     fn eq(&self, other: &Self) -> bool {
         self.base().id() == other.base().id()
     }
-}
-
-pub trait NodeType {
-    fn node_type(&self) -> &'static str;
-}
-
-pub trait GetNodeBase {
-    fn base(&self) -> &NodeBase;
-    fn base_mut(&mut self) -> &mut NodeBase;
 }

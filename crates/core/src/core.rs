@@ -15,13 +15,12 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopProxy};
 use winit::window::{Fullscreen, Window};
 
-use crate::traits::GetNodeBase;
 use crate::user_event::WindowState;
 use crate::utils::walk::{walk_nodes_bottom_top, walk_nodes_top_bottom};
 use crate::{
     nodes::{Container, Sprite},
     resource::ResourceManager,
-    traits::{Focusable, Node, NodeType, Renderer, RendererUpdatePayload},
+    traits::*,
     types::SurfaceSize,
     user_event::UserEvent,
 };
@@ -379,9 +378,13 @@ impl Core {
 
             walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
                 let mut _child = child.write();
-                _child.update_transform(parent.base().global_transform(), &surface_size, false);
+                _child.base_mut().update_transform(
+                    parent.base().global_transform(),
+                    &surface_size,
+                    false,
+                );
 
-                let node_type = NodeType::node_type(&*_child);
+                let node_type = _child.node_type();
 
                 if let Some(current_renderer) = renderers.get_mut(node_type) {
                     current_renderer.update(
@@ -423,7 +426,7 @@ impl Core {
             let childs: Vec<&dyn Node> = childs.iter().map(|n| &**n).collect();
 
             for child in childs {
-                let node_type = NodeType::node_type(child);
+                let node_type = child.node_type();
 
                 if let Some(current_renderer) = renderers.get(node_type) {
                     current_renderer.render(&device, &queue, &mut render_pass, child);
@@ -463,7 +466,7 @@ impl Core {
 
                 walk_nodes_bottom_top(&*root_node, &mut |child, parent| {
                     let child_ref = child.read();
-                    let hit = match NodeType::node_type(&*child_ref) {
+                    let hit = match child_ref.node_type() {
                         "sprite" => {
                             let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
                             // calculate relative coordinate

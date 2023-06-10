@@ -13,7 +13,7 @@ use crate::core::get_core;
 #[cfg(feature = "video")]
 use crate::nodes::Video;
 use crate::nodes::{Container, Sprite, YUVSprite};
-use crate::traits::{GetNodeBase, Node, UpdateProps};
+use crate::traits::{Node, NodeBaseTrait};
 use crate::utils::convert::JSValue;
 #[cfg(not(feature = "web"))]
 use crate::utils::convert::{from_js, to_js};
@@ -80,9 +80,8 @@ pub fn create_instance(
 
     let mut node = node.write();
 
-    // Node::update_properties(&mut *node, &mut props);
     node.base_mut().update_properties(&mut props);
-    UpdateProps::update_properties(&mut *node, &mut props);
+    node.update_properties(&mut props);
 
     Ok(node_id)
 }
@@ -230,11 +229,10 @@ pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string:
     let mut node = node.write();
 
     // set node props
-    // Node::update_properties(&mut *node, &mut props);
     node.base_mut().update_properties(&mut props);
 
     // set props
-    UpdateProps::update_properties(&mut *node, &mut props);
+    node.update_properties(&mut props);
 
     Ok(())
 }
