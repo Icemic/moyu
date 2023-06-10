@@ -7,18 +7,21 @@ pub fn hai_bindgen(args: TokenStream, func_body: TokenStream) -> TokenStream {
     hai_bindgen::entry(args, func_body)
 }
 
+use proc_macro2::Span;
 use quote::quote;
+use syn::{parse_macro_input, Data, DeriveInput, Fields};
+
 /// It will automatically implement the `NodeBaseTrait` trait for the struct,
 /// the `node_base` field name will be marked by attr `#[base]`.
 /// Input:
-/// ```rust
+/// ```ignore
 /// #[derive(Node)]
 /// pub struct Container {
 ///    #[base] node_base: NodeBase;
 /// }
 /// ```
 /// Output:
-/// ```rust
+/// ```ignore
 /// impl NodeBaseTrait for Container {
 ///    fn as_any(&self) -> &dyn Any {
 ///       self
@@ -26,16 +29,10 @@ use quote::quote;
 ///   fn base(&self) -> &NodeBase {
 ///     &self.node_base
 ///   }
+/// 
+///   ...
 /// }
 /// ```
-// #[proc_macro_derive(Node, attributes(base))]
-// pub fn derive_node_attr1(_item: TokenStream) -> TokenStream {
-//     // implements
-// }
-use syn::{parse_macro_input, Data, DeriveInput, Fields, Lit, Meta, NestedMeta};
-// use proc_macro::TokenStream;
-use proc_macro2::Span;
-
 #[proc_macro_derive(Node, attributes(base))]
 pub fn derive_node_attr(item: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(item as DeriveInput);
