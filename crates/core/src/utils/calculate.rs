@@ -14,7 +14,7 @@ pub fn calculate_rect_vertices(
     let width = tex_width * (x1 - x0);
     let height = tex_height * (y1 - y0);
 
-    let global_transform = node.global_transform();
+    let global_transform = node.base().global_transform();
 
     let a = global_transform.a;
     let b = global_transform.b;
@@ -23,9 +23,11 @@ pub fn calculate_rect_vertices(
     let tx = global_transform.tx;
     let ty = 1. - global_transform.ty;
 
-    let w1 = -node.anchor().x * width;
+    let anchor = node.base().anchor();
+
+    let w1 = -anchor.x * width;
     let w0 = w1 + width;
-    let h1 = (-1. + node.anchor().y) * height;
+    let h1 = (-1. + anchor.y) * height;
     let h0 = h1 + height;
 
     // left top

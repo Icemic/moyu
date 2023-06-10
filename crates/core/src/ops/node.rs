@@ -13,7 +13,7 @@ use crate::core::get_core;
 #[cfg(feature = "video")]
 use crate::nodes::Video;
 use crate::nodes::{Container, Sprite, YUVSprite};
-use crate::traits::{Node, UpdateProps};
+use crate::traits::{GetNodeBase, Node, UpdateProps};
 use crate::utils::convert::JSValue;
 #[cfg(not(feature = "web"))]
 use crate::utils::convert::{from_js, to_js};
@@ -50,23 +50,23 @@ pub fn create_instance(
     match node_type.as_str() {
         "container" => {
             let n = Container::new(label);
-            node_id = n.id;
+            node_id = *n.base().id();
             node = Arc::new(RwLock::new(n));
         }
         "sprite" => {
             let n = Sprite::new(label);
-            node_id = n.id;
+            node_id = *n.base().id();
             node = Arc::new(RwLock::new(n));
         }
         "yuvsprite" => {
             let n = YUVSprite::new(label);
-            node_id = n.id;
+            node_id = *n.base().id();
             node = Arc::new(RwLock::new(n));
         }
         #[cfg(feature = "video")]
         "video" => {
             let n = Video::new(label);
-            node_id = n.id;
+            node_id = *n.base().id();
             node = Arc::new(RwLock::new(n));
         }
         _ => {
@@ -80,7 +80,8 @@ pub fn create_instance(
 
     let mut node = node.write();
 
-    Node::update_properties(&mut *node, &mut props);
+    // Node::update_properties(&mut *node, &mut props);
+    node.base_mut().update_properties(&mut props);
     UpdateProps::update_properties(&mut *node, &mut props);
 
     Ok(node_id)
@@ -99,7 +100,7 @@ pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::St
     let mut node = node.write();
     let child_node = child_node.clone();
 
-    node.add_child(child_node);
+    node.base_mut().add_child(child_node);
 
     Ok(())
 }
@@ -121,7 +122,7 @@ pub fn insert_child(
     let mut node = node.write();
     let child_node = child_node.clone();
 
-    node.insert_child(index, child_node);
+    node.base_mut().insert_child(index, child_node);
 
     Ok(())
 }
@@ -145,7 +146,7 @@ pub fn insert_child_before(
     let before_node = before_node.clone();
     let child_node = child_node.clone();
 
-    node.insert_child_before(before_node, child_node);
+    node.base_mut().insert_child_before(before_node, child_node);
 
     Ok(())
 }
@@ -163,7 +164,7 @@ pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string:
     let mut node = node.write();
     let child_node = child_node.clone();
 
-    node.remove_child(child_node).unwrap();
+    node.base_mut().remove_child(child_node).unwrap();
 
     Ok(())
 }
@@ -179,7 +180,7 @@ pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::St
 
     let mut node = node.write();
 
-    node.remove_child_at(index).unwrap();
+    node.base_mut().remove_child_at(index).unwrap();
 
     Ok(())
 }
@@ -196,7 +197,7 @@ pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> 
     let node = get_node(&node_map, node_id)?;
 
     let mut node = node.write();
-    node.move_to(x, y);
+    node.base_mut().move_to(x, y);
 
     Ok(())
 }
@@ -229,7 +230,8 @@ pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string:
     let mut node = node.write();
 
     // set node props
-    Node::update_properties(&mut *node, &mut props);
+    // Node::update_properties(&mut *node, &mut props);
+    node.base_mut().update_properties(&mut props);
 
     // set props
     UpdateProps::update_properties(&mut *node, &mut props);

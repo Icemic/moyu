@@ -269,7 +269,7 @@ impl Renderer for YUVSpriteRenderer {
         let (logical_width, logical_height) = payload.surface_size.logical_size();
         let scale_factor = payload.surface_size.scale_factor();
 
-        let mut node = node.as_any_mut().downcast_mut::<YUVSprite>().unwrap();
+        let node = node.as_any_mut().downcast_mut::<YUVSprite>().unwrap();
 
         if let Some(texture_id) = node.texture_id.load().as_ref() {
             let textures = node.textures.load();

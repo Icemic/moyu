@@ -15,6 +15,7 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopProxy};
 use winit::window::{Fullscreen, Window};
 
+use crate::traits::GetNodeBase;
 use crate::user_event::WindowState;
 use crate::utils::walk::{walk_nodes_bottom_top, walk_nodes_top_bottom};
 use crate::{
@@ -378,7 +379,7 @@ impl Core {
 
             walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
                 let mut _child = child.write();
-                _child.update_transform(parent.global_transform(), &surface_size, false);
+                _child.update_transform(parent.base().global_transform(), &surface_size, false);
 
                 let node_type = NodeType::node_type(&*_child);
 
@@ -466,9 +467,9 @@ impl Core {
                         "sprite" => {
                             let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
                             // calculate relative coordinate
-                            let parent_global_x = parent.global_transform().tx * logical_width / 2.;
-                            let parent_global_y =
-                                parent.global_transform().ty * logical_height / 2.;
+                            let global_transform = parent.base().global_transform();
+                            let parent_global_x = global_transform.tx * logical_width / 2.;
+                            let parent_global_y = global_transform.ty * logical_height / 2.;
 
                             let relative_logical_x = (global_logical_x - parent_global_x).round();
                             let relative_logical_y = (global_logical_y - parent_global_y).round();
@@ -476,7 +477,7 @@ impl Core {
                             // check if pointer is over the sprite
                             let hit = sprite.contains(relative_logical_x, relative_logical_y);
 
-                            (hit, Some(sprite.label.clone()))
+                            (hit, Some(sprite.base().label().clone()))
                         }
                         _ => (false, None),
                     };
