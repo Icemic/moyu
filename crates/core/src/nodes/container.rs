@@ -1,38 +1,18 @@
-use hai_macros::node;
-use hai_pal::sync::RwLock;
-use log::warn;
 use std::any::Any;
-use std::sync::Arc;
 
-use crate::traits::{Node, NodeType, UpdateProps, NODE_ID};
-use crate::types::{Point, SurfaceSize, Transform};
+use crate::traits::{GetNodeBase, Node, NodeType, UpdateProps};
 
-#[node]
+use super::NodeBase;
+
 #[derive(Debug, Default)]
-pub struct Container {}
+pub struct Container {
+    node_base: NodeBase,
+}
 
 impl Container {
     pub fn new(label: String) -> Self {
-        let id = unsafe {
-            NODE_ID += 1;
-            NODE_ID
-        };
         Self {
-            label,
-            id,
-            anchor: Point::default(),
-            pivot: Point::default(),
-            translate: Point::default(),
-            scale: Point::one(),
-            rotation: 0.,
-            skew: Point::default(),
-
-            _update_id: 0,
-            _current_update_id: 0,
-
-            transform: Transform::default(),
-            global_transform: Transform::default(),
-            children: vec![],
+            node_base: NodeBase::new(label),
         }
     }
 }
@@ -44,3 +24,27 @@ impl NodeType for Container {
 }
 
 impl UpdateProps for Container {}
+
+impl GetNodeBase for Container {
+    #[inline]
+    fn base(&self) -> &NodeBase {
+        &self.node_base
+    }
+
+    #[inline]
+    fn base_mut(&mut self) -> &mut NodeBase {
+        &mut self.node_base
+    }
+}
+
+impl Node for Container {
+    #[inline]
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    #[inline]
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}

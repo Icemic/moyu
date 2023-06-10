@@ -10,7 +10,7 @@ where
     // child, arr, parent_node  -> should_end
     T: FnMut(Arc<RwLock<dyn Node>>, &(dyn Node)) -> bool,
 {
-    let children = root_node.children();
+    let children = root_node.base().children();
     for child in children.iter() {
         let should_end = func(child.clone(), root_node);
 
@@ -20,7 +20,7 @@ where
 
         let child = child.read();
 
-        if child.children().len() > 0 {
+        if child.base().children().len() > 0 {
             let should_end = walk_nodes_top_bottom(&*child, func);
             if should_end {
                 return true;
@@ -37,12 +37,12 @@ where
     // child, arr, parent_node  -> should_end
     T: FnMut(Arc<RwLock<dyn Node>>, &(dyn Node)) -> bool,
 {
-    let children = root_node.children();
+    let children = root_node.base().children();
     for child in children.iter().rev() {
         {
             let child = child.read();
 
-            if child.children().len() > 0 {
+            if child.base().children().len() > 0 {
                 let should_end = walk_nodes_bottom_top(&*child, func);
                 if should_end {
                     return true;
