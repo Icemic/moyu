@@ -34,24 +34,14 @@ pub struct Sprite {
 
 impl Sprite {
     pub fn new(label: String) -> Self {
-        // let id = unsafe {
-        //     NODE_ID += 1;
-        //     NODE_ID
-        // };
-
         Sprite {
-            // id,
-            // label,
             texture_id: ArcSwapOption::default(),
             texture: ArcSwapOption::default(),
             area: [0., 0., 1., 1.],
             vertices: None,
             src: None,
             vertex_buffer: None,
-
             node_base: NodeBase::new(label),
-
-            ..Default::default()
         }
     }
 }
