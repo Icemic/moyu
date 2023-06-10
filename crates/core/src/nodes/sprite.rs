@@ -1,12 +1,12 @@
 use arc_swap::ArcSwapOption;
+use hai_macros::Node;
 use serde::{Deserialize, Serialize};
-use std::any::Any;
 use std::sync::Arc;
 use wgpu::Buffer;
 
 use crate::core::get_core;
 use crate::resource::TextureId;
-use crate::traits::{Focusable, GetNodeBase, Node, NodeType, UpdateProps};
+use crate::traits::{Focusable, Node, NodeBaseTrait};
 use crate::types::Vertex;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
@@ -14,7 +14,7 @@ use crate::utils::convert::{from_js, JSValue};
 use super::{NodeBase, Texture};
 
 // #[node]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Node)]
 pub struct Sprite {
     /// loaded texture
     pub texture_id: ArcSwapOption<TextureId>,
@@ -28,7 +28,8 @@ pub struct Sprite {
 
     pub vertex_buffer: Option<Buffer>,
 
-    pub node_base: NodeBase,
+    #[base]
+    node_base: NodeBase,
 }
 
 impl Sprite {
@@ -52,12 +53,6 @@ impl Sprite {
 
             ..Default::default()
         }
-    }
-}
-
-impl NodeType for Sprite {
-    fn node_type(&self) -> &'static str {
-        "sprite"
     }
 }
 
@@ -88,7 +83,12 @@ pub struct SpriteProps {
     pub area: Option<[f64; 4]>,
 }
 
-impl UpdateProps for Sprite {
+impl Node for Sprite {
+    #[inline]
+    fn node_type(&self) -> &'static str {
+        "sprite"
+    }
+
     #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: SpriteProps = from_js(props).unwrap();
@@ -109,29 +109,5 @@ impl UpdateProps for Sprite {
 
         // force update vertices
         self.base_mut().pend_update();
-    }
-}
-
-impl GetNodeBase for Sprite {
-    #[inline]
-    fn base(&self) -> &NodeBase {
-        &self.node_base
-    }
-
-    #[inline]
-    fn base_mut(&mut self) -> &mut NodeBase {
-        &mut self.node_base
-    }
-}
-
-impl Node for Sprite {
-    #[inline]
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
     }
 }

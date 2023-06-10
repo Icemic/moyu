@@ -1,11 +1,12 @@
-use std::any::Any;
+use hai_macros::Node;
 
-use crate::traits::{GetNodeBase, Node, NodeType, UpdateProps};
+use crate::traits::{Node, NodeBaseTrait};
 
 use super::NodeBase;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Node)]
 pub struct Container {
+    #[base]
     node_base: NodeBase,
 }
 
@@ -17,34 +18,9 @@ impl Container {
     }
 }
 
-impl NodeType for Container {
-    fn node_type(&self) -> &'static str {
-        "node"
-    }
-}
-
-impl UpdateProps for Container {}
-
-impl GetNodeBase for Container {
-    #[inline]
-    fn base(&self) -> &NodeBase {
-        &self.node_base
-    }
-
-    #[inline]
-    fn base_mut(&mut self) -> &mut NodeBase {
-        &mut self.node_base
-    }
-}
-
 impl Node for Container {
     #[inline]
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
+    fn node_type(&self) -> &'static str {
+        "node"
     }
 }
