@@ -29,7 +29,7 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields};
 ///   fn base(&self) -> &NodeBase {
 ///     &self.node_base
 ///   }
-/// 
+///
 ///   ...
 /// }
 /// ```
@@ -62,12 +62,10 @@ pub fn derive_node_attr(item: TokenStream) -> TokenStream {
 
     let gen = quote! {
         impl NodeBaseTrait for #name {
-            #[inline]
             fn as_any(&self) -> &dyn std::any::Any {
                 self
             }
 
-            #[inline]
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
                 self
             }
