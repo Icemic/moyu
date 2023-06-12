@@ -71,7 +71,7 @@ pub struct Core {
     pub queue: Arc<Queue>,
     pub config: Arc<Mutex<SurfaceConfiguration>>,
     pub event_proxy: Arc<EventLoopProxy<UserEvent>>,
-    pub resource_manager: Arc<Mutex<ResourceManager>>,
+    pub resource_manager: Arc<ResourceManager>,
     pub renderers: Arc<Mutex<HashMap<String, Box<dyn Renderer>>>>,
 
     staging_belt: Arc<Mutex<StagingBelt>>,
@@ -116,7 +116,7 @@ impl Core {
             queue,
             config: Arc::new(Mutex::new(config)),
             event_proxy,
-            resource_manager: Arc::new(Mutex::new(resource_manager)),
+            resource_manager: Arc::new(resource_manager),
             renderers: Arc::new(Mutex::new(renderers)),
 
             staging_belt,

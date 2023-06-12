@@ -1,20 +1,15 @@
-use anyhow::Result;
-use futures::{stream::FuturesUnordered, task::AtomicWaker, StreamExt};
 #[cfg(feature = "web")]
 use futures::{Future, FutureExt};
-use hai_pal::env::entry_dir;
 use hai_pal::fs;
+use hai_pal::{env::entry_dir, sync::RwLock};
 use image::GenericImageView;
-use log::{debug, error};
+use log::debug;
 #[cfg(feature = "web")]
 use std::pin::Pin;
 use std::{
     collections::HashMap,
     sync::{Arc, Weak},
-    task::{Context, Poll},
 };
-#[cfg(not(feature = "web"))]
-use tokio::task::JoinHandle;
 use wgpu::{Device, Queue};
 
 use crate::nodes::{Texture, TextureStatus};
@@ -33,12 +28,7 @@ pub enum TextureId {
 pub struct ResourceManager {
     device: Arc<Device>,
     queue: Arc<Queue>,
-    texture_map: HashMap<Arc<TextureId>, Weak<Texture>>,
-    #[cfg(not(feature = "web"))]
-    tasks: FuturesUnordered<JoinHandle<Result<()>>>,
-    #[cfg(feature = "web")]
-    tasks: FuturesUnordered<Pin<Box<dyn Future<Output = Result<()>>>>>,
-    waker: AtomicWaker,
+    texture_map: Arc<RwLock<HashMap<Arc<TextureId>, Weak<Texture>>>>,
 }
 
 impl ResourceManager {
@@ -47,8 +37,6 @@ impl ResourceManager {
             device,
             queue,
             texture_map: Default::default(),
-            tasks: Default::default(),
-            waker: Default::default(),
         }
     }
 
@@ -56,8 +44,8 @@ impl ResourceManager {
     /// if there's already a texture with the same texture id, return it, or:
     ///   1. for `TextureId::Path`, it will add a new task to load a new texture
     ///   2. for `TextureId::Custom`, it will create a empty texture then return
-    pub fn get_texture(&mut self, texture_id: &Arc<TextureId>) -> Arc<Texture> {
-        if let Some(texture) = self.texture_map.get(texture_id) {
+    pub fn get_texture(&self, texture_id: &Arc<TextureId>) -> Arc<Texture> {
+        if let Some(texture) = self.texture_map.read().get(texture_id) {
             if let Some(texture) = texture.upgrade() {
                 return texture;
             }
@@ -68,6 +56,7 @@ impl ResourceManager {
             TextureId::Custom(_) => {
                 let texture = Arc::new(Texture::new());
                 self.texture_map
+                    .write()
                     .insert(texture_id.clone(), Arc::downgrade(&texture));
                 texture
             }
@@ -76,7 +65,7 @@ impl ResourceManager {
 
     /// add a task to load a new texture.
     /// it does not check whether a same asset has been loaded.
-    fn add_load_task(&mut self, texture_id: Arc<TextureId>) -> Arc<Texture> {
+    fn add_load_task(&self, texture_id: Arc<TextureId>) -> Arc<Texture> {
         if let TextureId::Path(asset_relative_path) = &*texture_id {
             let asset_full_path = entry_dir()
                 .join("assets/")
@@ -87,6 +76,7 @@ impl ResourceManager {
 
             let texture = Arc::new(Texture::new());
             self.texture_map
+                .write()
                 .insert(texture_id.clone(), Arc::downgrade(&texture));
             let _texture = texture.clone();
 
@@ -167,41 +157,13 @@ impl ResourceManager {
             };
 
             #[cfg(not(feature = "web"))]
-            let task_fn = tokio::spawn(task_fn);
+            tokio::spawn(task_fn);
             #[cfg(feature = "web")]
-            let task_fn = task_fn.boxed_local();
-
-            self.tasks.push(task_fn);
-
-            self.waker.wake();
+            wasm_bindgen_futures::spawn_local(task_fn);
 
             _texture
         } else {
             unreachable!();
-        }
-    }
-
-    pub fn poll(&mut self, cx: &mut Context) -> Poll<()> {
-        self.waker.register(cx.waker());
-        match self.tasks.poll_next_unpin(cx) {
-            Poll::Ready(Some(Err(err))) => {
-                error!("{}", err.to_string());
-                Poll::Ready(())
-            }
-            #[cfg(not(feature = "web"))]
-            Poll::Ready(Some(Ok(Err(err)))) => {
-                error!("{}", err.to_string());
-                Poll::Ready(())
-            }
-            // FIXME: unreachable? why
-            #[allow(unreachable_patterns)]
-            #[cfg(feature = "web")]
-            Poll::Ready(Some(Err(err))) => {
-                error!("{}", err.to_string());
-                Poll::Ready(())
-            }
-            Poll::Ready(_) => Poll::Ready(()),
-            Poll::Pending => Poll::Pending,
         }
     }
 }

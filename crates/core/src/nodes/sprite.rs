@@ -85,9 +85,8 @@ impl Node for Sprite {
 
         if let Some(src) = props.src {
             let core = get_core();
-            let mut resource_manager = core.resource_manager.lock();
             let texture_id = Arc::new(TextureId::Path(src.clone()));
-            let texture = resource_manager.get_texture(&texture_id);
+            let texture = core.resource_manager.get_texture(&texture_id);
             self.texture_id.store(Some(texture_id));
             self.texture.store(Some(texture));
             self.src = Some(src);
