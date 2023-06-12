@@ -5,7 +5,7 @@ use hai_core::winit::event::Event;
 use hai_core::{create_hai_core, setup, spawn_runtime_with_core};
 use hai_pal::{env, logger, platform};
 
-fn main() {
+fn main_entry() {
     env::setup();
     logger::setup();
     platform::setup();
@@ -59,11 +59,17 @@ fn main() {
     });
 }
 
+#[cfg(not(feature = "web"))]
+#[tokio::main]
+async fn main() {
+    main_entry();
+}
+
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[cfg(feature = "web")]
 #[cfg_attr(feature = "web", wasm_bindgen)]
 pub fn wasm_start() {
-    main();
+    main_entry();
 }
