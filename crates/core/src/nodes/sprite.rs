@@ -11,14 +11,13 @@ use crate::types::Vertex;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
 
-use super::{NodeBase, Texture};
+use super::NodeBase;
 
 // #[node]
 #[derive(Debug, Default, Node)]
 pub struct Sprite {
     /// loaded texture
     pub texture_id: ArcSwapOption<TextureId>,
-    pub texture: ArcSwapOption<Texture>,
     /// clip area
     pub area: [f64; 4],
     /// calculated vertices
@@ -36,7 +35,6 @@ impl Sprite {
     pub fn new(label: String) -> Self {
         Sprite {
             texture_id: ArcSwapOption::default(),
-            texture: ArcSwapOption::default(),
             area: [0., 0., 1., 1.],
             vertices: None,
             src: None,
@@ -48,17 +46,20 @@ impl Sprite {
 
 impl Focusable for Sprite {
     fn contains(&self, x: f64, y: f64) -> bool {
-        if let Some(texture) = self.texture.load().as_ref() {
-            let translate = self.base().translate();
+        if let Some(texture_id) = self.texture_id.load().as_ref() {
+            let core = get_core();
+            if let Some(texture) = core.resource_manager.try_get_texture(&texture_id) {
+                let translate = self.base().translate();
 
-            let (width, height) = texture.size();
+                let (width, height) = texture.size();
 
-            if x > translate.x
-                && x < width as f64 + translate.x
-                && y > translate.y
-                && y < height as f64 + translate.y
-            {
-                return true;
+                if x > translate.x
+                    && x < width as f64 + translate.x
+                    && y > translate.y
+                    && y < height as f64 + translate.y
+                {
+                    return true;
+                }
             }
         }
 
@@ -84,11 +85,8 @@ impl Node for Sprite {
         let props: SpriteProps = from_js(props).unwrap();
 
         if let Some(src) = props.src {
-            let core = get_core();
             let texture_id = Arc::new(TextureId::Path(src.clone()));
-            let texture = core.resource_manager.get_texture(&texture_id);
             self.texture_id.store(Some(texture_id));
-            self.texture.store(Some(texture));
             self.src = Some(src);
         }
 

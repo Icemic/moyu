@@ -96,18 +96,14 @@ pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRun
         let core = core.clone();
 
         std::thread::spawn(|| {
-            let runtime = tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap();
+            let handle = hai_pal::task::get_runtime_handle();
 
             if let Some(spawn_callback) = spawn_callback {
                 let async_callback = spawn_callback();
-                runtime.spawn(async_callback);
+                handle.spawn(async_callback);
             }
 
-            let resource_manager = core.resource_manager.clone();
-            runtime.block_on(async {
+            handle.block_on(async {
                 let mut vm = JSRuntime::new(core);
 
                 vm.with_global(|scope, global| {
