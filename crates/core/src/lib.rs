@@ -119,11 +119,7 @@ pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRun
                     exit(-1);
                 };
 
-                vm.run_event_loop(|cx| {
-                    let mut resource_manager = resource_manager.lock();
-                    resource_manager.poll(cx)
-                })
-                .await;
+                vm.run_event_loop(|cx| std::task::Poll::Pending).await;
             });
         });
     }
