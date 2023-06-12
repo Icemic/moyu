@@ -1,15 +1,12 @@
 #[cfg(feature = "web")]
 use futures::{Future, FutureExt};
-use hai_pal::fs;
 use hai_pal::{env::entry_dir, sync::RwLock};
+use hai_pal::{fs, task};
 use image::GenericImageView;
 use log::debug;
 #[cfg(feature = "web")]
 use std::pin::Pin;
-use std::{
-    collections::HashMap,
-    sync::{Arc, Weak},
-};
+use std::{collections::HashMap, sync::Arc};
 use wgpu::{Device, Queue};
 
 use crate::nodes::{Texture, TextureStatus};
@@ -28,7 +25,7 @@ pub enum TextureId {
 pub struct ResourceManager {
     device: Arc<Device>,
     queue: Arc<Queue>,
-    texture_map: Arc<RwLock<HashMap<Arc<TextureId>, Weak<Texture>>>>,
+    texture_map: Arc<RwLock<HashMap<Arc<TextureId>, Arc<Texture>>>>,
 }
 
 impl ResourceManager {
@@ -40,15 +37,21 @@ impl ResourceManager {
         }
     }
 
+    pub fn try_get_texture(&self, texture_id: &Arc<TextureId>) -> Option<Arc<Texture>> {
+        if let Some(texture) = self.texture_map.read().get(texture_id) {
+            return Some(texture.clone());
+        }
+
+        None
+    }
+
     /// get a texture
     /// if there's already a texture with the same texture id, return it, or:
     ///   1. for `TextureId::Path`, it will add a new task to load a new texture
     ///   2. for `TextureId::Custom`, it will create a empty texture then return
     pub fn get_texture(&self, texture_id: &Arc<TextureId>) -> Arc<Texture> {
         if let Some(texture) = self.texture_map.read().get(texture_id) {
-            if let Some(texture) = texture.upgrade() {
-                return texture;
-            }
+            return texture.clone();
         }
 
         match &**texture_id {
@@ -57,7 +60,7 @@ impl ResourceManager {
                 let texture = Arc::new(Texture::new());
                 self.texture_map
                     .write()
-                    .insert(texture_id.clone(), Arc::downgrade(&texture));
+                    .insert(texture_id.clone(), texture.clone());
                 texture
             }
         }
@@ -77,7 +80,7 @@ impl ResourceManager {
             let texture = Arc::new(Texture::new());
             self.texture_map
                 .write()
-                .insert(texture_id.clone(), Arc::downgrade(&texture));
+                .insert(texture_id.clone(), texture.clone());
             let _texture = texture.clone();
 
             let device = self.device.clone();
@@ -156,10 +159,7 @@ impl ResourceManager {
                 Ok(())
             };
 
-            #[cfg(not(feature = "web"))]
-            tokio::spawn(task_fn);
-            #[cfg(feature = "web")]
-            wasm_bindgen_futures::spawn_local(task_fn);
+            task::spawn(task_fn);
 
             _texture
         } else {
