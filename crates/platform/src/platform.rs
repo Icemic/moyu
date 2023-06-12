@@ -1,6 +1,8 @@
 #[cfg(not(feature = "web"))]
 pub fn setup() {
-    // no-op
+    use crate::task;
+
+    task::setup_async_runtime();
 }
 
 #[cfg(feature = "web")]
