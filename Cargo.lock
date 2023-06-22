@@ -1971,14 +1971,16 @@ dependencies = [
 name = "quick_runtime"
 version = "0.1.0"
 dependencies = [
+ "env_logger",
+ "log",
  "quickjspp",
 ]
 
 [[package]]
 name = "quickjspp"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3110a7684addb83926cc2f68ad1739565a51e78ca6521fa99a986b2e9b370435"
+checksum = "44d8a0fd571ea5ac47b08f33c9a6352ac2b26d6a1715d12454b82835bc11875f"
 dependencies = [
  "chrono",
  "libquickjspp-sys",
