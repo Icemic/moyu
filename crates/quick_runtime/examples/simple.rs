@@ -1,24 +1,13 @@
-use quickjspp::Context;
+use quick_runtime::setup_vm;
 
 pub fn main() {
-    let context = Context::new().unwrap();
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Debug)
+        .init();
 
-    let value = context.eval("1 + 2").unwrap();
-    println!("js: 1 + 2 = {:?}", value);
+    let vm = setup_vm();
 
-    context.
-
-    context
-        .add_callback("myCallback", |a: i32, b: i32| a + b * b)
+    vm.context()
+        .eval("console.log('Hello %s!', 'World')")
         .unwrap();
-
-    let value = context
-        .eval(
-            r#"
-       var x = myCallback(10, 20);
-       x;
-"#,
-        )
-        .unwrap();
-    println!("js: callback = {:?}", value);
 }
