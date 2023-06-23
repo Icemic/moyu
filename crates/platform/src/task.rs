@@ -54,3 +54,11 @@ where
     #[cfg(feature = "web")]
     return wasm_bindgen_futures::spawn_local(future);
 }
+
+pub fn block_on<T: Future>(future: T) -> T::Output {
+    #[cfg(not(feature = "web"))]
+    return current_handle().block_on(future);
+
+    #[cfg(feature = "web")]
+    unimplemented!("block_on is not supported in web mode");
+}
