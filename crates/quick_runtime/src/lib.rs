@@ -1,4 +1,5 @@
 mod console;
+mod module;
 mod vm;
 
 use std::sync::{Arc, OnceLock};
