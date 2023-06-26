@@ -15,6 +15,9 @@ pub enum UserEvent {
     Custom(*mut c_void),
 }
 
+unsafe impl Send for UserEvent {}
+unsafe impl Sync for UserEvent {}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowState {
     Idle,
