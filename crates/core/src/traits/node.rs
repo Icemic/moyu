@@ -1,11 +1,13 @@
 use std::{any::Any, fmt::Debug};
 
 use crate::nodes::NodeBase;
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::JSValue;
 
 pub trait Node: NodeBaseTrait + Send + Sync + Debug {
     fn node_type(&self) -> &'static str;
 
+    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, _props: &mut JSValue) {
         // defaults to do nothing
     }
