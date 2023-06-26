@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use hai_core::core::set_core;
 use hai_core::surface::{create_eventloop, create_wgpu_surface, create_window};
 use hai_core::winit::event::Event;
 use hai_core::{create_hai_core, setup, spawn_runtime_with_core};
@@ -35,6 +36,8 @@ fn main_entry() {
                     &_window,
                     event_proxy.clone(),
                 );
+
+                set_core(_core.clone());
 
                 spawn_runtime_with_core(&_core, None);
 
