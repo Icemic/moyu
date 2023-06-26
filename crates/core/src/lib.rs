@@ -70,8 +70,6 @@ pub fn create_hai_core(
     // make core sharable among threads
     let core = Arc::new(core);
 
-    set_core(core.clone());
-
     core
 }
 
