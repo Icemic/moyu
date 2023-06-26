@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "hai_core"
 repository = "https://github.com/Icemic/hai"
-version = "0.1.10"
+version = "0.1.11"
 
 [features]
 default = ["desktop", "js_runtime"]
