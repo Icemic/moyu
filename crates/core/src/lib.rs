@@ -20,7 +20,7 @@ use winit::window::Window;
 
 pub use winit;
 
-use crate::core::{set_core, Core};
+use crate::core::Core;
 use crate::renderer::SpriteRenderer;
 use crate::user_event::UserEvent;
 

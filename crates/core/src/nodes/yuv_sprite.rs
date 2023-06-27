@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
 use crate::resource::TextureId;
-use crate::traits::{Focusable, Node, NodeBaseTrait};
+use crate::traits::{Focusable, Node, NodeBaseTrait, RendererUpdatePayload};
 use crate::types::Vertex;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
@@ -51,7 +51,7 @@ impl YUVSprite {
 }
 
 impl Focusable for YUVSprite {
-    fn contains(&self, x: f64, y: f64) -> bool {
+    fn contains(&self, x: f64, y: f64, _: &RendererUpdatePayload) -> bool {
         if let Some(textures) = self.textures.load().as_ref() {
             let (texture, _, _) = &**textures;
 

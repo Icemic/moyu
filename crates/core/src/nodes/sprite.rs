@@ -4,9 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use wgpu::Buffer;
 
-use crate::core::get_core;
 use crate::resource::TextureId;
-use crate::traits::{Focusable, Node, NodeBaseTrait};
+use crate::traits::{Focusable, Node, NodeBaseTrait, RendererUpdatePayload};
 use crate::types::Vertex;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
@@ -45,10 +44,9 @@ impl Sprite {
 }
 
 impl Focusable for Sprite {
-    fn contains(&self, x: f64, y: f64) -> bool {
+    fn contains(&self, x: f64, y: f64, payload: &RendererUpdatePayload) -> bool {
         if let Some(texture_id) = self.texture_id.load().as_ref() {
-            let core = get_core();
-            if let Some(texture) = core.resource_manager.try_get_texture(&texture_id) {
+            if let Some(texture) = payload.resource_manager.try_get_texture(&texture_id) {
                 let translate = self.base().translate();
 
                 let (width, height) = texture.size();
