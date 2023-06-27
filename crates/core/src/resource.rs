@@ -22,6 +22,7 @@ pub enum TextureId {
     Custom(String),
 }
 
+#[derive(Debug)]
 pub struct ResourceManager {
     device: Arc<Device>,
     queue: Arc<Queue>,

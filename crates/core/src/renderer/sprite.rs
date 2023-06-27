@@ -3,7 +3,6 @@ use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
-use crate::core::get_core;
 #[cfg(feature = "video")]
 use crate::nodes::Video;
 use crate::nodes::{Sprite, Texture, TextureStatus};
@@ -177,8 +176,7 @@ impl Renderer for SpriteRenderer {
         let node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
 
         if let Some(texture_id) = node.texture_id.load().as_ref() {
-            let core = get_core();
-            let texture = core.resource_manager.get_texture(&texture_id);
+            let texture = payload.resource_manager.get_texture(&texture_id);
 
             if TextureStatus::Ready != texture.status() {
                 return;

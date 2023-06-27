@@ -372,6 +372,7 @@ impl Core {
             let root_node = root_node.read();
             let upload_payload = RendererUpdatePayload {
                 surface_size: surface_size.clone(),
+                resource_manager: self.resource_manager.clone(),
             };
 
             let mut nodes: Vec<Arc<RwLock<dyn Node>>> = vec![];
@@ -451,11 +452,12 @@ impl Core {
         let root_node = self.root_node.clone();
         let current_focused_node = self.current_focused_node.clone();
 
-        let surface_size = self.surface_size.read();
+        let surface_size = {
+            let surface_size = self.surface_size.read();
+            surface_size.clone()
+        };
         let (logical_width, logical_height) = surface_size.logical_size();
         let scale_factor = surface_size.scale_factor();
-
-        drop(surface_size);
 
         match event {
             WindowEvent::CursorMoved { position, .. } => {
@@ -463,6 +465,11 @@ impl Core {
                 let global_logical_y = position.y / scale_factor;
 
                 let root_node = root_node.read();
+
+                let upload_payload = RendererUpdatePayload {
+                    surface_size,
+                    resource_manager: self.resource_manager.clone(),
+                };
 
                 walk_nodes_bottom_top(&*root_node, &mut |child, parent| {
                     let child_ref = child.read();
@@ -478,7 +485,11 @@ impl Core {
                             let relative_logical_y = (global_logical_y - parent_global_y).round();
 
                             // check if pointer is over the sprite
-                            let hit = sprite.contains(relative_logical_x, relative_logical_y);
+                            let hit = sprite.contains(
+                                relative_logical_x,
+                                relative_logical_y,
+                                &upload_payload,
+                            );
 
                             (hit, Some(sprite.base().label().clone()))
                         }

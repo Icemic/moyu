@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
+use crate::resource::ResourceManager;
 use crate::types::SurfaceSize;
 
 use super::Node;
@@ -23,7 +24,8 @@ where
     fn get_renderable(&self) -> Option<(&BindGroup, &Buffer)>;
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct RendererUpdatePayload {
     pub surface_size: SurfaceSize,
+    pub resource_manager: Arc<ResourceManager>,
 }
