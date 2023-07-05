@@ -10,23 +10,30 @@ static HAI_ENV: OnceCell<HaiConfig> = OnceCell::new();
 pub struct HaiConfig {
     #[serde(default = "default_entry")]
     pub entry: String,
-    #[serde(default = "default_vsync")]
+    #[serde(default = "default_to_true")]
     pub vsync: bool,
+    #[serde(default = "default_to_false")]
+    pub show_fps: bool,
 }
 
 fn default_entry() -> String {
     env::current_dir().unwrap().to_str().unwrap().to_string()
 }
 
-fn default_vsync() -> bool {
+fn default_to_true() -> bool {
     true
+}
+
+fn default_to_false() -> bool {
+    false
 }
 
 impl Default for HaiConfig {
     fn default() -> Self {
         Self {
             entry: default_entry(),
-            vsync: default_vsync(),
+            vsync: default_to_true(),
+            show_fps: default_to_false(),
         }
     }
 }
