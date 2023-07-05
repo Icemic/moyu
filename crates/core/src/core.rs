@@ -1,4 +1,5 @@
 use arc_swap::ArcSwap;
+use hai_pal::env::get_hai_env;
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
 use log::{debug, error, info};
 use once_cell::sync::OnceCell;
@@ -323,7 +324,7 @@ impl Core {
     pub fn render(&self) -> Result<(), wgpu::SurfaceError> {
         // fps
         #[cfg(not(feature = "web"))]
-        {
+        if get_hai_env().show_fps {
             let (instant, frames) = &mut *self.frames_in_duration.lock();
             let duration = instant.elapsed().as_secs_f32();
             if duration >= 1. {
