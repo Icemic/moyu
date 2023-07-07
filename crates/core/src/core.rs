@@ -253,18 +253,24 @@ impl Core {
                 &UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
                     let factor = factor.unwrap_or(window.scale_factor());
 
-                    if logical_width > 0. && logical_height > 0. {
-                        window.set_maximized(false);
-                        window.set_minimized(false);
-                        window.set_fullscreen(None);
-                        self.window_state.store(Arc::new(WindowState::Idle));
+                    let window_fullscreen = window.fullscreen();
+                    let window_minimized = window.is_minimized();
+                    let window_maximized = window.is_maximized();
 
+                    if logical_width > 0. && logical_height > 0. {
                         let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
                         self.resize(surface_size);
 
                         let window_size =
                             Size::Logical(LogicalSize::new(logical_width, logical_height));
                         window.set_inner_size(window_size);
+
+                        window.set_minimized(window_minimized.unwrap_or(false));
+                        window.set_maximized(window_maximized);
+
+                        // reset fullscreen status
+                        window.set_fullscreen(None);
+                        window.set_fullscreen(window_fullscreen);
                     }
                 }
                 &UserEvent::WindowState(state) => {
