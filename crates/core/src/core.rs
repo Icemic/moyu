@@ -6,6 +6,7 @@ use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::forget;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 #[cfg(not(feature = "web"))]
 use std::time::Instant;
@@ -65,6 +66,15 @@ pub fn set_core(core: Arc<Core>) {
     CORE.set(p).expect("Failed to set core instance.");
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HaiRedrawMode {
+    /// redraws every frame
+    Auto,
+    /// only redraws when `Core::is_dirty` is `true, then
+    /// set `Core::is_dirty` to `false` after re-drawing.
+    Dirty,
+}
+
 pub struct Core {
     pub surface_size: Arc<RwLock<SurfaceSize>>,
     pub surface: Arc<Surface>,
@@ -85,6 +95,12 @@ pub struct Core {
     pub node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
 
     pub window_state: ArcSwap<WindowState>,
+
+    /// redraw mode, default is `Auto`
+    pub redraw_mode: ArcSwap<HaiRedrawMode>,
+    /// if `true`, the screen will be refreshed in next frame,
+    /// by default it will be `true` to render every frame.
+    pub is_dirty: AtomicBool,
 }
 
 unsafe impl Send for Core {}
@@ -129,6 +145,8 @@ impl Core {
             node_map: Arc::new(RwLock::new(node_map)),
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
+            redraw_mode: ArcSwap::new(Arc::new(HaiRedrawMode::Auto)),
+            is_dirty: AtomicBool::new(true),
         }
     }
 
@@ -155,6 +173,14 @@ impl Core {
     pub fn refresh(&self) {
         let config = self.config.lock();
         self.surface.configure(&self.device, &config);
+    }
+
+    pub fn set_redraw_mode(&self, mode: HaiRedrawMode) {
+        self.redraw_mode.store(Arc::new(mode));
+    }
+
+    pub fn set_dirty(&self, is_dirty: bool) {
+        self.is_dirty.store(is_dirty, Ordering::Relaxed);
     }
 
     // reconfigure the surface everytime the window's size changes
@@ -199,7 +225,19 @@ impl Core {
             &Event::MainEventsCleared => {
                 // RedrawRequested will only trigger once, unless we manually
                 // request it.
-                window.request_redraw();
+                let redraw_mode = self.redraw_mode.load();
+                match **redraw_mode {
+                    HaiRedrawMode::Auto => {
+                        window.request_redraw();
+                    }
+                    HaiRedrawMode::Dirty => {
+                        // skip rendering if not dirty
+                        if self.is_dirty.load(Ordering::Relaxed) {
+                            self.set_dirty(false);
+                            window.request_redraw();
+                        }
+                    }
+                }
             }
             &Event::WindowEvent {
                 ref event,
