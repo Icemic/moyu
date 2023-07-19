@@ -1,39 +1,31 @@
+mod backend;
+
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 #[cfg(not(feature = "web"))]
 use std::env;
 use url::Url;
 
+pub use self::backend::RenderingBackend;
+
 static HAI_ENV: OnceCell<HaiConfig> = OnceCell::new();
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct HaiConfig {
-    #[serde(default = "default_entry")]
     pub entry: String,
-    #[serde(default = "default_to_true")]
     pub vsync: bool,
-    #[serde(default = "default_to_false")]
     pub show_fps: bool,
-}
-
-fn default_entry() -> String {
-    env::current_dir().unwrap().to_str().unwrap().to_string()
-}
-
-fn default_to_true() -> bool {
-    true
-}
-
-fn default_to_false() -> bool {
-    false
+    pub backend: RenderingBackend,
 }
 
 impl Default for HaiConfig {
     fn default() -> Self {
         Self {
-            entry: default_entry(),
-            vsync: default_to_true(),
-            show_fps: default_to_false(),
+            entry: env::current_dir().unwrap().to_str().unwrap().to_string(),
+            vsync: true,
+            show_fps: false,
+            backend: RenderingBackend::default(),
         }
     }
 }
