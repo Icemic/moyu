@@ -1,4 +1,4 @@
-use hai_pal::env::get_hai_env;
+use hai_pal::env::{get_hai_env, RenderingBackend};
 use log::info;
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
@@ -65,8 +65,17 @@ pub(self) async fn create_surface_inner(
 ) -> (Surface, Device, Queue, SurfaceConfiguration) {
     // The instance is a handle to our GPU
     // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
+    let backends = match get_hai_env().backend {
+        RenderingBackend::Auto => wgpu::Backends::all(),
+        RenderingBackend::Vulkan => wgpu::Backends::VULKAN,
+        RenderingBackend::Metal => wgpu::Backends::METAL,
+        RenderingBackend::DX12 => wgpu::Backends::DX12,
+        RenderingBackend::WebGPU => wgpu::Backends::BROWSER_WEBGPU,
+        RenderingBackend::GLES => wgpu::Backends::GL,
+    };
+
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends: wgpu::Backends::all(),
+        backends,
         dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
     });
     let surface = unsafe {
