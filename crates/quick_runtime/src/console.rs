@@ -14,16 +14,29 @@ pub fn log_handler(level: Level, args: Vec<JsValue>) {
 }
 
 fn format_string(args: Vec<JsValue>) -> std::string::String {
-    let length = args.len();
     let mut template_string = "".to_string();
     let mut others = vec![];
-    for i in 0..length {
-        let raw_string = args[i].clone().into_string().unwrap();
+    let mut i = 0;
+    for arg in args {
+        let raw_string = match arg {
+            JsValue::Undefined => "undefined".to_string(),
+            JsValue::Null => "null".to_string(),
+            JsValue::Bool(v) => v.to_string(),
+            JsValue::Int(i) => i.to_string(),
+            JsValue::Float(i) => i.to_string(),
+            JsValue::String(s) => s,
+            JsValue::Array(_) => "[array Array]".to_string(),
+            JsValue::Object(_) => "[object Object]".to_string(),
+            JsValue::Function(_) => "[function Function]".to_string(),
+            JsValue::Date(t) => t.to_rfc3339(),
+            _ => todo!(),
+        };
         if i == 0 {
             template_string = raw_string;
         } else {
             others.push(raw_string);
         }
+        i += 1;
     }
     let mut symbol_scan = false;
     let mut precision_scan = false;
