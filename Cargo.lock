@@ -1461,6 +1461,8 @@ dependencies = [
 [[package]]
 name = "libquickjspp-sys"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b60f5aaa197eee1c667c385e11356de40e9657a6cab94be3afe39155d72a6140"
 dependencies = [
  "cc",
  "copy_dir",
@@ -1978,7 +1980,9 @@ dependencies = [
 
 [[package]]
 name = "quickjspp"
-version = "0.2.0"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85d430b5d950e7afb038b7050145f0ed3a234eecd1787171028db1f54a5ec6c9"
 dependencies = [
  "chrono",
  "libquickjspp-sys",
