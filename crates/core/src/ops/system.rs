@@ -1,8 +1,11 @@
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
+use anyhow::Result;
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
 use hai_js_runtime::{prelude::*, *};
 #[cfg(not(feature = "web"))]
 use hai_macros::hai_bindgen;
 use log::warn;
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+use quick_runtime::quickjspp::{JSContext, RawJSValue};
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::wasm_bindgen;
 

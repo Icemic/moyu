@@ -1,3 +1,4 @@
+use log::error;
 use quick_runtime::setup_vm;
 
 #[tokio::main]
@@ -9,10 +10,9 @@ async fn main() {
 
     hai_pal::platform::setup();
 
-    let local = tokio::task::LocalSet::new();
-
-    local
-        .run_until(async {
+    std::thread::Builder::new()
+        .name("quickjs".to_string())
+        .spawn(|| {
             let vm = setup_vm();
 
             vm.context()
@@ -23,13 +23,19 @@ async fn main() {
                 .eval("var x = setInterval(() => console.log('Hello %s!', 'World'), 1000); setTimeout(() => clearTimeout(x), 1500)")
                 .unwrap();
 
-            // if let Err(err) = vm.prepare_entry() {
-            //     println!("{:?}", err);
-            // };
 
-            // block
-            let future = std::future::pending();
-            let () = future.await;
+            if let Err(err) = vm.prepare_entry() {
+                error!("{:?}", err);
+            };
+
+            loop {
+                vm.tick();
+            }
         })
-        .await;
+        .unwrap();
+
+    loop {
+        let future = std::future::pending();
+        let () = future.await;
+    }
 }

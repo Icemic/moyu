@@ -8,9 +8,11 @@ repository = "https://github.com/Icemic/hai"
 version = "0.1.9"
 
 [features]
-default = ["desktop", "js_runtime"]
+default = ["desktop", "js_runtime", "quickjs"]
 desktop = ["hai_pal/desktop", "dep:tokio"]
-js_runtime = ["hai_js_runtime"]
+js_runtime = []
+quickjs = ["quick_runtime"]
+v8 = ["hai_js_runtime"]
 video = ["dep:ffmpeg-rs"]
 web = [
   "hai_pal/web",
@@ -47,6 +49,11 @@ ffmpeg-rs = {version = "5.2.1", optional = true}
 [dependencies.hai_js_runtime]
 optional = true
 path = "../js_runtime"
+version = "0.1"
+
+[dependencies.quick_runtime]
+optional = true
+path = "../quick_runtime"
 version = "0.1"
 
 [dependencies.hai_pal]
