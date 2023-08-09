@@ -7,7 +7,8 @@ version = "0.1.0"
 
 [dependencies]
 log = "0.4"
-quickjspp = ">=0.3"
+quickjspp = ">=0.4"
+spin_sleep = "1.1"
 tokio = {version = "1", features = ["time"]}
 
 hai_pal = {version = "0.1", path = "../platform"}

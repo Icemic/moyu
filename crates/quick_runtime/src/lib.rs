@@ -20,13 +20,6 @@ pub fn get_vm<'a>() -> &'a Arc<QuickVM> {
     VM_INSTANCE.get().expect("VM not initialized")
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[test]
-//     fn it_works() {
-//         let result = add(2, 2);
-//         assert_eq!(result, 4);
-//     }
-// }
+pub mod quickjspp {
+    pub use quickjspp::*;
+}
