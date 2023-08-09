@@ -1983,9 +1983,9 @@ dependencies = [
 
 [[package]]
 name = "quickjspp"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be299c7417b3822966b035dac6f8cf09e7b5cd36d5e092eb916774e3d47310fa"
+checksum = "1ee2866648a1bcac86cfc5d612f5e5de846d13d01a96cadd5302d3fce757ed93"
 dependencies = [
  "anyhow",
  "chrono",
