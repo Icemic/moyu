@@ -48,14 +48,14 @@ pub fn entry(args: TokenStream, func_body: TokenStream) -> TokenStream {
                         "JSValue" => {
                             quote! {
                                 let #ident = {
-                                    JSValue::own(__context, &__args[#i as usize])
+                                    JSValue::new(__context, __args[#i as usize])
                                 };
                             }
                         }
                         _ => {
                             quote! {
                                 let #ident: #t = {
-                                    let value = JSValue::own(__context, &__args[#i as usize]);
+                                    let value = JSValue::new(__context, __args[#i as usize]);
                                     from_js(&value)?
                                 };
                             }
