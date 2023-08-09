@@ -1049,6 +1049,7 @@ dependencies = [
  "hai_js_runtime",
  "hai_pal",
  "log",
+ "spin_sleep",
  "tokio",
 ]
 
@@ -1069,6 +1070,7 @@ dependencies = [
  "log",
  "once_cell",
  "pollster",
+ "quick_runtime",
  "serde",
  "serde-wasm-bindgen",
  "tokio",
@@ -1975,17 +1977,21 @@ dependencies = [
  "hai_pal",
  "log",
  "quickjspp",
+ "spin_sleep",
  "tokio",
 ]
 
 [[package]]
 name = "quickjspp"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85d430b5d950e7afb038b7050145f0ed3a234eecd1787171028db1f54a5ec6c9"
+checksum = "be299c7417b3822966b035dac6f8cf09e7b5cd36d5e092eb916774e3d47310fa"
 dependencies = [
+ "anyhow",
  "chrono",
  "libquickjspp-sys",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
