@@ -9,8 +9,6 @@ use quick_runtime::{
     QuickVM,
 };
 
-use crate::utils::convert::JSValue;
-
 #[cfg(not(feature = "web"))]
 use self::{node::*, system::*};
 
@@ -80,6 +78,7 @@ fn receive_command(
     use quick_runtime::quickjspp::OwnedJsArray;
 
     use crate::utils::convert::from_js;
+    use crate::utils::convert::JSValue;
 
     let command_name = JSValue::own(context, &args[0]);
     let command_name: &str = from_js(&command_name)?;

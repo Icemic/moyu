@@ -11,7 +11,7 @@ version = "0.1.0"
 proc-macro = true
 
 [features]
-default = ["quickjs"]
+default = []
 quickjs = []
 v8 = []
 

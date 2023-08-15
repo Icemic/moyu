@@ -73,7 +73,7 @@ pub fn to_js<T: serde::Serialize>(
 pub fn to_js<'a, 'b, T: serde::Serialize>(
     scope: &'b mut HandleScope<'a>,
     value: &T,
-) -> Result<Local<'b, Value>> {
+) -> anyhow::Result<Local<'b, Value>> {
     use anyhow::format_err;
     use hai_js_runtime::serde_v8;
 

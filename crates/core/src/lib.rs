@@ -114,7 +114,7 @@ pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRun
                 exit(-1);
             };
 
-            vm.run_event_loop(|cx| std::task::Poll::Pending).await;
+            vm.run_event_loop(|_| std::task::Poll::Pending).await;
         });
     });
 }
