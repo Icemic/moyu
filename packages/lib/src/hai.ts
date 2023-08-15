@@ -10,6 +10,14 @@ if (hai && typeof hai.pushCommand === 'undefined') {
   };
 }
 
+// uncomment this to print all commands
+// const pushCommand = hai.pushCommand;
+// hai.pushCommand = function (name: string, args: any[], callback?: (...args: any[]) => void) {
+//   console.log('name', name);
+//   console.log('args', JSON.stringify(args[0]));
+//   return pushCommand(name, args, callback);
+// };
+
 export function loadPreset(name: string) {
   hai.pushCommand('load_preset', [name]);
 }
