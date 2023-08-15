@@ -1,4 +1,4 @@
-use log::{debug, error};
+use log::{error, info};
 
 use hai_pal::env::entry_dir;
 use hai_pal::url::{resolve_package_from, Url};
@@ -13,7 +13,7 @@ pub fn module_loader(module_name: &str, _: *mut std::ffi::c_void) -> String {
             "".to_string()
         }
     };
-    debug!("module {} loaded", module_name.to_string());
+    info!("module {} loaded", module_name.to_string());
     code
 }
 
@@ -31,7 +31,7 @@ pub fn module_normalize(
     let resolved_module_path = resolve_package_from(module_name, base_dir).unwrap();
     let resolved_module_path = resolved_module_path.to_string();
 
-    debug!(
+    info!(
         "resolving module {} {} to {}",
         module_base_name, module_name, resolved_module_path
     );
