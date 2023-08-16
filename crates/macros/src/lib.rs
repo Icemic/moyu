@@ -1,10 +1,10 @@
-mod hai_bindgen;
+mod bindgen;
 
 use proc_macro::TokenStream;
 
 #[proc_macro_attribute]
 pub fn hai_bindgen(args: TokenStream, func_body: TokenStream) -> TokenStream {
-    hai_bindgen::entry(args, func_body)
+    bindgen::entry(args, func_body)
 }
 
 use proc_macro2::Span;

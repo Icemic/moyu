@@ -4,6 +4,7 @@ members = [
   "crates/hai",
   "crates/core",
   "crates/js_runtime",
+  "crates/quick_runtime",
   "crates/platform",
   "crates/macros",
   "crates/run_wasm",

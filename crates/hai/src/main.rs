@@ -21,8 +21,30 @@ fn main_entry() {
     let mut window = None;
     let mut core = None;
 
+    let mut loop_helper = {
+        // get max refresh rate of all monitors
+        let mut refresh_rate_max: f64 = 60.0;
+        for monitor in event_loop.available_monitors() {
+            refresh_rate_max = refresh_rate_max.max(
+                monitor
+                    .refresh_rate_millihertz()
+                    .map(|v| v as f64 / 1000.0)
+                    .unwrap_or(60.0),
+            );
+        }
+
+        log::info!("max refresh rate: {}", refresh_rate_max);
+
+        // create loop helper with target refresh rate set to be double of max refresh rate
+        spin_sleep::LoopHelper::builder().build_with_target_rate(refresh_rate_max * 2.0)
+    };
+
     event_loop.run(move |event, event_loop, control_flow| {
+        loop_helper.loop_start();
         match event {
+            Event::MainEventsCleared => {
+                loop_helper.loop_sleep();
+            }
             Event::Resumed => {
                 let _window = create_window(&event_loop);
 

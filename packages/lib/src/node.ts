@@ -7,10 +7,11 @@ export class Node {
   props: Record<string, any> = {};
 
   static create(label = '', type: string, props: Record<string, any>) {
+    const { children: _, ...rest } = props;
     const node = new Node();
     node.label = label;
-    node.props = props;
-    node.nodeId = hai.createInstance(type, label, props);
+    node.props = rest;
+    node.nodeId = hai.createInstance(type, label, rest);
     return node;
   }
 
