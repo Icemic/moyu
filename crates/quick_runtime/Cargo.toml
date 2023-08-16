@@ -14,5 +14,5 @@ tokio = {version = "1", features = ["time"]}
 hai_pal = {version = "0.1", path = "../platform"}
 
 [dev-dependencies]
-env_logger = {version = "0.9"}
+env_logger = {version = "0.10"}
 tokio = {version = "1", features = ["full"]}
