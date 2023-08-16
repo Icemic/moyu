@@ -1087,7 +1087,6 @@ name = "hai"
 version = "0.1.1"
 dependencies = [
  "hai_core",
- "hai_js_runtime",
  "hai_pal",
  "log",
  "spin_sleep",
@@ -1107,11 +1106,11 @@ dependencies = [
  "hai_js_runtime",
  "hai_macros",
  "hai_pal",
+ "hai_runtime",
  "image",
  "log",
  "once_cell",
  "pollster",
- "quick_runtime",
  "serde",
  "serde-wasm-bindgen",
  "tokio",
@@ -1164,6 +1163,18 @@ dependencies = [
  "serde",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "hai_runtime"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "hai_pal",
+ "log",
+ "quickjspp",
+ "spin_sleep",
+ "tokio",
 ]
 
 [[package]]
@@ -2045,18 +2056,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f6d64c71eb498fe9eae14ce4ec935c555749aef511cca85b5568910d6e48001"
 dependencies = [
  "bytemuck",
-]
-
-[[package]]
-name = "quick_runtime"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "hai_pal",
- "log",
- "quickjspp",
- "spin_sleep",
- "tokio",
 ]
 
 [[package]]

@@ -4,7 +4,7 @@ mod system;
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
 use hai_js_runtime::{prelude::*, utils::IntoV8, *};
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
-use quick_runtime::{
+use hai_runtime::{
     quickjspp::{JSContext, RawJSValue},
     QuickVM,
 };
@@ -75,7 +75,7 @@ fn receive_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use quick_runtime::quickjspp::OwnedJsArray;
+    use hai_runtime::quickjspp::OwnedJsArray;
 
     use crate::utils::convert::from_js;
     use crate::utils::convert::JSValue;

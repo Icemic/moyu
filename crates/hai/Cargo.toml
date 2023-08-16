@@ -30,11 +30,6 @@ tokio = {version = "1", features = ["rt-multi-thread", "macros"]}
 path = "../core"
 version = "0.1"
 
-[dependencies.hai_js_runtime]
-optional = true
-path = "../js_runtime"
-version = "0.1"
-
 [dependencies.hai_pal]
 path = "../platform"
 version = "0.1"

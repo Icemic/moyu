@@ -1,5 +1,5 @@
 use log::error;
-use quick_runtime::setup_vm;
+use hai_runtime::setup_vm;
 
 #[tokio::main]
 async fn main() {
