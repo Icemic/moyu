@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "hai"
 repository = "https://github.com/Icemic/hai"
-version = "0.1.1"
+version = "0.2.0"
 
 [package.metadata.release]
 publish = false
@@ -28,8 +28,8 @@ tokio = {version = "1", features = ["rt-multi-thread", "macros"]}
 
 [dependencies.hai_core]
 path = "../core"
-version = "0.1"
+version = "0.2"
 
 [dependencies.hai_pal]
 path = "../platform"
-version = "0.1"
+version = "0.2"
