@@ -5,7 +5,7 @@ use wgpu::{util::DeviceExt, *};
 
 use crate::nodes::{Texture, YUVSprite};
 use crate::resource::TextureId;
-use crate::traits::{Node, RendererUpdatePayload};
+use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use crate::utils::calculate::calculate_rect_vertices;
 use crate::{traits::Renderer, types::Vertex, utils::constants::RECTANGLE_INDICES};
 
@@ -282,27 +282,30 @@ impl Renderer for YUVSpriteRenderer {
             let height =
                 (tex_height as f64 * scale_factor) / (logical_height * scale_factor) as f64 * 2.;
 
-            let vertices = calculate_rect_vertices(node, width, height, &node.area);
+            if node.base_mut().pop_update_vertices() {
+                let vertices = calculate_rect_vertices(node, width, height, &node.area);
 
-            if node.vertex_buffer.is_none() {
-                let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Vertex Buffer"),
-                    contents: bytemuck::cast_slice(&vertices),
-                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                });
+                if node.vertex_buffer.is_none() {
+                    let vertex_buffer =
+                        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Vertex Buffer"),
+                            contents: bytemuck::cast_slice(&vertices),
+                            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                        });
 
-                node.vertex_buffer = Some(vertex_buffer);
-            } else {
-                let buf = bytemuck::cast_slice(&vertices);
-                staging_belt
-                    .write_buffer(
-                        encoder,
-                        node.vertex_buffer.as_ref().unwrap(),
-                        0,
-                        (buf.len() as u64).try_into().unwrap(),
-                        &device,
-                    )
-                    .copy_from_slice(buf);
+                    node.vertex_buffer = Some(vertex_buffer);
+                } else {
+                    let buf = bytemuck::cast_slice(&vertices);
+                    staging_belt
+                        .write_buffer(
+                            encoder,
+                            node.vertex_buffer.as_ref().unwrap(),
+                            0,
+                            (buf.len() as u64).try_into().unwrap(),
+                            &device,
+                        )
+                        .copy_from_slice(buf);
+                }
             }
 
             // create bind group if not exist

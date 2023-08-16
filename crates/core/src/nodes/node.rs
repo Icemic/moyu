@@ -30,6 +30,7 @@ pub struct NodeBase {
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
+    _need_update_vertices: bool,
     /// transform matrix relative to parent
     transform: Transform,
     /// transform matrix relative to global
@@ -56,6 +57,7 @@ impl NodeBase {
 
             _update_id: 0,
             _current_update_id: 0,
+            _need_update_vertices: true,
 
             transform: Transform::default(),
             global_transform: Transform::default(),
@@ -72,6 +74,14 @@ impl NodeBase {
     #[inline]
     pub fn pend_update(&mut self) {
         self._update_id += 1;
+    }
+
+    /// pop vertices update flag, returns the current flag value, and set it to false
+    #[inline]
+    pub fn pop_update_vertices(&mut self) -> bool {
+        let flag = self._need_update_vertices;
+        self._need_update_vertices = false;
+        flag
     }
 
     #[inline]
@@ -348,6 +358,7 @@ impl NodeBase {
             self.global_transform = global_transform;
 
             self._current_update_id = self._update_id;
+            self._need_update_vertices = true;
         }
     }
 }
