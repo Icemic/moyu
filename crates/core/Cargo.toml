@@ -11,7 +11,7 @@ version = "0.1.18"
 default = ["desktop", "js_runtime", "quickjs"]
 desktop = ["hai_pal/desktop", "dep:tokio"]
 js_runtime = []
-quickjs = ["quick_runtime", "hai_macros/quickjs"]
+quickjs = ["hai_runtime", "hai_macros/quickjs"]
 v8 = ["hai_js_runtime", "hai_macros/v8"]
 video = ["dep:ffmpeg-rs"]
 web = [
@@ -51,9 +51,9 @@ optional = true
 path = "../js_runtime"
 version = "0.1"
 
-[dependencies.quick_runtime]
+[dependencies.hai_runtime]
 optional = true
-path = "../quick_runtime"
+path = "../runtime"
 version = "0.1"
 
 [dependencies.hai_pal]

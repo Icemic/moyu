@@ -125,7 +125,7 @@ pub fn spawn_runtime_with_core(_core: &Arc<Core>, spawn_callback: Option<SpawnRu
     // spawn a v8 thread
 
     use log::error;
-    use quick_runtime::setup_vm;
+    use hai_runtime::setup_vm;
 
     std::thread::Builder::new()
         .name("quickjs".to_string())

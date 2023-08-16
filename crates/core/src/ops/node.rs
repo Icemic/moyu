@@ -5,7 +5,7 @@ use hai_js_runtime::{prelude::*, *};
 use hai_macros::hai_bindgen;
 use hai_pal::sync::{RwLock, RwLockReadGuard};
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
-use quick_runtime::quickjspp::{JSContext, RawJSValue};
+use hai_runtime::quickjspp::{JSContext, RawJSValue};
 use std::collections::HashMap;
 use std::sync::Arc;
 #[cfg(feature = "web")]
