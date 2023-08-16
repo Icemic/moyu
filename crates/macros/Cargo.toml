@@ -16,7 +16,7 @@ quickjs = []
 v8 = []
 
 [dependencies]
-darling = "0.13"
+darling = "0.20"
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = "1.0"
+syn = "2.0"

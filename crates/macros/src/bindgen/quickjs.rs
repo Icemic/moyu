@@ -2,14 +2,13 @@ use darling::ToTokens;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, AttributeArgs, ItemFn};
+use syn::{parse_macro_input, ItemFn};
 use syn::{GenericArgument, Pat, PathArguments, ReturnType, Type};
 
 /// `fn some_api(core: Arc<Core>, foo: u32, bar: Option<String>) -> Result<(), String>`
 /// to
 /// `fn some_api(scope: &mut HandleScope, args: Local<Array>)`
-pub fn entry(args: TokenStream, func_body: TokenStream) -> TokenStream {
-    let _args = parse_macro_input!(args as AttributeArgs);
+pub fn entry(_args: TokenStream, func_body: TokenStream) -> TokenStream {
     let item = parse_macro_input!(func_body as ItemFn);
 
     let sig = item.sig;

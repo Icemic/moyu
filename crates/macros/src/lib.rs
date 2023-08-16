@@ -50,7 +50,7 @@ pub fn derive_node_attr(item: TokenStream) -> TokenStream {
         .and_then(|fields| {
             fields.named.iter().find_map(|field| {
                 field.attrs.iter().find_map(|attr| {
-                    if attr.path.is_ident("base") {
+                    if attr.path().is_ident("base") {
                         Some(field.ident.clone().unwrap())
                     } else {
                         None
