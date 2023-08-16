@@ -122,7 +122,7 @@ pub(self) async fn create_surface_inner(
     let format = *caps
         .formats
         .iter()
-        .find(|f| f.describe().srgb)
+        .find(|f| f.is_srgb())
         .expect("Cannot find a proper surface format.");
 
     info!("Surface format: {:?}", format);
