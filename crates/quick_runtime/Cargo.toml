@@ -1,0 +1,18 @@
+[package]
+edition = "2021"
+name = "quick_runtime"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+log = "0.4"
+quickjspp = ">=0.4"
+spin_sleep = "1.1"
+tokio = {version = "1", features = ["time"]}
+
+hai_pal = {version = "0.1", path = "../platform"}
+
+[dev-dependencies]
+env_logger = {version = "0.9"}
+tokio = {version = "1", features = ["full"]}

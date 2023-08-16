@@ -10,6 +10,11 @@ version = "0.1.1"
 [lib]
 proc-macro = true
 
+[features]
+default = []
+quickjs = []
+v8 = []
+
 [dependencies]
 darling = "0.13"
 proc-macro2 = "1.0"
