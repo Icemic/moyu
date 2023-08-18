@@ -155,10 +155,6 @@ impl Renderer for SpriteRenderer {
         &self.bind_group_layout
     }
 
-    fn index_buffer(&self) -> &Buffer {
-        &self.index_buffer
-    }
-
     fn update(
         &mut self,
         node: &mut dyn Node,
@@ -251,7 +247,7 @@ impl Renderer for SpriteRenderer {
 
         if bind_group.is_some() && vertex_buffer.is_some() {
             render_pass.set_pipeline(self.render_pipeline());
-            render_pass.set_index_buffer(self.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
             render_pass.set_bind_group(0, bind_group.unwrap(), &[]);
             render_pass.set_vertex_buffer(0, vertex_buffer.unwrap().slice(..));
