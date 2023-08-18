@@ -12,7 +12,6 @@ where
     fn name(&self) -> &'static str;
     fn render_pipeline(&self) -> &RenderPipeline;
     fn bind_group_layout(&self) -> &BindGroupLayout;
-    fn index_buffer(&self) -> &Buffer;
 
     fn begin(&self) {}
     fn finish(&self) {}
