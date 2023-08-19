@@ -23,7 +23,7 @@ pub fn calculate_rect_vertices(
 
     // add addtional offset to move from center to left top
     let tx = global_transform.translation.x - 1.0;
-    let ty = global_transform.translation.y + 1.0;
+    let ty = -global_transform.translation.y + 1.0;
 
     let anchor = node.base().anchor();
 
