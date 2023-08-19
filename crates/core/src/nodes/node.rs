@@ -339,18 +339,17 @@ impl NodeBase {
             let ty = y - ((pivot_x * b) + (pivot_y * d));
 
             let (logical_width, logical_height) = surface_size.logical_size_f32();
-            let scale_factor = surface_size.scale_factor() as f32;
 
-            // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-            let tx = (tx * scale_factor) / (logical_width * scale_factor) * 2.;
-            let ty = (ty * scale_factor) / (logical_height * scale_factor) * 2.;
+            // use logical size to calculate transform matrix, so that the transform matrix will not be affected by scale ratio
+            let tx = tx / logical_width * 2.;
+            let ty = ty / logical_height * 2.;
 
-            self.transform.a = a;
-            self.transform.b = b;
-            self.transform.c = c;
-            self.transform.d = d;
-            self.transform.tx = tx;
-            self.transform.ty = ty;
+            self.transform.matrix2.x_axis.x = a;
+            self.transform.matrix2.x_axis.y = b;
+            self.transform.matrix2.y_axis.x = c;
+            self.transform.matrix2.y_axis.y = d;
+            self.transform.translation.x = tx;
+            self.transform.translation.y = ty;
 
             // refresh global transform matrix
             let mut global_transform = parent_transform.clone();

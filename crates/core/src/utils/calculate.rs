@@ -16,12 +16,12 @@ pub fn calculate_rect_vertices(
 
     let global_transform = node.base().global_transform();
 
-    let a = global_transform.a;
-    let b = global_transform.b;
-    let c = global_transform.c;
-    let d = global_transform.d;
-    let tx = global_transform.tx;
-    let ty = 1. - global_transform.ty;
+    let a = global_transform.matrix2.x_axis.x;
+    let b = global_transform.matrix2.x_axis.y;
+    let c = global_transform.matrix2.y_axis.x;
+    let d = global_transform.matrix2.y_axis.y;
+    let tx = global_transform.translation.x;
+    let ty = 1. - global_transform.translation.y;
 
     let anchor = node.base().anchor();
 
