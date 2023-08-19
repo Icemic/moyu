@@ -299,8 +299,10 @@ impl Core {
                         let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
                         self.resize(surface_size);
 
-                        let window_size =
-                            Size::Logical(LogicalSize::new(logical_width, logical_height));
+                        let window_size = Size::Logical(LogicalSize::new(
+                            logical_width as f64,
+                            logical_height as f64,
+                        ));
                         window.set_inner_size(window_size);
 
                         window.set_minimized(window_minimized.unwrap_or(false));
@@ -501,13 +503,13 @@ impl Core {
             let surface_size = self.surface_size.read();
             surface_size.clone()
         };
-        let (logical_width, logical_height) = surface_size.logical_size();
+        let (logical_width, logical_height) = surface_size.logical_size_f32();
         let scale_factor = surface_size.scale_factor();
 
         match event {
             WindowEvent::CursorMoved { position, .. } => {
-                let global_logical_x = position.x / scale_factor;
-                let global_logical_y = position.y / scale_factor;
+                let global_logical_x = (position.x / scale_factor) as f32;
+                let global_logical_y = (position.y / scale_factor) as f32;
 
                 let root_node = root_node.read();
 

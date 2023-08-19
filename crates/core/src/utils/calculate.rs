@@ -4,9 +4,9 @@ use crate::traits::Node;
 #[inline]
 pub fn calculate_rect_vertices(
     node: &dyn Node,
-    tex_width: f64,
-    tex_height: f64,
-    area: &[f64; 4],
+    tex_width: f32,
+    tex_height: f32,
+    area: &[f32; 4],
 ) -> [SpriteVertex; 4] {
     let [x0, y0, x1, y1] = area.to_owned();
 

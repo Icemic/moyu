@@ -17,7 +17,7 @@ pub struct Sprite {
     /// loaded texture
     pub texture_id: ArcSwapOption<TextureId>,
     /// clip area
-    pub area: [f64; 4],
+    pub area: [f32; 4],
 
     pub src: Option<String>,
 
@@ -40,7 +40,7 @@ impl Sprite {
 }
 
 impl Focusable for Sprite {
-    fn contains(&self, x: f64, y: f64, payload: &RendererUpdatePayload) -> bool {
+    fn contains(&self, x: f32, y: f32, payload: &RendererUpdatePayload) -> bool {
         if let Some(texture_id) = self.texture_id.load().as_ref() {
             if let Some(texture) = payload.resource_manager.try_get_texture(&texture_id) {
                 let translate = self.base().translate();
@@ -48,9 +48,9 @@ impl Focusable for Sprite {
                 let (width, height) = texture.size();
 
                 if x > translate.x
-                    && x < width as f64 + translate.x
+                    && x < width as f32 + translate.x
                     && y > translate.y
-                    && y < height as f64 + translate.y
+                    && y < height as f32 + translate.y
                 {
                     return true;
                 }
@@ -65,7 +65,7 @@ impl Focusable for Sprite {
 #[serde(rename_all = "camelCase")]
 pub struct SpriteProps {
     pub src: Option<String>,
-    pub area: Option<[f64; 4]>,
+    pub area: Option<[f32; 4]>,
 }
 
 impl Node for Sprite {

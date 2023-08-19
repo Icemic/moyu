@@ -188,7 +188,7 @@ pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::St
 
 #[cfg_attr(feature = "web", wasm_bindgen)]
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
-pub fn move_to(node_id: u32, x: f64, y: f64) -> Result<(), std::string::String> {
+pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> {
     let node_map = {
         let core = get_core();
 

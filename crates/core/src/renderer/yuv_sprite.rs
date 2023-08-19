@@ -263,8 +263,8 @@ impl Renderer for YUVSpriteRenderer {
     ) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-        let (logical_width, logical_height) = payload.surface_size.logical_size();
-        let scale_factor = payload.surface_size.scale_factor();
+        let (logical_width, logical_height) = payload.surface_size.logical_size_f32();
+        let scale_factor = payload.surface_size.scale_factor() as f32;
 
         let node = node.as_any_mut().downcast_mut::<YUVSprite>().unwrap();
 
@@ -275,9 +275,9 @@ impl Renderer for YUVSpriteRenderer {
 
             let (tex_width, tex_height) = texture_y.size();
 
-            let width = (tex_width as f64 * scale_factor) / (logical_width * scale_factor) * 2.;
+            let width = (tex_width as f32 * scale_factor) / (logical_width * scale_factor) * 2.;
             let height =
-                (tex_height as f64 * scale_factor) / (logical_height * scale_factor) as f64 * 2.;
+                (tex_height as f32 * scale_factor) / (logical_height * scale_factor) as f32 * 2.;
 
             if node.base_mut().pop_update_vertices() {
                 let vertices = calculate_rect_vertices(node, width, height, &node.area);

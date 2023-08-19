@@ -36,6 +36,10 @@ impl SurfaceSize {
         (self.width, self.height)
     }
 
+    pub fn logical_size_f32(&self) -> (f32, f32) {
+        (self.width as f32, self.height as f32)
+    }
+
     pub fn physical_size(&self) -> (u32, u32) {
         let width = (self.width * self.scale_factor) as u32;
         let height = (self.height * self.scale_factor) as u32;
