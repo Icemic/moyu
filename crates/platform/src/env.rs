@@ -17,6 +17,7 @@ pub struct HaiConfig {
     pub vsync: bool,
     pub show_fps: bool,
     pub backend: RenderingBackend,
+    pub font_file: String,
 }
 
 impl Default for HaiConfig {
@@ -26,6 +27,7 @@ impl Default for HaiConfig {
             vsync: true,
             show_fps: false,
             backend: RenderingBackend::default(),
+            font_file: "assets/fonts/default.otf".to_string(),
         }
     }
 }

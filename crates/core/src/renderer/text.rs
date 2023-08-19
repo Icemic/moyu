@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use glam::Vec2;
+use hai_pal::env::get_hai_env;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
 use huozi::Huozi;
@@ -141,7 +142,7 @@ impl TextRenderer {
             multiview: None,
         });
 
-        let font_data = std::fs::read("SourceHanSansSC-Regular.otf").unwrap();
+        let font_data = std::fs::read(&get_hai_env().font_file).unwrap();
         let huozi = Huozi::new(font_data);
 
         Self {
