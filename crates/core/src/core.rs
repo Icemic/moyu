@@ -1,5 +1,4 @@
 use arc_swap::ArcSwap;
-use glam::Vec2;
 use hai_pal::env::get_hai_env;
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
 use log::{debug, error, info};
@@ -14,20 +13,16 @@ use std::time::Instant;
 use wgpu::util::StagingBelt;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, Size};
-use winit::event::{Event, WindowEvent};
+use winit::event::{ElementState, Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopProxy};
 use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
-use crate::nodes::Text;
 use crate::user_event::WindowState;
-use crate::utils::walk::{walk_nodes_bottom_top, walk_nodes_top_bottom};
-use crate::{
-    nodes::{Container, Sprite},
-    resource::ResourceManager,
-    traits::*,
-    user_event::UserEvent,
-};
+use crate::utils::dispatch_event::{dispatch_event, HaiEvent, HaiEventKind};
+use crate::utils::hit_test::hit_test;
+use crate::utils::walk::walk_nodes_top_bottom;
+use crate::{nodes::Container, resource::ResourceManager, traits::*, user_event::UserEvent};
 
 static CORE: OnceCell<usize> = OnceCell::new();
 
@@ -505,7 +500,6 @@ impl Core {
             let surface_size = self.surface_size.read();
             surface_size.clone()
         };
-        let (logical_width, logical_height) = surface_size.logical_size_f32();
         let scale_factor = surface_size.scale_factor();
 
         match event {
@@ -513,58 +507,59 @@ impl Core {
                 let global_logical_x = (position.x / scale_factor) as f32;
                 let global_logical_y = (position.y / scale_factor) as f32;
 
-                let root_node = root_node.read();
-
                 let upload_payload = RendererUpdatePayload {
                     surface_size,
                     resource_manager: self.resource_manager.clone(),
                 };
 
-                walk_nodes_bottom_top(&*root_node, &mut |child, _| {
-                    let child_ref = child.read();
+                let mut current_focused_node = current_focused_node.write();
 
-                    let p = child_ref
-                        .base()
-                        .global_transform()
-                        .inverse()
-                        .transform_point2(Vec2::new(
-                            global_logical_x / logical_width * 2.,
-                            global_logical_y / logical_height * 2.,
-                        ));
-
-                    let local_logical_x = p.x / 2. * logical_width;
-                    let local_logical_y = p.y / 2. * logical_height;
-
-                    let hit = match child_ref.node_type() {
-                        "sprite" => {
-                            let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
-
-                            // check if pointer is over the sprite
-                            let hit =
-                                sprite.contains(local_logical_x, local_logical_y, &upload_payload);
-
-                            (hit, Some(sprite.base().label().clone()))
+                if let Some(node) = hit_test(
+                    &root_node,
+                    global_logical_x,
+                    global_logical_y,
+                    &upload_payload,
+                ) {
+                    if let Some(current_focused_node) = &*current_focused_node {
+                        if current_focused_node.read().base().id() == node.read().base().id() {
+                            // TODO: mouse move event
+                            // dispatch_event(&HaiEvent {
+                            //     kind: HaiEventKind::MouseMove,
+                            //     target_id: *node.read().base().id(),
+                            // });
+                        } else {
+                            // TODO: mouse leave event & mouse enter event
+                            dispatch_event(&HaiEvent {
+                                kind: HaiEventKind::MouseLeave,
+                                target_id: *current_focused_node.read().base().id(),
+                            });
+                            dispatch_event(&HaiEvent {
+                                kind: HaiEventKind::MouseEnter,
+                                target_id: *node.read().base().id(),
+                            });
                         }
-                        "text" => {
-                            let text = child_ref.as_any().downcast_ref::<Text>().unwrap();
-
-                            // check if pointer is over the text
-                            let hit =
-                                text.contains(local_logical_x, local_logical_y, &upload_payload);
-
-                            (hit, Some(text.base().label().clone()))
-                        }
-                        _ => (false, None),
-                    };
-
-                    if hit.0 {
-                        let mut current_focused_node = current_focused_node.write();
-                        *current_focused_node = Some(child.clone());
-                        debug!("pointer is over {}", hit.1.unwrap());
+                    } else {
+                        // TODO: mouse enter event
+                        dispatch_event(&HaiEvent {
+                            kind: HaiEventKind::MouseEnter,
+                            target_id: *node.read().base().id(),
+                        });
                     }
 
-                    hit.0
-                });
+                    // debug!("pointer is over {}", node.read().base().label());
+
+                    *current_focused_node = Some(node);
+                } else {
+                    if let Some(current_focused_node) = &*current_focused_node {
+                        // TODO: mouse leave event
+                        dispatch_event(&HaiEvent {
+                            kind: HaiEventKind::MouseLeave,
+                            target_id: *current_focused_node.read().base().id(),
+                        });
+                    }
+                    *current_focused_node = None;
+                }
+
                 true
             }
             WindowEvent::CursorLeft { .. } => {
@@ -572,9 +567,43 @@ impl Core {
                 *current_focused_node = None;
                 true
             }
-            WindowEvent::MouseInput { .. } => {
-                //
-                debug!("click");
+            WindowEvent::MouseInput { button, state, .. } => {
+                if let Some(current_focused_node) = &*self.current_focused_node.read() {
+                    match state {
+                        ElementState::Pressed => {
+                            dispatch_event(&HaiEvent {
+                                kind: HaiEventKind::MouseDown,
+                                target_id: *current_focused_node.read().base().id(),
+                            });
+                        }
+                        ElementState::Released => {
+                            dispatch_event(&HaiEvent {
+                                kind: HaiEventKind::MouseUp,
+                                target_id: *current_focused_node.read().base().id(),
+                            });
+                            match button {
+                                winit::event::MouseButton::Left => {
+                                    dispatch_event(&HaiEvent {
+                                        kind: HaiEventKind::Click,
+                                        target_id: *current_focused_node.read().base().id(),
+                                    });
+                                }
+                                winit::event::MouseButton::Right => {
+                                    dispatch_event(&HaiEvent {
+                                        kind: HaiEventKind::ContextMenu,
+                                        target_id: *current_focused_node.read().base().id(),
+                                    });
+                                }
+                                winit::event::MouseButton::Middle => {
+                                    // do nothing
+                                }
+                                winit::event::MouseButton::Other(_) => {
+                                    // do nothing
+                                }
+                            }
+                        }
+                    }
+                }
                 true
             }
             _ => false,
