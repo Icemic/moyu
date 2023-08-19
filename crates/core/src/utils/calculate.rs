@@ -20,8 +20,10 @@ pub fn calculate_rect_vertices(
     let b = global_transform.matrix2.x_axis.y;
     let c = global_transform.matrix2.y_axis.x;
     let d = global_transform.matrix2.y_axis.y;
-    let tx = global_transform.translation.x;
-    let ty = 1. - global_transform.translation.y;
+
+    // add addtional offset to move from center to left top
+    let tx = global_transform.translation.x - 1.0;
+    let ty = global_transform.translation.y + 1.0;
 
     let anchor = node.base().anchor();
 
@@ -31,19 +33,19 @@ pub fn calculate_rect_vertices(
     let h0 = h1 + height;
 
     // left top
-    let p0x = a * w1 + c * h1 + tx - 1.;
+    let p0x = a * w1 + c * h1 + tx;
     let p0y = b * w1 + d * h1 + ty;
 
     // left bottom
-    let p1x = a * w0 + c * h1 + tx - 1.;
+    let p1x = a * w0 + c * h1 + tx;
     let p1y = b * w0 + d * h1 + ty;
 
     // right top
-    let p2x = a * w0 + c * h0 + tx - 1.;
+    let p2x = a * w0 + c * h0 + tx;
     let p2y = b * w0 + d * h0 + ty;
 
     // right bottom
-    let p3x = a * w1 + c * h0 + tx - 1.;
+    let p3x = a * w1 + c * h0 + tx;
     let p3y = b * w1 + d * h0 + ty;
 
     [
