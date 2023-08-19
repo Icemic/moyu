@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use glam::Vec2;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
 use huozi::Huozi;
@@ -204,10 +205,11 @@ impl Renderer for TextRenderer {
                     let mut vertices = vertices;
                     let transform = node.base().global_transform();
                     for vertex in vertices.iter_mut() {
-                        let p = transform.multiply_point(&vertex.position[0..2]);
-                        println!("prev: {:?}, after: {:?}", vertex.position, p);
-                        vertex.position[0] = p[0];
-                        vertex.position[1] = p[1];
+                        // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
+                        let p =
+                            transform.transform_point2(Vec2::from_slice(&vertex.position[0..2]));
+                        vertex.position[0] = p.x;
+                        vertex.position[1] = p.y;
                     }
 
                     if node.vertex_buffer.is_none() {
