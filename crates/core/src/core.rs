@@ -525,8 +525,8 @@ impl Core {
                             let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
                             // calculate relative coordinate
                             let global_transform = parent.base().global_transform();
-                            let parent_global_x = global_transform.tx * logical_width / 2.;
-                            let parent_global_y = global_transform.ty * logical_height / 2.;
+                            let parent_global_x = global_transform.translation.x * logical_width / 2.;
+                            let parent_global_y = global_transform.translation.y * logical_height / 2.;
 
                             let relative_logical_x = (global_logical_x - parent_global_x).round();
                             let relative_logical_y = (global_logical_y - parent_global_y).round();
