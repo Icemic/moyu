@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use wgpu::util::StagingBelt;
-use wgpu::{BindGroupLayout, Buffer, CommandEncoder, Device, Queue, RenderPass, RenderPipeline};
+use wgpu::{BindGroupLayout, CommandEncoder, Device, Queue, RenderPass, RenderPipeline};
 
 use super::{Node, RendererUpdatePayload};
 
