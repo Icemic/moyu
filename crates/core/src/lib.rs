@@ -8,7 +8,6 @@ pub mod renderer;
 pub mod resource;
 pub mod surface;
 pub mod traits;
-pub mod types;
 pub mod user_event;
 pub mod utils;
 
