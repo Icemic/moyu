@@ -38,16 +38,16 @@ impl Text {
 }
 
 impl Focusable for Text {
-    fn contains(&self, x: f64, y: f64, _: &RendererUpdatePayload) -> bool {
+    fn contains(&self, x: f32, y: f32, _: &RendererUpdatePayload) -> bool {
         let translate = self.base().translate();
 
         let width = self.layout_style.box_width;
         let height = self.layout_style.box_height;
 
         if x > translate.x
-            && x < width as f64 + translate.x
+            && x < width as f32 + translate.x
             && y > translate.y
-            && y < height as f64 + translate.y
+            && y < height as f32 + translate.y
         {
             return true;
         }
