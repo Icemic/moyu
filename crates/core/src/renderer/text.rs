@@ -213,15 +213,15 @@ impl Renderer for TextRenderer {
                     if node.vertex_buffer.is_none() {
                         let vertex_buffer =
                             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                                label: Some("Vertex Buffer"),
+                                label: Some("Text Vertex Buffer"),
                                 contents: bytemuck::cast_slice(&vertices),
-                                usage: wgpu::BufferUsages::VERTEX,
+                                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                             });
                         let index_buffer =
                             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                                 label: Some("Index Buffer"),
                                 contents: bytemuck::cast_slice(&indices),
-                                usage: wgpu::BufferUsages::INDEX,
+                                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
                             });
                         let num_indices = indices.len() as u32;
 
