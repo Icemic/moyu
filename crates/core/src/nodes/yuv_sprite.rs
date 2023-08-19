@@ -25,7 +25,7 @@ pub struct YUVSprite {
     /// (Y, U, V) or (Y, UV, _)
     pub textures: ArcSwapOption<(Texture, Texture, Texture)>,
     /// clip area
-    pub area: [f64; 4],
+    pub area: [f32; 4],
     pub vertex_buffer: Option<Buffer>,
     pub mode: YUVSpriteFormat,
 
@@ -47,7 +47,7 @@ impl YUVSprite {
 }
 
 impl Focusable for YUVSprite {
-    fn contains(&self, x: f64, y: f64, _: &RendererUpdatePayload) -> bool {
+    fn contains(&self, x: f32, y: f32, _: &RendererUpdatePayload) -> bool {
         if let Some(textures) = self.textures.load().as_ref() {
             let (texture, _, _) = &**textures;
 
@@ -55,9 +55,9 @@ impl Focusable for YUVSprite {
             let (width, height) = texture.size();
 
             if x > translate.x
-                && x < width as f64 + translate.x
+                && x < width as f32 + translate.x
                 && y > translate.y
-                && y < height as f64 + translate.y
+                && y < height as f32 + translate.y
             {
                 return true;
             }
@@ -70,7 +70,7 @@ impl Focusable for YUVSprite {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct YUVSpriteProps {
-    pub area: Option<[f64; 4]>,
+    pub area: Option<[f32; 4]>,
 }
 
 impl Node for YUVSprite {

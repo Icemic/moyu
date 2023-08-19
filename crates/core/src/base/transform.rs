@@ -10,29 +10,29 @@ use super::Point;
 #[repr(C)]
 #[derive(PartialEq, Copy, Clone, Debug, Pod, Zeroable)]
 pub struct Transform {
-    pub a: f64,
-    pub b: f64,
-    pub c: f64,
-    pub d: f64,
-    pub tx: f64,
-    pub ty: f64,
+    pub a: f32,
+    pub b: f32,
+    pub c: f32,
+    pub d: f32,
+    pub tx: f32,
+    pub ty: f32,
 }
 
 impl Transform {
     /// create Transform instance
-    pub fn new(a: f64, b: f64, c: f64, d: f64, tx: f64, ty: f64) -> Self {
+    pub fn new(a: f32, b: f32, c: f32, d: f32, tx: f32, ty: f32) -> Self {
         Transform { a, b, c, d, tx, ty }
     }
 
     /// create Transform instance from specific translate value
     #[allow(dead_code)]
-    pub fn translate(tx: f64, ty: f64) -> Point {
-        Point { x: tx, y: ty }
+    pub fn translate(tx: f32, ty: f32) -> Point {
+        Point::new(tx, ty)
     }
 
     /// set translate value
     #[allow(dead_code)]
-    pub fn set_translate(&mut self, x: f64, y: f64) {
+    pub fn set_translate(&mut self, x: f32, y: f32) {
         self.tx = x;
         self.ty = y;
     }

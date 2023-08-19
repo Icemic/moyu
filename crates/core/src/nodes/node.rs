@@ -24,7 +24,7 @@ pub struct NodeBase {
     /// scale relative to parent
     scale: Point,
     /// rotation relative to parent
-    rotation: f64,
+    rotation: f32,
     /// skew relative to parent
     skew: Point,
     /// for update transform dirty check
@@ -111,7 +111,7 @@ impl NodeBase {
         &self.scale
     }
     #[inline]
-    pub fn rotation(&self) -> &f64 {
+    pub fn rotation(&self) -> &f32 {
         &self.rotation
     }
     #[inline]
@@ -120,67 +120,67 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn set_anchor(&mut self, x: f64, y: f64) {
+    pub fn set_anchor(&mut self, x: f32, y: f32) {
         self.anchor.x = x;
         self.anchor.y = y;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_pivot(&mut self, x: f64, y: f64) {
+    pub fn set_pivot(&mut self, x: f32, y: f32) {
         self.pivot.x = x;
         self.pivot.y = y;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_translate(&mut self, x: f64, y: f64) {
+    pub fn set_translate(&mut self, x: f32, y: f32) {
         self.translate.x = x;
         self.translate.y = y;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_x(&mut self, x: f64) {
+    pub fn set_x(&mut self, x: f32) {
         self.translate.x = x;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_y(&mut self, y: f64) {
+    pub fn set_y(&mut self, y: f32) {
         self.translate.y = y;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_scale(&mut self, x: f64, y: f64) {
+    pub fn set_scale(&mut self, x: f32, y: f32) {
         self.scale.x = x;
         self.scale.y = y;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_scale_x(&mut self, x: f64) {
+    pub fn set_scale_x(&mut self, x: f32) {
         self.scale.x = x;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_scale_y(&mut self, y: f64) {
+    pub fn set_scale_y(&mut self, y: f32) {
         self.scale.y = y;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_rotation(&mut self, radian: f64) {
+    pub fn set_rotation(&mut self, radian: f32) {
         self.rotation = radian;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_skew(&mut self, x: f64, y: f64) {
+    pub fn set_skew(&mut self, x: f32, y: f32) {
         self.skew.x = x;
         self.skew.y = y;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_skew_x(&mut self, x: f64) {
+    pub fn set_skew_x(&mut self, x: f32) {
         self.skew.x = x;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_skew_y(&mut self, y: f64) {
+    pub fn set_skew_y(&mut self, y: f32) {
         self.skew.y = y;
         self._update_id += 1;
     }
@@ -309,7 +309,7 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn move_to(&mut self, x: f64, y: f64) {
+    pub fn move_to(&mut self, x: f32, y: f32) {
         self.set_translate(x, y);
     }
 
@@ -338,12 +338,12 @@ impl NodeBase {
             let tx = x - ((pivot_x * a) + (pivot_y * c));
             let ty = y - ((pivot_x * b) + (pivot_y * d));
 
-            let (logical_width, logical_height) = surface_size.logical_size();
-            let scale_factor = surface_size.scale_factor();
+            let (logical_width, logical_height) = surface_size.logical_size_f32();
+            let scale_factor = surface_size.scale_factor() as f32;
 
             // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-            let tx = (tx as f64 * scale_factor) / (logical_width * scale_factor) * 2.;
-            let ty = (ty as f64 * scale_factor) / (logical_height * scale_factor) * 2.;
+            let tx = (tx * scale_factor) / (logical_width * scale_factor) * 2.;
+            let ty = (ty * scale_factor) / (logical_height * scale_factor) * 2.;
 
             self.transform.a = a;
             self.transform.b = b;
@@ -367,15 +367,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeProps {
-    pub anchor: Option<[f64; 2]>,
-    pub pivot: Option<[f64; 2]>,
-    pub x: Option<f64>,
-    pub y: Option<f64>,
-    pub scale: Option<f64>,
-    pub scale_x: Option<f64>,
-    pub scale_y: Option<f64>,
-    pub rotation: Option<f64>,
-    pub skew: Option<f64>,
-    pub skew_x: Option<f64>,
-    pub skew_y: Option<f64>,
+    pub anchor: Option<[f32; 2]>,
+    pub pivot: Option<[f32; 2]>,
+    pub x: Option<f32>,
+    pub y: Option<f32>,
+    pub scale: Option<f32>,
+    pub scale_x: Option<f32>,
+    pub scale_y: Option<f32>,
+    pub rotation: Option<f32>,
+    pub skew: Option<f32>,
+    pub skew_x: Option<f32>,
+    pub skew_y: Option<f32>,
 }
