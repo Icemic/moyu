@@ -1,5 +1,5 @@
+use crate::base::vertex::SpriteVertex;
 use crate::traits::Node;
-use crate::types::Vertex;
 
 #[inline]
 pub fn calculate_rect_vertices(
@@ -7,7 +7,7 @@ pub fn calculate_rect_vertices(
     tex_width: f64,
     tex_height: f64,
     area: &[f64; 4],
-) -> [Vertex; 4] {
+) -> [SpriteVertex; 4] {
     let [x0, y0, x1, y1] = area.to_owned();
 
     // scale size to fit area
@@ -47,19 +47,19 @@ pub fn calculate_rect_vertices(
     let p3y = b * w1 + d * h0 + ty;
 
     [
-        Vertex {
+        SpriteVertex {
             position: [p0x as f32, p0y as f32, 0.0],
             tex_coords: [x0 as f32, y1 as f32],
         },
-        Vertex {
+        SpriteVertex {
             position: [p1x as f32, p1y as f32, 0.0],
             tex_coords: [x1 as f32, y1 as f32],
         },
-        Vertex {
+        SpriteVertex {
             position: [p2x as f32, p2y as f32, 0.0],
             tex_coords: [x1 as f32, y0 as f32],
         },
-        Vertex {
+        SpriteVertex {
             position: [p3x as f32, p3y as f32, 0.0],
             tex_coords: [x0 as f32, y0 as f32],
         },
