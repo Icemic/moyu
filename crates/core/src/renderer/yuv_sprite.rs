@@ -7,7 +7,7 @@ use crate::nodes::{Texture, YUVSprite};
 use crate::resource::TextureId;
 use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use crate::utils::calculate::calculate_rect_vertices;
-use crate::{traits::Renderer, types::Vertex, utils::constants::RECTANGLE_INDICES};
+use crate::{base::vertex::*, traits::Renderer, utils::constants::RECTANGLE_INDICES};
 
 /// the number of vertices in a sprite is always 4.
 // pub static NUM_VERTICES: u32 = 4;
@@ -118,7 +118,7 @@ impl YUVSpriteRenderer {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[Vertex::desc()],
+                buffers: &[SpriteVertex::desc()],
             },
             fragment: Some(FragmentState {
                 module: &shader,

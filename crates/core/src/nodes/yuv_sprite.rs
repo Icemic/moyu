@@ -5,7 +5,6 @@ use wgpu::Buffer;
 
 use crate::resource::TextureId;
 use crate::traits::{Focusable, Node, NodeBaseTrait, RendererUpdatePayload};
-use crate::types::Vertex;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
 
@@ -27,8 +26,6 @@ pub struct YUVSprite {
     pub textures: ArcSwapOption<(Texture, Texture, Texture)>,
     /// clip area
     pub area: [f64; 4],
-    /// calculated vertices
-    pub vertices: Option<[Vertex; 4]>,
     pub vertex_buffer: Option<Buffer>,
     pub mode: YUVSpriteFormat,
 
@@ -42,7 +39,6 @@ impl YUVSprite {
             texture_id: ArcSwapOption::default(),
             textures: ArcSwapOption::default(),
             area: [0., 0., 1., 1.],
-            vertices: None,
             vertex_buffer: None,
             mode: YUVSpriteFormat::default(),
             node_base: NodeBase::new(label),

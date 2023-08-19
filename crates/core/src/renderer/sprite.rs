@@ -3,13 +3,14 @@ use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
+use crate::base::vertex::VertexDesc;
 #[cfg(feature = "video")]
 use crate::nodes::Video;
 use crate::nodes::{Sprite, Texture, TextureStatus};
 use crate::resource::TextureId;
 use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use crate::utils::calculate::calculate_rect_vertices;
-use crate::{traits::Renderer, types::Vertex, utils::constants::RECTANGLE_INDICES};
+use crate::{base::vertex::*, traits::Renderer, utils::constants::RECTANGLE_INDICES};
 
 /// the number of vertices in a sprite is always 4.
 // pub static NUM_VERTICES: u32 = 4;
@@ -71,7 +72,7 @@ impl SpriteRenderer {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[Vertex::desc()],
+                buffers: &[SpriteVertex::desc()],
             },
             fragment: Some(FragmentState {
                 module: &shader,

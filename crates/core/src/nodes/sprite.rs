@@ -6,7 +6,6 @@ use wgpu::Buffer;
 
 use crate::resource::TextureId;
 use crate::traits::{Focusable, Node, NodeBaseTrait, RendererUpdatePayload};
-use crate::types::Vertex;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
 
@@ -19,8 +18,6 @@ pub struct Sprite {
     pub texture_id: ArcSwapOption<TextureId>,
     /// clip area
     pub area: [f64; 4],
-    /// calculated vertices
-    pub vertices: Option<[Vertex; 4]>,
 
     pub src: Option<String>,
 
@@ -35,7 +32,6 @@ impl Sprite {
         Sprite {
             texture_id: ArcSwapOption::default(),
             area: [0., 0., 1., 1.],
-            vertices: None,
             src: None,
             vertex_buffer: None,
             node_base: NodeBase::new(label),
