@@ -17,13 +17,13 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopProxy};
 use winit::window::{Fullscreen, Window};
 
+use crate::base::*;
 use crate::user_event::WindowState;
 use crate::utils::walk::{walk_nodes_bottom_top, walk_nodes_top_bottom};
 use crate::{
     nodes::{Container, Sprite},
     resource::ResourceManager,
     traits::*,
-    types::SurfaceSize,
     user_event::UserEvent,
 };
 

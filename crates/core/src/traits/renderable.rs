@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
+use crate::base::*;
 use crate::resource::ResourceManager;
-use crate::types::SurfaceSize;
 
 use super::Node;
 

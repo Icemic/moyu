@@ -3,11 +3,12 @@ use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
+use crate::base::*;
 use crate::nodes::{Texture, YUVSprite};
 use crate::resource::TextureId;
 use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use crate::utils::calculate::calculate_rect_vertices;
-use crate::{base::vertex::*, traits::Renderer, utils::constants::RECTANGLE_INDICES};
+use crate::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
 
 /// the number of vertices in a sprite is always 4.
 // pub static NUM_VERTICES: u32 = 4;

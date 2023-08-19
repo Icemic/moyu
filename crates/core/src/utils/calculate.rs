@@ -1,4 +1,4 @@
-use crate::base::vertex::SpriteVertex;
+use crate::base::*;
 use crate::traits::Node;
 
 #[inline]
