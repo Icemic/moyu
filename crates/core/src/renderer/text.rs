@@ -50,8 +50,8 @@ impl TextRenderer {
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
 
@@ -180,16 +180,9 @@ impl Renderer for TextRenderer {
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
     ) {
-        // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
-        // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
         let (logical_width, logical_height) = payload.surface_size.logical_size();
-        let scale_factor = payload.surface_size.scale_factor();
 
         let node = node.as_any_mut().downcast_mut::<Text>().unwrap();
-
-        // let width = (TEXTURE_SIZE as f64 * scale_factor) / (logical_width * scale_factor) * 2.;
-        // let height =
-        //     (TEXTURE_SIZE as f64 * scale_factor) / (logical_height * scale_factor) as f64 * 2.;
 
         if node.base_mut().pop_update_vertices() {
             match self.huozi.layout_parse(
