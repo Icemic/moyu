@@ -342,7 +342,7 @@ impl NodeBase {
 
             // use logical size to calculate transform matrix, so that the transform matrix will not be affected by scale ratio
             let tx = tx / logical_width * 2.;
-            let ty = -ty / logical_height * 2.;
+            let ty = ty / logical_height * 2.;
 
             self.transform.matrix2.x_axis.x = a;
             self.transform.matrix2.x_axis.y = b;

@@ -43,15 +43,9 @@ impl Focusable for Sprite {
     fn contains(&self, x: f32, y: f32, payload: &RendererUpdatePayload) -> bool {
         if let Some(texture_id) = self.texture_id.load().as_ref() {
             if let Some(texture) = payload.resource_manager.try_get_texture(&texture_id) {
-                let translate = self.base().translate();
-
                 let (width, height) = texture.size();
 
-                if x > translate.x
-                    && x < width as f32 + translate.x
-                    && y > translate.y
-                    && y < height as f32 + translate.y
-                {
+                if x > 0. && x < width as f32 && y > 0. && y < height as f32 {
                     return true;
                 }
             }

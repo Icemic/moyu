@@ -193,16 +193,20 @@ impl Renderer for TextRenderer {
                 &node.text_style,
                 None,
             ) {
-                Ok((vertices, indices)) => {
+                Ok((mut vertices, indices, total_width, total_height)) => {
+                    // set layout size
+                    node.total_width = total_width;
+                    node.total_height = total_height;
+
                     // transform to global
-                    let mut vertices = vertices;
                     let transform = node.base().global_transform();
                     for vertex in vertices.iter_mut() {
                         // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
-                        let p =
-                            transform.transform_point2(Vec2::from_slice(&vertex.position[0..2]));
+                        // y axis is inverted, so we need to invert it back, apply transform and invert it again
+                        let p = transform
+                            .transform_point2(Vec2::new(vertex.position[0], -vertex.position[1]));
                         vertex.position[0] = p.x;
-                        vertex.position[1] = p.y;
+                        vertex.position[1] = -p.y;
                     }
 
                     if node.vertex_buffer.is_none() {

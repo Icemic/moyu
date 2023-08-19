@@ -15,6 +15,11 @@ pub struct Text {
     pub layout_style: LayoutStyle,
     pub text_style: TextStyle,
 
+    /// acutal width after layout
+    pub total_width: u32,
+    /// acutal height after layout
+    pub total_height: u32,
+
     pub vertex_buffer: Option<Buffer>,
     pub index_buffer: Option<Buffer>,
     pub num_indices: u32,
@@ -29,6 +34,8 @@ impl Text {
             text: text.to_owned(),
             layout_style: LayoutStyle::default(),
             text_style: TextStyle::default(),
+            total_width: 0,
+            total_height: 0,
             vertex_buffer: None,
             index_buffer: None,
             node_base: NodeBase::new(label),
@@ -39,16 +46,10 @@ impl Text {
 
 impl Focusable for Text {
     fn contains(&self, x: f32, y: f32, _: &RendererUpdatePayload) -> bool {
-        let translate = self.base().translate();
+        let width = self.total_width;
+        let height = self.total_height;
 
-        let width = self.layout_style.box_width;
-        let height = self.layout_style.box_height;
-
-        if x > translate.x
-            && x < width as f32 + translate.x
-            && y > translate.y
-            && y < height as f32 + translate.y
-        {
+        if x > 0. && x < width as f32 && y > 0. && y < height as f32 {
             return true;
         }
 
