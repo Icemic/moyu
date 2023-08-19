@@ -10,6 +10,14 @@ if (hai && typeof hai.pushCommand === 'undefined') {
   };
 }
 
+globalThis.__hai_receive_event = (kind: string, target_id: string) => {
+  console.log('event:', kind, target_id);
+};
+
+export function addEventListener(name: string, callback: (...args: any[]) => void) {
+  hai.pushCommand('add_event_listener', [name, callback]);
+}
+
 // uncomment this to print all commands
 // const pushCommand = hai.pushCommand;
 // hai.pushCommand = function (name: string, args: any[], callback?: (...args: any[]) => void) {

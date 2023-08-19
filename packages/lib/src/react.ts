@@ -144,6 +144,7 @@ const hostConfig: HostConfig<
   },
 
   insertBefore: (parent, child, before) => {
+    console.debug('insertBefore', parent, child, before);
     parent.insertChildBefore(before, child);
   },
 
@@ -152,10 +153,12 @@ const hostConfig: HostConfig<
   },
 
   removeChild: (parent, child) => {
+    console.debug('removeChild', parent, child);
     parent.removeChild(child);
   },
 
   removeChildFromContainer: (parent, child) => {
+    console.debug('removeChildFromContainer', parent, child);
     parent.removeChild(child);
   },
 
