@@ -49,6 +49,12 @@ impl Focusable for Text {
         let width = self.total_width;
         let height = self.total_height;
 
+        let offset_x = self.base().anchor().x * width as f32;
+        let offset_y = self.base().anchor().y * height as f32;
+
+        let x = x + offset_x;
+        let y = y + offset_y;
+
         if x > 0. && x < width as f32 && y > 0. && y < height as f32 {
             return true;
         }
