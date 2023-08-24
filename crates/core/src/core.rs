@@ -554,24 +554,24 @@ impl Core {
                     if let Some(current_focused_node) = &*current_focused_node {
                         if current_focused_node.read().base().id() == node.read().base().id() {
                             // TODO: mouse move event
-                            // dispatch_event(&HaiEvent {
+                            // dispatch_event(HaiEvent {
                             //     kind: HaiEventKind::MouseMove,
                             //     target_id: *node.read().base().id(),
                             // });
                         } else {
                             // TODO: mouse leave event & mouse enter event
-                            dispatch_event(&HaiEvent {
+                            dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseLeave,
                                 target_id: *current_focused_node.read().base().id(),
                             });
-                            dispatch_event(&HaiEvent {
+                            dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseEnter,
                                 target_id: *node.read().base().id(),
                             });
                         }
                     } else {
                         // TODO: mouse enter event
-                        dispatch_event(&HaiEvent {
+                        dispatch_event(HaiEvent {
                             kind: HaiEventKind::MouseEnter,
                             target_id: *node.read().base().id(),
                         });
@@ -583,7 +583,7 @@ impl Core {
                 } else {
                     if let Some(current_focused_node) = &*current_focused_node {
                         // TODO: mouse leave event
-                        dispatch_event(&HaiEvent {
+                        dispatch_event(HaiEvent {
                             kind: HaiEventKind::MouseLeave,
                             target_id: *current_focused_node.read().base().id(),
                         });
@@ -602,25 +602,25 @@ impl Core {
                 if let Some(current_focused_node) = &*self.current_focused_node.read() {
                     match state {
                         ElementState::Pressed => {
-                            dispatch_event(&HaiEvent {
+                            dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseDown,
                                 target_id: *current_focused_node.read().base().id(),
                             });
                         }
                         ElementState::Released => {
-                            dispatch_event(&HaiEvent {
+                            dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseUp,
                                 target_id: *current_focused_node.read().base().id(),
                             });
                             match button {
                                 winit::event::MouseButton::Left => {
-                                    dispatch_event(&HaiEvent {
+                                    dispatch_event(HaiEvent {
                                         kind: HaiEventKind::Click,
                                         target_id: *current_focused_node.read().base().id(),
                                     });
                                 }
                                 winit::event::MouseButton::Right => {
-                                    dispatch_event(&HaiEvent {
+                                    dispatch_event(HaiEvent {
                                         kind: HaiEventKind::ContextMenu,
                                         target_id: *current_focused_node.read().base().id(),
                                     });

@@ -1,3 +1,4 @@
+use hai_pal::task::get_runtime_handle;
 use hai_runtime::get_vm;
 use log::error;
 use serde::{Deserialize, Serialize};
@@ -35,11 +36,18 @@ pub struct HaiEvent {
     pub target_id: u32,
 }
 
-pub fn dispatch_event(event: &HaiEvent) {
-    if let Err(err) = get_vm().context().call_function(
-        "__hai_receive_event",
-        vec![format!("{:?}", event.kind), event.target_id.to_string()],
-    ) {
-        error!("failed to dispatch event: {:?}", err);
-    }
+pub fn dispatch_event(event: HaiEvent) {
+    println!("dispatch_event: {:?}", event);
+
+    get_runtime_handle().spawn(async move {
+        if let Err(err) = get_vm()
+            .call_function(
+                "__hai_receive_event",
+                vec![format!("{:?}", event.kind), event.target_id.to_string()],
+            )
+            .await
+        {
+            error!("failed to dispatch event: {:?}", err);
+        }
+    });
 }

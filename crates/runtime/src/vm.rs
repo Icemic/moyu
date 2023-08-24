@@ -1,11 +1,13 @@
+use std::collections::VecDeque;
 use std::ptr::null_mut;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
 use hai_pal::env::entry_dir;
-use quickjspp::{Context, ExecutionError, JsFunction};
+use quickjspp::{Context, ExecutionError, JsFunction, JsValue};
 use std::sync::Mutex;
+use tokio::sync::oneshot::Sender;
 
 use crate::console::log_handler;
 use crate::module::{module_loader, module_normalize};
@@ -17,6 +19,7 @@ pub struct QuickVM {
     /// emited timer ids to be executed in the next tick
     timer_tasks: Arc<Mutex<Vec<Rc<TimerTask>>>>,
     instant: Instant,
+    call_tasks: Arc<Mutex<VecDeque<(String, Vec<JsValue>, Sender<()>)>>>,
 }
 
 unsafe impl Send for QuickVM {}
@@ -129,11 +132,29 @@ impl QuickVM {
             context,
             timer_tasks,
             instant,
+            call_tasks: Arc::new(Mutex::new(VecDeque::new())),
         }
     }
 
+    /// get the context of the vm, make sure to lock the vm before calling this function
     pub fn context(&self) -> &Context {
         &self.context
+    }
+
+    pub async fn call_function(
+        &self,
+        name: &str,
+        args: impl IntoIterator<Item = impl Into<JsValue>>,
+    ) -> Result<(), ExecutionError> {
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        self.call_tasks.lock().unwrap().push_back((
+            name.to_string(),
+            args.into_iter().map(|v| v.into()).collect(),
+            sender,
+        ));
+        let _ = receiver.await.unwrap();
+
+        Ok(())
     }
 
     pub fn prepare_entry(&self) -> Result<(), ExecutionError> {
@@ -154,6 +175,13 @@ impl QuickVM {
     /// Tick the VM, executing all pending timers
     pub fn block_on_ticking(&self) -> ! {
         loop {
+            // handle all pending calls
+            let mut call_tasks = self.call_tasks.lock().unwrap();
+            while let Some((name, args, sender)) = call_tasks.pop_front() {
+                let result = self.context.call_function(&name, args);
+                sender.send(()).unwrap();
+            }
+
             self.context.execute_pending_job().unwrap();
 
             // filter out all tasks that are ready to be executed
