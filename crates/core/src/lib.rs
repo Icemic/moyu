@@ -151,9 +151,7 @@ pub fn spawn_runtime_with_core(_core: &Arc<Core>, spawn_callback: Option<SpawnRu
                 error!("{:?}", err);
             };
 
-            loop {
-                vm.tick();
-            }
+            vm.block_on_ticking();
         })
         .ok();
 }
