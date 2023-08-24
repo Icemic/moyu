@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 #[cfg(not(feature = "web"))]
 use std::time::Instant;
-use wgpu::util::StagingBelt;
+use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, Size};
 use winit::event::{ElementState, Event, WindowEvent};
@@ -83,6 +83,8 @@ pub struct Core {
     pub renderers: Arc<Mutex<HashMap<String, Box<dyn Renderer>>>>,
 
     staging_belt: Arc<Mutex<StagingBelt>>,
+    mvp_buffer: wgpu::Buffer,
+    mvp_bind_group: wgpu::BindGroup,
     // std::time not implemented on wasm32 target
     #[cfg(not(feature = "web"))]
     frames_in_duration: Arc<Mutex<(Instant, u32)>>,
@@ -121,10 +123,28 @@ impl Core {
         let resource_manager = ResourceManager::new(device.clone(), queue.clone());
         let renderers = HashMap::default();
 
+        let surface_size = SurfaceSize::default();
+
         let staging_belt = Arc::new(Mutex::new(StagingBelt::new(0)));
 
+        let logical_size = surface_size.logical_size_f32();
+        let mvp_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("MVP Buffer"),
+            contents: bytemuck::bytes_of(&MVPMatrix::from_logical_size(logical_size)),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let mvp_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("MVP Matrix Bind Group"),
+            layout: &MVPMatrix::bind_group_layout(&device),
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: mvp_buffer.as_entire_binding(),
+            }],
+        });
+
         Self {
-            surface_size: Default::default(),
+            surface_size: Arc::new(RwLock::new(surface_size)),
             surface,
             device,
             queue,
@@ -134,6 +154,8 @@ impl Core {
             renderers: Arc::new(Mutex::new(renderers)),
 
             staging_belt,
+            mvp_buffer,
+            mvp_bind_group,
             #[cfg(not(feature = "web"))]
             frames_in_duration: Arc::new(Mutex::new((Instant::now(), 0))),
 
@@ -164,6 +186,14 @@ impl Core {
 
         surface_size.set_scale_factor(scale_factor);
         surface_size.set_physical_size(physical_size.0, physical_size.1);
+
+        self.queue.write_buffer(
+            &self.mvp_buffer,
+            0,
+            bytemuck::bytes_of(&MVPMatrix::from_logical_size(
+                surface_size.logical_size_f32(),
+            )),
+        );
     }
 
     /// reset surface
@@ -474,6 +504,7 @@ impl Core {
                 let node_type = child.node_type();
 
                 if let Some(current_renderer) = renderers.get(node_type) {
+                    render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
                     current_renderer.render(&device, &queue, &mut render_pass, child);
                 }
             }

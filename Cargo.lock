@@ -1320,7 +1320,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "huozi"
-version = "0.1.0"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c230e5157078fcdd62fe8cd6502f8ca622f822ef6a83b438c7aedf25bdd1950a"
 dependencies = [
  "anyhow",
  "bytemuck",

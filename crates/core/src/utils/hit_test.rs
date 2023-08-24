@@ -6,6 +6,7 @@ use hai_pal::sync::RwLock;
 use crate::nodes::{Sprite, Text};
 use crate::traits::{Focusable, Node, NodeBaseTrait, RendererUpdatePayload};
 
+use super::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use super::walk::walk_nodes_bottom_top;
 
 pub fn hit_test(
@@ -17,8 +18,6 @@ pub fn hit_test(
     let root_node = root_node.read();
     let mut focused_node = None;
 
-    let (logical_width, logical_height) = upload_payload.surface_size.logical_size_f32();
-
     walk_nodes_bottom_top(&*root_node, &mut |child, _| {
         let child_ref = child.read();
 
@@ -27,12 +26,12 @@ pub fn hit_test(
             .global_transform()
             .inverse()
             .transform_point2(Vec2::new(
-                global_logical_x / logical_width * 2.,
-                global_logical_y / logical_height * 2.,
+                global_logical_x / VIEWPORT_WIDTH,
+                global_logical_y / VIEWPORT_HEIGHT,
             ));
 
-        let local_logical_x = p.x / 2. * logical_width;
-        let local_logical_y = p.y / 2. * logical_height;
+        let local_logical_x = p.x * VIEWPORT_WIDTH;
+        let local_logical_y = p.y * VIEWPORT_HEIGHT;
 
         let hit = match child_ref.node_type() {
             "sprite" => {

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use crate::base::*;
 use crate::traits::Node;
+use crate::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
 
@@ -314,12 +315,7 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn update_transform(
-        &mut self,
-        parent_transform: &Transform,
-        surface_size: &SurfaceSize,
-        force: bool,
-    ) {
+    pub fn update_transform(&mut self, parent_transform: &Transform, _: &SurfaceSize, force: bool) {
         if force || self._update_id != self._current_update_id {
             let x = self.translate.x;
             let y = self.translate.y;
@@ -338,11 +334,9 @@ impl NodeBase {
             let tx = x - ((pivot_x * a) + (pivot_y * c));
             let ty = y - ((pivot_x * b) + (pivot_y * d));
 
-            let (logical_width, logical_height) = surface_size.logical_size_f32();
-
             // use logical size to calculate transform matrix, so that the transform matrix will not be affected by scale ratio
-            let tx = tx / logical_width * 2.;
-            let ty = ty / logical_height * 2.;
+            let tx = tx / VIEWPORT_WIDTH;
+            let ty = ty / VIEWPORT_HEIGHT;
 
             self.transform.matrix2.x_axis.x = a;
             self.transform.matrix2.x_axis.y = b;
