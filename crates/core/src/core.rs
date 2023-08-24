@@ -1,4 +1,5 @@
 use arc_swap::ArcSwap;
+use glam::Vec2;
 use hai_pal::env::get_hai_env;
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
 use log::{debug, error, info};
@@ -18,6 +19,7 @@ use winit::event_loop::{ControlFlow, EventLoopProxy};
 use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
+use crate::nodes::Text;
 use crate::user_event::WindowState;
 use crate::utils::walk::{walk_nodes_bottom_top, walk_nodes_top_bottom};
 use crate::{
@@ -518,27 +520,39 @@ impl Core {
                     resource_manager: self.resource_manager.clone(),
                 };
 
-                walk_nodes_bottom_top(&*root_node, &mut |child, parent| {
+                walk_nodes_bottom_top(&*root_node, &mut |child, _| {
                     let child_ref = child.read();
+
+                    let p = child_ref
+                        .base()
+                        .global_transform()
+                        .inverse()
+                        .transform_point2(Vec2::new(
+                            global_logical_x / logical_width * 2.,
+                            global_logical_y / logical_height * 2.,
+                        ));
+
+                    let local_logical_x = p.x / 2. * logical_width;
+                    let local_logical_y = p.y / 2. * logical_height;
+
                     let hit = match child_ref.node_type() {
                         "sprite" => {
                             let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
-                            // calculate relative coordinate
-                            let global_transform = parent.base().global_transform();
-                            let parent_global_x = global_transform.translation.x * logical_width / 2.;
-                            let parent_global_y = global_transform.translation.y * logical_height / 2.;
-
-                            let relative_logical_x = (global_logical_x - parent_global_x).round();
-                            let relative_logical_y = (global_logical_y - parent_global_y).round();
 
                             // check if pointer is over the sprite
-                            let hit = sprite.contains(
-                                relative_logical_x,
-                                relative_logical_y,
-                                &upload_payload,
-                            );
+                            let hit =
+                                sprite.contains(local_logical_x, local_logical_y, &upload_payload);
 
                             (hit, Some(sprite.base().label().clone()))
+                        }
+                        "text" => {
+                            let text = child_ref.as_any().downcast_ref::<Text>().unwrap();
+
+                            // check if pointer is over the text
+                            let hit =
+                                text.contains(local_logical_x, local_logical_y, &upload_payload);
+
+                            (hit, Some(text.base().label().clone()))
                         }
                         _ => (false, None),
                     };

@@ -51,14 +51,9 @@ impl Focusable for YUVSprite {
         if let Some(textures) = self.textures.load().as_ref() {
             let (texture, _, _) = &**textures;
 
-            let translate = self.base().translate();
             let (width, height) = texture.size();
 
-            if x > translate.x
-                && x < width as f32 + translate.x
-                && y > translate.y
-                && y < height as f32 + translate.y
-            {
+            if x > 0. && x < width as f32 && y > 0. && y < height as f32 {
                 return true;
             }
         }

@@ -191,7 +191,7 @@ impl Renderer for SpriteRenderer {
                 if node.vertex_buffer.is_none() {
                     let vertex_buffer =
                         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("Vertex Buffer"),
+                            label: Some("Sprite Vertex Buffer"),
                             contents: bytemuck::cast_slice(&vertices),
                             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                         });

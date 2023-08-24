@@ -12,7 +12,7 @@ pub mod user_event;
 pub mod utils;
 
 use futures::Future;
-use renderer::YUVSpriteRenderer;
+use renderer::{TextRenderer, YUVSpriteRenderer};
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;
@@ -52,6 +52,7 @@ pub fn create_hai_core(
     // use sprite renderer on video node
     #[cfg(feature = "video")]
     let video_renderer = SpriteRenderer::new(&device, &config);
+    let text_renderer = TextRenderer::new(&device, &config);
 
     // create multithread shared core
     let core = Core::new(surface, device, queue, config, event_proxy);
@@ -61,6 +62,7 @@ pub fn create_hai_core(
     core.register_renderer("yuv_sprite".to_string(), Box::new(yuv_sprite_renderer));
     #[cfg(feature = "video")]
     core.register_renderer("video".to_string(), Box::new(video_renderer));
+    core.register_renderer("text".to_string(), Box::new(text_renderer));
 
     // set screen size
     let size = window.inner_size();
