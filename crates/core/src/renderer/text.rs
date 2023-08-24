@@ -10,6 +10,7 @@ use wgpu::util::StagingBelt;
 use wgpu::Texture;
 use wgpu::{util::DeviceExt, *};
 
+use crate::base::MVPMatrix;
 use crate::nodes::Text;
 use crate::traits::Renderer;
 use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
@@ -100,7 +101,7 @@ impl TextRenderer {
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Text Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[&MVPMatrix::bind_group_layout(device), &bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -179,21 +180,15 @@ impl Renderer for TextRenderer {
         queue: &Arc<Queue>,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
-        payload: &RendererUpdatePayload,
+        _: &RendererUpdatePayload,
     ) {
-        let (logical_width, logical_height) = payload.surface_size.logical_size();
-
         let node = node.as_any_mut().downcast_mut::<Text>().unwrap();
 
         if node.base_mut().pop_update_vertices() {
-            match self.huozi.layout_parse(
-                &node.text,
-                logical_width,
-                logical_height,
-                &node.layout_style,
-                &node.text_style,
-                None,
-            ) {
+            match self
+                .huozi
+                .layout_parse(&node.text, &node.layout_style, &node.text_style, None)
+            {
                 Ok((mut vertices, indices, total_width, total_height)) => {
                     // set layout size
                     node.total_width = total_width;
@@ -205,9 +200,9 @@ impl Renderer for TextRenderer {
                         // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
                         // y axis is inverted, so we need to invert it back, apply transform and invert it again
                         let p = transform
-                            .transform_point2(Vec2::new(vertex.position[0], -vertex.position[1]));
+                            .transform_point2(Vec2::new(vertex.position[0], vertex.position[1]));
                         vertex.position[0] = p.x;
-                        vertex.position[1] = -p.y;
+                        vertex.position[1] = p.y;
                     }
 
                     if node.vertex_buffer.is_none() {
@@ -307,7 +302,7 @@ impl Renderer for TextRenderer {
             render_pass.set_pipeline(self.render_pipeline());
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
-            render_pass.set_bind_group(0, &self.bind_group, &[]);
+            render_pass.set_bind_group(1, &self.bind_group, &[]);
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
 
             // FIXME: NUM_INDICES depends on which renderer the child matches.

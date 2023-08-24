@@ -46,7 +46,7 @@ web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "Htm
 
 ffmpeg-rs = {version = "5.2.1", optional = true}
 
-huozi = {version = "0.1"}
+huozi = {version = "0.2"}
 
 [dependencies.hai_js_runtime]
 optional = true

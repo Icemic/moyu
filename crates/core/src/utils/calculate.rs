@@ -22,14 +22,14 @@ pub fn calculate_rect_vertices(
     let d = global_transform.matrix2.y_axis.y;
 
     // add addtional offset to move from center to left top
-    let tx = global_transform.translation.x - 1.0;
-    let ty = -global_transform.translation.y + 1.0;
+    let tx = global_transform.translation.x;
+    let ty = global_transform.translation.y;
 
     let anchor = node.base().anchor();
 
     let w1 = -anchor.x * width;
     let w0 = w1 + width;
-    let h1 = (-1. + anchor.y) * height;
+    let h1 = -anchor.y * height;
     let h0 = h1 + height;
 
     // left top
@@ -50,20 +50,20 @@ pub fn calculate_rect_vertices(
 
     [
         SpriteVertex {
-            position: [p0x as f32, p0y as f32, 0.0],
-            tex_coords: [x0 as f32, y1 as f32],
+            position: [p0x, p0y, 0.0],
+            tex_coords: [x0, y0],
         },
         SpriteVertex {
-            position: [p1x as f32, p1y as f32, 0.0],
-            tex_coords: [x1 as f32, y1 as f32],
+            position: [p3x, p3y, 0.0],
+            tex_coords: [x0, y1],
         },
         SpriteVertex {
-            position: [p2x as f32, p2y as f32, 0.0],
-            tex_coords: [x1 as f32, y0 as f32],
+            position: [p2x, p2y, 0.0],
+            tex_coords: [x1, y1],
         },
         SpriteVertex {
-            position: [p3x as f32, p3y as f32, 0.0],
-            tex_coords: [x0 as f32, y0 as f32],
+            position: [p1x, p1y, 0.0],
+            tex_coords: [x1, y0],
         },
     ]
 }

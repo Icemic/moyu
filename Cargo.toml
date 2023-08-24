@@ -12,4 +12,4 @@ members = [
 resolver = "2"
 
 [patch.crates-io]
-huozi = {path = "../huozi-rs"}
+# huozi = {path = "../huozi-rs"}
