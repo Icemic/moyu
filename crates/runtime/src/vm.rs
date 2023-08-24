@@ -182,6 +182,9 @@ impl QuickVM {
                 sender.send(()).unwrap();
             }
 
+            // drop the lock before executing the tasks to avoid deadlocks
+            drop(call_tasks);
+
             self.context.execute_pending_job().unwrap();
 
             // filter out all tasks that are ready to be executed
