@@ -1158,7 +1158,7 @@ dependencies = [
 
 [[package]]
 name = "hai"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "hai_core",
  "hai_pal",
@@ -1169,7 +1169,7 @@ dependencies = [
 
 [[package]]
 name = "hai_core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1198,7 +1198,7 @@ dependencies = [
 
 [[package]]
 name = "hai_js_runtime"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "futures",
@@ -1212,7 +1212,7 @@ dependencies = [
 
 [[package]]
 name = "hai_macros"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1222,7 +1222,7 @@ dependencies = [
 
 [[package]]
 name = "hai_pal"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",
@@ -1242,7 +1242,7 @@ dependencies = [
 
 [[package]]
 name = "hai_runtime"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "env_logger",
  "hai_pal",
