@@ -285,7 +285,7 @@ impl Renderer for YUVSpriteRenderer {
                 if node.vertex_buffer.is_none() {
                     let vertex_buffer =
                         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("Vertex Buffer"),
+                            label: Some("YUVSprite Vertex Buffer"),
                             contents: bytemuck::cast_slice(&vertices),
                             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                         });

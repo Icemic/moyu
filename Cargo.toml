@@ -10,3 +10,6 @@ members = [
   "crates/run_wasm",
 ]
 resolver = "2"
+
+[patch.crates-io]
+huozi = {path = "../huozi-rs"}

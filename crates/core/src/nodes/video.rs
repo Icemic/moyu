@@ -440,13 +440,7 @@ impl Focusable for Video {
     fn contains(&self, x: f64, y: f64) -> bool {
         let texture = self.texture.read();
 
-        let translate = self.translate();
-
-        if x > translate.x
-            && x < texture.width as f64 + translate.x
-            && y > translate.y
-            && y < texture.height as f64 + translate.y
-        {
+        if x > 0. && x < texture.width as f64 && y > 0. && y < texture.height as f64 {
             return true;
         }
         false
