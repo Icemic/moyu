@@ -41,11 +41,11 @@ fn main_entry() {
 
     event_loop
         .run(move |event, event_loop, control_flow| {
-            // loop_helper.loop_start();
+            loop_helper.loop_start();
             match event {
-                // Event::MainEventsCleared => {
-                //     loop_helper.loop_sleep();
-                // }
+                Event::AboutToWait => {
+                    loop_helper.loop_sleep();
+                }
                 Event::Resumed => {
                     let _window = create_window(&event_loop);
 
