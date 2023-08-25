@@ -1,5 +1,5 @@
-use log::error;
 use hai_runtime::setup_vm;
+use log::error;
 
 #[tokio::main]
 async fn main() {
@@ -28,9 +28,7 @@ async fn main() {
                 error!("{:?}", err);
             };
 
-            loop {
-                vm.tick();
-            }
+            vm.block_on_ticking();
         })
         .unwrap();
 
