@@ -8,36 +8,39 @@ struct VertexOutput {
     @location(0) tex_coords: vec2<f32>,
 };
 
+@group(0) @binding(0)
+var<uniform> mvp_matrix: mat4x4<f32>;
+
 @vertex
 fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
-    out.clip_position = vec4<f32>(model.position, 1.0);
+    out.clip_position = mvp_matrix * vec4<f32>(model.position, 1.0);
     return out;
 }
 
-@group(0) @binding(0)
+@group(1) @binding(0)
 var texture_y: texture_2d<f32>;
-@group(0) @binding(1)
+@group(1) @binding(1)
 var sampler_y: sampler;
 
-@group(0) @binding(2)
+@group(1) @binding(2)
 var texture_u: texture_2d<f32>;
-@group(0) @binding(3)
+@group(1) @binding(3)
 var sampler_u: sampler;
 
-@group(0) @binding(4)
+@group(1) @binding(4)
 var texture_v: texture_2d<f32>;
-@group(0) @binding(5)
+@group(1) @binding(5)
 var sampler_v: sampler;
 
 struct Uniforms {
     mode: i32,
 }
 
-@group(1) @binding(0)
+@group(2) @binding(0)
 var<uniform> uniforms: Uniforms;
 
 @fragment
