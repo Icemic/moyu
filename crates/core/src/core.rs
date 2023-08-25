@@ -234,7 +234,7 @@ impl Core {
         let mut control_flow = None;
         match event {
             &Event::RedrawRequested(window_id) if window_id == window.id() => {
-                match self.render() {
+                match self.render(window) {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
                     Err(wgpu::SurfaceError::Lost) => {
@@ -387,7 +387,7 @@ impl Core {
     }
 
     #[inline(always)]
-    pub fn render(&self) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&self, window: &Window) -> Result<(), wgpu::SurfaceError> {
         // fps
         #[cfg(not(feature = "web"))]
         if get_hai_env().show_fps {
@@ -504,6 +504,9 @@ impl Core {
         }
 
         staging_belt.finish();
+
+        // TODO: in winit, it is an empty function now, keep an eye on it.
+        window.pre_present_notify();
 
         queue.submit(
             std::iter::once(belt_encoder.finish()).chain(std::iter::once(encoder.finish())),
