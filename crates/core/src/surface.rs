@@ -11,7 +11,7 @@ use crate::user_event::UserEvent;
 
 pub fn create_eventloop() -> EventLoop<UserEvent> {
     // create main thread infinity loop
-    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build();
+    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build().unwrap();
     event_loop
 }
 

@@ -249,7 +249,7 @@ impl Core {
                     Err(e) => eprintln!("{:?}", e),
                 }
             }
-            &Event::MainEventsCleared => {
+            &Event::AboutToWait => {
                 // RedrawRequested will only trigger once, unless we manually
                 // request it.
                 let redraw_mode = self.redraw_mode.load();
@@ -299,16 +299,8 @@ impl Core {
 
                             debug!("window state changes to {:?}", self.window_state.load());
                         }
-                        WindowEvent::ScaleFactorChanged {
-                            scale_factor,
-                            new_inner_size,
-                            ..
-                        } => {
-                            let surface_size = SurfaceSize::from_physical_size(
-                                new_inner_size.to_owned(),
-                                scale_factor.clone(),
-                            );
-                            self.resize(surface_size);
+                        WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                            self.surface_size.write().set_scale_factor(*scale_factor);
                         }
                         _ => {}
                     }
@@ -330,7 +322,8 @@ impl Core {
                             logical_width as f64,
                             logical_height as f64,
                         ));
-                        window.set_inner_size(window_size);
+
+                        let _ = window.request_inner_size(window_size);
 
                         window.set_minimized(window_minimized.unwrap_or(false));
                         window.set_maximized(window_maximized);
@@ -624,6 +617,12 @@ impl Core {
                                         kind: HaiEventKind::ContextMenu,
                                         target_id: *current_focused_node.read().base().id(),
                                     });
+                                }
+                                winit::event::MouseButton::Back => {
+                                    // do nothing
+                                }
+                                winit::event::MouseButton::Forward => {
+                                    // do nothing
                                 }
                                 winit::event::MouseButton::Middle => {
                                     // do nothing
