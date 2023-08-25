@@ -39,49 +39,51 @@ fn main_entry() {
         spin_sleep::LoopHelper::builder().build_with_target_rate(refresh_rate_max * 2.0)
     };
 
-    event_loop.run(move |event, event_loop, control_flow| {
-        loop_helper.loop_start();
-        match event {
-            Event::MainEventsCleared => {
-                loop_helper.loop_sleep();
+    event_loop
+        .run(move |event, event_loop, control_flow| {
+            // loop_helper.loop_start();
+            match event {
+                // Event::MainEventsCleared => {
+                //     loop_helper.loop_sleep();
+                // }
+                Event::Resumed => {
+                    let _window = create_window(&event_loop);
+
+                    let (surface, device, queue, config) = create_wgpu_surface(&_window);
+
+                    let _core = create_hai_core(
+                        surface,
+                        device,
+                        queue,
+                        config,
+                        &_window,
+                        event_proxy.clone(),
+                    );
+
+                    set_core(_core.clone());
+
+                    spawn_runtime_with_core(&_core, None);
+
+                    _window.set_visible(true);
+
+                    window = Some(_window);
+                    core = Some(_core);
+                }
+                Event::Suspended => {
+                    unimplemented!("cannot handle Event::Suspended now.");
+                }
+                _ => {}
             }
-            Event::Resumed => {
-                let _window = create_window(&event_loop);
-
-                let (surface, device, queue, config) = create_wgpu_surface(&_window);
-
-                let _core = create_hai_core(
-                    surface,
-                    device,
-                    queue,
-                    config,
-                    &_window,
-                    event_proxy.clone(),
-                );
-
-                set_core(_core.clone());
-
-                spawn_runtime_with_core(&_core, None);
-
-                _window.set_visible(true);
-
-                window = Some(_window);
-                core = Some(_core);
-            }
-            Event::Suspended => {
-                unimplemented!("cannot handle Event::Suspended now.");
-            }
-            _ => {}
-        }
-        if let Some(ref window) = window {
-            if let Some(ref core) = core {
-                let (_control_flow,) = core.handle_events(&event, &window);
-                if _control_flow.is_some() {
-                    *control_flow = _control_flow.unwrap();
+            if let Some(ref window) = window {
+                if let Some(ref core) = core {
+                    let (_control_flow,) = core.handle_events(&event, &window);
+                    if _control_flow.is_some() {
+                        *control_flow = _control_flow.unwrap();
+                    }
                 }
             }
-        }
-    });
+        })
+        .ok();
 }
 
 #[cfg(not(feature = "web"))]
