@@ -8,6 +8,7 @@ use crate::nodes::{Texture, YUVSprite};
 use crate::resource::TextureId;
 use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use crate::utils::calculate::calculate_rect_vertices;
+use crate::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use crate::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
 
 /// the number of vertices in a sprite is always 4.
@@ -109,7 +110,11 @@ impl YUVSpriteRenderer {
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&bind_group_layout, &bind_group_layout2],
+            bind_group_layouts: &[
+                &MVPMatrix::bind_group_layout(device),
+                &bind_group_layout,
+                &bind_group_layout2,
+            ],
             push_constant_ranges: &[],
         });
 
@@ -263,7 +268,6 @@ impl Renderer for YUVSpriteRenderer {
     ) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-        let (logical_width, logical_height) = payload.surface_size.logical_size_f32();
         let scale_factor = payload.surface_size.scale_factor() as f32;
 
         let node = node.as_any_mut().downcast_mut::<YUVSprite>().unwrap();
@@ -275,9 +279,9 @@ impl Renderer for YUVSpriteRenderer {
 
             let (tex_width, tex_height) = texture_y.size();
 
-            let width = (tex_width as f32 * scale_factor) / (logical_width * scale_factor) * 2.;
+            let width = (tex_width as f32 * scale_factor) / (VIEWPORT_WIDTH * scale_factor);
             let height =
-                (tex_height as f32 * scale_factor) / (logical_height * scale_factor) as f32 * 2.;
+                (tex_height as f32 * scale_factor) / (VIEWPORT_HEIGHT * scale_factor) as f32;
 
             if node.base_mut().pop_update_vertices() {
                 let vertices = calculate_rect_vertices(node, width, height, &node.area);
@@ -346,8 +350,8 @@ impl Renderer for YUVSpriteRenderer {
             render_pass.set_pipeline(self.render_pipeline());
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
-            render_pass.set_bind_group(0, bind_group.unwrap(), &[]);
-            render_pass.set_bind_group(1, &self.bind_group_uniforms, &[]);
+            render_pass.set_bind_group(1, bind_group.unwrap(), &[]);
+            render_pass.set_bind_group(2, &self.bind_group_uniforms, &[]);
             render_pass.set_vertex_buffer(0, vertex_buffer.unwrap().slice(..));
 
             // FIXME: NUM_INDICES depends on which renderer the child matches.
