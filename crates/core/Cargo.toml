@@ -12,6 +12,7 @@ default = ["desktop", "js_runtime", "quickjs"]
 desktop = ["hai_pal/desktop", "dep:tokio"]
 js_runtime = []
 quickjs = ["hai_runtime", "hai_macros/quickjs"]
+text = ["dep:huozi"]
 v8 = ["hai_js_runtime", "hai_macros/v8"]
 video = ["dep:ffmpeg-rs"]
 web = [
@@ -46,7 +47,7 @@ web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "Htm
 
 ffmpeg-rs = {version = "5.2.1", optional = true}
 
-huozi = {version = "0.2"}
+huozi = {version = "0.2", optional = true}
 
 [dependencies.hai_js_runtime]
 optional = true

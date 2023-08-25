@@ -3,7 +3,9 @@ use std::sync::Arc;
 use glam::Vec2;
 use hai_pal::sync::RwLock;
 
-use crate::nodes::{Sprite, Text};
+use crate::nodes::Sprite;
+#[cfg(feature = "text")]
+use crate::nodes::Text;
 use crate::traits::{Focusable, Node, NodeBaseTrait, RendererUpdatePayload};
 
 use super::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
@@ -42,6 +44,7 @@ pub fn hit_test(
 
                 (hit, Some(sprite.base().label().clone()))
             }
+            #[cfg(feature = "text")]
             "text" => {
                 let text = child_ref.as_any().downcast_ref::<Text>().unwrap();
 

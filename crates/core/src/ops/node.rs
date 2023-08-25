@@ -12,9 +12,11 @@ use std::sync::Arc;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::core::get_core;
+#[cfg(feature = "text")]
+use crate::nodes::Text;
 #[cfg(feature = "video")]
 use crate::nodes::Video;
-use crate::nodes::{Container, Sprite, Text, YUVSprite};
+use crate::nodes::{Container, Sprite, YUVSprite};
 use crate::traits::{Node, NodeBaseTrait};
 use crate::utils::convert::JSValue;
 #[cfg(not(feature = "web"))]
@@ -71,6 +73,7 @@ pub fn create_instance(
             node_id = *n.base().id();
             node = Arc::new(RwLock::new(n));
         }
+        #[cfg(feature = "text")]
         "text" => {
             let n = Text::new(label, "");
             node_id = *n.base().id();
