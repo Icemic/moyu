@@ -19,6 +19,7 @@ use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
 use crate::user_event::WindowState;
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::dispatch_event::{dispatch_event, HaiEvent, HaiEventKind};
 use crate::utils::hit_test::hit_test;
 use crate::utils::walk::walk_nodes_top_bottom;
@@ -220,6 +221,12 @@ impl Core {
         config.height = height;
 
         *(self.surface_size.write()) = new_size;
+
+        self.queue.write_buffer(
+            &self.mvp_buffer,
+            0,
+            bytemuck::bytes_of(&MVPMatrix::from_logical_size(new_size.logical_size_f32())),
+        );
 
         // apply new size
         self.surface.configure(&self.device, &config);
@@ -530,6 +537,7 @@ impl Core {
         let scale_factor = surface_size.scale_factor();
 
         match event {
+            #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
             WindowEvent::CursorMoved { position, .. } => {
                 let global_logical_x = (position.x / scale_factor) as f32;
                 let global_logical_y = (position.y / scale_factor) as f32;
@@ -594,6 +602,7 @@ impl Core {
                 *current_focused_node = None;
                 true
             }
+            #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
             WindowEvent::MouseInput { button, state, .. } => {
                 if let Some(current_focused_node) = &*self.current_focused_node.read() {
                     match state {
