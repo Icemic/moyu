@@ -496,6 +496,7 @@ impl Core {
                     },
                 })],
                 depth_stencil_attachment: None,
+                ..Default::default()
             });
 
             let childs: Vec<&dyn Node> = childs.iter().map(|n| &**n).collect();
