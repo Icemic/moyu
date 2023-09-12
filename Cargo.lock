@@ -1222,7 +1222,7 @@ dependencies = [
 
 [[package]]
 name = "hai_pal"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",
