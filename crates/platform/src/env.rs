@@ -1,4 +1,5 @@
 mod backend;
+mod present_mode;
 
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -7,6 +8,7 @@ use std::env;
 use url::Url;
 
 pub use self::backend::RenderingBackend;
+pub use self::present_mode::RenderingPresentMode;
 
 static HAI_ENV: OnceCell<HaiConfig> = OnceCell::new();
 
@@ -14,8 +16,8 @@ static HAI_ENV: OnceCell<HaiConfig> = OnceCell::new();
 #[serde(default)]
 pub struct HaiConfig {
     pub entry: String,
-    pub vsync: bool,
     pub show_fps: bool,
+    pub present_mode: RenderingPresentMode,
     pub backend: RenderingBackend,
     pub font_file: String,
 }
@@ -24,8 +26,8 @@ impl Default for HaiConfig {
     fn default() -> Self {
         Self {
             entry: env::current_dir().unwrap().to_str().unwrap().to_string(),
-            vsync: true,
             show_fps: false,
+            present_mode: RenderingPresentMode::default(),
             backend: RenderingBackend::default(),
             font_file: "assets/fonts/default.otf".to_string(),
         }

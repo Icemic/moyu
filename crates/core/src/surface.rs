@@ -1,4 +1,4 @@
-use hai_pal::env::{get_hai_env, RenderingBackend};
+use hai_pal::env::{get_hai_env, RenderingBackend, RenderingPresentMode};
 use log::info;
 use std::sync::Arc;
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
@@ -136,16 +136,24 @@ pub(self) async fn create_surface_inner(
     info!("Alpha mode: {:?}", alpha_mode);
 
     #[cfg(not(feature = "web"))]
-    let present_mode = if get_hai_env().vsync {
-        wgpu::PresentMode::AutoVsync
-    } else {
-        wgpu::PresentMode::AutoNoVsync
+    let present_mode = match get_hai_env().present_mode {
+        RenderingPresentMode::Recommended => {
+            if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
+                wgpu::PresentMode::Mailbox
+            } else if caps.present_modes.contains(&wgpu::PresentMode::FifoRelaxed) {
+                wgpu::PresentMode::FifoRelaxed
+            } else {
+                wgpu::PresentMode::Fifo
+            }
+        }
+        RenderingPresentMode::AutoVsync => wgpu::PresentMode::AutoVsync,
+        RenderingPresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
     };
 
     #[cfg(feature = "web")]
     let present_mode = wgpu::PresentMode::AutoVsync;
 
-    info!("Present mode: {:?}", alpha_mode);
+    info!("Present mode: {:?}", present_mode);
 
     // define how the surface creates its underlying SurfaceTextures
     let config = wgpu::SurfaceConfiguration {
