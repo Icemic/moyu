@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "hai_pal"
 repository = "https://github.com/Icemic/hai"
-version = "0.3.0"
+version = "0.3.1"
 
 [features]
 default = ["desktop"]
