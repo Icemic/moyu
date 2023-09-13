@@ -1,7 +1,7 @@
 use hai_pal::env::{get_hai_env, RenderingBackend, RenderingPresentMode};
 use log::info;
 use std::sync::Arc;
-use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
+use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, Size};
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopWindowTarget};
 use winit::window::WindowBuilder;
@@ -44,25 +44,32 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Window {
 
 pub fn create_wgpu_surface(
     window: &Window,
-) -> (Arc<Surface>, Arc<Device>, Arc<Queue>, SurfaceConfiguration) {
+) -> (
+    Arc<Instance>,
+    Arc<Surface>,
+    Arc<Device>,
+    Arc<Queue>,
+    SurfaceConfiguration,
+) {
     // create wgpu surface
     #[cfg(not(feature = "web"))]
-    let (surface, device, queue, config) =
+    let (instance, surface, device, queue, config) =
         futures::executor::block_on(create_surface_inner(&window, &window.inner_size()));
     #[cfg(feature = "web")]
     let (surface, device, queue, config) =
         { pollster::block_on(create_surface_inner(&window, &window.inner_size())) };
+    let instance = Arc::new(instance);
     let surface = Arc::new(surface);
     let device = Arc::new(device);
     let queue = Arc::new(queue);
 
-    (surface, device, queue, config)
+    (instance, surface, device, queue, config)
 }
 
 pub(self) async fn create_surface_inner(
     window: &Window,
     size: &PhysicalSize<u32>,
-) -> (Surface, Device, Queue, SurfaceConfiguration) {
+) -> (Instance, Surface, Device, Queue, SurfaceConfiguration) {
     // The instance is a handle to our GPU
     // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
     let backends = match get_hai_env().backend {
@@ -169,5 +176,5 @@ pub(self) async fn create_surface_inner(
     };
     surface.configure(&device, &config);
 
-    (surface, device, queue, config)
+    (instance, surface, device, queue, config)
 }

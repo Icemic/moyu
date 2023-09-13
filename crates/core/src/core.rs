@@ -11,7 +11,7 @@ use std::sync::Arc;
 #[cfg(not(feature = "web"))]
 use std::time::Instant;
 use wgpu::util::{DeviceExt, StagingBelt};
-use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
+use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, Size};
 use winit::event::{ElementState, Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopProxy};
@@ -74,6 +74,7 @@ pub enum HaiRedrawMode {
 }
 
 pub struct Core {
+    pub instance: Arc<Instance>,
     pub surface_size: Arc<RwLock<SurfaceSize>>,
     pub surface: Arc<Surface>,
     pub device: Arc<Device>,
@@ -108,6 +109,7 @@ unsafe impl Sync for Core {}
 
 impl Core {
     pub fn new(
+        instance: Arc<Instance>,
         surface: Arc<Surface>,
         device: Arc<Device>,
         queue: Arc<Queue>,
@@ -145,6 +147,7 @@ impl Core {
         });
 
         Self {
+            instance,
             surface_size: Arc::new(RwLock::new(surface_size)),
             surface,
             device,
@@ -228,6 +231,9 @@ impl Core {
             bytemuck::bytes_of(&MVPMatrix::from_logical_size(new_size.logical_size_f32())),
         );
 
+        // Finish all queue commands before reconfigure.
+        // This is essential on DirectX 12 backend to avoid unexpected error.
+        self.instance.poll_all(true);
         // apply new size
         self.surface.configure(&self.device, &config);
     }
