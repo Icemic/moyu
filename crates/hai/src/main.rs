@@ -49,9 +49,10 @@ fn main_entry() {
                 Event::Resumed => {
                     let _window = create_window(&event_loop);
 
-                    let (surface, device, queue, config) = create_wgpu_surface(&_window);
+                    let (instance, surface, device, queue, config) = create_wgpu_surface(&_window);
 
                     let _core = create_hai_core(
+                        instance,
                         surface,
                         device,
                         queue,
