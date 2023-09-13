@@ -16,7 +16,7 @@ use futures::Future;
 use renderer::TextRenderer;
 use renderer::YUVSpriteRenderer;
 use std::sync::Arc;
-use wgpu::{Device, Queue, Surface, SurfaceConfiguration};
+use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;
 use winit::window::Window;
 
@@ -42,6 +42,7 @@ pub fn setup() {
 
 /// create hai core instance
 pub fn create_hai_core(
+    instance: Arc<Instance>,
     surface: Arc<Surface>,
     device: Arc<Device>,
     queue: Arc<Queue>,
@@ -58,7 +59,7 @@ pub fn create_hai_core(
     let text_renderer = TextRenderer::new(&device, &config);
 
     // create multithread shared core
-    let core = Core::new(surface, device, queue, config, event_proxy);
+    let core = Core::new(instance, surface, device, queue, config, event_proxy);
 
     // core.register_renderer("null".to_string(), null_renderer);
     core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
