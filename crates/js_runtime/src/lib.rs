@@ -24,7 +24,7 @@ use std::{
 pub use v8;
 use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, Object, OwnedIsolate, Value};
 
-use self::module::{dynamic_import_callback, ModuleLoader};
+use self::module::ModuleLoader;
 
 pub struct JSRuntime {
     isolate: OwnedIsolate,
@@ -111,11 +111,11 @@ impl JSRuntime {
             let mut module_loader = module_loader.borrow_mut();
             let entry_dir = entry_dir();
 
-            if entry_dir.to_string().ends_with("/") {
+            if entry_dir.to_string().ends_with('/') {
                 module_loader.push_module_loading_task(&entry_dir, "./index".to_string())?
             } else {
                 let specifier = entry_dir.path_segments().unwrap().last().unwrap();
-                module_loader.push_module_loading_task(&entry_dir, format!("./{}",specifier))?
+                module_loader.push_module_loading_task(&entry_dir, format!("./{}", specifier))?
             }
         };
 
@@ -152,10 +152,10 @@ impl JSRuntime {
         module_loader.waker.register(cx.waker());
 
         match module_loader.pending.poll_next_unpin(cx) {
-            Poll::Ready(None) => return Poll::Ready(()),
+            Poll::Ready(None) => Poll::Ready(()),
             Poll::Ready(Some(Err(err))) => {
                 error!("unexpected error: {}.", err.to_string());
-                return Poll::Ready(());
+                Poll::Ready(())
             }
             Poll::Ready(Some(Ok((resolved_file_path, code)))) => {
                 let module = module_loader.modules.get(&resolved_file_path).unwrap();
@@ -201,10 +201,10 @@ impl JSRuntime {
         timer.waker.register(cx.waker());
 
         match timer.pending.poll_next_unpin(cx) {
-            Poll::Ready(None) => return Poll::Ready(()),
+            Poll::Ready(None) => Poll::Ready(()),
             Poll::Ready(Some(Err(err))) => {
                 error!("unexpected error: {}.", err.to_string());
-                return Poll::Ready(());
+                Poll::Ready(())
             }
             Poll::Ready(Some(Ok(handler_id))) => {
                 let callback = timer.consume_callback(handler_id);

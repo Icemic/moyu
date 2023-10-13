@@ -47,7 +47,7 @@ fn main_entry() {
                     loop_helper.loop_sleep();
                 }
                 Event::Resumed => {
-                    let _window = create_window(&event_loop);
+                    let _window = create_window(event_loop);
 
                     let (instance, surface, device, queue, config) = create_wgpu_surface(&_window);
 
@@ -77,7 +77,7 @@ fn main_entry() {
             }
             if let Some(ref window) = window {
                 if let Some(ref core) = core {
-                    let (_control_flow,) = core.handle_events(&event, &window);
+                    let (_control_flow,) = core.handle_events(&event, window);
                     if _control_flow.is_some() {
                         *control_flow = _control_flow.unwrap();
                     }

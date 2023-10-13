@@ -32,7 +32,7 @@ fn get_node<'a>(
     if let Some(node) = node {
         Ok(node)
     } else {
-        return Err(format!("Cannot find node by id {}", node_id));
+        Err(format!("Cannot find node by id {}", node_id))
     }
 }
 

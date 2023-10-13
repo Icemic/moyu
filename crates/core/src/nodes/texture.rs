@@ -29,7 +29,7 @@ impl Texture {
     }
 
     pub fn status(&self) -> TextureStatus {
-        self.status.load().as_ref().clone()
+        *self.status.load().as_ref()
     }
 
     pub fn set_status(&self, status: TextureStatus) {

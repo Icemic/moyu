@@ -146,7 +146,7 @@ impl SpriteRenderer {
 
 impl Renderer for SpriteRenderer {
     fn name(&self) -> &'static str {
-        return "sprite";
+        "sprite"
     }
 
     fn render_pipeline(&self) -> &RenderPipeline {
@@ -173,7 +173,7 @@ impl Renderer for SpriteRenderer {
         let node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
 
         if let Some(texture_id) = node.texture_id.load().as_ref() {
-            let texture = payload.resource_manager.get_texture(&texture_id);
+            let texture = payload.resource_manager.get_texture(texture_id);
 
             if TextureStatus::Ready != texture.status() {
                 return;
@@ -183,7 +183,7 @@ impl Renderer for SpriteRenderer {
 
             let width = (tex_width as f32 * scale_factor) / (VIEWPORT_WIDTH * scale_factor);
             let height =
-                (tex_height as f32 * scale_factor) / (VIEWPORT_HEIGHT * scale_factor) as f32;
+                (tex_height as f32 * scale_factor) / (VIEWPORT_HEIGHT * scale_factor);
 
             if node.base_mut().pop_update_vertices() {
                 let vertices = calculate_rect_vertices(node, width, height, &node.area);
@@ -205,7 +205,7 @@ impl Renderer for SpriteRenderer {
                             node.vertex_buffer.as_ref().unwrap(),
                             0,
                             (buf.len() as u64).try_into().unwrap(),
-                            &device,
+                            device,
                         )
                         .copy_from_slice(buf);
                 }

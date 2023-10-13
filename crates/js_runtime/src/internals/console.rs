@@ -40,8 +40,8 @@ fn format_string(scope: &mut HandleScope, args: FunctionCallbackArguments) -> st
     for character in template_string.chars() {
         if symbol_scan && !precision_scan && character == '.' {
             precision_scan = true;
-            precision.push_str(".");
-        } else if symbol_scan && precision_scan && character >= '0' && character <= '9' {
+            precision.push('.');
+        } else if symbol_scan && precision_scan && character.is_ascii_digit() {
             precision.push(character);
         } else if symbol_scan {
             symbol_scan = false;
@@ -73,12 +73,12 @@ fn format_string(scope: &mut HandleScope, args: FunctionCallbackArguments) -> st
     }
 
     while arg_pos < others.len() {
-        formatted_string.push_str(" ");
+        formatted_string.push(' ');
         formatted_string.push_str(others.get(arg_pos).unwrap());
         arg_pos += 1;
     }
 
-    return formatted_string;
+    formatted_string
 }
 
 fn log(scope: &mut HandleScope, args: FunctionCallbackArguments, _: ReturnValue) {

@@ -42,7 +42,7 @@ impl Sprite {
 impl Focusable for Sprite {
     fn contains(&self, x: f32, y: f32, payload: &RendererUpdatePayload) -> bool {
         if let Some(texture_id) = self.texture_id.load().as_ref() {
-            if let Some(texture) = payload.resource_manager.try_get_texture(&texture_id) {
+            if let Some(texture) = payload.resource_manager.try_get_texture(texture_id) {
                 let (width, height) = texture.size();
                 let offset_x = self.base().anchor().x * width as f32;
                 let offset_y = self.base().anchor().y * height as f32;

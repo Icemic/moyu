@@ -300,7 +300,7 @@ impl Core {
                                 self.resize(surface_size);
                             }
 
-                            if let Some(_) = window.fullscreen() {
+                            if window.fullscreen().is_some() {
                                 self.window_state.store(Arc::new(WindowState::Fullscreen));
                             } else if window.is_maximized() {
                                 self.window_state.store(Arc::new(WindowState::Maximized));
@@ -319,7 +319,7 @@ impl Core {
                     }
                 }
             }
-            &Event::UserEvent(ref user_event) => match user_event {
+            Event::UserEvent(user_event) => match user_event {
                 &UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
                     let factor = factor.unwrap_or(window.scale_factor());
 
@@ -331,10 +331,8 @@ impl Core {
                         let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
                         self.resize(surface_size);
 
-                        let window_size = Size::Logical(LogicalSize::new(
-                            logical_width as f64,
-                            logical_height as f64,
-                        ));
+                        let window_size =
+                            Size::Logical(LogicalSize::new(logical_width, logical_height));
 
                         let _ = window.request_inner_size(window_size);
 
@@ -377,7 +375,7 @@ impl Core {
                     self.window_state.store(Arc::new(state));
                 }
                 UserEvent::SetTitle(ref title) => {
-                    window.set_title(&title);
+                    window.set_title(title);
                 }
                 &UserEvent::SetCursorIcon(icon) => {
                     window.set_cursor_icon(icon);
@@ -451,7 +449,7 @@ impl Core {
         {
             let root_node = root_node.read();
             let upload_payload = RendererUpdatePayload {
-                surface_size: surface_size.clone(),
+                surface_size: *surface_size,
                 resource_manager: self.resource_manager.clone(),
             };
 
@@ -539,7 +537,7 @@ impl Core {
 
         let surface_size = {
             let surface_size = self.surface_size.read();
-            surface_size.clone()
+            *surface_size
         };
         let scale_factor = surface_size.scale_factor();
 
