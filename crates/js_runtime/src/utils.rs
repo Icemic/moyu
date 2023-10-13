@@ -93,7 +93,7 @@ impl IntoV8<Array> for Vec<f64> {
         for v in self {
             _self.push(v.into_v8(scope).into());
         }
-        Array::new_with_elements(scope, &*_self)
+        Array::new_with_elements(scope, &_self)
     }
 }
 

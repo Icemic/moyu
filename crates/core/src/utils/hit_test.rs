@@ -40,7 +40,7 @@ pub fn hit_test(
                 let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
 
                 // check if pointer is over the sprite
-                let hit = sprite.contains(local_logical_x, local_logical_y, &upload_payload);
+                let hit = sprite.contains(local_logical_x, local_logical_y, upload_payload);
 
                 (hit, Some(sprite.base().label().clone()))
             }

@@ -54,7 +54,7 @@ pub fn create_wgpu_surface(
     // create wgpu surface
     #[cfg(not(feature = "web"))]
     let (instance, surface, device, queue, config) =
-        futures::executor::block_on(create_surface_inner(&window, &window.inner_size()));
+        futures::executor::block_on(create_surface_inner(window, &window.inner_size()));
     #[cfg(feature = "web")]
     let (surface, device, queue, config) =
         { pollster::block_on(create_surface_inner(&window, &window.inner_size())) };

@@ -77,7 +77,7 @@ impl QuickVM {
 
                     timer_tasks.lock().unwrap().push(task);
 
-                    return timer_id;
+                    timer_id
                 })
                 .unwrap();
         }
@@ -103,7 +103,7 @@ impl QuickVM {
 
                     timer_tasks.lock().unwrap().push(task);
 
-                    return timer_id;
+                    timer_id
                 })
                 .unwrap();
         }
@@ -118,7 +118,7 @@ impl QuickVM {
                 {
                     timer_tasks.remove(index);
                 }
-                return 0;
+                0
             };
 
             // clearInterval is in fact the same as clearTimeout
@@ -152,7 +152,7 @@ impl QuickVM {
             args.into_iter().map(|v| v.into()).collect(),
             sender,
         ));
-        let _ = receiver.await.unwrap();
+        receiver.await.unwrap();
 
         Ok(())
     }
@@ -161,7 +161,7 @@ impl QuickVM {
         let module_name = {
             let entry_dir = entry_dir();
 
-            if entry_dir.to_string().ends_with("/") {
+            if entry_dir.to_string().ends_with('/') {
                 "./index".to_string()
             } else {
                 let specifier = entry_dir.path_segments().unwrap().last().unwrap();
@@ -178,7 +178,7 @@ impl QuickVM {
             // handle all pending calls
             let mut call_tasks = self.call_tasks.lock().unwrap();
             while let Some((name, args, sender)) = call_tasks.pop_front() {
-                let result = self.context.call_function(&name, args);
+                let _result = self.context.call_function(&name, args);
                 sender.send(()).unwrap();
             }
 

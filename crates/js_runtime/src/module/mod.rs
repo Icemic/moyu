@@ -104,7 +104,7 @@ impl ModuleLoader {
         let module = self
             .modules
             .get_mut(resolved_file_path)
-            .expect(format!("cannot find module '{}'", resolved_file_path.as_str()).as_str());
+            .unwrap_or_else(|| panic!("cannot find module '{}'", resolved_file_path.as_str()));
 
         let resource_name = resolved_file_path.as_str().into_v8(scope).into();
         let source_map_url = "<internal>".into_v8(scope).into();
@@ -223,7 +223,7 @@ impl ModuleLoader {
         let module = self
             .modules
             .get(resolved_file_path)
-            .expect(format!("cannot find module {}", resolved_file_path.as_str()).as_str());
+            .unwrap_or_else(|| panic!("cannot find module {}", resolved_file_path.as_str()));
 
         module.module.clone()
     }

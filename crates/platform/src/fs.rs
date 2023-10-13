@@ -38,5 +38,5 @@ pub async fn read(url: &Url) -> Result<Vec<u8>> {
         return Ok(code.to_vec());
     };
 
-    return Err(anyhow::format_err!("Unsupported scheme '{}'", url.scheme()));
+    Err(anyhow::format_err!("Unsupported scheme '{}'", url.scheme()))
 }

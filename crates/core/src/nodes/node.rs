@@ -346,7 +346,7 @@ impl NodeBase {
             self.transform.translation.y = ty;
 
             // refresh global transform matrix
-            let mut global_transform = parent_transform.clone();
+            let mut global_transform = *parent_transform;
             global_transform.multiply(self.transform);
             self.global_transform = global_transform;
 

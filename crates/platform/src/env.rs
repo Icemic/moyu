@@ -43,7 +43,7 @@ pub fn setup() {
     let env = match envy::prefixed("HAI_").from_env::<HaiConfig>() {
         Ok(config) => config,
         Err(error) => {
-            println!("Failed to read config: {}", error.to_string());
+            println!("Failed to read config: {}", error);
             HaiConfig::default()
         }
     };
@@ -70,7 +70,7 @@ pub fn entry_dir() -> Url {
         || entry_dir.starts_with("https://")
         || entry_dir.starts_with("file://")
     {
-        Url::parse(&entry_dir).unwrap()
+        Url::parse(entry_dir).unwrap()
     } else if cfg!(not(feature = "web")) && !entry_dir.contains("://") {
         #[cfg(not(feature = "web"))]
         get_entry_dir_local(entry_dir)

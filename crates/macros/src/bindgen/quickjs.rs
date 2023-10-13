@@ -145,7 +145,7 @@ fn get_type_string(_type: &Box<Type>) -> std::string::String {
                 panic!("Do not support path type with self");
             }
             let path = &a.path;
-            if let Some(_) = path.leading_colon {
+            if path.leading_colon.is_some() {
                 panic!("Do not support path type with leading colon");
             }
 
@@ -169,7 +169,7 @@ fn get_type_string(_type: &Box<Type>) -> std::string::String {
                             if let GenericArgument::Type(t) = arg {
                                 let ident = get_type_string(&Box::new(t.clone()));
                                 s.push_str(ident.as_str());
-                                s.push_str(",");
+                                s.push(',');
                             } else {
                                 panic!("Unsupported GenericArgument format: {:?}", arg);
                             }

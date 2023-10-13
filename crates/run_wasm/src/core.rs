@@ -125,7 +125,7 @@ pub fn run_wasm() {
     if args.release {
         cargo_args.push("--release");
     }
-    let status = Command::new(&cargo)
+    let status = Command::new(cargo)
         .current_dir(&project_root)
         .args(&cargo_args)
         .status()

@@ -75,9 +75,8 @@ pub fn create_hai_core(
     core.set_screen_size((size.width, size.height), scale_factor);
 
     // make core sharable among threads
-    let core = Arc::new(core);
 
-    core
+    Arc::new(core)
 }
 
 use std::pin::Pin;

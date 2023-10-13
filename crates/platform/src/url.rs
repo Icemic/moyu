@@ -13,8 +13,8 @@ pub fn resolve_package_from(target: &str, base_dir: Url) -> Result<Url> {
     }
 
     if scheme == "https" || scheme == "http" {
-        return Ok(base_dir.join(target)?);
+        Ok(base_dir.join(target)?)
     } else {
-        return Err(anyhow::format_err!("Unsupported scheme '{}'", scheme));
-    };
+        Err(anyhow::format_err!("Unsupported scheme '{}'", scheme))
+    }
 }
