@@ -1,7 +1,7 @@
 use arc_swap::ArcSwap;
 use hai_pal::env::get_hai_env;
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -251,15 +251,22 @@ impl Core {
                     Ok(_) => {}
                     // Reconfigure the surface if lost
                     Err(wgpu::SurfaceError::Lost) => {
+                        warn!("surface lost, reconfigure.");
                         self.refresh();
                     }
                     // The system is out of memory, we should probably quit
-                    Err(wgpu::SurfaceError::OutOfMemory) => control_flow = Some(ControlFlow::Exit),
+                    Err(wgpu::SurfaceError::OutOfMemory) => {
+                        error!("surface out of memory, quit.");
+                        control_flow = Some(ControlFlow::Exit)
+                    }
                     Err(wgpu::SurfaceError::Outdated) => {
                         // ignore
+                        warn!("surface outdated, ignored.");
                     }
                     // All other errors (Outdated, Timeout) should be resolved by the next frame
-                    Err(e) => eprintln!("{:?}", e),
+                    Err(e) => {
+                        error!("surface error: {:?}", e);
+                    }
                 }
             }
             &Event::AboutToWait => {
