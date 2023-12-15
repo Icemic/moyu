@@ -14,7 +14,7 @@ use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, Size};
 use winit::event::{ElementState, Event, WindowEvent};
-use winit::event_loop::{ControlFlow, EventLoopProxy};
+use winit::event_loop::{EventLoopProxy, EventLoopWindowTarget};
 use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
@@ -243,32 +243,9 @@ impl Core {
         &self,
         event: &Event<UserEvent>,
         window: &Window,
-    ) -> (Option<ControlFlow>,) {
-        let mut control_flow = None;
+        event_loop: &EventLoopWindowTarget<UserEvent>,
+    ) {
         match event {
-            &Event::RedrawRequested(window_id) if window_id == window.id() => {
-                match self.render(window) {
-                    Ok(_) => {}
-                    // Reconfigure the surface if lost
-                    Err(wgpu::SurfaceError::Lost) => {
-                        warn!("surface lost, reconfigure.");
-                        self.refresh();
-                    }
-                    // The system is out of memory, we should probably quit
-                    Err(wgpu::SurfaceError::OutOfMemory) => {
-                        error!("surface out of memory, quit.");
-                        control_flow = Some(ControlFlow::Exit)
-                    }
-                    Err(wgpu::SurfaceError::Outdated) => {
-                        // ignore
-                        warn!("surface outdated, ignored.");
-                    }
-                    // All other errors (Outdated, Timeout) should be resolved by the next frame
-                    Err(e) => {
-                        error!("surface error: {:?}", e);
-                    }
-                }
-            }
             &Event::AboutToWait => {
                 // RedrawRequested will only trigger once, unless we manually
                 // request it.
@@ -294,7 +271,30 @@ impl Core {
                 if !self.input(event) {
                     // UPDATED!
                     match event {
-                        WindowEvent::CloseRequested => control_flow = Some(ControlFlow::Exit),
+                        WindowEvent::RedrawRequested => {
+                            match self.render(window) {
+                                Ok(_) => {}
+                                // Reconfigure the surface if lost
+                                Err(wgpu::SurfaceError::Lost) => {
+                                    warn!("surface lost, reconfigure.");
+                                    self.refresh();
+                                }
+                                // The system is out of memory, we should probably quit
+                                Err(wgpu::SurfaceError::OutOfMemory) => {
+                                    error!("surface out of memory, quit.");
+                                    event_loop.exit();
+                                }
+                                Err(wgpu::SurfaceError::Outdated) => {
+                                    // ignore
+                                    warn!("surface outdated, ignored.");
+                                }
+                                // All other errors (Outdated, Timeout) should be resolved by the next frame
+                                Err(e) => {
+                                    error!("surface error: {:?}", e);
+                                }
+                            }
+                        }
+                        WindowEvent::CloseRequested => event_loop.exit(),
                         WindowEvent::Resized(physical_size) => {
                             let surface_size = SurfaceSize::from_physical_size(
                                 physical_size,
@@ -391,8 +391,8 @@ impl Core {
                     window.set_cursor_visible(visible);
                 }
                 UserEvent::Quit => {
-                    control_flow = Some(ControlFlow::Exit);
                     info!("Goodbye.");
+                    event_loop.exit();
                 }
                 UserEvent::Custom(_) => {
                     // do nothing
@@ -400,8 +400,6 @@ impl Core {
             },
             _ => {}
         }
-
-        (control_flow,)
     }
 
     #[inline(always)]
@@ -503,7 +501,7 @@ impl Core {
                             b: 1.0,
                             a: 1.0,
                         }),
-                        store: true,
+                        store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: None,
