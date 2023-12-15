@@ -40,7 +40,7 @@ fn main_entry() {
     };
 
     event_loop
-        .run(move |event, event_loop, control_flow| {
+        .run(move |event, event_loop| {
             loop_helper.loop_start();
             match event {
                 Event::AboutToWait => {
@@ -77,10 +77,7 @@ fn main_entry() {
             }
             if let Some(ref window) = window {
                 if let Some(ref core) = core {
-                    let (_control_flow,) = core.handle_events(&event, window);
-                    if _control_flow.is_some() {
-                        *control_flow = _control_flow.unwrap();
-                    }
+                    core.handle_events(&event, window, event_loop);
                 }
             }
         })
