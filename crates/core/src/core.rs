@@ -73,6 +73,18 @@ pub enum HaiRedrawMode {
     Dirty,
 }
 
+pub type AfterRenderHandler = Box<
+    dyn Fn(
+            &Device,
+            &Queue,
+            &mut wgpu::CommandEncoder,
+            &wgpu::SurfaceTexture,
+            &wgpu::TextureView,
+            &mut wgpu::util::StagingBelt,
+        ) + Send
+        + Sync,
+>;
+
 pub struct Core {
     pub instance: Arc<Instance>,
     pub surface_size: Arc<RwLock<SurfaceSize>>,
@@ -102,6 +114,9 @@ pub struct Core {
     /// if `true`, the screen will be refreshed in next frame,
     /// by default it will be `true` to render every frame.
     pub is_dirty: AtomicBool,
+
+    // render interrupt handler
+    pub after_render_handler: Arc<Mutex<Option<AfterRenderHandler>>>,
 }
 
 unsafe impl Send for Core {}
@@ -170,6 +185,8 @@ impl Core {
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
             redraw_mode: ArcSwap::new(Arc::new(HaiRedrawMode::Auto)),
             is_dirty: AtomicBool::new(true),
+
+            after_render_handler: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -180,6 +197,11 @@ impl Core {
             return;
         }
         renderers.insert(name, renderer);
+    }
+
+    pub fn register_after_render_handler(&self, handler: AfterRenderHandler) {
+        let mut after_render_handler = self.after_render_handler.lock();
+        *after_render_handler = Some(handler);
     }
 
     /**
@@ -518,6 +540,11 @@ impl Core {
                     current_renderer.render(&device, &queue, &mut render_pass, child);
                 }
             }
+        }
+
+        // call after render callback if registered
+        if let Some(after_render_callback) = self.after_render_handler.lock().as_ref() {
+            after_render_callback(&device, &queue, &mut encoder, &output, &view, &mut staging_belt);
         }
 
         staging_belt.finish();

@@ -116,7 +116,8 @@ pub(self) async fn create_surface_inner(
     let (device, queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
+                features: wgpu::Features::BGRA8UNORM_STORAGE
+                    | wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
                 limits,
                 label: None,
             },
@@ -164,7 +165,7 @@ pub(self) async fn create_surface_inner(
 
     // define how the surface creates its underlying SurfaceTextures
     let config = wgpu::SurfaceConfiguration {
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         format,
         // width or height should not be 0 or it will cause crash
         width: size.width,
