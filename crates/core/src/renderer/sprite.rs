@@ -182,8 +182,7 @@ impl Renderer for SpriteRenderer {
             let (tex_width, tex_height) = texture.size();
 
             let width = (tex_width as f32 * scale_factor) / (VIEWPORT_WIDTH * scale_factor);
-            let height =
-                (tex_height as f32 * scale_factor) / (VIEWPORT_HEIGHT * scale_factor);
+            let height = (tex_height as f32 * scale_factor) / (VIEWPORT_HEIGHT * scale_factor);
 
             if node.base_mut().pop_update_vertices() {
                 let vertices = calculate_rect_vertices(node, width, height, &node.area);
@@ -229,6 +228,10 @@ impl Renderer for SpriteRenderer {
         render_pass: &mut RenderPass<'a>,
         node: &'b dyn Node,
     ) {
+        if !node.base().visible() {
+            return;
+        }
+
         let mut bind_group = None;
         let mut vertex_buffer = None;
 

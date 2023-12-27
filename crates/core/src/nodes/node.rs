@@ -28,6 +28,8 @@ pub struct NodeBase {
     rotation: f32,
     /// skew relative to parent
     skew: Point,
+    /// visible to render
+    visible: bool,
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
@@ -55,6 +57,7 @@ impl NodeBase {
             scale: Point::one(),
             rotation: 0.,
             skew: Point::default(),
+            visible: true,
 
             _update_id: 0,
             _current_update_id: 0,
@@ -118,6 +121,10 @@ impl NodeBase {
     #[inline]
     pub fn skew(&self) -> &Point {
         &self.skew
+    }
+    #[inline]
+    pub fn visible(&self) -> bool {
+        self.visible
     }
 
     #[inline]
@@ -185,6 +192,10 @@ impl NodeBase {
         self.skew.y = y;
         self._update_id += 1;
     }
+    #[inline]
+    pub fn set_visible(&mut self, visible: bool) {
+        self.visible = visible;
+    }
 
     pub fn transform(&self) -> &Transform {
         &self.transform
@@ -251,6 +262,10 @@ impl NodeBase {
 
         if let Some(point) = props.pivot {
             self.set_pivot(point[0], point[1]);
+        }
+
+        if let Some(visible) = props.visible {
+            self.set_visible(visible);
         }
     }
 
@@ -371,4 +386,5 @@ pub struct NodeProps {
     pub skew: Option<f32>,
     pub skew_x: Option<f32>,
     pub skew_y: Option<f32>,
+    pub visible: Option<bool>,
 }
