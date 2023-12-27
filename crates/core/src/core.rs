@@ -260,6 +260,38 @@ impl Core {
         self.surface.configure(&self.device, &config);
     }
 
+    pub fn fullscreen() -> bool {
+        let window_state = get_core().window_state.load();
+        match **window_state {
+            WindowState::Fullscreen => true,
+            _ => false,
+        }
+    }
+
+    pub fn maximized() -> bool {
+        let window_state = get_core().window_state.load();
+        match **window_state {
+            WindowState::Maximized => true,
+            _ => false,
+        }
+    }
+
+    pub fn minimized() -> bool {
+        let window_state = get_core().window_state.load();
+        match **window_state {
+            WindowState::Minimized => true,
+            _ => false,
+        }
+    }
+
+    pub fn idle() -> bool {
+        let window_state = get_core().window_state.load();
+        match **window_state {
+            WindowState::Idle => true,
+            _ => false,
+        }
+    }
+
     #[inline(always)]
     pub fn handle_events(
         &self,
@@ -544,7 +576,14 @@ impl Core {
 
         // call after render callback if registered
         if let Some(after_render_callback) = self.after_render_handler.lock().as_ref() {
-            after_render_callback(&device, &queue, &mut encoder, &output, &view, &mut staging_belt);
+            after_render_callback(
+                &device,
+                &queue,
+                &mut encoder,
+                &output,
+                &view,
+                &mut staging_belt,
+            );
         }
 
         staging_belt.finish();
