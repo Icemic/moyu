@@ -260,32 +260,32 @@ impl Core {
         self.surface.configure(&self.device, &config);
     }
 
-    pub fn fullscreen() -> bool {
-        let window_state = get_core().window_state.load();
+    pub fn fullscreen(&self) -> bool {
+        let window_state = self.window_state.load();
         match **window_state {
             WindowState::Fullscreen => true,
             _ => false,
         }
     }
 
-    pub fn maximized() -> bool {
-        let window_state = get_core().window_state.load();
+    pub fn maximized(&self) -> bool {
+        let window_state = self.window_state.load();
         match **window_state {
             WindowState::Maximized => true,
             _ => false,
         }
     }
 
-    pub fn minimized() -> bool {
-        let window_state = get_core().window_state.load();
+    pub fn minimized(&self) -> bool {
+        let window_state = self.window_state.load();
         match **window_state {
             WindowState::Minimized => true,
             _ => false,
         }
     }
 
-    pub fn idle() -> bool {
-        let window_state = get_core().window_state.load();
+    pub fn idle(&self) -> bool {
+        let window_state = self.window_state.load();
         match **window_state {
             WindowState::Idle => true,
             _ => false,
