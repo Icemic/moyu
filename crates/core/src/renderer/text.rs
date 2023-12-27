@@ -289,6 +289,10 @@ impl Renderer for TextRenderer {
         render_pass: &mut RenderPass<'a>,
         node: &'b dyn Node,
     ) {
+        if !node.base().visible() {
+            return;
+        }
+
         let node = node
             .as_any()
             .downcast_ref::<Text>()
