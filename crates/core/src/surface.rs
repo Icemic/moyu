@@ -112,12 +112,22 @@ pub(self) async fn create_surface_inner(
         wgpu::Limits::downlevel_webgl2_defaults()
     };
 
+    let features = if adapter
+        .features()
+        .contains(wgpu::Features::BGRA8UNORM_STORAGE)
+    {
+        wgpu::Features::default()
+            | wgpu::Features::BGRA8UNORM_STORAGE
+            | wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
+    } else {
+        wgpu::Features::default()
+    };
+
     // graphic card with specific backend
     let (device, queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::BGRA8UNORM_STORAGE
-                    | wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
+                features,
                 limits,
                 label: None,
             },
