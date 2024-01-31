@@ -47,7 +47,7 @@ pub fn create_hai_core(
     device: Arc<Device>,
     queue: Arc<Queue>,
     config: SurfaceConfiguration,
-    window: &Window,
+    window: &Arc<Window>,
     event_proxy: Arc<EventLoopProxy<UserEvent>>,
 ) -> Arc<Core> {
     let sprite_renderer = SpriteRenderer::new(&device, &config);
@@ -59,7 +59,15 @@ pub fn create_hai_core(
     let text_renderer = TextRenderer::new(&device, &config);
 
     // create multithread shared core
-    let core = Core::new(instance, surface, device, queue, config, event_proxy);
+    let core = Core::new(
+        instance,
+        surface,
+        device,
+        queue,
+        window.clone(),
+        config,
+        event_proxy,
+    );
 
     // core.register_renderer("null".to_string(), null_renderer);
     core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));

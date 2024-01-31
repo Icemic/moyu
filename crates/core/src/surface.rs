@@ -15,7 +15,7 @@ pub fn create_eventloop() -> EventLoop<UserEvent> {
     event_loop
 }
 
-pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Window {
+pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Window> {
     // create window
     let window = WindowBuilder::new()
         .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
@@ -39,7 +39,7 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Window {
             .expect("couldn't append canvas to document body");
     }
 
-    window
+    Arc::new(window)
 }
 
 pub fn create_wgpu_surface(
