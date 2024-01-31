@@ -91,6 +91,7 @@ pub struct Core {
     pub surface: Arc<Surface>,
     pub device: Arc<Device>,
     pub queue: Arc<Queue>,
+    pub window: Arc<Window>,
     pub config: Arc<Mutex<SurfaceConfiguration>>,
     pub event_proxy: Arc<EventLoopProxy<UserEvent>>,
     pub resource_manager: Arc<ResourceManager>,
@@ -128,6 +129,7 @@ impl Core {
         surface: Arc<Surface>,
         device: Arc<Device>,
         queue: Arc<Queue>,
+        window: Arc<Window>,
         config: SurfaceConfiguration,
         event_proxy: Arc<EventLoopProxy<UserEvent>>,
     ) -> Self {
@@ -167,6 +169,7 @@ impl Core {
             surface,
             device,
             queue,
+            window,
             config: Arc::new(Mutex::new(config)),
             event_proxy,
             resource_manager: Arc::new(resource_manager),
@@ -236,8 +239,34 @@ impl Core {
         self.is_dirty.store(is_dirty, Ordering::Relaxed);
     }
 
+    /// resize window, should be called in main thread
+    pub fn resize_window(&self, logical_width: f64, logical_height: f64, factor: Option<f64>) {
+        let window = &self.window;
+        let factor = factor.unwrap_or(window.scale_factor());
+
+        let window_fullscreen = window.fullscreen();
+        let window_minimized = window.is_minimized();
+        let window_maximized = window.is_maximized();
+
+        if logical_width > 0. && logical_height > 0. {
+            let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
+            self.resize_surface(surface_size);
+
+            let window_size = Size::Logical(LogicalSize::new(logical_width, logical_height));
+
+            let _ = window.request_inner_size(window_size);
+
+            window.set_minimized(window_minimized.unwrap_or(false));
+            window.set_maximized(window_maximized);
+
+            // reset fullscreen status
+            window.set_fullscreen(None);
+            window.set_fullscreen(window_fullscreen);
+        }
+    }
+
     // reconfigure the surface everytime the window's size changes
-    pub fn resize(&self, new_size: SurfaceSize) {
+    pub fn resize_surface(&self, new_size: SurfaceSize) {
         let (width, height) = new_size.physical_size();
 
         let mut config = self.config.lock();
@@ -290,6 +319,39 @@ impl Core {
             WindowState::Idle => true,
             _ => false,
         }
+    }
+
+    /// set window state, should be called in main thread
+    pub fn set_window_state(&self, state: WindowState) {
+        let window = &self.window;
+        // get current focus state since focus may lost after state changes.
+        let has_focus = window.has_focus();
+
+        match state {
+            WindowState::Idle => {
+                window.set_maximized(false);
+                window.set_minimized(false);
+                window.set_fullscreen(None);
+            }
+            WindowState::Maximized => {
+                window.set_fullscreen(None);
+                window.set_maximized(true);
+            }
+            WindowState::Minimized => {
+                window.set_fullscreen(None);
+                window.set_minimized(true);
+            }
+            WindowState::Fullscreen => {
+                window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+            }
+        };
+
+        // restore focus state
+        if has_focus {
+            window.focus_window();
+        }
+
+        self.window_state.store(Arc::new(state));
     }
 
     #[inline(always)]
@@ -358,7 +420,7 @@ impl Core {
                             if physical_size.width == 0 || physical_size.height == 0 {
                                 // window minimized, ignore
                             } else {
-                                self.resize(surface_size);
+                                self.resize_surface(surface_size);
                             }
 
                             if window.fullscreen().is_some() {
@@ -382,58 +444,10 @@ impl Core {
             }
             Event::UserEvent(user_event) => match user_event {
                 &UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
-                    let factor = factor.unwrap_or(window.scale_factor());
-
-                    let window_fullscreen = window.fullscreen();
-                    let window_minimized = window.is_minimized();
-                    let window_maximized = window.is_maximized();
-
-                    if logical_width > 0. && logical_height > 0. {
-                        let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
-                        self.resize(surface_size);
-
-                        let window_size =
-                            Size::Logical(LogicalSize::new(logical_width, logical_height));
-
-                        let _ = window.request_inner_size(window_size);
-
-                        window.set_minimized(window_minimized.unwrap_or(false));
-                        window.set_maximized(window_maximized);
-
-                        // reset fullscreen status
-                        window.set_fullscreen(None);
-                        window.set_fullscreen(window_fullscreen);
-                    }
+                    self.resize_window(logical_width, logical_height, factor);
                 }
                 &UserEvent::WindowState(state) => {
-                    // get current focus state since focus may lost after state changes.
-                    let has_focus = window.has_focus();
-
-                    match state {
-                        WindowState::Idle => {
-                            window.set_maximized(false);
-                            window.set_minimized(false);
-                            window.set_fullscreen(None);
-                        }
-                        WindowState::Maximized => {
-                            window.set_fullscreen(None);
-                            window.set_maximized(true);
-                        }
-                        WindowState::Minimized => {
-                            window.set_fullscreen(None);
-                            window.set_minimized(true);
-                        }
-                        WindowState::Fullscreen => {
-                            window.set_fullscreen(Some(Fullscreen::Borderless(None)));
-                        }
-                    };
-
-                    // restore focus state
-                    if has_focus {
-                        window.focus_window();
-                    }
-
-                    self.window_state.store(Arc::new(state));
+                    self.set_window_state(state);
                 }
                 UserEvent::SetTitle(ref title) => {
                     window.set_title(title);
