@@ -61,7 +61,7 @@ version = "0.4"
 
 [dependencies.hai_pal]
 path = "../platform"
-version = "0.4"
+version = "0.5"
 
 [dependencies.hai_macros]
 default-features = false
