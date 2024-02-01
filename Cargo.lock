@@ -1329,7 +1329,7 @@ dependencies = [
 
 [[package]]
 name = "hai_runtime"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "env_logger",
  "hai_pal",
