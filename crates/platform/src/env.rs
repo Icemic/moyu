@@ -19,6 +19,8 @@ pub struct HaiConfig {
     pub show_fps: bool,
     pub present_mode: RenderingPresentMode,
     pub backend: RenderingBackend,
+    /// see https://docs.rs/wgpu/latest/wgpu/type.SurfaceConfiguration.html#structfield.desired_maximum_frame_latency
+    pub desired_maximum_frame_latency: u32,
     pub font_file: String,
 }
 
@@ -29,6 +31,7 @@ impl Default for HaiConfig {
             show_fps: false,
             present_mode: RenderingPresentMode::default(),
             backend: RenderingBackend::default(),
+            desired_maximum_frame_latency: 2,
             font_file: "assets/fonts/default.otf".to_string(),
         }
     }
