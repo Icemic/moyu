@@ -43,10 +43,10 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Windo
 }
 
 pub fn create_wgpu_surface(
-    window: &Window,
+    window: &Arc<Window>,
 ) -> (
     Arc<Instance>,
-    Arc<Surface>,
+    Arc<Surface<'static>>,
     Arc<Device>,
     Arc<Queue>,
     SurfaceConfiguration,
@@ -67,9 +67,15 @@ pub fn create_wgpu_surface(
 }
 
 pub(self) async fn create_surface_inner(
-    window: &Window,
+    window: &Arc<Window>,
     size: &PhysicalSize<u32>,
-) -> (Instance, Surface, Device, Queue, SurfaceConfiguration) {
+) -> (
+    Instance,
+    Surface<'static>,
+    Device,
+    Queue,
+    SurfaceConfiguration,
+) {
     // The instance is a handle to our GPU
     // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
     let backends = match get_hai_env().backend {
@@ -86,11 +92,9 @@ pub(self) async fn create_surface_inner(
         dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
         ..Default::default()
     });
-    let surface = unsafe {
-        instance
-            .create_surface(window)
-            .expect("Failed to create surface.")
-    };
+    let surface = instance
+        .create_surface(window.clone())
+        .expect("Failed to create surface.");
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
@@ -106,13 +110,13 @@ pub(self) async fn create_surface_inner(
         info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
     }
 
-    let limits = if !cfg!(feature = "web") {
+    let required_limits = if !cfg!(feature = "web") {
         wgpu::Limits::default()
     } else {
         wgpu::Limits::downlevel_webgl2_defaults()
     };
 
-    let features = if adapter
+    let required_features = if adapter
         .features()
         .contains(wgpu::Features::BGRA8UNORM_STORAGE)
     {
@@ -127,8 +131,8 @@ pub(self) async fn create_surface_inner(
     let (device, queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {
-                features,
-                limits,
+                required_features,
+                required_limits,
                 label: None,
             },
             None, // Trace path
@@ -184,6 +188,7 @@ pub(self) async fn create_surface_inner(
         present_mode,
         alpha_mode,
         view_formats: vec![],
+        desired_maximum_frame_latency: get_hai_env().desired_maximum_frame_latency,
     };
     surface.configure(&device, &config);
 

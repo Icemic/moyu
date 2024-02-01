@@ -43,7 +43,7 @@ pub fn setup() {
 /// create hai core instance
 pub fn create_hai_core(
     instance: Arc<Instance>,
-    surface: Arc<Surface>,
+    surface: Arc<Surface<'static>>,
     device: Arc<Device>,
     queue: Arc<Queue>,
     config: SurfaceConfiguration,
