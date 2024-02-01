@@ -88,7 +88,7 @@ pub type AfterRenderHandler = Box<
 pub struct Core {
     pub instance: Arc<Instance>,
     pub surface_size: Arc<RwLock<SurfaceSize>>,
-    pub surface: Arc<Surface>,
+    pub surface: Arc<Surface<'static>>,
     pub device: Arc<Device>,
     pub queue: Arc<Queue>,
     pub window: Arc<Window>,
@@ -126,7 +126,7 @@ unsafe impl Sync for Core {}
 impl Core {
     pub fn new(
         instance: Arc<Instance>,
-        surface: Arc<Surface>,
+        surface: Arc<Surface<'static>>,
         device: Arc<Device>,
         queue: Arc<Queue>,
         window: Arc<Window>,
