@@ -28,7 +28,7 @@ tokio = {version = "1", features = ["rt-multi-thread", "macros"]}
 
 [dependencies.hai_core]
 path = "../core"
-version = "0.4"
+version = "0.5"
 
 [dependencies.hai_pal]
 path = "../platform"
