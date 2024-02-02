@@ -177,9 +177,16 @@ pub(self) async fn create_surface_inner(
 
     info!("Present mode: {:?}", present_mode);
 
+    // opengl backend does not support surface as COPY_SRC
+    let usage = if backends == wgpu::Backends::GL {
+        wgpu::TextureUsages::RENDER_ATTACHMENT
+    } else {
+        wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC
+    };
+
     // define how the surface creates its underlying SurfaceTextures
     let config = wgpu::SurfaceConfiguration {
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        usage,
         format,
         // width or height should not be 0 or it will cause crash
         width: size.width,
