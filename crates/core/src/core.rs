@@ -1,4 +1,4 @@
-use arc_swap::ArcSwap;
+use arc_swap::{ArcSwap, ArcSwapOption};
 use hai_pal::env::get_hai_env;
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
 use log::{debug, error, info, warn};
@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
-use winit::dpi::{LogicalSize, Size};
+use winit::dpi::{LogicalSize, PhysicalPosition, Size};
 use winit::event::{ElementState, Event, WindowEvent};
 use winit::event_loop::{EventLoopProxy, EventLoopWindowTarget};
 use winit::window::{Fullscreen, Window};
@@ -105,7 +105,8 @@ pub struct Core {
     frames_in_duration: Arc<Mutex<(Instant, u32)>>,
 
     pub root_node: Arc<RwLock<dyn Node>>,
-    pub current_focused_node: Arc<RwLock<Option<Arc<RwLock<dyn Node>>>>>,
+    pub last_focused_position: ArcSwapOption<PhysicalPosition<f64>>,
+    pub last_focused_node: Arc<RwLock<Option<Arc<RwLock<dyn Node>>>>>,
     pub node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
 
     pub window_state: ArcSwap<WindowState>,
@@ -182,7 +183,8 @@ impl Core {
             frames_in_duration: Arc::new(Mutex::new((Instant::now(), 0))),
 
             root_node,
-            current_focused_node: Arc::new(RwLock::new(None)),
+            last_focused_position: ArcSwapOption::new(None),
+            last_focused_node: Arc::new(RwLock::new(None)),
             node_map: Arc::new(RwLock::new(node_map)),
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
@@ -617,107 +619,59 @@ impl Core {
 
     #[inline(always)]
     pub fn input(&self, event: &WindowEvent) -> bool {
-        let root_node = self.root_node.clone();
-        let current_focused_node = self.current_focused_node.clone();
-
-        let surface_size = {
-            let surface_size = self.surface_size.read();
-            *surface_size
-        };
-        let scale_factor = surface_size.scale_factor();
+        let last_focused_node = self.last_focused_node.clone();
 
         match event {
             #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
             WindowEvent::CursorMoved { position, .. } => {
-                let global_logical_x = (position.x / scale_factor) as f32;
-                let global_logical_y = (position.y / scale_factor) as f32;
+                self.handle_focus_changes(position);
 
-                let upload_payload = RendererUpdatePayload {
-                    surface_size,
-                    resource_manager: self.resource_manager.clone(),
-                };
-
-                let mut current_focused_node = current_focused_node.write();
-
-                if let Some(node) = hit_test(
-                    &root_node,
-                    global_logical_x,
-                    global_logical_y,
-                    &upload_payload,
-                ) {
-                    if let Some(current_focused_node) = &*current_focused_node {
-                        if current_focused_node.read().base().id() == node.read().base().id() {
-                            // TODO: mouse move event
-                            // dispatch_event(HaiEvent {
-                            //     kind: HaiEventKind::MouseMove,
-                            //     target_id: *node.read().base().id(),
-                            // });
-                        } else {
-                            // TODO: mouse leave event & mouse enter event
-                            dispatch_event(HaiEvent {
-                                kind: HaiEventKind::MouseLeave,
-                                target_id: *current_focused_node.read().base().id(),
-                            });
-                            dispatch_event(HaiEvent {
-                                kind: HaiEventKind::MouseEnter,
-                                target_id: *node.read().base().id(),
-                            });
-                        }
-                    } else {
-                        // TODO: mouse enter event
-                        dispatch_event(HaiEvent {
-                            kind: HaiEventKind::MouseEnter,
-                            target_id: *node.read().base().id(),
-                        });
-                    }
-
-                    // debug!("pointer is over {}", node.read().base().label());
-
-                    *current_focused_node = Some(node);
-                } else {
-                    if let Some(current_focused_node) = &*current_focused_node {
-                        // TODO: mouse leave event
-                        dispatch_event(HaiEvent {
-                            kind: HaiEventKind::MouseLeave,
-                            target_id: *current_focused_node.read().base().id(),
-                        });
-                    }
-                    *current_focused_node = None;
-                }
+                self.last_focused_position
+                    .store(Some(Arc::new(position.to_owned())));
 
                 true
             }
             WindowEvent::CursorLeft { .. } => {
-                let mut current_focused_node = current_focused_node.write();
-                *current_focused_node = None;
+                let mut last_focused_node = last_focused_node.write();
+                if let Some(last_focused_node) = &*last_focused_node {
+                    dispatch_event(HaiEvent {
+                        kind: HaiEventKind::MouseLeave,
+                        target_id: *last_focused_node.read().base().id(),
+                    });
+                }
+                *last_focused_node = None;
                 true
             }
             #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
             WindowEvent::MouseInput { button, state, .. } => {
-                if let Some(current_focused_node) = &*self.current_focused_node.read() {
+                if let Some(last_focused_position) = self.last_focused_position.load().as_ref() {
+                    self.handle_focus_changes(last_focused_position);
+                }
+
+                if let Some(last_focused_node) = &*self.last_focused_node.read() {
                     match state {
                         ElementState::Pressed => {
                             dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseDown,
-                                target_id: *current_focused_node.read().base().id(),
+                                target_id: *last_focused_node.read().base().id(),
                             });
                         }
                         ElementState::Released => {
                             dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseUp,
-                                target_id: *current_focused_node.read().base().id(),
+                                target_id: *last_focused_node.read().base().id(),
                             });
                             match button {
                                 winit::event::MouseButton::Left => {
                                     dispatch_event(HaiEvent {
                                         kind: HaiEventKind::Click,
-                                        target_id: *current_focused_node.read().base().id(),
+                                        target_id: *last_focused_node.read().base().id(),
                                     });
                                 }
                                 winit::event::MouseButton::Right => {
                                     dispatch_event(HaiEvent {
                                         kind: HaiEventKind::ContextMenu,
-                                        target_id: *current_focused_node.read().base().id(),
+                                        target_id: *last_focused_node.read().base().id(),
                                     });
                                 }
                                 winit::event::MouseButton::Back => {
@@ -739,6 +693,77 @@ impl Core {
                 true
             }
             _ => false,
+        }
+    }
+
+    fn handle_focus_changes(&self, position: &PhysicalPosition<f64>) {
+        let root_node = &self.root_node;
+        let last_focused_node = &self.last_focused_node;
+
+        let surface_size = {
+            let surface_size = self.surface_size.read();
+            *surface_size
+        };
+        let scale_factor = surface_size.scale_factor();
+
+        let global_logical_x = (position.x / scale_factor) as f32;
+        let global_logical_y = (position.y / scale_factor) as f32;
+
+        let upload_payload = RendererUpdatePayload {
+            surface_size,
+            resource_manager: self.resource_manager.clone(),
+        };
+
+        let mut last_focused_node = last_focused_node.write();
+
+        // get node under pointer
+        if let Some(node) = hit_test(
+            root_node,
+            global_logical_x,
+            global_logical_y,
+            &upload_payload,
+        ) {
+            if let Some(last_focused_node) = &*last_focused_node {
+                // if last focused node is the same as current node, it's a mouse move event
+                if last_focused_node.read().base().id() == node.read().base().id() {
+                    // TODO: mouse move event
+                    // dispatch_event(HaiEvent {
+                    //     kind: HaiEventKind::MouseMove,
+                    //     target_id: *node.read().base().id(),
+                    // });
+                } else {
+                    // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
+                    dispatch_event(HaiEvent {
+                        kind: HaiEventKind::MouseLeave,
+                        target_id: *last_focused_node.read().base().id(),
+                    });
+                    dispatch_event(HaiEvent {
+                        kind: HaiEventKind::MouseEnter,
+                        target_id: *node.read().base().id(),
+                    });
+                }
+            } else {
+                // if last focused node is None, it's only a mouse enter event
+                dispatch_event(HaiEvent {
+                    kind: HaiEventKind::MouseEnter,
+                    target_id: *node.read().base().id(),
+                });
+            }
+
+            // debug!("pointer is over {}", node.read().base().label());
+
+            // record last focused node
+            *last_focused_node = Some(node);
+        } else {
+            // if no node under pointer, it's a mouse leave event if last focused node is not None
+            if let Some(last_focused_node) = &*last_focused_node {
+                // TODO: mouse leave event
+                dispatch_event(HaiEvent {
+                    kind: HaiEventKind::MouseLeave,
+                    target_id: *last_focused_node.read().base().id(),
+                });
+            }
+            *last_focused_node = None;
         }
     }
 }
