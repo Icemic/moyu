@@ -6,6 +6,7 @@ use hai_macros::hai_bindgen;
 use hai_pal::sync::{RwLock, RwLockReadGuard};
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 use hai_runtime::quickjspp::{JSContext, RawJSValue};
+use log::{debug, warn};
 use std::collections::HashMap;
 use std::sync::Arc;
 #[cfg(feature = "web")]
@@ -94,6 +95,51 @@ pub fn create_instance(
     node.update_properties(&mut props);
 
     Ok(node_id)
+}
+
+/**
+ * This function will remove the node from the node_map and destroy it with all of its children
+ * whose reference count is only 2 (1 for the node_map and 1 for the node itself).
+ * Otherwise, the node who has more reference count will not be destroyed and rema
+ */
+#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg_attr(not(feature = "web"), hai_bindgen)]
+pub fn destroy_instance(node_id: u32) -> Result<(), std::string::String> {
+    let core = get_core();
+    let mut node_map = core.node_map.write();
+
+    destroy_instance_recursive(&mut node_map, node_id)?;
+
+    Ok(())
+}
+
+fn destroy_instance_recursive(
+    node_map: &mut HashMap<u32, Arc<RwLock<dyn Node>>>,
+    node_id: u32,
+) -> Result<(), std::string::String> {
+    if let Some(node) = node_map.get(&node_id) {
+        let ref_count = Arc::strong_count(node);
+        if ref_count > 2 {
+            debug!(
+                "Node {} has {} references, cannot destroy it",
+                node_id, ref_count
+            );
+
+            return Ok(());
+        }
+    } else {
+        warn!("Node {} not found", node_id);
+        return Ok(());
+    }
+
+    let node = node_map.remove(&node_id).unwrap();
+
+    for child in node.read().base().children().iter() {
+        let child_id = *child.read().base().id();
+        destroy_instance_recursive(node_map, child_id)?;
+    }
+
+    Ok(())
 }
 
 #[cfg_attr(feature = "web", wasm_bindgen)]
