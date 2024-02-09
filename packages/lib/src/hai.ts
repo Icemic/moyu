@@ -28,18 +28,34 @@ if (hai && typeof hai.pushCommand === 'undefined') {
 
 globalThis.__hai_receive_event = (kind: string, target_id: string) => {
   console.log('event:', kind, target_id);
+
+  const event: HaiEvent = {
+    kind,
+    target_id,
+  };
+
   switch (kind) {
     case 'NodeDestroyed':
       delete STATE.nodeMap[parseInt(target_id)];
       break;
+    case 'MouseEnter':
+    case 'MouseLeave':
+    case 'MouseDown':
+    case 'MouseUp':
+    case 'MouseMove':
     case 'Click':
       const node = STATE.nodeMap[parseInt(target_id)];
-      node?.props?.onClick?.();
+      node?.listeners?.['on' + kind]?.(event);
       break;
     default:
       break;
   }
 };
+
+export interface HaiEvent {
+  kind: string;
+  target_id: string;
+}
 
 export function addEventListener(name: string, callback: (...args: any[]) => void) {
   hai.pushCommand('add_event_listener', [name, callback]);
