@@ -3,12 +3,25 @@
 import { STATE } from './state';
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-declare const hai: any;
+declare const hai: {
+  pushCommand: (name: string, args: any[], callback?: (...args: any[]) => void) => any;
+  [key: string]: (...args: any[]) => any;
+};
+
+declare global {
+  interface Window {
+    hai: any;
+  }
+
+  // eslint-disable-next-line no-var
+  var __hai_receive_event: (kind: string, target_id: string) => void;
+}
 
 if (hai && typeof hai.pushCommand === 'undefined') {
   const __hai = hai;
   window.hai = {};
   hai.pushCommand = function pushCommand(name: string, args: any[]) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     return __hai[name](...args);
   };
 }
