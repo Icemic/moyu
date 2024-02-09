@@ -1,9 +1,19 @@
 import { ReactNode } from 'react';
 import * as PropTypes from 'prop-types';
+import type { HaiEvent } from './hai';
 
 export type DetailedHaiProps<E extends HaiNodeAttributes> = E;
 
-export interface HaiNodeAttributes {
+export interface HaiListenerAttributes {
+  onClick?: (event: HaiEvent) => void;
+  onMouseEnter?: (event: HaiEvent) => void;
+  onMouseLeave?: (event: HaiEvent) => void;
+  onMouseDown?: (event: HaiEvent) => void;
+  onMouseUp?: (event: HaiEvent) => void;
+  onMouseMove?: (event: HaiEvent) => void;
+}
+
+export interface HaiNodeAttributes extends HaiListenerAttributes {
   label?: string;
   x?: number;
   y?: number;
