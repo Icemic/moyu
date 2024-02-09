@@ -1,4 +1,5 @@
 import * as hai from './hai';
+import { STATE } from './state';
 
 export class Node {
   nodeId!: number;
@@ -12,6 +13,7 @@ export class Node {
     node.label = label;
     node.props = rest;
     node.nodeId = hai.createInstance(type, label, rest);
+    STATE.nodeMap[node.nodeId] = node;
     return node;
   }
 
@@ -40,6 +42,7 @@ export class Node {
 
   removeChild(child: Node) {
     hai.removeChild(this.nodeId, child.nodeId);
+    hai.destroyInstance(child.nodeId);
   }
 
   updateProps(props: Record<string, any>) {

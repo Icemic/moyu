@@ -27,6 +27,9 @@ pub enum HaiEventKind {
     ContextMenu,
     FullScreenChange,
     PointerLockChange,
+
+    // others
+    NodeDestroyed,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

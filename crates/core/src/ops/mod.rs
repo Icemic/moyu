@@ -99,6 +99,7 @@ fn receive_command(
         "set_minimized" => set_minimized(context, command_args),
         "quit" => quit(context, command_args),
         "create_instance" => create_instance(context, command_args),
+        "destroy_instance" => destroy_instance(context, command_args),
         "add_child" => add_child(context, command_args),
         "insert_child" => insert_child(context, command_args),
         "insert_child_before" => insert_child_before(context, command_args),

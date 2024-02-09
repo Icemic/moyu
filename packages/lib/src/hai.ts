@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
+
+import { STATE } from './state';
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 declare const hai: any;
 
@@ -12,6 +15,17 @@ if (hai && typeof hai.pushCommand === 'undefined') {
 
 globalThis.__hai_receive_event = (kind: string, target_id: string) => {
   console.log('event:', kind, target_id);
+  switch (kind) {
+    case 'NodeDestroyed':
+      delete STATE.nodeMap[parseInt(target_id)];
+      break;
+    case 'Click':
+      const node = STATE.nodeMap[parseInt(target_id)];
+      node?.props?.onClick?.();
+      break;
+    default:
+      break;
+  }
 };
 
 export function addEventListener(name: string, callback: (...args: any[]) => void) {
@@ -67,6 +81,10 @@ export function createInstance(nodeType: string, label: string | undefined, prop
     return ret;
   }
   return node_id;
+}
+
+export function destroyInstance(nodeId: number) {
+  hai.pushCommand('destroy_instance', [nodeId]);
 }
 
 export function addChild(nodeId: number, childNodeId: number) {
