@@ -15,7 +15,11 @@
   "dependencies": {
     "lodash-es": "^4.17.21",
     "react": "^18.2.0",
-    "react-reconciler": "^0.29.0"
+    "react-reconciler": "^0.29.0",
+    "@react-spring/shared": "^9.7.3",
+    "@react-spring/animated": "^9.7.3",
+    "@react-spring/core": "^9.7.3",
+    "@react-spring/rafz": "^9.7.3"
   },
   "devDependencies": {
     "@types/lodash-es": "^4.17.6",

@@ -62,8 +62,8 @@ export class Node {
 
   updateProps(props: Record<string, any>) {
     const [restProps, listeners] = filterProps(props);
-    this.props = restProps;
-    this.listeners = listeners;
+    Object.assign(this.props, restProps);
+    Object.assign(this.listeners, listeners);
     hai.updateProps(this.nodeId, restProps);
   }
 }
