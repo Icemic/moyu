@@ -62,7 +62,7 @@ impl Focusable for YUVSprite {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct YUVSpriteProps {
     pub area: Option<[f32; 4]>,

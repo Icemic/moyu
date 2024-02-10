@@ -63,7 +63,7 @@ impl Focusable for Text {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextProps<'a> {
     pub text: Option<&'a str>,
