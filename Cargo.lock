@@ -1460,9 +1460,9 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "huozi"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a3abd284834afea2e10f185d3536715ac3a778392a23da7b787ce23e1fce78c"
+checksum = "e4cc3dd326bcb8f50bc22a278f034a23df75751819e259949dad6f1eab642f14"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -2240,9 +2240,9 @@ dependencies = [
 
 [[package]]
 name = "quickjspp"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea5ef9c0004e982c2efcb5d4157e74fd8d0189166e6cab6cfe8f7c472f5e373f"
+checksum = "9d0014271e47032884d4f5316674a56c54541752d18f5a5914e54c94dfa0a542"
 dependencies = [
  "anyhow",
  "chrono",

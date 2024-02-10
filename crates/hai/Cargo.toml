@@ -15,7 +15,7 @@ release = true
 
 [features]
 default = ["desktop"]
-desktop = ["hai_core/desktop"]
+desktop = ["hai_core/desktop", "hai_core/text"]
 video = ["hai_core/video"]
 web = [
   "hai_core/web",
