@@ -82,10 +82,8 @@ export interface TextStyle {
   shadow?: ShadowStyle;
 }
 
-export interface HaiTextAttribute extends HaiNodeAttributes {
+export interface HaiTextAttribute extends HaiNodeAttributes, LayoutSytle, TextStyle {
   text?: string;
-  layoutStyle?: LayoutSytle;
-  textStyle?: TextStyle;
 }
 
 declare module 'react' {
