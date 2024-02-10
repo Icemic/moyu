@@ -118,7 +118,18 @@ impl TextRenderer {
                 entry_point: "fs_main",
                 targets: &[Some(ColorTargetState {
                     format: config.format,
-                    blend: Some(BlendState::ALPHA_BLENDING),
+                    blend: Some(BlendState {
+                        color: BlendComponent {
+                            src_factor: BlendFactor::SrcAlpha,
+                            dst_factor: BlendFactor::OneMinusSrcAlpha,
+                            operation: BlendOperation::Add,
+                        },
+                        alpha: BlendComponent {
+                            src_factor: BlendFactor::One,
+                            dst_factor: BlendFactor::OneMinusSrcAlpha,
+                            operation: BlendOperation::Add,
+                        },
+                    }),
                     write_mask: ColorWrites::ALL,
                 })],
             }),
