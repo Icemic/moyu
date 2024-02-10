@@ -373,7 +373,7 @@ impl NodeBase {
 }
 
 use serde::{Deserialize, Serialize};
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeProps {
     pub anchor: Option<[f32; 2]>,

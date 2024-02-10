@@ -60,7 +60,7 @@ impl Focusable for Sprite {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpriteProps {
     pub src: Option<String>,
