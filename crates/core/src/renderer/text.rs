@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use glam::Vec2;
@@ -26,6 +27,7 @@ pub struct TextRenderer {
     bind_group_layout: BindGroupLayout,
     bind_group: BindGroup,
     huozi: Huozi,
+    last_texture_version: AtomicU64,
 }
 
 impl TextRenderer {
@@ -165,6 +167,7 @@ impl TextRenderer {
             bind_group_layout,
             bind_group,
             huozi,
+            last_texture_version: AtomicU64::new(0),
         }
     }
 }
@@ -262,31 +265,39 @@ impl Renderer for TextRenderer {
                             .copy_from_slice(buf_indices);
                     }
 
-                    // update sdf texture
-                    let sdf_bitmap = self.huozi.texture_image();
-                    let dimensions = sdf_bitmap.dimensions();
+                    // updates the sdf texture only when the image version is changed
+                    let image_version = self.huozi.image_version();
 
-                    let size = wgpu::Extent3d {
-                        width: dimensions.0,
-                        height: dimensions.1,
-                        depth_or_array_layers: 1,
-                    };
+                    if self.last_texture_version.load(Ordering::Relaxed) != image_version {
+                        self.last_texture_version
+                            .store(image_version, Ordering::Relaxed);
 
-                    queue.write_texture(
-                        wgpu::ImageCopyTexture {
-                            aspect: wgpu::TextureAspect::All,
-                            texture: &self.texture,
-                            mip_level: 0,
-                            origin: wgpu::Origin3d::ZERO,
-                        },
-                        &sdf_bitmap,
-                        wgpu::ImageDataLayout {
-                            offset: 0,
-                            bytes_per_row: Some(4 * sdf_bitmap.width()),
-                            rows_per_image: Some(sdf_bitmap.height()),
-                        },
-                        size,
-                    );
+                        // update sdf texture
+                        let sdf_bitmap = self.huozi.texture_image();
+                        let dimensions = sdf_bitmap.dimensions();
+
+                        let size = wgpu::Extent3d {
+                            width: dimensions.0,
+                            height: dimensions.1,
+                            depth_or_array_layers: 1,
+                        };
+
+                        queue.write_texture(
+                            wgpu::ImageCopyTexture {
+                                aspect: wgpu::TextureAspect::All,
+                                texture: &self.texture,
+                                mip_level: 0,
+                                origin: wgpu::Origin3d::ZERO,
+                            },
+                            &sdf_bitmap,
+                            wgpu::ImageDataLayout {
+                                offset: 0,
+                                bytes_per_row: Some(4 * sdf_bitmap.width()),
+                                rows_per_image: Some(sdf_bitmap.height()),
+                            },
+                            size,
+                        );
+                    }
                 }
                 Err(err_msg) => {
                     error!("{}", err_msg);
