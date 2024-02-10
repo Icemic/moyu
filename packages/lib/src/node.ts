@@ -27,7 +27,7 @@ export class Node {
     node.props = restProps;
     node.listeners = listeners;
 
-    node.nodeId = hai.createInstance(type, label, rest);
+    node.nodeId = hai.createInstance(type, label, restProps);
     STATE.nodeMap[node.nodeId] = node;
     return node;
   }
