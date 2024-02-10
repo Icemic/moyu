@@ -40,8 +40,6 @@ pub struct HaiEvent {
 }
 
 pub fn dispatch_event(event: HaiEvent) {
-    println!("dispatch_event: {:?}", event);
-
     get_runtime_handle().spawn(async move {
         if let Err(err) = get_vm()
             .call_function(
