@@ -194,13 +194,18 @@ impl Renderer for TextRenderer {
                     node.total_width = total_width;
                     node.total_height = total_height;
 
+                    let anchor = node.base().anchor();
+
                     // transform to global
                     let transform = node.base().global_transform();
                     for vertex in vertices.iter_mut() {
                         // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
                         // y axis is inverted, so we need to invert it back, apply transform and invert it again
-                        let p = transform
-                            .transform_point2(Vec2::new(vertex.position[0], vertex.position[1]));
+                        let p = transform.transform_point2(Vec2::new(
+                            vertex.position[0] - total_width as f32 * anchor.x,
+                            vertex.position[1] - total_height as f32 * anchor.y,
+                        ));
+
                         vertex.position[0] = p.x;
                         vertex.position[1] = p.y;
                     }
