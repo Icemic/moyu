@@ -23,11 +23,11 @@ export interface HaiNodeAttributes extends HaiListenerAttributes {
   pivot?: [number, number];
   scale?: number;
   scaleX?: number;
-  scaley?: number;
+  scaleY?: number;
   rotation?: number;
   skew?: number;
   skewX?: number;
-  skewy?: number;
+  skewY?: number;
   children?: ReactNode;
 }
 
