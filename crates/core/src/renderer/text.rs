@@ -236,6 +236,16 @@ impl Renderer for TextRenderer {
                         vertex.color = [color_r, color_g, color_b, color_a];
                     }
 
+                    // drop the old buffer if the size is not enough
+                    if let Some(vertex_buffer) = &node.vertex_buffer {
+                        if vertex_buffer.size()
+                            < (vertices.len() * std::mem::size_of::<Vertex>())
+                                as wgpu::BufferAddress
+                        {
+                            node.vertex_buffer = None;
+                        }
+                    }
+
                     if node.vertex_buffer.is_none() {
                         let vertex_buffer =
                             device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -249,11 +259,10 @@ impl Renderer for TextRenderer {
                                 contents: bytemuck::cast_slice(&indices),
                                 usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
                             });
-                        let num_indices = indices.len() as u32;
 
                         node.vertex_buffer = Some(vertex_buffer);
                         node.index_buffer = Some(index_buffer);
-                        node.num_indices = num_indices;
+                        node.num_indices = indices.len() as u32;
                     } else {
                         let buf_vertices = bytemuck::cast_slice(&vertices);
                         let buf_indices = bytemuck::cast_slice(&indices);
@@ -275,6 +284,8 @@ impl Renderer for TextRenderer {
                                 &device,
                             )
                             .copy_from_slice(buf_indices);
+
+                        node.num_indices = indices.len() as u32;
                     }
 
                     // updates the sdf texture only when the image version is changed
