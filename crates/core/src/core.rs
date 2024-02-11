@@ -532,11 +532,9 @@ impl Core {
 
             walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
                 let mut _child = child.write();
-                _child.base_mut().update_transform(
-                    parent.base().global_transform(),
-                    &surface_size,
-                    false,
-                );
+                _child
+                    .base_mut()
+                    .update(parent.base(), &surface_size, false);
 
                 let node_type = _child.node_type();
 

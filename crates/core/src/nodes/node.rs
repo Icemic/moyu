@@ -1,3 +1,4 @@
+use csscolorparser::Color;
 use hai_pal::sync::RwLock;
 use log::warn;
 use std::sync::Arc;
@@ -31,6 +32,12 @@ pub struct NodeBase {
     skew: Point,
     /// visible to render
     visible: bool,
+    /// tint color
+    tint: Color,
+    /// opcaity, aka alpha. Ranges from 0.0 to 1.0.
+    opacity: f32,
+    /// opacity that has been multiplied with parent
+    global_opacity: f32,
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
@@ -59,6 +66,9 @@ impl NodeBase {
             rotation: 0.,
             skew: Point::default(),
             visible: true,
+            tint: Color::new(1.0, 1.0, 1.0, 1.0),
+            opacity: 1.0,
+            global_opacity: 1.0,
 
             _update_id: 0,
             _current_update_id: 0,
@@ -126,6 +136,14 @@ impl NodeBase {
     #[inline]
     pub fn visible(&self) -> bool {
         self.visible
+    }
+    #[inline]
+    pub fn tint(&self) -> &Color {
+        &self.tint
+    }
+    #[inline]
+    pub fn opacity(&self) -> &f32 {
+        &self.opacity
     }
 
     #[inline]
@@ -196,6 +214,17 @@ impl NodeBase {
     #[inline]
     pub fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
+        self._update_id += 1;
+    }
+    #[inline]
+    pub fn set_tint(&mut self, color: Color) {
+        self.tint = color;
+        self._update_id += 1;
+    }
+    #[inline]
+    pub fn set_opacity(&mut self, opacity: f32) {
+        self.opacity = opacity;
+        self._update_id += 1;
     }
 
     pub fn transform(&self) -> &Transform {
@@ -268,6 +297,14 @@ impl NodeBase {
         if let Some(visible) = props.visible {
             self.set_visible(visible);
         }
+
+        if let Some(tint) = props.tint {
+            self.set_tint(tint);
+        }
+
+        if let Some(opacity) = props.opacity {
+            self.set_opacity(opacity);
+        }
     }
 
     #[inline]
@@ -331,7 +368,7 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn update_transform(&mut self, parent_transform: &Transform, _: &SurfaceSize, force: bool) {
+    pub fn update(&mut self, parent: &Self, _: &SurfaceSize, force: bool) {
         if force || self._update_id != self._current_update_id {
             let x = self.translate.x;
             let y = self.translate.y;
@@ -362,9 +399,12 @@ impl NodeBase {
             self.transform.z_axis.y = ty;
 
             // refresh global transform matrix
-            let mut global_transform = *parent_transform;
+            let mut global_transform = *parent.global_transform();
             global_transform.multiply(self.transform);
             self.global_transform = global_transform;
+
+            // refresh global opacity
+            self.global_opacity = self.opacity * parent.opacity;
 
             self._current_update_id = self._update_id;
             self._need_update_vertices = true;
@@ -388,6 +428,8 @@ pub struct NodeProps {
     pub skew_x: Option<f32>,
     pub skew_y: Option<f32>,
     pub visible: Option<bool>,
+    pub tint: Option<Color>,
+    pub opacity: Option<f32>,
 }
 
 impl Drop for NodeBase {
@@ -397,4 +439,14 @@ impl Drop for NodeBase {
             target_id: self.id,
         });
     }
+}
+
+#[inline]
+fn tint_to_vec4(tint: &Color, alpha: f32) -> [f32; 4] {
+    [
+        tint.r as f32,
+        tint.g as f32,
+        tint.b as f32,
+        tint.a as f32 * alpha,
+    ]
 }

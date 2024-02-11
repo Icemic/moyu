@@ -1261,6 +1261,7 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "bytemuck",
+ "csscolorparser",
  "ffmpeg-rs",
  "futures",
  "glam",
