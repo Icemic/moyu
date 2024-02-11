@@ -408,6 +408,12 @@ impl NodeBase {
 
             self._current_update_id = self._update_id;
             self._need_update_vertices = true;
+
+            // mark all children pend update
+            for child in self.children.iter() {
+                let mut child = child.write();
+                child.base_mut().pend_update();
+            }
         }
     }
 }
