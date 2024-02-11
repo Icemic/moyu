@@ -15,6 +15,7 @@ use crate::base::MVPMatrix;
 use crate::nodes::Text;
 use crate::traits::Renderer;
 use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use crate::utils::calculate::tint_to_vec4;
 
 /// the number of vertices in a sprite is always 4.
 // pub static NUM_VERTICES: u32 = 4;
@@ -212,6 +213,9 @@ impl Renderer for TextRenderer {
 
                     // transform to global
                     let transform = node.base().global_transform();
+                    let tint = node.base().tint();
+                    let opacity = node.base().global_opacity();
+                    let tint = tint_to_vec4(tint, *opacity);
                     for vertex in vertices.iter_mut() {
                         // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
                         // y axis is inverted, so we need to invert it back, apply transform and invert it again
@@ -223,6 +227,13 @@ impl Renderer for TextRenderer {
 
                         vertex.position[0] = p.x;
                         vertex.position[1] = p.y;
+
+                        // calculate color with tint and pre-multiplied alpha
+                        let color_r = vertex.color[0] * tint[0] * tint[3];
+                        let color_g = vertex.color[1] * tint[1] * tint[3];
+                        let color_b = vertex.color[2] * tint[2] * tint[3];
+                        let color_a = vertex.color[3] * tint[3];
+                        vertex.color = [color_r, color_g, color_b, color_a];
                     }
 
                     if node.vertex_buffer.is_none() {
