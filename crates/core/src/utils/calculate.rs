@@ -16,14 +16,14 @@ pub fn calculate_rect_vertices(
 
     let global_transform = node.base().global_transform();
 
-    let a = global_transform.matrix2.x_axis.x;
-    let b = global_transform.matrix2.x_axis.y;
-    let c = global_transform.matrix2.y_axis.x;
-    let d = global_transform.matrix2.y_axis.y;
+    let a = global_transform.x_axis.x;
+    let b = global_transform.x_axis.y;
+    let c = global_transform.y_axis.x;
+    let d = global_transform.y_axis.y;
 
     // add addtional offset to move from center to left top
-    let tx = global_transform.translation.x;
-    let ty = global_transform.translation.y;
+    let tx = global_transform.z_axis.x;
+    let ty = global_transform.z_axis.y;
 
     let anchor = node.base().anchor();
 

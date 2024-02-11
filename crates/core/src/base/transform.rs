@@ -1,7 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use bytemuck::Zeroable;
-use glam::Affine2;
+use glam::Mat4;
 
 /// | a | c | tx|
 /// | b | d | ty|
@@ -9,21 +8,18 @@ use glam::Affine2;
 ///
 /// tx, ty is pixel size
 #[repr(C)]
-#[derive(PartialEq, Copy, Clone, Debug, Zeroable)]
-pub struct Transform {
-    affine: Affine2,
-}
+#[derive(PartialEq, Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Transform(Mat4);
 
 impl Transform {
     /// create Transform instance
     pub fn new() -> Self {
-        let affine = Affine2::default();
-        Transform { affine }
+        Self(Mat4::IDENTITY)
     }
 
     /// multiply with a transform
     pub fn multiply(&mut self, transform: Self) {
-        self.affine = self.affine * transform.affine;
+        self.0 = self.0 * transform.0;
     }
 }
 
@@ -34,15 +30,15 @@ impl Default for Transform {
 }
 
 impl Deref for Transform {
-    type Target = Affine2;
+    type Target = Mat4;
 
     fn deref(&self) -> &Self::Target {
-        &self.affine
+        &self.0
     }
 }
 
 impl DerefMut for Transform {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.affine
+        &mut self.0
     }
 }
