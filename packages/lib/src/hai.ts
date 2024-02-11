@@ -27,7 +27,8 @@ if (hai && typeof hai.pushCommand === 'undefined') {
 }
 
 globalThis.__hai_receive_event = (kind: string, target_id: string) => {
-  console.log('event:', kind, target_id);
+  const node = STATE.nodeMap[parseInt(target_id)];
+  console.log('event:', kind, target_id, node.label);
 
   const event: HaiEvent = {
     kind,
@@ -44,7 +45,6 @@ globalThis.__hai_receive_event = (kind: string, target_id: string) => {
     case 'MouseUp':
     case 'MouseMove':
     case 'Click':
-      const node = STATE.nodeMap[parseInt(target_id)];
       node?.listeners?.['on' + kind]?.(event);
       break;
     default:

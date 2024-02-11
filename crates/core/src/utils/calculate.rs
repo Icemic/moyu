@@ -1,3 +1,5 @@
+use csscolorparser::Color;
+
 use crate::base::*;
 use crate::traits::Node;
 
@@ -48,22 +50,40 @@ pub fn calculate_rect_vertices(
     let p3x = a * w1 + c * h0 + tx;
     let p3y = b * w1 + d * h0 + ty;
 
+    let tint = node.base().tint();
+    let opacity = node.base().global_opacity();
+    let tint = tint_to_vec4(tint, *opacity);
+
     [
         SpriteVertex {
             position: [p0x, p0y, 0.0],
             tex_coords: [x0, y0],
+            tint,
         },
         SpriteVertex {
             position: [p3x, p3y, 0.0],
             tex_coords: [x0, y1],
+            tint,
         },
         SpriteVertex {
             position: [p2x, p2y, 0.0],
             tex_coords: [x1, y1],
+            tint,
         },
         SpriteVertex {
             position: [p1x, p1y, 0.0],
             tex_coords: [x1, y0],
+            tint,
         },
+    ]
+}
+
+#[inline]
+pub fn tint_to_vec4(tint: &Color, alpha: f32) -> [f32; 4] {
+    [
+        tint.r as f32,
+        tint.g as f32,
+        tint.b as f32,
+        tint.a as f32 * alpha,
     ]
 }

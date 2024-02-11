@@ -1,11 +1,13 @@
 struct VertexInput {
     @location(0) position: vec3<f32>,
     @location(1) tex_coords: vec2<f32>,
+    @location(2) tint: vec4<f32>,
 };
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) tex_coords: vec2<f32>,
+    @location(1) tint: vec4<f32>,
 };
 
 @group(0) @binding(0)
@@ -18,6 +20,7 @@ fn vs_main(
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
     out.clip_position = mvp_matrix * vec4<f32>(model.position, 1.0);
+    out.tint = model.tint;
     return out;
 }
 
@@ -65,7 +68,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     //ITU BT.709 Default Matrix (Video Range)
     var rgb: vec3<f32> = mat3x3<f32>(1.164, 1.164, 1.164, 0.0, -0.213, 2.112, 1.793, -0.533, 0.0) * vec3<f32>(tex_y, tex_u, tex_v);
 
-    return toLinear(vec4<f32>(rgb, 1.0));
+    let t = toLinear(vec4<f32>(rgb, 1.0));
+    return vec4(t.rgb * in.tint.rgb * in.tint.a, t.a * in.tint.a);
 }
 
 // taken from https://gamedev.stackexchange.com/questions/92015/optimized-linear-to-srgb-glsl

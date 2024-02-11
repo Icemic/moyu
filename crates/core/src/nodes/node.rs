@@ -145,6 +145,10 @@ impl NodeBase {
     pub fn opacity(&self) -> &f32 {
         &self.opacity
     }
+    #[inline]
+    pub fn global_opacity(&self) -> &f32 {
+        &self.global_opacity
+    }
 
     #[inline]
     pub fn set_anchor(&mut self, x: f32, y: f32) {
@@ -445,14 +449,4 @@ impl Drop for NodeBase {
             target_id: self.id,
         });
     }
-}
-
-#[inline]
-fn tint_to_vec4(tint: &Color, alpha: f32) -> [f32; 4] {
-    [
-        tint.r as f32,
-        tint.g as f32,
-        tint.b as f32,
-        tint.a as f32 * alpha,
-    ]
 }
