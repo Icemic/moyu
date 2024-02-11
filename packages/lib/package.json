@@ -4,6 +4,7 @@
   "description": "Base library of Hai no Engine",
   "main": "src/lib.ts",
   "scripts": {
+    "dev-rspack": "rspack dev",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -38,6 +39,9 @@
     "prettier": "^2.8.3",
     "rimraf": "^4.1.2",
     "typescript": "^4.9.5",
-    "vite": "^4.2.1"
+    "vite": "^4.2.1",
+    "@rspack/cli": "0.5.4",
+    "@rspack/core": "0.5.4",
+    "cross-env": "^7.0.3"
   }
 }
