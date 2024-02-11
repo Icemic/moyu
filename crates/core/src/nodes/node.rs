@@ -354,12 +354,12 @@ impl NodeBase {
             let tx = tx / VIEWPORT_WIDTH;
             let ty = ty / VIEWPORT_HEIGHT;
 
-            self.transform.matrix2.x_axis.x = a;
-            self.transform.matrix2.x_axis.y = b;
-            self.transform.matrix2.y_axis.x = c;
-            self.transform.matrix2.y_axis.y = d;
-            self.transform.translation.x = tx;
-            self.transform.translation.y = ty;
+            self.transform.x_axis.x = a;
+            self.transform.x_axis.y = b;
+            self.transform.y_axis.x = c;
+            self.transform.y_axis.y = d;
+            self.transform.z_axis.x = tx;
+            self.transform.z_axis.y = ty;
 
             // refresh global transform matrix
             let mut global_transform = *parent_transform;

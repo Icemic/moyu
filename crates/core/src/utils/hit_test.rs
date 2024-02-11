@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use glam::Vec2;
+use glam::Vec3;
 use hai_pal::sync::RwLock;
 
 use crate::nodes::Sprite;
@@ -27,9 +27,10 @@ pub fn hit_test(
             .base()
             .global_transform()
             .inverse()
-            .transform_point2(Vec2::new(
+            .transform_point3(Vec3::new(
                 global_logical_x / VIEWPORT_WIDTH,
                 global_logical_y / VIEWPORT_HEIGHT,
+                1.0,
             ));
 
         let local_logical_x = p.x * VIEWPORT_WIDTH;

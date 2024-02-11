@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use glam::Vec2;
+use glam::Vec3;
 use hai_pal::env::get_hai_env;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
@@ -215,9 +215,10 @@ impl Renderer for TextRenderer {
                     for vertex in vertices.iter_mut() {
                         // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
                         // y axis is inverted, so we need to invert it back, apply transform and invert it again
-                        let p = transform.transform_point2(Vec2::new(
+                        let p = transform.transform_point3(Vec3::new(
                             vertex.position[0] - total_width as f32 * anchor.x,
                             vertex.position[1] - total_height as f32 * anchor.y,
+                            1.0,
                         ));
 
                         vertex.position[0] = p.x;
