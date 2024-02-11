@@ -24,6 +24,8 @@ module.exports = {
     '@typescript-eslint/no-floating-promises': 'error',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-namespace': [2, { allowDeclarations: true }],
+    '@typescript-eslint/no-empty-interface': ['warn', { allowSingleExtends: true }],
+    '@typescript-eslint/no-empty-function': 'warn',
   },
   parserOptions: {
     ecmaVersion: 2019,
