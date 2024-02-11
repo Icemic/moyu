@@ -28,6 +28,8 @@ export interface HaiNodeAttributes extends HaiListenerAttributes {
   skew?: number;
   skewX?: number;
   skewY?: number;
+  tint?: string;
+  opacity?: number;
   children?: ReactNode;
 }
 
