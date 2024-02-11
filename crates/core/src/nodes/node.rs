@@ -408,7 +408,7 @@ impl NodeBase {
             self.global_transform = global_transform;
 
             // refresh global opacity
-            self.global_opacity = self.opacity * parent.opacity;
+            self.global_opacity = self.opacity * parent.global_opacity;
 
             self._current_update_id = self._update_id;
             self._need_update_vertices = true;
