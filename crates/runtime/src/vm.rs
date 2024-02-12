@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use hai_pal::env::entry_dir;
-use quickjspp::{Context, ExecutionError, JsFunction, JsValue};
+use quickjspp::{Arguments, Context, ExecutionError, JsFunction, JsValue};
 use std::sync::Mutex;
 use tokio::sync::oneshot::Sender;
 
@@ -110,15 +110,24 @@ impl QuickVM {
 
         {
             let timer_tasks = timer_tasks.clone();
-            let clear_timer = move |timer_id: i32| {
-                let mut timer_tasks = timer_tasks.lock().unwrap();
-                if let Some(index) = timer_tasks
-                    .iter()
-                    .position(|task| task.timer_id == timer_id)
-                {
-                    timer_tasks.remove(index);
+            let clear_timer = move |args: Arguments| {
+                let args = args.into_vec();
+                if args.len() < 1 {
+                    return;
                 }
-                0
+
+                // Do not panic if the argument is not a number
+                // On MDN, https://developer.mozilla.org/en-US/docs/Web/API/clearTimeout
+                // "Passing an invalid ID to clearTimeout() silently does nothing; no exception is thrown. "
+                if let Ok(timer_id) = i32::try_from(args.get(0).cloned().unwrap()) {
+                    let mut timer_tasks = timer_tasks.lock().unwrap();
+                    if let Some(index) = timer_tasks
+                        .iter()
+                        .position(|task| task.timer_id == timer_id)
+                    {
+                        timer_tasks.remove(index);
+                    }
+                }
             };
 
             // clearInterval is in fact the same as clearTimeout
