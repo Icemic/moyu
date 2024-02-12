@@ -264,6 +264,12 @@ impl Renderer for TextRenderer {
                         node.index_buffer = Some(index_buffer);
                         node.num_indices = indices.len() as u32;
                     } else {
+                        node.num_indices = indices.len() as u32;
+
+                        if vertices.len() == 0 || indices.len() == 0 {
+                            return;
+                        }
+
                         let buf_vertices = bytemuck::cast_slice(&vertices);
                         let buf_indices = bytemuck::cast_slice(&indices);
                         staging_belt
@@ -284,8 +290,6 @@ impl Renderer for TextRenderer {
                                 &device,
                             )
                             .copy_from_slice(buf_indices);
-
-                        node.num_indices = indices.len() as u32;
                     }
 
                     // updates the sdf texture only when the image version is changed
