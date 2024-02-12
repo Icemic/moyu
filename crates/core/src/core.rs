@@ -6,7 +6,7 @@ use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::forget;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 #[cfg(not(feature = "web"))]
 use std::time::Instant;
@@ -107,6 +107,7 @@ pub struct Core {
     pub root_node: Arc<RwLock<dyn Node>>,
     pub last_focused_position: ArcSwapOption<PhysicalPosition<f64>>,
     pub last_focused_node: Arc<RwLock<Option<Arc<RwLock<dyn Node>>>>>,
+    pub mouse_down_id: AtomicU32,
     pub node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
 
     pub window_state: ArcSwap<WindowState>,
@@ -185,6 +186,7 @@ impl Core {
             root_node,
             last_focused_position: ArcSwapOption::new(None),
             last_focused_node: Arc::new(RwLock::new(None)),
+            mouse_down_id: AtomicU32::new(0),
             node_map: Arc::new(RwLock::new(node_map)),
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
@@ -647,42 +649,51 @@ impl Core {
                 }
 
                 if let Some(last_focused_node) = &*self.last_focused_node.read() {
+                    let target_id = *last_focused_node.read().base().id();
+
                     match state {
                         ElementState::Pressed => {
                             dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseDown,
-                                target_id: *last_focused_node.read().base().id(),
+                                target_id,
                             });
+                            if let winit::event::MouseButton::Left = button {
+                                self.mouse_down_id.store(target_id, Ordering::Relaxed);
+                            }
                         }
                         ElementState::Released => {
                             dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseUp,
-                                target_id: *last_focused_node.read().base().id(),
+                                target_id,
                             });
-                            match button {
-                                winit::event::MouseButton::Left => {
-                                    dispatch_event(HaiEvent {
-                                        kind: HaiEventKind::Click,
-                                        target_id: *last_focused_node.read().base().id(),
-                                    });
-                                }
-                                winit::event::MouseButton::Right => {
-                                    dispatch_event(HaiEvent {
-                                        kind: HaiEventKind::ContextMenu,
-                                        target_id: *last_focused_node.read().base().id(),
-                                    });
-                                }
-                                winit::event::MouseButton::Back => {
-                                    // do nothing
-                                }
-                                winit::event::MouseButton::Forward => {
-                                    // do nothing
-                                }
-                                winit::event::MouseButton::Middle => {
-                                    // do nothing
-                                }
-                                winit::event::MouseButton::Other(_) => {
-                                    // do nothing
+
+                            let pressed_target_id = self.mouse_down_id.swap(0, Ordering::Relaxed);
+                            if pressed_target_id == target_id {
+                                match button {
+                                    winit::event::MouseButton::Left => {
+                                        dispatch_event(HaiEvent {
+                                            kind: HaiEventKind::Click,
+                                            target_id,
+                                        });
+                                    }
+                                    winit::event::MouseButton::Right => {
+                                        dispatch_event(HaiEvent {
+                                            kind: HaiEventKind::ContextMenu,
+                                            target_id,
+                                        });
+                                    }
+                                    winit::event::MouseButton::Back => {
+                                        // do nothing
+                                    }
+                                    winit::event::MouseButton::Forward => {
+                                        // do nothing
+                                    }
+                                    winit::event::MouseButton::Middle => {
+                                        // do nothing
+                                    }
+                                    winit::event::MouseButton::Other(_) => {
+                                        // do nothing
+                                    }
                                 }
                             }
                         }
