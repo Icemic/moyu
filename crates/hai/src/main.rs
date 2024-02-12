@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use hai_core::core::set_core;
 use hai_core::surface::{create_eventloop, create_wgpu_surface, create_window};
+use hai_core::winit::dpi::PhysicalPosition;
 use hai_core::winit::event::Event;
+use hai_core::winit::window::Window;
 use hai_core::{create_hai_core, setup, spawn_runtime_with_core};
 use hai_pal::{env, logger, platform};
 
@@ -67,6 +69,8 @@ fn main_entry() {
 
                     _window.set_visible(true);
 
+                    move_to_center(&_window);
+
                     window = Some(_window);
                     core = Some(_core);
                 }
@@ -97,4 +101,18 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[cfg_attr(feature = "web", wasm_bindgen)]
 pub fn wasm_start() {
     main_entry();
+}
+
+fn move_to_center(window: &Window) {
+    if let Some(monitor) = window.current_monitor() {
+        let monitor_size = monitor.size();
+        let window_size = window.outer_size();
+
+        window.set_outer_position(PhysicalPosition {
+            x: monitor_size.width.saturating_sub(window_size.width) as f64 / 2.
+                + monitor.position().x as f64,
+            y: monitor_size.height.saturating_sub(window_size.height) as f64 / 2.
+                + monitor.position().y as f64,
+        });
+    }
 }
