@@ -1,0 +1,103 @@
+import React, { useEffect, useState } from 'react';
+import { animated, useSpring } from '../../../src/lib';
+import { HaiNodeAttributes } from '../../../src/declaration';
+
+export interface ButtonProps extends HaiNodeAttributes {
+  fileName: string;
+  label?: string;
+  onClick?: () => void;
+}
+
+export function Button(props: ButtonProps) {
+  const { fileName, label, onClick, anchor, ...restProps } = props;
+
+  const [pressed, setPressed] = useState(false);
+
+  const [springs, api] = useSpring(() => ({
+    from: {
+      idle_opacity: 1,
+      hover_opacity: 0,
+      visible: true,
+      click_opacity: 0,
+    },
+  }));
+
+  const handleEnter = () => {
+    console.log('enter');
+    api.start({
+      to: {
+        idle_opacity: 0,
+        hover_opacity: 1,
+        click_opacity: +pressed,
+        visible: !pressed,
+      },
+    });
+  };
+
+  const handleLeave = () => {
+    api.start({
+      to: {
+        idle_opacity: 1,
+        hover_opacity: 0,
+        click_opacity: 0,
+        visible: true,
+      },
+    });
+  };
+
+  const handleMouseDown = () => {
+    setPressed(true);
+    api.start({
+      to: {
+        click_opacity: 1,
+        visible: false,
+      },
+      config: {
+        duration: 30,
+      },
+    });
+  };
+
+  const handleMouseUp = () => {
+    setPressed(false);
+    api.start({
+      to: {
+        click_opacity: 0,
+        visible: true,
+      },
+      config: {
+        duration: 30,
+      },
+    });
+  };
+
+  return (
+    <container label={label} {...restProps}>
+      <animated.sprite
+        label="button_idle"
+        src={`${fileName}.png`}
+        visible={springs.visible}
+        opacity={springs.idle_opacity}
+        anchor={anchor}
+      />
+      <animated.sprite
+        label="button_hover"
+        src={`${fileName}_hover.png`}
+        visible={springs.visible}
+        opacity={springs.hover_opacity}
+        anchor={anchor}
+      />
+      <animated.sprite
+        label="button_click"
+        src={`${fileName}_click.png`}
+        opacity={springs.click_opacity}
+        onMouseEnter={handleEnter}
+        onMouseLeave={handleLeave}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onClick={onClick}
+        anchor={anchor}
+      />
+    </container>
+  );
+}
