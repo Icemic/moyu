@@ -73,7 +73,7 @@ const hostConfig: HostConfig<
    */
   finalizeInitialChildren(parentInstance, _type, _props, _rootContainerInstance, _hostContext) {
     console.debug('finalizeInitialChildren', parentInstance);
-    return false;
+    return true;
   },
 
   prepareUpdate: (
@@ -105,7 +105,7 @@ const hostConfig: HostConfig<
 
   getChildHostContext(_parentHostContext, _type, _rootContainerInstance) {
     console.debug('getChildHostContext');
-    return {};
+    return _parentHostContext;
   },
 
   getPublicInstance(node: Instance) {
@@ -196,22 +196,29 @@ const hostConfig: HostConfig<
     return DefaultEventPriority;
   },
   getInstanceFromNode(node: any): Reconciler.Fiber | null | undefined {
+    console.error('getInstanceFromNode not implement');
     throw new Error('Function not implemented.');
   },
   beforeActiveInstanceBlur: function (): void {
+    console.error('beforeActiveInstanceBlur not implement');
     throw new Error('Function not implemented.');
   },
   afterActiveInstanceBlur: function (): void {
+    console.error('afterActiveInstanceBlur not implement');
     throw new Error('Function not implemented.');
   },
   prepareScopeUpdate: function (scopeInstance: any, instance: any): void {
+    console.error('prepareScopeUpdate not implement');
     throw new Error('Function not implemented.');
   },
   getInstanceFromScope: function (scopeInstance: any): Node | null {
+    console.error('getInstanceFromScope not implement');
     throw new Error('Function not implemented.');
   },
   detachDeletedInstance: function (node: Node): void {
-    throw new Error('Function not implemented.');
+    console.error('getInstanceFromScope not implement');
+    // node will be destroyed by the engine
+    // throw new Error('Function not implemented.');
   },
 };
 
