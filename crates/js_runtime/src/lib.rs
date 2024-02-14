@@ -18,11 +18,15 @@ pub use shared::Shared;
 use std::{
     cell::RefCell,
     rc::Rc,
-    sync::Arc,
+    sync::{Arc, OnceLock},
     task::{Context as TaskContext, Poll},
 };
+use utils::IntoV8;
 pub use v8;
-use v8::{Context, ContextScope, Global, HandleScope, Isolate, Local, Object, OwnedIsolate, Value};
+use v8::{
+    Context, ContextScope, Function, Global, HandleScope, Isolate, Local, Object, OwnedIsolate,
+    Value,
+};
 
 use self::module::ModuleLoader;
 
@@ -30,6 +34,9 @@ pub struct JSRuntime {
     isolate: OwnedIsolate,
     global_context: Global<Context>,
 }
+
+unsafe impl Send for JSRuntime {}
+unsafe impl Sync for JSRuntime {}
 
 impl JSRuntime {
     pub fn new<T>(state: Arc<T>) -> Self {
@@ -98,6 +105,24 @@ impl JSRuntime {
         let context = self.get_global_context();
         v8::HandleScope::with_context(self.get_isolate_mut(), context)
     }
+
+    // pub fn call_function(&mut self, name: &str, args: &[Local<Value>]) -> Result<()> {
+    //     let scope = &mut self.get_handle_scope();
+    //     let context = Local::new(scope, self.global_context.clone());
+    //     let context_scope = &mut ContextScope::new(scope, context);
+    //     let global = context.global(context_scope);
+    //     if let Some(function) = global.get(context_scope, name.into_v8(scope).into()) {
+    //         if !function.is_function() {
+    //             return Err(anyhow::format_err!("{} is not a function.", name));
+    //         }
+    //         let function: Local<'_, Function> = function.try_into().unwrap();
+    //         let function = Local::new(scope, function);
+    //         let _ = function.call(context_scope, global.into(), args);
+    //         Ok(())
+    //     } else {
+    //         Err(anyhow::format_err!("{} is not defined.", name))
+    //     }
+    // }
 
     pub async fn prepare_entry(&mut self) -> Result<()> {
         let module_loader = {
@@ -261,4 +286,18 @@ impl JSRuntime {
             spin_sleep::sleep(std::time::Duration::from_millis(4));
         }
     }
+}
+
+static VM_INSTANCE: OnceLock<Arc<JSRuntime>> = OnceLock::new();
+
+pub fn setup_vm<T>(state: Arc<T>) -> Arc<JSRuntime> {
+    let vm = Arc::new(JSRuntime::new(state));
+
+    VM_INSTANCE.set(vm.clone()).ok();
+
+    vm
+}
+
+pub fn get_vm<'a>() -> &'a Arc<JSRuntime> {
+    VM_INSTANCE.get().expect("VM not initialized")
 }

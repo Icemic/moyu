@@ -1,7 +1,12 @@
-use hai_pal::task::get_runtime_handle;
-use hai_runtime::get_vm;
 use log::error;
 use serde::{Deserialize, Serialize};
+
+use hai_pal::task::get_runtime_handle;
+
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
+use hai_js_runtime::get_vm;
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+use hai_runtime::get_vm;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -39,6 +44,7 @@ pub struct HaiEvent {
     pub target_id: u32,
 }
 
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 pub fn dispatch_event(event: HaiEvent) {
     get_runtime_handle().spawn(async move {
         if let Err(err) = get_vm()
@@ -51,4 +57,9 @@ pub fn dispatch_event(event: HaiEvent) {
             error!("failed to dispatch event: {:?}", err);
         }
     });
+}
+
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
+pub fn dispatch_event(_: HaiEvent) {
+    log::error!("dispatch_event is not implemented for v8 runtime, nothing will happen");
 }
