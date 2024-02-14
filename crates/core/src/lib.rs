@@ -102,7 +102,7 @@ pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRun
     use log::error;
     use std::process::exit;
 
-    use hai_js_runtime::JSRuntime;
+    use hai_js_runtime::{setup_vm, JSRuntime};
 
     let core = core.clone();
 
@@ -116,6 +116,8 @@ pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRun
 
         handle.block_on(async {
             let mut vm = JSRuntime::new(core);
+
+            // let vm = setup_vm(core);
 
             vm.with_global(|scope, global| {
                 ops::init(scope, global);
