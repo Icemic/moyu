@@ -70,8 +70,8 @@ impl Focusable for Text {
  */
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextProps<'a> {
-    pub text: Option<&'a str>,
+pub struct TextProps {
+    pub text: Option<String>,
 
     /* layout styles */
     /// the writing direction of the text in the box,
@@ -103,7 +103,7 @@ pub struct TextProps<'a> {
     pub shadow_width: Option<f32>,
 }
 
-impl Default for TextProps<'_> {
+impl Default for TextProps {
     fn default() -> Self {
         let layout_style_default: LayoutStyle = LayoutStyle::default();
         let text_style_default: TextStyle = TextStyle::default();
