@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { animated, useSpring } from '../../../src/lib';
+import React from 'react';
+import { SpringValue, animated, useSpring } from '../../../src/lib';
 import { LayoutSytle, TextStyle } from '../../../src/declaration';
 
 const LIST_TEXT_LAYOUT_STYLE: LayoutSytle = {
@@ -22,38 +22,48 @@ export interface ListButtonProps {
   label: string;
   title: string;
   index: number;
+  style: Record<string, SpringValue<any>>;
 }
 
 export function ListButton(props: ListButtonProps) {
-  const { label, title, index } = props;
+  const { label, title, index, style } = props;
 
   const [springs, api] = useSpring(() => ({
-    from: { fillColor: 'rgba(255, 255, 255, 0.6)' },
+    from: {
+      opacity: 0,
+      fillColor: 'rgba(255, 255, 255, 0.6)',
+    },
   }));
 
   const handleEnter = () => {
-    console.log('enter');
     api.start({
-      to: { fillColor: 'rgba(255, 200, 80, 0.6)' },
+      to: {
+        opacity: 1,
+        fillColor: 'rgba(255, 200, 80, 0.6)',
+      },
     });
   };
 
   const handleLeave = () => {
     api.start({
-      to: { fillColor: 'rgba(255, 255, 255, 0.6)' },
+      to: {
+        opacity: 0,
+        fillColor: 'rgba(255, 255, 255, 0.6)',
+      },
     });
   };
 
   return (
-    <container label={`${label}-container`} y={index * 36}>
-      {/* <sprite
+    <animated.container label={`${label}-container`} {...style} y={index * 36}>
+      <animated.sprite
         label={`${label}-底纹`}
         src="text_plate_01_transparent.png"
         anchor={[0.5, 0.0]}
         x={100}
         scaleX={4 / 15}
         scaleY={0.6}
-      /> */}
+        opacity={springs.opacity}
+      />
       <animated.text
         label={`${label}-文本`}
         text={title}
@@ -61,10 +71,10 @@ export function ListButton(props: ListButtonProps) {
         x={100}
         {...LIST_TEXT_LAYOUT_STYLE}
         {...LIST_TEXT_STYLE_DEFAULT}
-        {...springs}
+        fillColor={springs.fillColor}
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
       />
-    </container>
+    </animated.container>
   );
 }
