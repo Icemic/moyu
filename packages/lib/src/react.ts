@@ -201,19 +201,20 @@ const hostConfig: HostConfig<
   },
   beforeActiveInstanceBlur: function (): void {
     console.error('beforeActiveInstanceBlur not implement');
-    throw new Error('Function not implemented.');
+    // throw new Error('Function not implemented.');
   },
   afterActiveInstanceBlur: function (): void {
     console.error('afterActiveInstanceBlur not implement');
-    throw new Error('Function not implemented.');
+    // throw new Error('Function not implemented.');
   },
   prepareScopeUpdate: function (scopeInstance: any, instance: any): void {
     console.error('prepareScopeUpdate not implement');
-    throw new Error('Function not implemented.');
+    // throw new Error('Function not implemented.');
   },
   getInstanceFromScope: function (scopeInstance: any): Node | null {
     console.error('getInstanceFromScope not implement');
-    throw new Error('Function not implemented.');
+    // throw new Error('Function not implemented.');
+    return null;
   },
   detachDeletedInstance: function (node: Node): void {
     console.error('getInstanceFromScope not implement');
