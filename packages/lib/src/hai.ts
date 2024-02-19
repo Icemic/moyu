@@ -14,7 +14,7 @@ declare global {
   }
 
   // eslint-disable-next-line no-var
-  var __hai_receive_event: (kind: string, target_id: string) => void;
+  var __hai_receive_event: (kind: string, target_id: number, bubble_target_ids: number[]) => void;
 }
 
 if (hai && typeof hai.pushCommand === 'undefined') {
@@ -26,18 +26,26 @@ if (hai && typeof hai.pushCommand === 'undefined') {
   };
 }
 
-globalThis.__hai_receive_event = (kind: string, target_id: string) => {
-  const node = STATE.nodeMap[parseInt(target_id)];
-  console.log('event:', kind, target_id, node.label);
+globalThis.__hai_receive_event = (kind: string, target_id: number, bubble_target_ids: number[]) => {
+  const node = STATE.nodeMap[target_id];
+  console.log('event:', kind, target_id, node.label, bubble_target_ids.join(','));
+
+  let propagate = true;
 
   const event: HaiEvent = {
     kind,
     target_id,
+    current_target_id: target_id,
+    target_label: node.label,
+    current_target_label: node.label,
+    stopPropagation: () => {
+      propagate = false;
+    },
   };
 
   switch (kind) {
     case 'NodeDestroyed':
-      delete STATE.nodeMap[parseInt(target_id)];
+      delete STATE.nodeMap[target_id];
       break;
     case 'MouseEnter':
     case 'MouseLeave':
@@ -46,6 +54,12 @@ globalThis.__hai_receive_event = (kind: string, target_id: string) => {
     case 'MouseMove':
     case 'Click':
       node?.listeners?.['on' + kind]?.(event);
+      while (propagate && bubble_target_ids.length) {
+        event.current_target_id = bubble_target_ids.pop()!;
+        event.current_target_label = STATE.nodeMap[event.current_target_id]?.label;
+        STATE.nodeMap[event.current_target_id]?.listeners?.['on' + kind]?.(event);
+      }
+
       break;
     default:
       break;
@@ -54,7 +68,11 @@ globalThis.__hai_receive_event = (kind: string, target_id: string) => {
 
 export interface HaiEvent {
   kind: string;
-  target_id: string;
+  target_id: number;
+  current_target_id: number;
+  target_label?: string;
+  current_target_label?: string;
+  stopPropagation: () => void;
 }
 
 export function addEventListener(name: string, callback: (...args: any[]) => void) {

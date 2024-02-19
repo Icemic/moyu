@@ -32,6 +32,7 @@ export interface HaiNodeAttributes extends HaiListenerAttributes {
   tint?: string;
   opacity?: number;
   children?: ReactNode;
+  interactive?: boolean;
 }
 
 export type HaiContainerAttributes = HaiNodeAttributes;
