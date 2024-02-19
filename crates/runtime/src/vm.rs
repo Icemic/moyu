@@ -7,7 +7,7 @@ use std::time::Instant;
 use hai_pal::env::entry_dir;
 use quickjspp::{Arguments, Context, ExecutionError, JsFunction, JsValue};
 use std::sync::Mutex;
-use tokio::sync::oneshot::Sender;
+use tokio::sync::oneshot::{Receiver, Sender};
 
 use crate::console::log_handler;
 use crate::module::{module_loader, module_normalize};
@@ -150,20 +150,14 @@ impl QuickVM {
         &self.context
     }
 
-    pub async fn call_function(
-        &self,
-        name: &str,
-        args: impl IntoIterator<Item = impl Into<JsValue>>,
-    ) -> Result<(), ExecutionError> {
+    pub fn call_function(&self, name: &str, args: Vec<JsValue>) -> Receiver<()> {
         let (sender, receiver) = tokio::sync::oneshot::channel();
-        self.call_tasks.lock().unwrap().push_back((
-            name.to_string(),
-            args.into_iter().map(|v| v.into()).collect(),
-            sender,
-        ));
-        receiver.await.unwrap();
+        self.call_tasks
+            .lock()
+            .unwrap()
+            .push_back((name.to_string(), args, sender));
 
-        Ok(())
+        receiver
     }
 
     pub fn prepare_entry(&self) -> Result<(), ExecutionError> {

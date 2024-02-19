@@ -9,7 +9,7 @@ use hai_js_runtime::get_vm;
 use hai_runtime::get_vm;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "lowercase", tag = "kind")]
 pub enum HaiEventKind {
     MouseEnter,
     MouseLeave,
@@ -37,20 +37,28 @@ pub enum HaiEventKind {
     NodeDestroyed,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HaiEvent {
+    #[serde(flatten)]
     pub kind: HaiEventKind,
     pub target_id: u32,
+    pub bubble_target_ids: Vec<u32>,
 }
 
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 pub fn dispatch_event(event: HaiEvent) {
+    use hai_runtime::quickjspp::JsValue;
+
     get_runtime_handle().spawn(async move {
         if let Err(err) = get_vm()
             .call_function(
                 "__hai_receive_event",
-                vec![format!("{:?}", event.kind), event.target_id.to_string()],
+                vec![
+                    JsValue::from(format!("{:?}", event.kind)),
+                    JsValue::from(event.target_id),
+                    JsValue::from(event.bubble_target_ids),
+                ],
             )
             .await
         {
