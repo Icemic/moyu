@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { animated, useSpring } from '../../../src/lib';
 import { HaiNodeAttributes } from '../../../src/declaration';
+import { HaiEvent } from '../../../src/hai';
 
 export interface ButtonProps extends HaiNodeAttributes {
   fileName: string;
@@ -22,8 +23,13 @@ export function Button(props: ButtonProps) {
     },
   }));
 
-  const handleEnter = () => {
-    console.log('enter');
+  const handleEnter = (evt: HaiEvent) => {
+    console.log('enter', evt.target_label, evt.current_target_label);
+    if (evt.target_id === evt.current_target_id) {
+      evt.stopPropagation();
+      return;
+    }
+
     api.start({
       to: {
         idle_opacity: 0,
@@ -72,7 +78,15 @@ export function Button(props: ButtonProps) {
   };
 
   return (
-    <container label={label} {...restProps}>
+    <container
+      label={label}
+      {...restProps}
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onClick={onClick}
+    >
       <animated.sprite
         label="button_idle"
         src={`${fileName}.png`}
@@ -91,11 +105,6 @@ export function Button(props: ButtonProps) {
         label="button_click"
         src={`${fileName}_click.png`}
         opacity={springs.click_opacity}
-        onMouseEnter={handleEnter}
-        onMouseLeave={handleLeave}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onClick={onClick}
         anchor={anchor}
       />
     </container>

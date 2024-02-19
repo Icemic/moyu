@@ -42,12 +42,7 @@ function App() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback} onError={logError}>
       <container label="App">
-        <sprite
-          label="背景图"
-          src="classroom1.png"
-          scale={1280 / 1344}
-          onClick={() => handleTextWindowButtonClicked('hide')}
-        />
+        <sprite label="背景图" src="classroom1.png" scale={1280 / 1344} />
         <TextWindow onItemClicked={handleTextWindowButtonClicked} />
         <Dialog
           show={showDialog}
