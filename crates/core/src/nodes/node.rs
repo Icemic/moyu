@@ -38,6 +38,8 @@ pub struct NodeBase {
     opacity: f32,
     /// opacity that has been multiplied with parent
     global_opacity: f32,
+    /// if this node will response to user input, will affect itself and all children
+    interactive: bool,
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
@@ -69,6 +71,7 @@ impl NodeBase {
             tint: Color::new(1.0, 1.0, 1.0, 1.0),
             opacity: 1.0,
             global_opacity: 1.0,
+            interactive: true,
 
             _update_id: 0,
             _current_update_id: 0,
@@ -148,6 +151,10 @@ impl NodeBase {
     #[inline]
     pub fn global_opacity(&self) -> &f32 {
         &self.global_opacity
+    }
+    #[inline]
+    pub fn interactive(&self) -> bool {
+        self.interactive
     }
 
     #[inline]
@@ -230,6 +237,10 @@ impl NodeBase {
         self.opacity = opacity;
         self._update_id += 1;
     }
+    #[inline]
+    pub fn set_interactive(&mut self, interactive: bool) {
+        self.interactive = interactive;
+    }
 
     pub fn transform(&self) -> &Transform {
         &self.transform
@@ -308,6 +319,10 @@ impl NodeBase {
 
         if let Some(opacity) = props.opacity {
             self.set_opacity(opacity);
+        }
+
+        if let Some(interactive) = props.interactive {
+            self.set_interactive(interactive);
         }
     }
 
@@ -440,6 +455,7 @@ pub struct NodeProps {
     pub visible: Option<bool>,
     pub tint: Option<Color>,
     pub opacity: Option<f32>,
+    pub interactive: Option<bool>,
 }
 
 impl Drop for NodeBase {
@@ -447,6 +463,7 @@ impl Drop for NodeBase {
         dispatch_event(HaiEvent {
             kind: HaiEventKind::NodeDestroyed,
             target_id: self.id,
+            bubble_target_ids: vec![],
         });
     }
 }

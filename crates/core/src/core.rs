@@ -21,7 +21,7 @@ use crate::base::*;
 use crate::user_event::WindowState;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::dispatch_event::{dispatch_event, HaiEvent, HaiEventKind};
-use crate::utils::hit_test::hit_test;
+use crate::utils::hit_test::{hit_test, HitTestResult};
 use crate::utils::walk::walk_nodes_top_bottom;
 use crate::{nodes::Container, resource::ResourceManager, traits::*, user_event::UserEvent};
 
@@ -106,7 +106,7 @@ pub struct Core {
 
     pub root_node: Arc<RwLock<dyn Node>>,
     pub last_focused_position: ArcSwapOption<PhysicalPosition<f64>>,
-    pub last_focused_node: Arc<RwLock<Option<Arc<RwLock<dyn Node>>>>>,
+    pub last_focused_node: Arc<RwLock<Option<HitTestResult>>>,
     pub mouse_down_id: AtomicU32,
     pub node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
 
@@ -636,7 +636,8 @@ impl Core {
                 if let Some(last_focused_node) = &*last_focused_node {
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseLeave,
-                        target_id: *last_focused_node.read().base().id(),
+                        target_id: *last_focused_node.target.read().base().id(),
+                        bubble_target_ids: last_focused_node.parent_ids.clone(),
                     });
                 }
                 *last_focused_node = None;
@@ -649,13 +650,15 @@ impl Core {
                 }
 
                 if let Some(last_focused_node) = &*self.last_focused_node.read() {
-                    let target_id = *last_focused_node.read().base().id();
+                    let target_id = *last_focused_node.target.read().base().id();
+                    let bubble_target_ids = last_focused_node.parent_ids.clone();
 
                     match state {
                         ElementState::Pressed => {
                             dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseDown,
                                 target_id,
+                                bubble_target_ids,
                             });
                             if let winit::event::MouseButton::Left = button {
                                 self.mouse_down_id.store(target_id, Ordering::Relaxed);
@@ -665,6 +668,7 @@ impl Core {
                             dispatch_event(HaiEvent {
                                 kind: HaiEventKind::MouseUp,
                                 target_id,
+                                bubble_target_ids: bubble_target_ids.clone(),
                             });
 
                             let pressed_target_id = self.mouse_down_id.swap(0, Ordering::Relaxed);
@@ -674,12 +678,14 @@ impl Core {
                                         dispatch_event(HaiEvent {
                                             kind: HaiEventKind::Click,
                                             target_id,
+                                            bubble_target_ids,
                                         });
                                     }
                                     winit::event::MouseButton::Right => {
                                         dispatch_event(HaiEvent {
                                             kind: HaiEventKind::ContextMenu,
                                             target_id,
+                                            bubble_target_ids,
                                         });
                                     }
                                     winit::event::MouseButton::Back => {
@@ -734,7 +740,7 @@ impl Core {
         ) {
             if let Some(last_focused_node) = &*last_focused_node {
                 // if last focused node is the same as current node, it's a mouse move event
-                if last_focused_node.read().base().id() == node.read().base().id() {
+                if last_focused_node == &node {
                     // TODO: mouse move event
                     // dispatch_event(HaiEvent {
                     //     kind: HaiEventKind::MouseMove,
@@ -744,18 +750,21 @@ impl Core {
                     // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseLeave,
-                        target_id: *last_focused_node.read().base().id(),
+                        target_id: *last_focused_node.target.read().base().id(),
+                        bubble_target_ids: last_focused_node.parent_ids.clone(),
                     });
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseEnter,
-                        target_id: *node.read().base().id(),
+                        target_id: *node.target.read().base().id(),
+                        bubble_target_ids: node.parent_ids.clone(),
                     });
                 }
             } else {
                 // if last focused node is None, it's only a mouse enter event
                 dispatch_event(HaiEvent {
                     kind: HaiEventKind::MouseEnter,
-                    target_id: *node.read().base().id(),
+                    target_id: *node.target.read().base().id(),
+                    bubble_target_ids: node.parent_ids.clone(),
                 });
             }
 
@@ -769,7 +778,8 @@ impl Core {
                 // TODO: mouse leave event
                 dispatch_event(HaiEvent {
                     kind: HaiEventKind::MouseLeave,
-                    target_id: *last_focused_node.read().base().id(),
+                    target_id: *last_focused_node.target.read().base().id(),
+                    bubble_target_ids: last_focused_node.parent_ids.clone(),
                 });
             }
             *last_focused_node = None;
