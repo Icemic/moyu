@@ -15,7 +15,7 @@ use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, PhysicalPosition, Size};
 use winit::event::{ElementState, Event, WindowEvent};
 use winit::event_loop::{EventLoopProxy, EventLoopWindowTarget};
-use winit::window::{Fullscreen, Window};
+use winit::window::{CursorIcon, Fullscreen, Window};
 
 use crate::base::*;
 use crate::user_event::WindowState;
@@ -746,19 +746,20 @@ impl Core {
                     //     kind: HaiEventKind::MouseMove,
                     //     target_id: *node.read().base().id(),
                     // });
-                } else {
-                    // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
-                    dispatch_event(HaiEvent {
-                        kind: HaiEventKind::MouseLeave,
-                        target_id: *last_focused_node.target.read().base().id(),
-                        bubble_target_ids: last_focused_node.parent_ids.clone(),
-                    });
-                    dispatch_event(HaiEvent {
-                        kind: HaiEventKind::MouseEnter,
-                        target_id: *node.target.read().base().id(),
-                        bubble_target_ids: node.parent_ids.clone(),
-                    });
+                    return;
                 }
+
+                // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
+                dispatch_event(HaiEvent {
+                    kind: HaiEventKind::MouseLeave,
+                    target_id: *last_focused_node.target.read().base().id(),
+                    bubble_target_ids: last_focused_node.parent_ids.clone(),
+                });
+                dispatch_event(HaiEvent {
+                    kind: HaiEventKind::MouseEnter,
+                    target_id: *node.target.read().base().id(),
+                    bubble_target_ids: node.parent_ids.clone(),
+                });
             } else {
                 // if last focused node is None, it's only a mouse enter event
                 dispatch_event(HaiEvent {
@@ -769,6 +770,18 @@ impl Core {
             }
 
             // debug!("pointer is over {}", node.read().base().label());
+
+            match node.target.read().base().cursor() {
+                HaiCursor::Visible(cursor) => {
+                    self.window.set_cursor_icon(*cursor);
+                    self.window.set_cursor_visible(true);
+                    debug!("set cursor to {}", cursor.name());
+                }
+                HaiCursor::Hidden => {
+                    self.window.set_cursor_visible(false);
+                    debug!("set cursor to hidden");
+                }
+            }
 
             // record last focused node
             *last_focused_node = Some(node);
@@ -781,7 +794,12 @@ impl Core {
                     target_id: *last_focused_node.target.read().base().id(),
                     bubble_target_ids: last_focused_node.parent_ids.clone(),
                 });
+
+                self.window.set_cursor_icon(CursorIcon::Default);
+                self.window.set_cursor_visible(true);
+                debug!("set cursor to default");
             }
+
             *last_focused_node = None;
         }
     }

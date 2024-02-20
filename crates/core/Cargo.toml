@@ -30,6 +30,7 @@ anyhow = "1.0"
 arc-swap = "1.6"
 bytemuck = {version = "1.13", features = ["derive"]}
 csscolorparser = {version = "0.6", features = ["serde"]}
+cursor-icon = {version = "1", features = ["serde"]}
 futures = "0.3"
 glam = {version = "0.25", features = ["bytemuck"]}
 image = "0.24"
