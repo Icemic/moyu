@@ -40,6 +40,8 @@ pub struct NodeBase {
     global_opacity: f32,
     /// if this node will response to user input, will affect itself and all children
     interactive: bool,
+    /// cursor style
+    cursor: HaiCursor,
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
@@ -72,6 +74,7 @@ impl NodeBase {
             opacity: 1.0,
             global_opacity: 1.0,
             interactive: true,
+            cursor: HaiCursor::default(),
 
             _update_id: 0,
             _current_update_id: 0,
@@ -155,6 +158,10 @@ impl NodeBase {
     #[inline]
     pub fn interactive(&self) -> bool {
         self.interactive
+    }
+    #[inline]
+    pub fn cursor(&self) -> &HaiCursor {
+        &self.cursor
     }
 
     #[inline]
@@ -241,6 +248,10 @@ impl NodeBase {
     pub fn set_interactive(&mut self, interactive: bool) {
         self.interactive = interactive;
     }
+    #[inline]
+    pub fn set_cursor(&mut self, cursor: HaiCursor) {
+        self.cursor = cursor;
+    }
 
     pub fn transform(&self) -> &Transform {
         &self.transform
@@ -263,7 +274,13 @@ impl NodeBase {
     #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     #[inline]
     pub fn update_properties(&mut self, props: &mut JSValue) {
-        let props: NodeProps = from_js(props).unwrap();
+        let props: NodeProps = match from_js(props) {
+            Ok(v) => v,
+            Err(err) => {
+                warn!("Failed to convert JSValue to NodeProps: {:?}", err);
+                return;
+            }
+        };
 
         if let Some(x) = props.x {
             self.set_x(x);
@@ -323,6 +340,10 @@ impl NodeBase {
 
         if let Some(interactive) = props.interactive {
             self.set_interactive(interactive);
+        }
+
+        if let Some(cursor) = props.cursor {
+            self.set_cursor(cursor);
         }
     }
 
@@ -456,6 +477,7 @@ pub struct NodeProps {
     pub tint: Option<Color>,
     pub opacity: Option<f32>,
     pub interactive: Option<bool>,
+    pub cursor: Option<HaiCursor>,
 }
 
 impl Drop for NodeBase {
