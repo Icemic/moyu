@@ -106,6 +106,7 @@ export function Button(props: ButtonProps) {
         src={`${fileName}_click.png`}
         opacity={springs.click_opacity}
         anchor={anchor}
+        cursor={'pointer'}
       />
     </container>
   );

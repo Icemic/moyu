@@ -74,6 +74,7 @@ export function ListButton(props: ListButtonProps) {
         fillColor={springs.fillColor}
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
+        cursor={'pointer'}
       />
     </animated.container>
   );
