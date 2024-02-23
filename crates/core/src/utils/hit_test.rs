@@ -3,10 +3,7 @@ use std::sync::Arc;
 use glam::Vec3;
 use hai_pal::sync::RwLock;
 
-use crate::nodes::Sprite;
-#[cfg(feature = "text")]
-use crate::nodes::Text;
-use crate::traits::{Focusable, Node, NodeBaseTrait, RendererUpdatePayload};
+use crate::traits::{Node, RendererUpdatePayload};
 
 use super::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use super::walk::walk_nodes_bottom_top;
@@ -49,35 +46,24 @@ pub fn hit_test<'a>(
             let local_logical_x = p.x * VIEWPORT_WIDTH;
             let local_logical_y = p.y * VIEWPORT_HEIGHT;
 
-            let hit = match child_ref.node_type() {
-                "sprite" => {
-                    let sprite = child_ref.as_any().downcast_ref::<Sprite>().unwrap();
+            let hit = match child_ref.as_focusable() {
+                Some(focusable) => {
+                    // check if pointer is over the node
+                    let hit = focusable.contains(local_logical_x, local_logical_y, upload_payload);
 
-                    // check if pointer is over the sprite
-                    let hit = sprite.contains(local_logical_x, local_logical_y, upload_payload);
+                    if hit {
+                        focused_node = Some(HitTestResult {
+                            target: child.clone(),
+                            parent_ids: parent_ids.to_vec(),
+                        });
+                    }
 
-                    (hit, Some(sprite.base().label().clone()))
+                    hit
                 }
-                #[cfg(feature = "text")]
-                "text" => {
-                    let text = child_ref.as_any().downcast_ref::<Text>().unwrap();
-
-                    // check if pointer is over the text
-                    let hit = text.contains(local_logical_x, local_logical_y, &upload_payload);
-
-                    (hit, Some(text.base().label().clone()))
-                }
-                _ => (false, None),
+                None => false,
             };
 
-            if hit.0 {
-                focused_node = Some(HitTestResult {
-                    target: child.clone(),
-                    parent_ids: parent_ids.to_vec(),
-                });
-            }
-
-            hit.0
+            hit
         },
         &[],
         true,
