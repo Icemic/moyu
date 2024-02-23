@@ -4,6 +4,8 @@ use crate::nodes::NodeBase;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::JSValue;
 
+use super::Focusable;
+
 pub trait Node: NodeBaseTrait + Send + Sync + Debug {
     fn node_type(&self) -> &'static str;
 
@@ -11,9 +13,14 @@ pub trait Node: NodeBaseTrait + Send + Sync + Debug {
     fn update_properties(&mut self, _props: &mut JSValue) {
         // defaults to do nothing
     }
+
+    /// return Some(self) manually if you've implemented Focusable for the node
+    fn as_focusable(&self) -> Option<&dyn Focusable> {
+        None
+    }
 }
 
-pub trait NodeBaseTrait {
+pub trait NodeBaseTrait: Any {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 

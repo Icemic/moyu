@@ -6,6 +6,7 @@ use crate::resource::ResourceManager;
 
 use super::Node;
 
+#[deprecated]
 pub trait Renderable
 where
     Self: Node,
