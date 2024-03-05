@@ -66,6 +66,10 @@ export class Node {
     Object.assign(this.listeners, listeners);
     hai.updateProps(this.nodeId, restProps);
   }
+
+  executeCommand(payload: hai.HaiNodeCommandPayload) {
+    return hai.executeCommand(this.nodeId, payload);
+  }
 }
 
 /// filter props to props and listeners
