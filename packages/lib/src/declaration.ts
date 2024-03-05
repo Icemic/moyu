@@ -1,8 +1,14 @@
-import { ReactNode } from 'react';
+import { ClassAttributes, ReactNode } from 'react';
 import * as PropTypes from 'prop-types';
 import type { HaiEvent } from './hai';
+import { Node } from './node';
 
-export type DetailedHaiProps<E extends HaiNodeAttributes> = E;
+export type DetailedHaiProps<E extends HaiNodeAttributes> = ClassAttributes<Node> & E;
+
+// interface DOMElement<P extends HTMLAttributes<T> | SVGAttributes<T>, T extends Element>
+//   extends ReactElement<P, string> {
+//   ref: LegacyRef<T>;
+// }
 
 export interface HaiListenerAttributes {
   onClick?: (event: HaiEvent) => void;
