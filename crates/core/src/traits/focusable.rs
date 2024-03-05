@@ -1,4 +1,9 @@
-use super::{Node, RendererUpdatePayload};
+use std::sync::Arc;
+
+use crate::base::SurfaceSize;
+use crate::resource::ResourceManager;
+
+use super::Node;
 
 pub trait Focusable: Node {
     /**
@@ -7,5 +12,11 @@ pub trait Focusable: Node {
        You may need to select property width and height, then handle `anchor` property to make it work.
        Or, if it is not square, you may need to do something more complex to calculate the correct area.
     */
-    fn contains(&self, x: f32, y: f32, payload: &RendererUpdatePayload) -> bool;
+    fn contains(&self, x: f32, y: f32, payload: &FocusablePayload) -> bool;
+}
+
+#[derive(Debug)]
+pub struct FocusablePayload {
+    pub surface_size: SurfaceSize,
+    pub resource_manager: Arc<ResourceManager>,
 }

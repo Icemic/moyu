@@ -5,7 +5,7 @@ use std::sync::Arc;
 use wgpu::Buffer;
 
 use crate::resource::TextureId;
-use crate::traits::{Focusable, Node, NodeBaseTrait, RendererUpdatePayload};
+use crate::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
 
@@ -40,7 +40,7 @@ impl Sprite {
 }
 
 impl Focusable for Sprite {
-    fn contains(&self, x: f32, y: f32, payload: &RendererUpdatePayload) -> bool {
+    fn contains(&self, x: f32, y: f32, payload: &FocusablePayload) -> bool {
         if let Some(texture_id) = self.texture_id.load().as_ref() {
             if let Some(texture) = payload.resource_manager.try_get_texture(texture_id) {
                 let (width, height) = texture.size();

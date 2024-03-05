@@ -3,7 +3,7 @@ use std::sync::Arc;
 use glam::Vec3;
 use hai_pal::sync::RwLock;
 
-use crate::traits::{Node, RendererUpdatePayload};
+use crate::traits::{FocusablePayload, Node};
 
 use super::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use super::walk::walk_nodes_bottom_top;
@@ -23,7 +23,7 @@ pub fn hit_test<'a>(
     root_node: &Arc<RwLock<dyn Node>>,
     global_logical_x: f32,
     global_logical_y: f32,
-    upload_payload: &RendererUpdatePayload,
+    upload_payload: &FocusablePayload,
 ) -> Option<HitTestResult> {
     let root_node = root_node.read();
     let mut focused_node = None;
