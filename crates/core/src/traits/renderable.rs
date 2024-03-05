@@ -27,6 +27,9 @@ where
 
 #[derive(Debug)]
 pub struct RendererUpdatePayload {
+    /// time since app start, in seconds
+    pub timestamp: f64,
+    pub delta: u32,
     pub surface_size: SurfaceSize,
     pub resource_manager: Arc<ResourceManager>,
 }
