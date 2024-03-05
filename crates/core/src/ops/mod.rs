@@ -61,12 +61,26 @@ pub fn init(vm: &QuickVM) {
         .context()
         .create_custom_callback(receive_command)
         .unwrap();
-    vm.context()
-        .set_global("__hai_pushCommand", receive_command)
+    let execute_node_command = vm
+        .context()
+        .create_custom_callback(execute_node_command)
         .unwrap();
 
     vm.context()
-        .eval("globalThis.hai = { pushCommand: __hai_pushCommand }")
+        .set_global("__hai_pushCommand", receive_command)
+        .unwrap();
+    vm.context()
+        .set_global("__hai_executeNodeCommand", execute_node_command)
+        .unwrap();
+
+    vm.context()
+        .eval(
+            "\
+        globalThis.hai = {\
+            pushCommand: __hai_pushCommand,\
+            executeNodeCommand: __hai_executeNodeCommand\
+        }",
+        )
         .unwrap();
 }
 
@@ -109,5 +123,49 @@ fn receive_command(
         // "get_translate" => get_translate(context, command_args),
         "update_props" => update_props(context, command_args),
         _ => Err(anyhow::anyhow!("Unknown command '{}'", command_name)),
+    }
+}
+
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+fn execute_node_command(
+    context: *mut JSContext,
+    args: &[RawJSValue],
+) -> anyhow::Result<Option<RawJSValue>> {
+    use anyhow::anyhow;
+
+    use crate::core::get_core;
+    use crate::utils::convert::from_js;
+    use crate::utils::convert::JSValue;
+
+    let node_id = JSValue::own(context, &args[0]);
+    let node_id: u32 = from_js(&node_id)?;
+
+    let mut payload = JSValue::own(context, &args[1]);
+
+    if payload.is_object() {
+        let core = get_core();
+        let node_map = core.node_map.clone();
+        let node_map = node_map.read();
+
+        let node = get_node(&node_map, node_id).map_err(|e| anyhow!(e))?;
+        let mut node = node.write();
+
+        if let Some(node) = node.as_command() {
+            node.execute(&mut payload)
+                .map(|v| v.map(|v| unsafe { v.extract() }))
+                .map_err(|e| {
+                    let err = anyhow!(e);
+                    log::error!("Error executing command: {:?}", err);
+                    err
+                })
+        } else {
+            Err(anyhow!(
+                "Node id {} of type `{}` does not implement Command",
+                node_id,
+                node.node_type()
+            ))
+        }
+    } else {
+        Err(anyhow!("Payload must be an object"))
     }
 }

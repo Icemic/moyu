@@ -1,9 +1,12 @@
 use hai_macros::Node;
+use huozi::glyph_vertices::GlyphVertices;
 use huozi::layout::{Color, LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle};
+use log::info;
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
-use crate::traits::{Focusable, Node, NodeBaseTrait, RendererUpdatePayload};
+use crate::traits::{Command, Focusable, FocusablePayload, Node, NodeBaseTrait};
+use crate::utils::convert::to_js;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
 
@@ -11,10 +14,21 @@ use super::NodeBase;
 
 #[derive(Debug, Default, Node)]
 pub struct Text {
+    /// the text content
     pub text: String,
+    /// the layout style of text, see [`LayoutStyle`] for more details.
     pub layout_style: LayoutStyle,
+    /// the text style of text, see [`TextStyle`] for more details.
     pub text_style: TextStyle,
+    /// the print mode of text, default is [`TextPrintMode::Instant`].
+    pub print_mode: TextPrintMode,
+    /// the speed of text printing,
+    /// in characters per second if `print_mode` is [`TextPrintMode::Typewriter`],
+    /// or lines per second if `print_mode` is [`TextPrintMode::Printer`],
+    /// and it will be ignored if `print_mode` is [`TextPrintMode::Instant`].
+    pub print_speed: f64,
 
+    pub glyph_vertices: Vec<GlyphVertices>,
     /// acutal width after layout
     pub total_width: u32,
     /// acutal height after layout
@@ -24,8 +38,25 @@ pub struct Text {
     pub index_buffer: Option<Buffer>,
     pub num_indices: u32,
 
+    /// Start time of text printing, used for typewriter or printer mode.\
+    /// It will be set to `None` after printing finished.
+    pub(crate) print_start_time: Option<f64>,
+
     #[base]
     node_base: NodeBase,
+}
+
+/// Text print mode
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TextPrintMode {
+    /// print all text at once
+    #[default]
+    Instant,
+    /// print text character by character, like a typewriter
+    Typewriter,
+    /// print text line by line, like a printer
+    Printer,
 }
 
 impl Text {
@@ -34,18 +65,22 @@ impl Text {
             text: text.to_owned(),
             layout_style: LayoutStyle::default(),
             text_style: TextStyle::default(),
+            print_mode: TextPrintMode::default(),
+            print_speed: 2.0,
             total_width: 0,
             total_height: 0,
+            glyph_vertices: vec![],
             vertex_buffer: None,
             index_buffer: None,
-            node_base: NodeBase::new(label),
             num_indices: 0,
+            print_start_time: None,
+            node_base: NodeBase::new(label),
         }
     }
 }
 
 impl Focusable for Text {
-    fn contains(&self, x: f32, y: f32, _: &RendererUpdatePayload) -> bool {
+    fn contains(&self, x: f32, y: f32, _: &FocusablePayload) -> bool {
         let width = self.total_width;
         let height = self.total_height;
 
@@ -72,6 +107,8 @@ impl Focusable for Text {
 #[serde(rename_all = "camelCase")]
 pub struct TextProps {
     pub text: Option<String>,
+    pub print_mode: Option<TextPrintMode>,
+    pub print_speed: Option<f64>,
 
     /* layout styles */
     /// the writing direction of the text in the box,
@@ -112,6 +149,8 @@ impl Default for TextProps {
 
         Self {
             text: None,
+            print_mode: None,
+            print_speed: None,
             direction: Some(layout_style_default.direction),
             box_width: Some(layout_style_default.box_width),
             box_height: Some(layout_style_default.box_height),
@@ -141,10 +180,26 @@ impl Node for Text {
 
     #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, props: &mut JSValue) {
-        let props: TextProps = from_js(props).unwrap();
+        let props: TextProps = match from_js(props) {
+            Ok(props) => props,
+            Err(e) => {
+                log::error!("Error parsing props: {:?}", e);
+                return;
+            }
+        };
 
         if let Some(text) = props.text {
             self.text = text.to_owned();
+            // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
+            self.print_start_time = Some(0.);
+        }
+
+        if let Some(print_mode) = props.print_mode {
+            self.print_mode = print_mode;
+        }
+
+        if let Some(print_speed) = props.print_speed {
+            self.print_speed = print_speed;
         }
 
         if let Some(direction) = props.direction {
@@ -235,5 +290,36 @@ impl Node for Text {
 
     fn as_focusable(&self) -> Option<&dyn Focusable> {
         Some(self)
+    }
+
+    fn as_command(&mut self) -> Option<&mut dyn Command> {
+        Some(self)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "subCommand")]
+pub enum TextCommmad {
+    SetText { text: String },
+    GetCursorPos,
+}
+
+impl Command for Text {
+    fn execute(&mut self, _payload: &mut JSValue) -> anyhow::Result<Option<JSValue>> {
+        let payload: TextCommmad = from_js(_payload)?;
+        info!("Text received: {:?}", payload);
+        match payload {
+            TextCommmad::SetText { text } => {
+                self.text = text;
+                // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
+                self.print_start_time = Some(0.);
+                self.base_mut().pend_update();
+            }
+            TextCommmad::GetCursorPos => {
+                return Ok(Some(to_js(_payload.context(), &[11, 22])?));
+            }
+        }
+
+        Ok(None)
     }
 }
