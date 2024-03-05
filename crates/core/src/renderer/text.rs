@@ -12,7 +12,7 @@ use wgpu::Texture;
 use wgpu::{util::DeviceExt, *};
 
 use crate::base::MVPMatrix;
-use crate::nodes::Text;
+use crate::nodes::{Text, TextPrintMode};
 use crate::traits::Renderer;
 use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use crate::utils::calculate::tint_to_vec4;
@@ -173,7 +173,146 @@ impl TextRenderer {
     }
 }
 
-impl TextRenderer {}
+impl TextRenderer {
+    fn update_vertices(
+        &self,
+        device: &Arc<Device>,
+        _: &Arc<Queue>,
+        encoder: &mut CommandEncoder,
+        staging_belt: &mut StagingBelt,
+        node: &mut Text,
+        last_index: usize,
+        fade_from_index: Option<usize>,
+        fade_progress: f32,
+    ) {
+        let glyphs = &node.glyph_vertices[..last_index];
+        let total_width = node.total_width;
+        let total_height = node.total_height;
+        let anchor = node.base().anchor();
+
+        // transform to global
+        let transform = node.base().global_transform();
+        let tint = node.base().tint();
+        let opacity = node.base().global_opacity();
+        let tint = tint_to_vec4(tint, *opacity);
+
+        let fade_from_index_in_vertices = fade_from_index.map(|v| {
+            node.glyph_vertices[..v].iter().fold(0, |acc, g| {
+                acc + g.fill.len() + g.stroke.len() + g.shadow.len()
+            })
+        });
+
+        let mut vertices: Vec<Vertex> = Vec::with_capacity(glyphs.len() * 4 * 3);
+        let mut indices: Vec<u16> = Vec::with_capacity(glyphs.len() * 6);
+
+        let mut index_offset = 0;
+
+        if node.text_style.shadow.is_some() {
+            for glyph in glyphs.iter() {
+                vertices.extend(&glyph.shadow);
+                indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+
+                index_offset += glyph.shadow.len() as u16;
+            }
+        }
+
+        if node.text_style.stroke.is_some() {
+            for glyph in glyphs.iter() {
+                vertices.extend(&glyph.stroke);
+                indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+
+                index_offset += glyph.stroke.len() as u16;
+            }
+        }
+
+        for glyph in glyphs.iter() {
+            vertices.extend(&glyph.fill);
+            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
+
+            index_offset += glyph.fill.len() as u16;
+        }
+
+        for (i, vertex) in vertices.iter_mut().enumerate() {
+            // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
+            // y axis is inverted, so we need to invert it back, apply transform and invert it again
+            let p = transform.transform_point3(Vec3::new(
+                vertex.position[0] - total_width as f32 * anchor.x,
+                vertex.position[1] - total_height as f32 * anchor.y,
+                1.0,
+            ));
+
+            vertex.position[0] = p.x;
+            vertex.position[1] = p.y;
+
+            // calculate color with tint and pre-multiplied alpha
+            let color_r = vertex.color[0] * tint[0] * tint[3];
+            let color_g = vertex.color[1] * tint[1] * tint[3];
+            let color_b = vertex.color[2] * tint[2] * tint[3];
+            let mut color_a = vertex.color[3] * tint[3];
+
+            if let Some(fade_from_index_in_vertices) = fade_from_index_in_vertices {
+                if i >= fade_from_index_in_vertices {
+                    color_a *= fade_progress;
+                }
+            }
+
+            vertex.color = [color_r, color_g, color_b, color_a];
+        }
+
+        // drop the old buffer if the size is not enough
+        if let Some(vertex_buffer) = &node.vertex_buffer {
+            if vertex_buffer.size()
+                < (vertices.len() * std::mem::size_of::<Vertex>()) as wgpu::BufferAddress
+            {
+                node.vertex_buffer = None;
+            }
+        }
+
+        if node.vertex_buffer.is_none() {
+            let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Text Vertex Buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            });
+            let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+            });
+
+            node.vertex_buffer = Some(vertex_buffer);
+            node.index_buffer = Some(index_buffer);
+            node.num_indices = indices.len() as u32;
+        } else {
+            node.num_indices = indices.len() as u32;
+
+            if vertices.len() == 0 || indices.len() == 0 {
+                return;
+            }
+
+            let buf_vertices = bytemuck::cast_slice(&vertices);
+            let buf_indices = bytemuck::cast_slice(&indices);
+            staging_belt
+                .write_buffer(
+                    encoder,
+                    node.vertex_buffer.as_ref().unwrap(),
+                    0,
+                    (buf_vertices.len() as u64).try_into().unwrap(),
+                    &device,
+                )
+                .copy_from_slice(buf_vertices);
+            staging_belt
+                .write_buffer(
+                    encoder,
+                    node.index_buffer.as_ref().unwrap(),
+                    0,
+                    (buf_indices.len() as u64).try_into().unwrap(),
+                    &device,
+                )
+                .copy_from_slice(buf_indices);
+        }
+    }
+}
 
 impl Renderer for TextRenderer {
     fn name(&self) -> &'static str {
@@ -195,102 +334,22 @@ impl Renderer for TextRenderer {
         queue: &Arc<Queue>,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
-        _: &RendererUpdatePayload,
+        payload: &RendererUpdatePayload,
     ) {
         let node = node.as_any_mut().downcast_mut::<Text>().unwrap();
+        let need_relayout = node.base_mut().pop_update_vertices();
 
-        if node.base_mut().pop_update_vertices() {
+        if need_relayout {
             match self
                 .huozi
                 .layout_parse(&node.text, &node.layout_style, &node.text_style, None)
             {
-                Ok((mut vertices, indices, total_width, total_height)) => {
+                Ok((glyphs, total_width, total_height)) => {
                     // set layout size
                     node.total_width = total_width;
                     node.total_height = total_height;
 
-                    let anchor = node.base().anchor();
-
-                    // transform to global
-                    let transform = node.base().global_transform();
-                    let tint = node.base().tint();
-                    let opacity = node.base().global_opacity();
-                    let tint = tint_to_vec4(tint, *opacity);
-                    for vertex in vertices.iter_mut() {
-                        // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
-                        // y axis is inverted, so we need to invert it back, apply transform and invert it again
-                        let p = transform.transform_point3(Vec3::new(
-                            vertex.position[0] - total_width as f32 * anchor.x,
-                            vertex.position[1] - total_height as f32 * anchor.y,
-                            1.0,
-                        ));
-
-                        vertex.position[0] = p.x;
-                        vertex.position[1] = p.y;
-
-                        // calculate color with tint and pre-multiplied alpha
-                        let color_r = vertex.color[0] * tint[0] * tint[3];
-                        let color_g = vertex.color[1] * tint[1] * tint[3];
-                        let color_b = vertex.color[2] * tint[2] * tint[3];
-                        let color_a = vertex.color[3] * tint[3];
-                        vertex.color = [color_r, color_g, color_b, color_a];
-                    }
-
-                    // drop the old buffer if the size is not enough
-                    if let Some(vertex_buffer) = &node.vertex_buffer {
-                        if vertex_buffer.size()
-                            < (vertices.len() * std::mem::size_of::<Vertex>())
-                                as wgpu::BufferAddress
-                        {
-                            node.vertex_buffer = None;
-                        }
-                    }
-
-                    if node.vertex_buffer.is_none() {
-                        let vertex_buffer =
-                            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                                label: Some("Text Vertex Buffer"),
-                                contents: bytemuck::cast_slice(&vertices),
-                                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                            });
-                        let index_buffer =
-                            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                                label: Some("Index Buffer"),
-                                contents: bytemuck::cast_slice(&indices),
-                                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
-                            });
-
-                        node.vertex_buffer = Some(vertex_buffer);
-                        node.index_buffer = Some(index_buffer);
-                        node.num_indices = indices.len() as u32;
-                    } else {
-                        node.num_indices = indices.len() as u32;
-
-                        if vertices.len() == 0 || indices.len() == 0 {
-                            return;
-                        }
-
-                        let buf_vertices = bytemuck::cast_slice(&vertices);
-                        let buf_indices = bytemuck::cast_slice(&indices);
-                        staging_belt
-                            .write_buffer(
-                                encoder,
-                                node.vertex_buffer.as_ref().unwrap(),
-                                0,
-                                (buf_vertices.len() as u64).try_into().unwrap(),
-                                &device,
-                            )
-                            .copy_from_slice(buf_vertices);
-                        staging_belt
-                            .write_buffer(
-                                encoder,
-                                node.index_buffer.as_ref().unwrap(),
-                                0,
-                                (buf_indices.len() as u64).try_into().unwrap(),
-                                &device,
-                            )
-                            .copy_from_slice(buf_indices);
-                    }
+                    node.glyph_vertices = glyphs;
 
                     // updates the sdf texture only when the image version is changed
                     let image_version = self.huozi.image_version();
@@ -330,6 +389,86 @@ impl Renderer for TextRenderer {
                     error!("{}", err_msg);
                 }
             }
+        }
+
+        // update vertices no matter if it is needed when it is printing
+        if let Some(print_start_time) = &node.print_start_time {
+            let (index, fade_from_index, progress) = match node.print_mode {
+                TextPrintMode::Instant => {
+                    node.print_start_time = None;
+                    (node.glyph_vertices.len(), None, 1.0)
+                }
+                TextPrintMode::Typewriter => {
+                    let total = node.glyph_vertices.len();
+                    // current progress (in glyphs), it may be larger than the length of the text
+                    let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
+                    let index;
+                    // check if the text is fully printed
+                    if progress >= total as f64 {
+                        progress = 1.;
+                        index = total;
+                        node.print_start_time = None;
+                    } else {
+                        // calculate the progress in the current glyph
+                        index = progress.ceil() as usize;
+                        progress = progress % 1.0;
+                    }
+
+                    (index, Some(index.saturating_sub(1)), progress as f32)
+                }
+                TextPrintMode::Printer => {
+                    // max row + 1
+                    let total = node.glyph_vertices.last().map(|g| g.row + 1).unwrap_or(0);
+                    // current progress (in rows), it may be larger than the max row count of the text
+                    let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
+                    let index;
+                    let fade_from_index;
+                    // check if the text is fully printed
+                    if progress >= total as f64 {
+                        progress = 1.;
+                        index = node.glyph_vertices.len();
+                        fade_from_index = None;
+                        node.print_start_time = None;
+                    } else {
+                        // calculate the progress in the current row
+                        index = node
+                            .glyph_vertices
+                            .iter()
+                            .position(|g| g.row as f64 >= progress)
+                            .unwrap_or(node.glyph_vertices.len());
+                        fade_from_index = node
+                            .glyph_vertices
+                            .iter()
+                            .position(|g| (g.row + 1) as f64 >= progress);
+                        progress = progress % 1.0;
+                    }
+
+                    (index, fade_from_index, progress as f32)
+                }
+            };
+
+            self.update_vertices(
+                device,
+                queue,
+                encoder,
+                staging_belt,
+                node,
+                index,
+                fade_from_index,
+                progress,
+            );
+        } else if need_relayout {
+            // re-render all when verti
+            self.update_vertices(
+                device,
+                queue,
+                encoder,
+                staging_belt,
+                node,
+                node.glyph_vertices.len(),
+                None,
+                1.0,
+            );
         }
     }
 
