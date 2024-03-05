@@ -24,7 +24,7 @@ use crate::utils::convert::JSValue;
 use crate::utils::convert::{from_js, to_js};
 
 #[inline]
-fn get_node<'a>(
+pub(super) fn get_node<'a>(
     node_map: &'a RwLockReadGuard<HashMap<u32, Arc<RwLock<dyn Node>>>>,
     node_id: u32,
 ) -> Result<&'a Arc<RwLock<dyn Node>>, std::string::String> {
