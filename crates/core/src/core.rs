@@ -103,6 +103,10 @@ pub struct Core {
     // std::time not implemented on wasm32 target
     #[cfg(not(feature = "web"))]
     frames_in_duration: Arc<Mutex<(Instant, u32)>>,
+    /// timer from program start
+    instant: Instant,
+    /// time elapsed since last frame, in microseconds
+    instant_last: ArcSwap<Instant>,
 
     pub root_node: Arc<RwLock<dyn Node>>,
     pub last_focused_position: ArcSwapOption<PhysicalPosition<f64>>,
@@ -182,6 +186,8 @@ impl Core {
             mvp_bind_group,
             #[cfg(not(feature = "web"))]
             frames_in_duration: Arc::new(Mutex::new((Instant::now(), 0))),
+            instant: Instant::now(),
+            instant_last: ArcSwap::new(Arc::new(Instant::now())),
 
             root_node,
             last_focused_position: ArcSwapOption::new(None),
@@ -525,7 +531,13 @@ impl Core {
 
         {
             let root_node = root_node.read();
+
+            let timestamp = self.instant.elapsed().as_secs_f64();
+            let instant_last = self.instant_last.swap(Arc::new(Instant::now()));
+
             let upload_payload = RendererUpdatePayload {
+                timestamp,
+                delta: instant_last.elapsed().as_micros() as u32,
                 surface_size: *surface_size,
                 resource_manager: self.resource_manager.clone(),
             };
@@ -724,7 +736,7 @@ impl Core {
         let global_logical_x = (position.x / scale_factor) as f32;
         let global_logical_y = (position.y / scale_factor) as f32;
 
-        let upload_payload = RendererUpdatePayload {
+        let upload_payload = FocusablePayload {
             surface_size,
             resource_manager: self.resource_manager.clone(),
         };
