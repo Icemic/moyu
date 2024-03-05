@@ -5,8 +5,13 @@ import { STATE } from './state';
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 declare const hai: {
   pushCommand: (name: string, args: any[], callback?: (...args: any[]) => void) => any;
+  executeNodeCommand: (nodeId: number, payload: HaiNodeCommandPayload) => any;
   [key: string]: (...args: any[]) => any;
 };
+
+export interface HaiNodeCommandPayload extends Record<string, any> {
+  subCommand: string;
+}
 
 declare global {
   interface Window {
@@ -176,4 +181,8 @@ export function getTranslate(nodeId: number) {
 
 export function updateProps(nodeId: number, props: Record<string, any>) {
   hai.pushCommand('update_props', [nodeId, props]);
+}
+
+export function executeCommand(nodeId: number, payload: HaiNodeCommandPayload) {
+  return hai.executeNodeCommand(nodeId, payload);
 }
