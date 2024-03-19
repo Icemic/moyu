@@ -58,40 +58,7 @@ export interface HaiVideoAttribute extends HaiSpriteAttribute {
   autoplay?: boolean;
 }
 
-export interface LayoutSytle {
-  /// the writing direction of the text in the box,
-  /// only `Horizontal` (right-to-left) or `Vertical` (top-to-bottom) is valid.
-  direction?: 'horizontal' | 'vertical';
-  /// the width of box.
-  boxWidth?: number;
-  /// the height of box.
-  boxHeight?: number;
-  /// the size of the glyph grid which each character be fit to, usually equals to `font_size`.
-  glyphGridSize?: number;
-}
-
-export interface StrokeStyle {
-  strokeColor?: number | string;
-  strokeWidth?: number;
-}
-
-export interface ShadowStyle {
-  shadowColor?: number | string;
-  shadowOffsetX?: number;
-  shadowOffsetY?: number;
-  shadowBlur?: number;
-  shadowWidth?: number;
-}
-
-export interface TextStyle {
-  // pub font_face: Font
-  fontSize?: number;
-  fillColor?: number | string;
-  lineHeight?: number;
-  indent?: number;
-  stroke?: StrokeStyle;
-  shadow?: ShadowStyle;
-}
+export type Color = number | string;
 
 export type Cursor =
   | 'hidden'
@@ -130,8 +97,39 @@ export type Cursor =
   | 'zoom-in'
   | 'zoom-out';
 
-export interface HaiTextAttribute extends HaiNodeAttributes, LayoutSytle, TextStyle {
+export interface HaiTextAttribute extends HaiNodeAttributes {
   text?: string;
+  printMode?: 'instant' | 'typewriter' | 'printer';
+  printSpeed?: number;
+
+  /* layout styles */
+  /// the writing direction of the text in the box,
+  /// only `Horizontal` (right-to-left) or `Vertical` (top-to-bottom) is valid.
+  direction?: 'horizontal' | 'vertical';
+  /// the width of box.
+  boxWidth?: number;
+  /// the height of box.
+  boxHeight?: number;
+  /// the size of the glyph grid which each character be fit to, usually equals to `font_size`.
+  glyphGridSize?: number;
+
+  /* text styles */
+  fontSize?: number;
+  fillColor?: Color;
+  lineHeight?: number;
+  indent?: number;
+
+  stroke?: boolean;
+  shadow?: boolean;
+
+  strokeColor?: Color;
+  strokeWidth?: number;
+
+  shadowColor?: Color;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowBlur?: number;
+  shadowWidth?: number;
 }
 
 declare module 'react' {
