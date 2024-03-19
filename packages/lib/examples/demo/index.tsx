@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 
 import { createRoot, useTransition } from '../../src/lib';
@@ -52,7 +52,7 @@ function App() {
           onConfirm={handleDialogConfirm}
         />
         <container label="列表容器" x={0} y={0}>
-          <sprite label="列表底纹" src="mask.png" scaleX={200} scaleY={720} />
+          <sprite label="列表底纹" src="mask.png" scaleX={200} scaleY={420} />
           {transitions((style, { item, index }) => (
             <ListButton style={style} label={`item-${index}`} title={item} index={index} />
           ))}
