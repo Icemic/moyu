@@ -392,7 +392,12 @@ impl Renderer for TextRenderer {
         }
 
         // update vertices no matter if it is needed when it is printing
-        if let Some(print_start_time) = &node.print_start_time {
+        if let Some(print_start_time) = &mut node.print_start_time {
+            // Some(0.) means the print_start_time is not initialized
+            if print_start_time == &0. {
+                *print_start_time = payload.timestamp;
+            }
+
             let (index, fade_from_index, progress) = match node.print_mode {
                 TextPrintMode::Instant => {
                     node.print_start_time = None;
@@ -401,7 +406,7 @@ impl Renderer for TextRenderer {
                 TextPrintMode::Typewriter => {
                     let total = node.glyph_vertices.len();
                     // current progress (in glyphs), it may be larger than the length of the text
-                    let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
+                    let mut progress = (payload.timestamp - *print_start_time) * node.print_speed;
                     let index;
                     // check if the text is fully printed
                     if progress >= total as f64 {
@@ -420,7 +425,7 @@ impl Renderer for TextRenderer {
                     // max row + 1
                     let total = node.glyph_vertices.last().map(|g| g.row + 1).unwrap_or(0);
                     // current progress (in rows), it may be larger than the max row count of the text
-                    let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
+                    let mut progress = (payload.timestamp - *print_start_time) * node.print_speed;
                     let index;
                     let fade_from_index;
                     // check if the text is fully printed
