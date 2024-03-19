@@ -196,10 +196,14 @@ impl TextRenderer {
         let opacity = node.base().global_opacity();
         let tint = tint_to_vec4(tint, *opacity);
 
+        // assumes that each glyph has the same number of vertices in fill, stroke, and shadow
+        let total_count_til_last_in_vertices = glyphs.iter().fold(0, |acc, g| acc + g.fill.len());
+
+        // assumes that each glyph has the same number of vertices in fill, stroke, and shadow
         let fade_from_index_in_vertices = fade_from_index.map(|v| {
-            node.glyph_vertices[..v].iter().fold(0, |acc, g| {
-                acc + g.fill.len() + g.stroke.len() + g.shadow.len()
-            })
+            node.glyph_vertices[..v]
+                .iter()
+                .fold(0, |acc, g| acc + g.fill.len())
         });
 
         let mut vertices: Vec<Vertex> = Vec::with_capacity(glyphs.len() * 4 * 3);
@@ -251,7 +255,7 @@ impl TextRenderer {
             let mut color_a = vertex.color[3] * tint[3];
 
             if let Some(fade_from_index_in_vertices) = fade_from_index_in_vertices {
-                if i >= fade_from_index_in_vertices {
+                if i % total_count_til_last_in_vertices >= fade_from_index_in_vertices {
                     color_a *= fade_progress;
                 }
             }
