@@ -643,6 +643,7 @@ impl Core {
 
                 true
             }
+            #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
             WindowEvent::CursorLeft { .. } => {
                 let mut last_focused_node = last_focused_node.write();
                 if let Some(last_focused_node) = &*last_focused_node {
@@ -723,6 +724,7 @@ impl Core {
         }
     }
 
+    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn handle_focus_changes(&self, position: &PhysicalPosition<f64>) {
         let root_node = &self.root_node;
         let last_focused_node = &self.last_focused_node;
