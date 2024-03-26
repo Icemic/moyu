@@ -4,7 +4,9 @@ use crate::nodes::NodeBase;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::JSValue;
 
-use super::{Command, Focusable};
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
+use super::Command;
+use super::Focusable;
 
 pub trait Node: NodeBaseTrait + Send + Sync + Debug {
     fn node_type(&self) -> &'static str;
@@ -20,6 +22,7 @@ pub trait Node: NodeBaseTrait + Send + Sync + Debug {
     }
 
     /// return Some(self) manually if you've implemented Command for the node
+    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn as_command(&mut self) -> Option<&mut dyn Command> {
         None
     }

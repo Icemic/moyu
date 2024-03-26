@@ -8,6 +8,7 @@ use crate::traits::Node;
 use crate::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::{from_js, JSValue};
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::dispatch_event::{dispatch_event, HaiEvent, HaiEventKind};
 
 pub static mut NODE_ID: u32 = 0;
@@ -482,6 +483,7 @@ pub struct NodeProps {
 
 impl Drop for NodeBase {
     fn drop(&mut self) {
+        #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
         dispatch_event(HaiEvent {
             kind: HaiEventKind::NodeDestroyed,
             target_id: self.id,

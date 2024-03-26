@@ -297,6 +297,7 @@ impl Node for Text {
     }
 }
 
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "subCommand")]
 pub enum TextCommmad {
@@ -304,6 +305,7 @@ pub enum TextCommmad {
     GetCursorPos,
 }
 
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 impl Command for Text {
     fn execute(&mut self, _payload: &mut JSValue) -> anyhow::Result<Option<JSValue>> {
         let payload: TextCommmad = from_js(_payload)?;
