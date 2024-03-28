@@ -5,12 +5,11 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
-use crate::traits::{Command, Focusable, FocusablePayload, Node, NodeBaseTrait};
-use crate::utils::convert::to_js;
+use hai_core::nodes::NodeBase;
+use hai_core::traits::{Command, Focusable, FocusablePayload, Node, NodeBaseTrait};
+use hai_core::utils::convert::to_js;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
-use crate::utils::convert::{from_js, JSValue};
-
-use super::NodeBase;
+use hai_core::utils::convert::{from_js, JSValue};
 
 #[derive(Debug, Default, Node)]
 pub struct Text {
