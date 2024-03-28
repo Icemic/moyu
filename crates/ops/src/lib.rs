@@ -1,4 +1,5 @@
 mod node;
+pub mod spawn;
 mod system;
 
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
@@ -91,8 +92,8 @@ fn receive_command(
 ) -> anyhow::Result<Option<RawJSValue>> {
     use hai_runtime::quickjspp::OwnedJsArray;
 
-    use crate::utils::convert::from_js;
-    use crate::utils::convert::JSValue;
+    use hai_core::utils::convert::from_js;
+    use hai_core::utils::convert::JSValue;
 
     let command_name = JSValue::own(context, &args[0]);
     let command_name: &str = from_js(&command_name)?;
@@ -105,7 +106,6 @@ fn receive_command(
     // info!("command_name: {}", command_name);
 
     match command_name {
-        "load_preset" => load_preset(context, command_args),
         "resize_window" => resize_window(context, command_args),
         "set_idle" => set_idle(context, command_args),
         "set_fullscreen" => set_fullscreen(context, command_args),
@@ -133,9 +133,9 @@ fn execute_node_command(
 ) -> anyhow::Result<Option<RawJSValue>> {
     use anyhow::anyhow;
 
-    use crate::core::get_core;
-    use crate::utils::convert::from_js;
-    use crate::utils::convert::JSValue;
+    use hai_core::core::get_core;
+    use hai_core::utils::convert::from_js;
+    use hai_core::utils::convert::JSValue;
 
     let node_id = JSValue::own(context, &args[0]);
     let node_id: u32 = from_js(&node_id)?;

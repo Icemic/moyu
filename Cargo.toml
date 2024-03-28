@@ -9,6 +9,7 @@ members = [
   "crates/macros",
   "crates/run_wasm",
   "crates/nodes",
+  "crates/ops",
 ]
 resolver = "2"
 

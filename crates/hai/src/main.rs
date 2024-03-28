@@ -5,8 +5,9 @@ use hai_core::surface::{create_eventloop, create_wgpu_surface, create_window};
 use hai_core::winit::dpi::PhysicalPosition;
 use hai_core::winit::event::Event;
 use hai_core::winit::window::Window;
-use hai_core::{create_hai_core, setup, spawn_runtime_with_core};
+use hai_core::{create_hai_core, setup};
 use hai_nodes::renderer::{SpriteRenderer, TextRenderer, YUVSpriteRenderer};
+use hai_ops::spawn::spawn_runtime_with_core;
 use hai_pal::{env, logger, platform};
 
 fn main_entry() {
@@ -54,6 +55,13 @@ fn main_entry() {
 
                     let (instance, surface, device, queue, config) = create_wgpu_surface(&_window);
 
+                    let sprite_renderer = SpriteRenderer::new(&device, &config);
+                    let yuv_sprite_renderer = YUVSpriteRenderer::new(&device, &config);
+                    let text_renderer = TextRenderer::new(&device, &config);
+                    // use sprite renderer on video node
+                    // #[cfg(feature = "video")]
+                    // let video_renderer = SpriteRenderer::new(&device, &config);
+
                     let _core = create_hai_core(
                         instance,
                         surface,
@@ -64,18 +72,11 @@ fn main_entry() {
                         event_proxy.clone(),
                     );
 
-                    let sprite_renderer = SpriteRenderer::new(&device, &config);
-                    let yuv_sprite_renderer = YUVSpriteRenderer::new(&device, &config);
-                    let text_renderer = TextRenderer::new(&device, &config);
-
-                    // use sprite renderer on video node
-                    // #[cfg(feature = "video")]
-                    // let video_renderer = SpriteRenderer::new(&device, &config);
-
                     // core.register_renderer("null".to_string(), null_renderer);
-                    core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
-                    core.register_renderer("yuv_sprite".to_string(), Box::new(yuv_sprite_renderer));
-                    core.register_renderer("text".to_string(), Box::new(text_renderer));
+                    _core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
+                    _core
+                        .register_renderer("yuv_sprite".to_string(), Box::new(yuv_sprite_renderer));
+                    _core.register_renderer("text".to_string(), Box::new(text_renderer));
 
                     // #[cfg(feature = "video")]
                     // core.register_renderer("video".to_string(), Box::new(video_renderer));

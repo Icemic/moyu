@@ -3,32 +3,16 @@ use anyhow::Result;
 use hai_js_runtime::{prelude::*, *};
 #[cfg(not(feature = "web"))]
 use hai_macros::hai_bindgen;
-use log::warn;
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 use hai_runtime::quickjspp::{JSContext, RawJSValue};
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::core::get_core;
-use crate::user_event::WindowState;
+use hai_core::core::get_core;
+use hai_core::user_event::UserEvent;
+use hai_core::user_event::WindowState;
 #[cfg(not(feature = "web"))]
-use crate::utils::convert::{from_js, JSValue};
-use crate::{presets::add_preset_default, user_event::UserEvent};
-
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
-pub fn load_preset(preset_name: std::string::String) -> Result<(), std::string::String> {
-    match preset_name.as_str() {
-        "default" => {
-            let core = get_core();
-            add_preset_default(&core);
-        }
-        _ => {
-            warn!("Unknown preset name '{}'", preset_name);
-        }
-    }
-    Ok(())
-}
+use hai_core::utils::convert::{from_js, JSValue};
 
 #[cfg_attr(feature = "web", wasm_bindgen)]
 #[cfg_attr(not(feature = "web"), hai_bindgen)]

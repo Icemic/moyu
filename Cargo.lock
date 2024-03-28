@@ -1252,6 +1252,7 @@ version = "0.4.0"
 dependencies = [
  "hai_core",
  "hai_nodes",
+ "hai_ops",
  "hai_pal",
  "log",
  "spin_sleep",
@@ -1329,6 +1330,23 @@ dependencies = [
  "log",
  "serde",
  "wgpu",
+]
+
+[[package]]
+name = "hai_ops"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "hai_core",
+ "hai_js_runtime",
+ "hai_macros",
+ "hai_nodes",
+ "hai_pal",
+ "hai_runtime",
+ "log",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

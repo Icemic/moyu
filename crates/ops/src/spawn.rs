@@ -1,0 +1,115 @@
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
+
+use hai_core::core::Core;
+
+pub type SpawnRuntimeCallback =
+    Box<dyn (FnOnce() -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>) + Send + Sync>;
+
+/// spawn a thread with javascript runtime and executes scripts
+/// use `spawn_callback` to do anything else which should be under a async runtime.
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
+pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
+    // desktop targets only
+    // spawn a v8 thread
+
+    use log::error;
+    use std::process::exit;
+
+    use hai_js_runtime::{setup_vm, JSRuntime};
+
+    let core = core.clone();
+
+    std::thread::spawn(|| {
+        let handle = hai_pal::task::get_runtime_handle();
+
+        if let Some(spawn_callback) = spawn_callback {
+            let async_callback = spawn_callback();
+            handle.spawn(async_callback);
+        }
+
+        handle.block_on(async {
+            let mut vm = JSRuntime::new(core);
+
+            // let vm = setup_vm(core);
+
+            vm.with_global(|scope, global| {
+                crate::init(scope, global);
+            });
+
+            if let Err(err) = vm.prepare_entry().await {
+                error!("{}", err.to_string());
+                exit(-1);
+            };
+
+            vm.run_event_loop(|_| std::task::Poll::Pending).await;
+        });
+    });
+}
+
+/// spawn a thread with javascript runtime and executes scripts
+/// use `spawn_callback` to do anything else which should be under a async runtime.
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+pub fn spawn_runtime_with_core(_core: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
+    // desktop targets only
+    // spawn a v8 thread
+
+    use hai_runtime::setup_vm;
+    use log::error;
+
+    std::thread::Builder::new()
+        .name("quickjs".to_string())
+        .spawn(|| {
+            let handle = hai_pal::task::get_runtime_handle();
+
+            if let Some(spawn_callback) = spawn_callback {
+                let async_callback = spawn_callback();
+                handle.spawn(async_callback);
+            }
+
+            let vm = setup_vm();
+
+            vm.context()
+                .eval("console.info('Hello %s!', 'World')")
+                .unwrap();
+
+            crate::init(&vm);
+
+            if let Err(err) = vm.prepare_entry() {
+                error!("{:?}", err);
+            };
+
+            vm.block_on_ticking();
+        })
+        .ok();
+}
+
+/// spawn a thread with javascript runtime and executes scripts
+/// use `spawn_callback` to do anything else which should be under a async runtime.
+#[cfg(all(feature = "web", not(feature = "js_runtime")))]
+pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
+    use log::debug;
+
+    if let Some(spawn_callback) = spawn_callback {
+        let async_callback = spawn_callback();
+        wasm_bindgen_futures::spawn_local(spawn_callback);
+    }
+
+    wasm_bindgen_futures::spawn_local(async move {
+        debug!("Injecting entry script.");
+        let window = web_sys::window().expect("Cannot get global `window` object.");
+        let document = window.document().expect("No document found.");
+        let body = document.body().expect("No body found.");
+
+        let root_script = document
+            .create_element("script")
+            .expect("Cannot create script element.");
+        root_script
+            .set_attribute("src", env::entry_dir().as_str())
+            .unwrap();
+        root_script.set_attribute("type", "module").unwrap();
+
+        body.append_child(&root_script).unwrap();
+    });
+}

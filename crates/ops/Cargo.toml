@@ -1,0 +1,57 @@
+[package]
+authors = ["Icemic <bingfeng.web@gmail.com>"]
+edition = "2021"
+license = "Apache-2.0"
+name = "hai_ops"
+repository = "https://github.com/Icemic/hai"
+version = "0.5.0"
+
+[features]
+default = ["js_runtime", "quickjs"]
+js_runtime = []
+quickjs = ["hai_runtime", "hai_macros/quickjs"]
+text = []
+v8 = ["hai_js_runtime", "hai_macros/v8"]
+video = []
+web = [
+  "wasm-bindgen",
+  "wasm-bindgen-futures",
+  "web-sys",
+]
+
+[dependencies]
+anyhow = "1.0"
+log = "0.4"
+
+# optional dependencies
+wasm-bindgen = {version = "0.2.83", default-features = false, optional = true}
+wasm-bindgen-futures = {version = "0.4.33", optional = true}
+web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"], optional = true}
+
+[dependencies.hai_macros]
+default-features = false
+path = "../macros"
+version = "0.4"
+
+[dependencies.hai_pal]
+path = "../platform"
+version = "0.5"
+
+[dependencies.hai_core]
+default-features = false
+path = "../core"
+version = "0.5"
+
+[dependencies.hai_js_runtime]
+optional = true
+path = "../js_runtime"
+version = "0.4"
+
+[dependencies.hai_runtime]
+optional = true
+path = "../runtime"
+version = "0.5"
+
+[dependencies.hai_nodes]
+path = "../nodes"
+version = "0.5"
