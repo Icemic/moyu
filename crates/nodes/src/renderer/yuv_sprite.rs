@@ -3,29 +3,38 @@ use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
-use crate::base::*;
-#[cfg(feature = "video")]
-use crate::nodes::Video;
-use crate::nodes::{Sprite, Texture, TextureStatus};
-use crate::resource::TextureId;
-use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
-use crate::utils::calculate::calculate_rect_vertices;
-use crate::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
-use crate::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
+use hai_core::base::*;
+use hai_core::nodes::Texture;
+use hai_core::resource::TextureId;
+use hai_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use hai_core::utils::calculate::calculate_rect_vertices;
+use hai_core::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+use hai_core::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
+
+use crate::nodes::YUVSprite;
 
 /// the number of vertices in a sprite is always 4.
 // pub static NUM_VERTICES: u32 = 4;
 
 static NUM_INDICES: u32 = RECTANGLE_INDICES.len() as u32;
 
-pub struct SpriteRenderer {
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct YUVUniforms {
+    // YUVSpriteFormat value
+    mode: i32,
+}
+
+pub struct YUVSpriteRenderer {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     index_buffer: Buffer,
     bind_group_map: HashMap<Arc<TextureId>, BindGroup>,
+    bind_group_uniforms: BindGroup,
+    uniforms_buffer: Buffer,
 }
 
-impl SpriteRenderer {
+impl YUVSpriteRenderer {
     pub fn new(device: &Arc<Device>, config: &SurfaceConfiguration) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
@@ -42,33 +51,77 @@ impl SpriteRenderer {
                 BindGroupLayoutEntry {
                     binding: 1,
                     visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler(
-                        // SamplerBindingType::Comparison is only for TextureSampleType::Depth
-                        // SamplerBindingType::Filtering if the sample_type of the texture is:
-                        //     TextureSampleType::Float { filterable: true }
-                        // Otherwise you'll get an error.
-                        SamplerBindingType::Filtering,
-                    ),
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: TextureViewDimension::D2,
+                        sample_type: TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: TextureViewDimension::D2,
+                        sample_type: TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
             ],
-            label: Some("texture_bind_group_layout"),
+            label: None,
+        });
+
+        let bind_group_layout2 = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            entries: &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: None,
         });
 
         // shader
         let shader = device.create_shader_module(ShaderModuleDescriptor {
-            label: Some("Sprite Shader"),
-            source: ShaderSource::Wgsl(include_str!("./shaders/default.wgsl").into()),
+            label: None,
+            source: ShaderSource::Wgsl(include_str!("./shaders/yuv420.wgsl").into()),
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("Sprite Pipeline Layout"),
-            bind_group_layouts: &[&MVPMatrix::bind_group_layout(device), &bind_group_layout],
+            label: None,
+            bind_group_layouts: &[
+                &MVPMatrix::bind_group_layout(device),
+                &bind_group_layout,
+                &bind_group_layout2,
+            ],
             push_constant_ranges: &[],
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Sprite Render Pipeline"),
+            label: Some("YUV Sprite Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: VertexState {
                 module: &shader,
@@ -118,9 +171,26 @@ impl SpriteRenderer {
 
         // index buffers for each sprite are always the same.
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Renderer Index Buffer"),
+            label: Some("YUV Sprite Renderer Index Buffer"),
             contents: bytemuck::cast_slice(RECTANGLE_INDICES),
             usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let uniforms = YUVUniforms::default();
+
+        let uniforms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&[uniforms]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let bind_group_uniforms = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout2,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniforms_buffer.as_entire_binding(),
+            }],
+            label: Some("uniforms bind group"),
         });
 
         Self {
@@ -128,36 +198,68 @@ impl SpriteRenderer {
             bind_group_layout,
             index_buffer,
             bind_group_map: Default::default(),
+            bind_group_uniforms,
+            uniforms_buffer,
         }
     }
 }
 
-impl SpriteRenderer {
-    fn get_bind_group(&mut self, device: &Device, texture: &Arc<Texture>) -> BindGroup {
+impl YUVSpriteRenderer {
+    fn get_bind_group(
+        &mut self,
+        device: &Device,
+        texture_y: &Texture,
+        texture_u: &Texture,
+        texture_v: &Texture,
+    ) -> BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::TextureView(
-                        texture.view.load().as_ref().unwrap(),
+                        texture_y.view.load().as_ref().unwrap(),
                     ),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(
-                        texture.sampler.load().as_ref().unwrap(),
+                        texture_y.sampler.load().as_ref().unwrap(),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(
+                        texture_u.view.load().as_ref().unwrap(),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(
+                        texture_u.sampler.load().as_ref().unwrap(),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(
+                        texture_v.view.load().as_ref().unwrap(),
+                    ),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Sampler(
+                        texture_v.sampler.load().as_ref().unwrap(),
                     ),
                 },
             ],
-            label: Some("bind_group"),
+            label: None,
         })
     }
 }
 
-impl Renderer for SpriteRenderer {
+impl Renderer for YUVSpriteRenderer {
     fn name(&self) -> &'static str {
-        "sprite"
+        "yuv_sprite"
     }
 
     fn render_pipeline(&self) -> &RenderPipeline {
@@ -181,16 +283,14 @@ impl Renderer for SpriteRenderer {
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
         let scale_factor = payload.surface_size.scale_factor() as f32;
 
-        let node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
+        let node = node.as_any_mut().downcast_mut::<YUVSprite>().unwrap();
 
         if let Some(texture_id) = node.texture_id.load().as_ref() {
-            let texture = payload.resource_manager.get_texture(texture_id);
+            let textures = node.textures.load();
+            let textures = textures.as_ref().expect("textures must be set.");
+            let (texture_y, texture_u, texture_v) = &**textures;
 
-            if TextureStatus::Ready != texture.status() {
-                return;
-            }
-
-            let (tex_width, tex_height) = texture.size();
+            let (tex_width, tex_height) = texture_y.size();
 
             let width = (tex_width as f32 * scale_factor) / (VIEWPORT_WIDTH * scale_factor);
             let height = (tex_height as f32 * scale_factor) / (VIEWPORT_HEIGHT * scale_factor);
@@ -201,7 +301,7 @@ impl Renderer for SpriteRenderer {
                 if node.vertex_buffer.is_none() {
                     let vertex_buffer =
                         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("Sprite Vertex Buffer"),
+                            label: Some("YUVSprite Vertex Buffer"),
                             contents: bytemuck::cast_slice(&vertices),
                             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                         });
@@ -223,7 +323,7 @@ impl Renderer for SpriteRenderer {
 
             // create bind group if not exist
             if !self.bind_group_map.contains_key(texture_id) {
-                let bind_group = self.get_bind_group(device, &texture);
+                let bind_group = self.get_bind_group(device, texture_y, texture_u, texture_v);
                 self.bind_group_map.insert(texture_id.clone(), bind_group);
             }
         }
@@ -235,7 +335,7 @@ impl Renderer for SpriteRenderer {
     fn render<'a, 'b: 'a>(
         &'b self,
         _: &Arc<Device>,
-        _: &Arc<Queue>,
+        queue: &Arc<Queue>,
         render_pass: &mut RenderPass<'a>,
         node: &'b dyn Node,
     ) {
@@ -246,17 +346,19 @@ impl Renderer for SpriteRenderer {
         let mut bind_group = None;
         let mut vertex_buffer = None;
 
-        if let Some(sprite) = node.as_any().downcast_ref::<Sprite>() {
+        if let Some(sprite) = node.as_any().downcast_ref::<YUVSprite>() {
             if let Some(texture_id) = sprite.texture_id.load().as_ref() {
                 bind_group = self.bind_group_map.get(texture_id);
                 vertex_buffer = sprite.vertex_buffer.as_ref();
+
+                let mode = sprite.mode as i32;
+                queue.write_buffer(
+                    &self.uniforms_buffer,
+                    0,
+                    bytemuck::cast_slice(&[YUVUniforms { mode }]),
+                );
             }
-        }
-        // else if let Some(video) = node.as_any().downcast_ref::<Video>() {
-        //     bind_group = video.texture.read().bind_group.as_ref().unwrap().clone();
-        //     vertex_buffer = video.vertex_buffer.as_ref().unwrap();
-        // }
-        else {
+        } else {
             unreachable!()
         }
 
@@ -265,6 +367,7 @@ impl Renderer for SpriteRenderer {
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
             render_pass.set_bind_group(1, bind_group.unwrap(), &[]);
+            render_pass.set_bind_group(2, &self.bind_group_uniforms, &[]);
             render_pass.set_vertex_buffer(0, vertex_buffer.unwrap().slice(..));
 
             // FIXME: NUM_INDICES depends on which renderer the child matches.

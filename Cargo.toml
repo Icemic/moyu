@@ -8,6 +8,7 @@ members = [
   "crates/platform",
   "crates/macros",
   "crates/run_wasm",
+  "crates/nodes",
 ]
 resolver = "2"
 

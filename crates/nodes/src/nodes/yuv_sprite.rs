@@ -3,12 +3,11 @@ use hai_macros::Node;
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
-use crate::resource::TextureId;
-use crate::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
+use hai_core::nodes::{NodeBase, Texture};
+use hai_core::resource::TextureId;
+use hai_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
-use crate::utils::convert::{from_js, JSValue};
-
-use super::{NodeBase, Texture};
+use hai_core::utils::convert::{from_js, JSValue};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum YUVSpriteFormat {

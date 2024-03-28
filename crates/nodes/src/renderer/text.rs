@@ -11,11 +11,12 @@ use wgpu::util::StagingBelt;
 use wgpu::Texture;
 use wgpu::{util::DeviceExt, *};
 
-use crate::base::MVPMatrix;
+use hai_core::base::MVPMatrix;
+use hai_core::traits::Renderer;
+use hai_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use hai_core::utils::calculate::tint_to_vec4;
+
 use crate::nodes::{Text, TextPrintMode};
-use crate::traits::Renderer;
-use crate::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
-use crate::utils::calculate::tint_to_vec4;
 
 /// the number of vertices in a sprite is always 4.
 // pub static NUM_VERTICES: u32 = 4;

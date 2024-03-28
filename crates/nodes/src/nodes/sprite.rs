@@ -4,12 +4,11 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use wgpu::Buffer;
 
-use crate::resource::TextureId;
-use crate::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
+use hai_core::nodes::NodeBase;
+use hai_core::resource::TextureId;
+use hai_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
-use crate::utils::convert::{from_js, JSValue};
-
-use super::NodeBase;
+use hai_core::utils::convert::{from_js, JSValue};
 
 // #[node]
 #[derive(Debug, Default, Node)]
