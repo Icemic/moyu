@@ -3,8 +3,6 @@ pub mod core;
 pub mod nodes;
 #[cfg(any(feature = "web", feature = "js_runtime"))]
 pub mod ops;
-pub mod presets;
-pub mod renderer;
 pub mod resource;
 pub mod surface;
 pub mod traits;
@@ -12,9 +10,6 @@ pub mod user_event;
 pub mod utils;
 
 use futures::Future;
-#[cfg(feature = "text")]
-use renderer::TextRenderer;
-use renderer::YUVSpriteRenderer;
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;
@@ -23,7 +18,6 @@ use winit::window::Window;
 pub use winit;
 
 use crate::core::Core;
-use crate::renderer::SpriteRenderer;
 use crate::user_event::UserEvent;
 
 /// setup hai core
@@ -50,14 +44,6 @@ pub fn create_hai_core(
     window: &Arc<Window>,
     event_proxy: Arc<EventLoopProxy<UserEvent>>,
 ) -> Arc<Core> {
-    let sprite_renderer = SpriteRenderer::new(&device, &config);
-    let yuv_sprite_renderer = YUVSpriteRenderer::new(&device, &config);
-    // use sprite renderer on video node
-    #[cfg(feature = "video")]
-    let video_renderer = SpriteRenderer::new(&device, &config);
-    #[cfg(feature = "text")]
-    let text_renderer = TextRenderer::new(&device, &config);
-
     // create multithread shared core
     let core = Core::new(
         instance,
@@ -68,14 +54,6 @@ pub fn create_hai_core(
         config,
         event_proxy,
     );
-
-    // core.register_renderer("null".to_string(), null_renderer);
-    core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
-    core.register_renderer("yuv_sprite".to_string(), Box::new(yuv_sprite_renderer));
-    #[cfg(feature = "video")]
-    core.register_renderer("video".to_string(), Box::new(video_renderer));
-    #[cfg(feature = "text")]
-    core.register_renderer("text".to_string(), Box::new(text_renderer));
 
     // set screen size
     let size = window.inner_size();
