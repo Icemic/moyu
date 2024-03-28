@@ -15,7 +15,7 @@ release = true
 
 [features]
 default = ["desktop"]
-desktop = ["hai_core/desktop", "hai_core/text"]
+desktop = ["hai_core/desktop", "hai_nodes/text", "hai_ops/text"]
 video = ["hai_core/video"]
 web = [
   "hai_core/web",
@@ -36,4 +36,8 @@ version = "0.5"
 
 [dependencies.hai_nodes]
 path = "../nodes"
+version = "0.5"
+
+[dependencies.hai_ops]
+path = "../ops"
 version = "0.5"

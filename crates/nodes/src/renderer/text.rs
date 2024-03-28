@@ -6,7 +6,7 @@ use hai_pal::env::get_hai_env;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
 use huozi::Huozi;
-use log::error;
+use log::{error, info};
 use wgpu::util::StagingBelt;
 use wgpu::Texture;
 use wgpu::{util::DeviceExt, *};
@@ -157,6 +157,10 @@ impl TextRenderer {
             },
             multiview: None,
         });
+
+        let font_file = &get_hai_env().font_file;
+
+        info!("Loading font file: {}", font_file);
 
         let font_data = std::fs::read(&get_hai_env().font_file).unwrap();
         let huozi = Huozi::new(font_data);

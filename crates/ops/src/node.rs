@@ -12,16 +12,17 @@ use std::sync::Arc;
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::core::get_core;
-#[cfg(feature = "text")]
-use crate::nodes::Text;
-#[cfg(feature = "video")]
-use crate::nodes::Video;
-use crate::nodes::{Container, Sprite, YUVSprite};
-use crate::traits::{Node, NodeBaseTrait};
-use crate::utils::convert::JSValue;
+use hai_core::core::get_core;
+use hai_core::nodes::Container;
+use hai_core::traits::{Node, NodeBaseTrait};
+use hai_core::utils::convert::JSValue;
 #[cfg(not(feature = "web"))]
-use crate::utils::convert::{from_js, to_js};
+use hai_core::utils::convert::{from_js, to_js};
+#[cfg(feature = "text")]
+use hai_nodes::nodes::Text;
+#[cfg(feature = "video")]
+use hai_nodes::nodes::Video;
+use hai_nodes::nodes::{Sprite, YUVSprite};
 
 #[inline]
 pub(super) fn get_node<'a>(
