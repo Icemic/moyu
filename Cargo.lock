@@ -1251,6 +1251,7 @@ name = "hai"
 version = "0.4.0"
 dependencies = [
  "hai_core",
+ "hai_nodes",
  "hai_pal",
  "log",
  "spin_sleep",
