@@ -18,11 +18,11 @@ use hai_core::traits::{Node, NodeBaseTrait};
 use hai_core::utils::convert::JSValue;
 #[cfg(not(feature = "web"))]
 use hai_core::utils::convert::{from_js, to_js};
+use hai_nodes::nodes::Sprite;
 #[cfg(feature = "text")]
 use hai_nodes::nodes::Text;
 #[cfg(feature = "video")]
 use hai_nodes::nodes::Video;
-use hai_nodes::nodes::{Sprite, YUVSprite};
 
 #[inline]
 pub(super) fn get_node<'a>(
@@ -61,11 +61,6 @@ pub fn create_instance(
         }
         "sprite" => {
             let n = Sprite::new(label);
-            node_id = *n.base().id();
-            node = Arc::new(RwLock::new(n));
-        }
-        "yuvsprite" => {
-            let n = YUVSprite::new(label);
             node_id = *n.base().id();
             node = Arc::new(RwLock::new(n));
         }
