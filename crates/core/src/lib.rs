@@ -7,7 +7,6 @@ pub mod traits;
 pub mod user_event;
 pub mod utils;
 
-use futures::Future;
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;

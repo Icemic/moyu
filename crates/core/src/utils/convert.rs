@@ -26,7 +26,7 @@ pub type JSValue = OwnedJsValue;
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
 pub fn from_js<'a, T: serde::Deserialize<'a>>(value: &'a JSValue) -> anyhow::Result<T> {
     use anyhow::format_err;
-    pub use hai_runtime::quickjspp::serde::{from_js, to_js};
+    pub use hai_runtime::quickjspp::serde::from_js;
 
     match from_js(value.context(), value) {
         Ok(v) => Ok(v),
