@@ -9,8 +9,16 @@ use super::Command;
 use super::Focusable;
 
 pub trait Node: NodeBaseTrait + Send + Sync + Debug {
+    /// node type identifier
     fn node_type(&self) -> &'static str;
 
+    /// identifier for the renderer to be used to render this node, \
+    /// defaults to the node type.
+    fn renderer_type(&self) -> &'static str {
+        self.node_type()
+    }
+
+    /// method called when the properties of the node need to be updated
     #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, _props: &mut JSValue) {
         // defaults to do nothing
