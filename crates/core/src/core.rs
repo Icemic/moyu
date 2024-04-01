@@ -97,6 +97,8 @@ pub struct Core {
     pub resource_manager: Arc<ResourceManager>,
     pub renderers: Arc<Mutex<HashMap<String, Box<dyn Renderer>>>>,
 
+    plugins: Arc<Mutex<HashMap<String, Arc<Mutex<dyn Plugin>>>>>,
+
     staging_belt: Arc<Mutex<StagingBelt>>,
     mvp_buffer: wgpu::Buffer,
     mvp_bind_group: wgpu::BindGroup,
@@ -181,6 +183,8 @@ impl Core {
             resource_manager: Arc::new(resource_manager),
             renderers: Arc::new(Mutex::new(renderers)),
 
+            plugins: Arc::new(Mutex::new(HashMap::new())),
+
             staging_belt,
             mvp_buffer,
             mvp_bind_group,
@@ -215,6 +219,20 @@ impl Core {
     pub fn register_after_render_handler(&self, handler: AfterRenderHandler) {
         let mut after_render_handler = self.after_render_handler.lock();
         *after_render_handler = Some(handler);
+    }
+
+    pub fn register_plugin(&self, name: String, plugin: Arc<Mutex<dyn Plugin>>) {
+        let mut plugins = self.plugins.lock();
+        if plugins.contains_key(&name) {
+            error!("There's already a plugin named '{}'.", name);
+            return;
+        }
+        plugins.insert(name, plugin);
+    }
+
+    pub fn get_plugin(&self, name: &str) -> Option<Arc<Mutex<dyn Plugin>>> {
+        let plugins = self.plugins.lock();
+        plugins.get(name).cloned()
     }
 
     /**
