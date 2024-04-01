@@ -41,3 +41,7 @@ version = "0.5"
 [dependencies.hai_ops]
 path = "../ops"
 version = "0.5"
+
+[dependencies.hai_audio]
+path = "../audio"
+version = "0.1"
