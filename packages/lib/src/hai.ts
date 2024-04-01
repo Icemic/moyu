@@ -5,11 +5,12 @@ import { STATE } from './state';
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 declare const hai: {
   pushCommand: (name: string, args: any[], callback?: (...args: any[]) => void) => any;
-  executeNodeCommand: (nodeId: number, payload: HaiNodeCommandPayload) => any;
+  executeNodeCommand: (nodeId: number, payload: HaiCommandPayload) => any;
+  executePluginCommand: (pluginName: string, payload: HaiCommandPayload) => any;
   [key: string]: (...args: any[]) => any;
 };
 
-export interface HaiNodeCommandPayload extends Record<string, any> {
+export interface HaiCommandPayload extends Record<string, any> {
   subCommand: string;
 }
 
@@ -183,6 +184,10 @@ export function updateProps(nodeId: number, props: Record<string, any>) {
   hai.pushCommand('update_props', [nodeId, props]);
 }
 
-export function executeCommand(nodeId: number, payload: HaiNodeCommandPayload) {
+export function executeNodeCommand(nodeId: number, payload: HaiCommandPayload) {
   return hai.executeNodeCommand(nodeId, payload);
+}
+
+export function executePluginCommand(pluginName: string, payload: HaiCommandPayload) {
+  return hai.executePluginCommand(pluginName, payload);
 }

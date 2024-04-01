@@ -66,6 +66,10 @@ pub fn init(vm: &QuickVM) {
         .context()
         .create_custom_callback(execute_node_command)
         .unwrap();
+    let execute_plugin_command = vm
+        .context()
+        .create_custom_callback(execute_plugin_command)
+        .unwrap();
 
     vm.context()
         .set_global("__hai_pushCommand", receive_command)
@@ -73,13 +77,17 @@ pub fn init(vm: &QuickVM) {
     vm.context()
         .set_global("__hai_executeNodeCommand", execute_node_command)
         .unwrap();
+    vm.context()
+        .set_global("__hai_executePluginCommand", execute_plugin_command)
+        .unwrap();
 
     vm.context()
         .eval(
             "\
         globalThis.hai = {\
             pushCommand: __hai_pushCommand,\
-            executeNodeCommand: __hai_executeNodeCommand\
+            executeNodeCommand: __hai_executeNodeCommand,\
+            executePluginCommand: __hai_executePluginCommand,\
         }",
         )
         .unwrap();
@@ -163,6 +171,52 @@ fn execute_node_command(
                 "Node id {} of type `{}` does not implement Command",
                 node_id,
                 node.node_type()
+            ))
+        }
+    } else {
+        Err(anyhow!("Payload must be an object"))
+    }
+}
+
+#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+fn execute_plugin_command(
+    context: *mut JSContext,
+    args: &[RawJSValue],
+) -> anyhow::Result<Option<RawJSValue>> {
+    use anyhow::anyhow;
+
+    use hai_core::core::get_core;
+    use hai_core::utils::convert::from_js;
+    use hai_core::utils::convert::JSValue;
+
+    let plugin_name = JSValue::own(context, &args[0]);
+    let plugin_name: &str = from_js(&plugin_name)?;
+
+    let mut payload = JSValue::own(context, &args[1]);
+
+    if payload.is_object() {
+        let core = get_core();
+
+        let plugin = core
+            .get_plugin(plugin_name)
+            .ok_or_else(|| anyhow!("Plugin {} not found", plugin_name))?;
+
+        let mut plugin = plugin.lock();
+
+        if let Some(plugin) = plugin.as_command() {
+            plugin
+                .execute(&mut payload)
+                .map(|v| v.map(|v| unsafe { v.extract() }))
+                .map_err(|e| {
+                    let err = anyhow!(e);
+                    log::error!("Error executing command: {:?}", err);
+                    err
+                })
+        } else {
+            log::warn!("Plugin `{}` does not implement Command", plugin_name);
+            Err(anyhow!(
+                "Plugin `{}` does not implement Command",
+                plugin_name
             ))
         }
     } else {

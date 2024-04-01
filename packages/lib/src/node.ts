@@ -67,8 +67,8 @@ export class Node {
     hai.updateProps(this.nodeId, restProps);
   }
 
-  executeCommand(payload: hai.HaiNodeCommandPayload) {
-    return hai.executeCommand(this.nodeId, payload);
+  executeCommand(payload: hai.HaiCommandPayload) {
+    return hai.executeNodeCommand(this.nodeId, payload);
   }
 }
 
