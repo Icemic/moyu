@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use hai_audio::AudioManager;
 use hai_core::core::set_core;
 use hai_core::surface::{create_eventloop, create_wgpu_surface, create_window};
 use hai_core::winit::dpi::PhysicalPosition;
@@ -8,6 +9,7 @@ use hai_core::winit::window::Window;
 use hai_core::{create_hai_core, setup};
 use hai_nodes::renderer::{SpriteRenderer, TextRenderer};
 use hai_ops::spawn::spawn_runtime_with_core;
+use hai_pal::sync::Mutex;
 use hai_pal::{env, logger, platform};
 
 fn main_entry() {
@@ -74,6 +76,9 @@ fn main_entry() {
                     // core.register_renderer("null".to_string(), null_renderer);
                     _core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
                     _core.register_renderer("text".to_string(), Box::new(text_renderer));
+
+                    let audio_manager = AudioManager::new();
+                    _core.register_plugin("audio".to_string(), Arc::new(Mutex::new(audio_manager)));
 
                     // #[cfg(feature = "video")]
                     // core.register_renderer("video".to_string(), Box::new(video_renderer));

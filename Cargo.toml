@@ -10,6 +10,7 @@ members = [
   "crates/run_wasm",
   "crates/nodes",
   "crates/ops",
+  "crates/audio",
 ]
 resolver = "2"
 
