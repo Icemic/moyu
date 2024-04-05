@@ -1,3 +1,4 @@
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use super::Command;
 
 /// A Plugin means an extra function module that different from a [Node](super::Node).

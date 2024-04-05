@@ -1,8 +1,11 @@
+use std::io::Cursor;
+
 use anyhow::Result;
 #[cfg(not(feature = "web"))]
 use tokio::fs;
 use url::Url;
 
+/// Open a file from a URL, returns a `Vec<u8>`
 pub async fn read(url: &Url) -> Result<Vec<u8>> {
     #[cfg(not(feature = "web"))]
     if url.scheme() == "file" {
@@ -39,4 +42,9 @@ pub async fn read(url: &Url) -> Result<Vec<u8>> {
     };
 
     Err(anyhow::format_err!("Unsupported scheme '{}'", url.scheme()))
+}
+
+/// Open a file from a URL, returns a `Cursor<Vec<u8>>` which is [`Read`](std::io::Read) + [`Seek`](std::io::Seek)
+pub async fn open(url: &Url) -> Result<Cursor<Vec<u8>>> {
+    Ok(Cursor::new(read(url).await?))
 }

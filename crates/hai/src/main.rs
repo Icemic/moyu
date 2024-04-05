@@ -77,8 +77,17 @@ fn main_entry() {
                     _core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
                     _core.register_renderer("text".to_string(), Box::new(text_renderer));
 
-                    let audio_manager = AudioManager::new();
-                    _core.register_plugin("audio".to_string(), Arc::new(Mutex::new(audio_manager)));
+                    match AudioManager::new() {
+                        Ok(audio_manager) => {
+                            _core.register_plugin(
+                                "audio".to_string(),
+                                Arc::new(Mutex::new(audio_manager)),
+                            );
+                        }
+                        Err(err) => {
+                            log::error!("failed to create audio manager: {}", err);
+                        }
+                    }
 
                     // #[cfg(feature = "video")]
                     // core.register_renderer("video".to_string(), Box::new(video_renderer));
