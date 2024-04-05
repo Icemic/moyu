@@ -20,5 +20,6 @@ version = "0.5"
 
 [dependencies.hai_core]
 default-features = false
+features = ["js_runtime"]
 path = "../core"
 version = "0.5"
