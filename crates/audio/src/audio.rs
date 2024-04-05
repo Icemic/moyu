@@ -24,60 +24,99 @@ impl Audio {
         }
     }
 
-    pub fn play(&mut self) -> Result<()> {
+    fn find_and(&mut self, f: impl FnOnce(&mut StaticSoundHandle) -> Result<()>) -> Result<()> {
         if let Some(ref mut handle) = self.sound {
-            handle.seek_to(0.0)?;
-            handle.resume(Tween::default())?;
-            Ok(())
+            f(handle)
         } else {
             Err(anyhow!("Sound not loaded"))
         }
+    }
+
+    pub fn play(&mut self) -> Result<()> {
+        self.find_and(|handle| {
+            handle.seek_to(0.0)?;
+            handle.resume(Tween::default())?;
+            Ok(())
+        })
     }
 
     pub fn stop(&mut self) -> Result<()> {
-        if let Some(ref mut handle) = self.sound {
+        self.find_and(|handle| {
             handle.pause(Tween::default())?;
             handle.seek_to(0.0)?;
             Ok(())
-        } else {
-            Err(anyhow!("Sound not loaded"))
-        }
+        })
     }
 
     pub fn pause(&mut self) -> Result<()> {
-        if let Some(ref mut handle) = self.sound {
+        self.find_and(|handle| {
             handle.pause(Tween::default())?;
             Ok(())
-        } else {
-            Err(anyhow!("Sound not loaded"))
-        }
+        })
     }
 
     pub fn resume(&mut self) -> Result<()> {
-        if let Some(ref mut handle) = self.sound {
+        self.find_and(|handle| {
             handle.resume(Tween::default())?;
             Ok(())
-        } else {
-            Err(anyhow!("Sound not loaded"))
-        }
+        })
     }
 
     pub fn stop_and_release(&mut self) -> Result<()> {
-        if let Some(ref mut handle) = self.sound {
+        self.find_and(|handle| {
             handle.stop(Tween::default())?;
-            self.sound = None;
             Ok(())
-        } else {
-            Err(anyhow!("Sound not loaded"))
-        }
+        })?;
+        self.sound = None;
+        Ok(())
     }
 
     pub fn set_volume(&mut self, volume: f64) -> Result<()> {
-        if let Some(ref mut handle) = self.sound {
+        self.find_and(|handle| {
             handle.set_volume(Volume::Amplitude(volume), Tween::default())?;
             Ok(())
-        } else {
-            Err(anyhow!("Sound not loaded"))
-        }
+        })
+    }
+
+    pub fn seek_by(&mut self, seconds: f64) -> Result<()> {
+        self.find_and(|handle| {
+            handle.seek_by(seconds)?;
+            Ok(())
+        })
+    }
+
+    pub fn seek_to(&mut self, seconds: f64) -> Result<()> {
+        self.find_and(|handle| {
+            handle.seek_to(seconds)?;
+            Ok(())
+        })
+    }
+
+    pub fn set_playback_rate(&mut self, rate: f64) -> Result<()> {
+        self.find_and(|handle| {
+            handle.set_playback_rate(rate, Tween::default())?;
+            Ok(())
+        })
+    }
+
+    pub fn set_loop_region(&mut self, start: f64, end: f64) -> Result<()> {
+        self.find_and(|handle| {
+            handle.set_loop_region(start..end)?;
+            Ok(())
+        })
+    }
+
+    pub fn set_playback_region(&mut self, start: f64, end: f64) -> Result<()> {
+        self.find_and(|handle| {
+            handle.set_playback_region(start..end)?;
+            Ok(())
+        })
+    }
+
+    pub fn set_panning(&mut self, panning: f64) -> Result<()> {
+        self.find_and(|handle| {
+            handle.set_panning(panning, Tween::default())?;
+            Ok(())
+        })
     }
 }
