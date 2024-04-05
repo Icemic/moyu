@@ -143,6 +143,36 @@ pub enum AudioCommmad {
     Resume {
         name: String,
     },
+    SetVolume {
+        name: String,
+        volume: f64,
+    },
+    SeekBy {
+        name: String,
+        time: f64,
+    },
+    SeekTo {
+        name: String,
+        time: f64,
+    },
+    SetPlaybackRate {
+        name: String,
+        rate: f64,
+    },
+    SetLoopRegion {
+        name: String,
+        start: f64,
+        end: f64,
+    },
+    SetPlaybackRegion {
+        name: String,
+        start: f64,
+        end: f64,
+    },
+    SetPanning {
+        name: String,
+        panning: f64,
+    },
 }
 
 impl Command for AudioManager {
@@ -177,6 +207,34 @@ impl Command for AudioManager {
             AudioCommmad::Resume { name } => {
                 let audio = self.get_audio(&name).unwrap();
                 audio.lock().resume()?;
+            }
+            AudioCommmad::SetVolume { name, volume } => {
+                let audio = self.get_audio(&name).unwrap();
+                audio.lock().set_volume(volume)?;
+            }
+            AudioCommmad::SeekBy { name, time } => {
+                let audio = self.get_audio(&name).unwrap();
+                audio.lock().seek_by(time)?;
+            }
+            AudioCommmad::SeekTo { name, time } => {
+                let audio = self.get_audio(&name).unwrap();
+                audio.lock().seek_to(time)?;
+            }
+            AudioCommmad::SetPlaybackRate { name, rate } => {
+                let audio = self.get_audio(&name).unwrap();
+                audio.lock().set_playback_rate(rate)?;
+            }
+            AudioCommmad::SetLoopRegion { name, start, end } => {
+                let audio = self.get_audio(&name).unwrap();
+                audio.lock().set_loop_region(start, end)?;
+            }
+            AudioCommmad::SetPlaybackRegion { name, start, end } => {
+                let audio = self.get_audio(&name).unwrap();
+                audio.lock().set_playback_region(start, end)?;
+            }
+            AudioCommmad::SetPanning { name, panning } => {
+                let audio = self.get_audio(&name).unwrap();
+                audio.lock().set_panning(panning)?;
             }
         }
 
