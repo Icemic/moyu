@@ -32,7 +32,7 @@ impl Default for HaiConfig {
             present_mode: RenderingPresentMode::default(),
             backend: RenderingBackend::default(),
             desired_maximum_frame_latency: 2,
-            font_file: "assets/fonts/default.otf".to_string(),
+            font_file: "fonts/default.otf".to_string(),
         }
     }
 }

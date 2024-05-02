@@ -2,7 +2,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use glam::Vec3;
-use hai_pal::env::get_hai_env;
+use hai_pal::env::{entry_dir, get_hai_env};
+use hai_pal::sync::Mutex;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
 use huozi::Huozi;
@@ -28,7 +29,7 @@ pub struct TextRenderer {
     _view: TextureView,
     bind_group_layout: BindGroupLayout,
     bind_group: BindGroup,
-    huozi: Huozi,
+    huozi: Arc<Mutex<Option<Huozi>>>,
     last_texture_version: AtomicU64,
 }
 
@@ -158,12 +159,14 @@ impl TextRenderer {
             multiview: None,
         });
 
-        let font_file = &get_hai_env().font_file;
+        let huozi = Arc::new(Mutex::new(None));
 
-        info!("Loading font file: {}", font_file);
-
-        let font_data = std::fs::read(&get_hai_env().font_file).unwrap();
-        let huozi = Huozi::new(font_data);
+        {
+            let huozi = huozi.clone();
+            hai_pal::task::spawn(async move {
+                init_huozi(&huozi).await;
+            });
+        }
 
         Self {
             pipeline,
@@ -176,6 +179,32 @@ impl TextRenderer {
             last_texture_version: AtomicU64::new(0),
         }
     }
+}
+
+#[inline]
+async fn init_huozi(huozi: &Arc<Mutex<Option<Huozi>>>) {
+    let font_file = &get_hai_env().font_file;
+    let asset_full_path = entry_dir()
+        .join("assets/")
+        .unwrap()
+        .join(font_file)
+        .unwrap();
+
+    info!("Loading font file: {}", asset_full_path);
+
+    let font_data = match hai_pal::fs::read(&asset_full_path).await {
+        Ok(data) => data,
+        Err(e) => {
+            error!(
+                "Failed to read font file: {}, text rendering may not work.",
+                e
+            );
+            return;
+        }
+    };
+
+    let _huozi = Huozi::new(font_data);
+    huozi.lock().replace(_huozi);
 }
 
 impl TextRenderer {
@@ -345,14 +374,20 @@ impl Renderer for TextRenderer {
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
     ) {
+        // update only when huozi is ready
+        let mut huozi = self.huozi.lock();
+        let huozi = match huozi.as_mut() {
+            Some(huozi) => huozi,
+            None => {
+                return;
+            }
+        };
+
         let node = node.as_any_mut().downcast_mut::<Text>().unwrap();
         let need_relayout = node.base_mut().pop_update_vertices();
 
         if need_relayout {
-            match self
-                .huozi
-                .layout_parse(&node.text, &node.layout_style, &node.text_style, None)
-            {
+            match huozi.layout_parse(&node.text, &node.layout_style, &node.text_style, None) {
                 Ok((glyphs, total_width, total_height)) => {
                     // set layout size
                     node.total_width = total_width;
@@ -361,14 +396,14 @@ impl Renderer for TextRenderer {
                     node.glyph_vertices = glyphs;
 
                     // updates the sdf texture only when the image version is changed
-                    let image_version = self.huozi.image_version();
+                    let image_version = huozi.image_version();
 
                     if self.last_texture_version.load(Ordering::Relaxed) != image_version {
                         self.last_texture_version
                             .store(image_version, Ordering::Relaxed);
 
                         // update sdf texture
-                        let sdf_bitmap = self.huozi.texture_image();
+                        let sdf_bitmap = huozi.texture_image();
                         let dimensions = sdf_bitmap.dimensions();
 
                         let size = wgpu::Extent3d {
