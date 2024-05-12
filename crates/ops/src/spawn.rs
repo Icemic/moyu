@@ -71,7 +71,7 @@ pub fn spawn_runtime_with_core(_core: &Arc<Core>, spawn_callback: Option<SpawnRu
             let vm = setup_vm();
 
             vm.context()
-                .eval("console.info('Hello %s!', 'World')")
+                .eval("console.info('Hello %s!', 'World')", false)
                 .unwrap();
 
             crate::init(&vm);

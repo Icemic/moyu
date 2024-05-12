@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use hai_pal::env::entry_dir;
-use quickjspp::{Arguments, Context, ExecutionError, JsFunction, JsValue};
+use quickjspp::{Arguments, Context, ExecutionError, JsFunction, OwnedJsValue};
 use std::sync::Mutex;
 use tokio::sync::oneshot::{Receiver, Sender};
 
@@ -19,7 +19,7 @@ pub struct QuickVM {
     /// emited timer ids to be executed in the next tick
     timer_tasks: Arc<Mutex<Vec<Rc<TimerTask>>>>,
     instant: Instant,
-    call_tasks: Arc<Mutex<VecDeque<(String, Vec<JsValue>, Sender<()>)>>>,
+    call_tasks: Arc<Mutex<VecDeque<(String, Vec<OwnedJsValue>, Sender<()>)>>>,
 }
 
 unsafe impl Send for QuickVM {}
@@ -150,7 +150,7 @@ impl QuickVM {
         &self.context
     }
 
-    pub fn call_function(&self, name: &str, args: Vec<JsValue>) -> Receiver<()> {
+    pub fn call_function(&self, name: &str, args: Vec<OwnedJsValue>) -> Receiver<()> {
         let (sender, receiver) = tokio::sync::oneshot::channel();
         self.call_tasks
             .lock()

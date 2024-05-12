@@ -48,16 +48,18 @@ pub struct HaiEvent {
 
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 pub fn dispatch_event(event: HaiEvent) {
-    use hai_runtime::quickjspp::JsValue;
+    use hai_runtime::quickjspp::{owned, OwnedJsValue};
 
     get_runtime_handle().spawn(async move {
+        let vm = get_vm();
+        let context = vm.context().context_raw();
         if let Err(err) = get_vm()
             .call_function(
                 "__hai_receive_event",
                 vec![
-                    JsValue::from(format!("{:?}", event.kind)),
-                    JsValue::from(event.target_id),
-                    JsValue::from(event.bubble_target_ids),
+                    owned!(context, format!("{:?}", event.kind)),
+                    owned!(context, event.target_id),
+                    owned!(context, event.bubble_target_ids),
                 ],
             )
             .await

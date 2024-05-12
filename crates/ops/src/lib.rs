@@ -89,6 +89,7 @@ pub fn init(vm: &QuickVM) {
             executeNodeCommand: __hai_executeNodeCommand,\
             executePluginCommand: __hai_executePluginCommand,\
         }",
+            false,
         )
         .unwrap();
 }
