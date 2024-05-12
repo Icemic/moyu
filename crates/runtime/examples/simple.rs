@@ -16,11 +16,11 @@ async fn main() {
             let vm = setup_vm();
 
             vm.context()
-                .eval("console.log('Hello %s!', 'World')")
+                .eval("console.log('Hello %s!', 'World')", false)
                 .unwrap();
 
             vm.context()
-                .eval("var x = setInterval(() => console.log('Hello %s!', 'World'), 1000); setTimeout(() => clearTimeout(x), 1500)")
+                .eval("var x = setInterval(() => console.log('Hello %s!', 'World'), 1000); setTimeout(() => clearTimeout(x), 1500)", false)
                 .unwrap();
 
 
