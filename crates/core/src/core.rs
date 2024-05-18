@@ -86,12 +86,6 @@ pub type AfterRenderHandler = Box<
 >;
 
 pub struct Core {
-    pub instance: Arc<Instance>,
-    pub surface_size: Arc<RwLock<SurfaceSize>>,
-    pub surface: Arc<Surface<'static>>,
-    pub device: Arc<Device>,
-    pub queue: Arc<Queue>,
-    pub window: Arc<Window>,
     pub config: Arc<Mutex<SurfaceConfiguration>>,
     pub event_proxy: Arc<EventLoopProxy<UserEvent>>,
     pub resource_manager: Arc<ResourceManager>,
@@ -126,6 +120,21 @@ pub struct Core {
 
     // render interrupt handler
     pub after_render_handler: Arc<Mutex<Option<AfterRenderHandler>>>,
+
+    // To avoid memory leak, we must put these at bottom to make sure [Device] is dropped last.
+    // see: https://github.com/gfx-rs/wgpu/issues/5529
+    pub queue: Arc<Queue>,
+    pub device: Arc<Device>,
+    pub surface_size: Arc<RwLock<SurfaceSize>>,
+    pub surface: Arc<Surface<'static>>,
+    pub window: Arc<Window>,
+    pub instance: Arc<Instance>,
+}
+
+impl Drop for Core {
+    fn drop(&mut self) {
+        self.queue.submit(vec![]);
+    }
 }
 
 unsafe impl Send for Core {}
