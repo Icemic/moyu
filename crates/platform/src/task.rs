@@ -2,39 +2,30 @@ use std::future::Future;
 #[cfg(not(feature = "web"))]
 use std::sync::Arc;
 
-use once_cell::sync::OnceCell;
-
 #[cfg(not(feature = "web"))]
 use tokio::runtime::Handle;
 
 #[cfg(not(feature = "web"))]
-pub type JoinHandle<T> = tokio::task::JoinHandle<T>;
+use crate::visible_hand::{InvisibleHand, VisibleHand};
 
 #[cfg(not(feature = "web"))]
-pub(crate) fn setup_async_runtime() {
-    use std::ffi::c_void;
+pub type JoinHandle<T> = tokio::task::JoinHandle<T>;
 
+static mut HANDLE: InvisibleHand<Arc<Handle>> = InvisibleHand::new();
+
+#[cfg(not(feature = "web"))]
+pub(crate) fn setup_async_runtime() -> VisibleHand<Arc<Handle>> {
     let handle = Arc::new(tokio::runtime::Handle::current());
-    let p = Arc::into_raw(handle) as *const c_void as usize;
-    HANDLE.set(p).expect("Failed to set handle.");
+    unsafe {
+        HANDLE.set(handle).expect("Failed to set handle.");
+        HANDLE.intervent()
+    }
 }
-
-static HANDLE: OnceCell<usize> = OnceCell::new();
 
 #[inline]
 #[cfg(not(feature = "web"))]
-pub fn get_runtime_handle() -> std::sync::Arc<Handle> {
-    use std::ffi::c_void;
-
-    let p = *HANDLE.get().unwrap() as *const c_void;
-    let ptr = p as *const Handle;
-    let r = unsafe { Arc::from_raw(ptr) };
-    let r_cloned = r.clone();
-
-    // keep ptr leaked
-    std::mem::forget(r);
-
-    r_cloned
+pub fn get_runtime_handle<'a>() -> &'a std::sync::Arc<Handle> {
+    unsafe { HANDLE.get() }
 }
 
 #[inline]
@@ -42,7 +33,7 @@ pub fn get_runtime_handle() -> std::sync::Arc<Handle> {
 fn current_handle() -> Arc<tokio::runtime::Handle> {
     match tokio::runtime::Handle::try_current() {
         Ok(handle) => Arc::new(handle),
-        Err(_) => get_runtime_handle(),
+        Err(_) => get_runtime_handle().clone(),
     }
 }
 

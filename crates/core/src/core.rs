@@ -1,11 +1,9 @@
 use arc_swap::{ArcSwap, ArcSwapOption};
 use hai_pal::env::get_hai_env;
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
+use hai_pal::visible_hand::{InvisibleHand, VisibleHand};
 use log::{debug, error, info, warn};
-use once_cell::sync::OnceCell;
 use std::collections::HashMap;
-use std::ffi::c_void;
-use std::mem::forget;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 #[cfg(not(feature = "web"))]
@@ -25,43 +23,19 @@ use crate::utils::hit_test::{hit_test, HitTestResult};
 use crate::utils::walk::walk_nodes_top_bottom;
 use crate::{nodes::Container, resource::ResourceManager, traits::*, user_event::UserEvent};
 
-static CORE: OnceCell<usize> = OnceCell::new();
+static mut CORE: InvisibleHand<Arc<Core>> = InvisibleHand::new();
 
 #[inline]
-pub fn get_core_optional() -> Option<Arc<Core>> {
-    let p = if let Some(p) = CORE.get() {
-        *p as *const c_void
-    } else {
-        return None;
-    };
-
-    let ptr = p as *const Core;
-    let r = unsafe { Arc::from_raw(ptr) };
-    let r_cloned = r.clone();
-
-    // keep ptr leaked
-    forget(r);
-
-    Some(r_cloned)
+pub fn get_core<'a>() -> &'a Arc<Core> {
+    unsafe { CORE.get() }
 }
 
 #[inline]
-pub fn get_core() -> Arc<Core> {
-    let p = *CORE.get().unwrap() as *const c_void;
-    let ptr = p as *const Core;
-    let r = unsafe { Arc::from_raw(ptr) };
-    let r_cloned = r.clone();
-
-    // keep ptr leaked
-    forget(r);
-
-    r_cloned
-}
-
-#[inline]
-pub fn set_core(core: Arc<Core>) {
-    let p = Arc::into_raw(core) as *const c_void as usize;
-    CORE.set(p).expect("Failed to set core instance.");
+pub fn set_core(core: Arc<Core>) -> VisibleHand<Arc<Core>> {
+    unsafe {
+        CORE.set(core).expect("Failed to set core instance.");
+        CORE.intervent()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

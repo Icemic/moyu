@@ -1,8 +1,15 @@
 #[cfg(not(feature = "web"))]
-pub fn setup() {
+use crate::visible_hand::VisibleHand;
+#[cfg(not(feature = "web"))]
+use std::sync::Arc;
+#[cfg(not(feature = "web"))]
+use tokio::runtime::Handle;
+
+#[cfg(not(feature = "web"))]
+pub fn setup() -> VisibleHand<Arc<Handle>> {
     use crate::task;
 
-    task::setup_async_runtime();
+    task::setup_async_runtime()
 }
 
 #[cfg(feature = "web")]

@@ -1,4 +1,4 @@
-use hai_runtime::setup_vm;
+use hai_runtime::{get_vm, setup_vm};
 use log::error;
 
 #[tokio::main]
@@ -8,12 +8,14 @@ async fn main() {
         .filter_level(log::LevelFilter::Debug)
         .init();
 
-    hai_pal::platform::setup();
+    let async_runtime_handle = hai_pal::platform::setup();
+
+    let vm_handle = setup_vm();
 
     std::thread::Builder::new()
         .name("quickjs".to_string())
         .spawn(|| {
-            let vm = setup_vm();
+            let vm = get_vm();
 
             vm.context()
                 .eval("console.log('Hello %s!', 'World')", false)
@@ -32,8 +34,9 @@ async fn main() {
         })
         .unwrap();
 
-    loop {
-        let future = std::future::pending();
-        let () = future.await;
-    }
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+    // drop global variable
+    drop(vm_handle);
+    drop(async_runtime_handle);
 }

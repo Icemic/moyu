@@ -15,7 +15,9 @@ use hai_pal::{env, logger, platform};
 fn main_entry() {
     env::setup();
     logger::setup();
-    platform::setup();
+
+    // hold the global variable lifetime using VisibleHand
+    let _async_runtime_handle = platform::setup();
 
     setup();
 
@@ -26,6 +28,9 @@ fn main_entry() {
 
     let mut window = None;
     let mut core = None;
+    // hold the global variable lifetime using VisibleHand
+    let mut _jsvm_handle = None;
+    let mut _core_handle = None;
 
     let mut loop_helper = {
         // get max refresh rate of all monitors
@@ -92,8 +97,8 @@ fn main_entry() {
                     // #[cfg(feature = "video")]
                     // core.register_renderer("video".to_string(), Box::new(video_renderer));
 
-                    set_core(_core.clone());
-                    spawn_runtime_with_core(&_core, None);
+                    _core_handle = Some(set_core(_core.clone()));
+                    _jsvm_handle = Some(spawn_runtime_with_core(&_core, None));
 
                     _window.set_visible(true);
 
