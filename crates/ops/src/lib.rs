@@ -164,7 +164,7 @@ fn execute_node_command(
                 .map(|v| v.map(|v| unsafe { v.extract() }))
                 .map_err(|e| {
                     let err = anyhow!(e);
-                    log::error!("Error executing command: {:?}", err);
+                    log::error!("Error executing node command: {:?}", err);
                     err
                 })
         } else {
@@ -210,7 +210,7 @@ fn execute_plugin_command(
                 .map(|v| v.map(|v| unsafe { v.extract() }))
                 .map_err(|e| {
                     let err = anyhow!(e);
-                    log::error!("Error executing command: {:?}", err);
+                    log::error!("Error executing plugin command: {:?}", err);
                     err
                 })
         } else {
