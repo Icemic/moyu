@@ -2,22 +2,23 @@ mod console;
 mod module;
 mod vm;
 
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
+use hai_pal::visible_hand::{InvisibleHand, VisibleHand};
 pub use vm::QuickVM;
 
-static VM_INSTANCE: OnceLock<Arc<QuickVM>> = OnceLock::new();
+static mut JSVM: InvisibleHand<Arc<QuickVM>> = InvisibleHand::new();
 
-pub fn setup_vm() -> Arc<QuickVM> {
+pub fn setup_vm() -> VisibleHand<Arc<QuickVM>> {
     let vm = Arc::new(QuickVM::new());
-
-    VM_INSTANCE.set(vm.clone()).ok();
-
-    vm
+    unsafe {
+        JSVM.set(vm.clone()).ok();
+        JSVM.intervent()
+    }
 }
 
 pub fn get_vm<'a>() -> &'a Arc<QuickVM> {
-    VM_INSTANCE.get().expect("VM not initialized")
+    unsafe { JSVM.get() }
 }
 
 pub mod quickjspp {

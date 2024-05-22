@@ -51,12 +51,17 @@ pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRun
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
-pub fn spawn_runtime_with_core(_core: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
+pub fn spawn_runtime_with_core(
+    _core: &Arc<Core>,
+    spawn_callback: Option<SpawnRuntimeCallback>,
+) -> hai_pal::visible_hand::VisibleHand<Arc<hai_runtime::QuickVM>> {
     // desktop targets only
     // spawn a v8 thread
 
-    use hai_runtime::setup_vm;
+    use hai_runtime::{get_vm, setup_vm};
     use log::error;
+
+    let vm_handle = setup_vm();
 
     std::thread::Builder::new()
         .name("quickjs".to_string())
@@ -68,7 +73,7 @@ pub fn spawn_runtime_with_core(_core: &Arc<Core>, spawn_callback: Option<SpawnRu
                 handle.spawn(async_callback);
             }
 
-            let vm = setup_vm();
+            let vm = get_vm();
 
             vm.context()
                 .eval("console.info('Hello %s!', 'World')", false)
@@ -83,6 +88,8 @@ pub fn spawn_runtime_with_core(_core: &Arc<Core>, spawn_callback: Option<SpawnRu
             vm.block_on_ticking();
         })
         .ok();
+
+    vm_handle
 }
 
 /// spawn a thread with javascript runtime and executes scripts
