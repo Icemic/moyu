@@ -83,8 +83,6 @@ pub fn create_instance(
 
     node_map.insert(node_id, node.clone());
 
-    drop(core);
-
     let mut node = node.write();
 
     node.base_mut().update_properties(&mut props);
@@ -273,8 +271,6 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
 pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map.clone();
-
-    drop(core);
 
     let node_map = node_map.read();
     let node = get_node(&node_map, node_id)?;
