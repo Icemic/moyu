@@ -1,5 +1,6 @@
 [package]
 authors = ["Icemic <bingfeng.web@gmail.com>"]
+description = "Operations inside Javascript runtime for Hai."
 edition = "2021"
 license = "Apache-2.0"
 name = "hai_ops"
