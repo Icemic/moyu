@@ -358,7 +358,7 @@ impl Core {
         };
 
         // restore focus state
-        if has_focus {
+        if has_focus && state != WindowState::Minimized {
             window.focus_window();
         }
 
