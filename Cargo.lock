@@ -1351,7 +1351,7 @@ dependencies = [
 
 [[package]]
 name = "hai"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "hai_audio",
  "hai_core",
