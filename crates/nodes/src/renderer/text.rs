@@ -161,13 +161,6 @@ impl TextRenderer {
 
         let huozi = Arc::new(Mutex::new(None));
 
-        {
-            let huozi = huozi.clone();
-            hai_pal::task::spawn(async move {
-                init_huozi(&huozi).await;
-            });
-        }
-
         Self {
             pipeline,
             texture,
@@ -179,35 +172,40 @@ impl TextRenderer {
             last_texture_version: AtomicU64::new(0),
         }
     }
-}
 
-#[inline]
-async fn init_huozi(huozi: &Arc<Mutex<Option<Huozi>>>) {
-    let font_file = &get_hai_env().font_file;
-    let asset_full_path = entry_dir()
-        .join("assets/")
-        .unwrap()
-        .join(font_file)
-        .unwrap();
+    pub fn init_huozi_from_data(&self, font_data: Vec<u8>) {
+        let _huozi = Huozi::new(font_data);
+        self.huozi.lock().replace(_huozi);
+    }
 
-    info!("Loading font file: {}", asset_full_path);
+    pub fn init_huozi_from_env(&self) {
+        let huozi = self.huozi.clone();
+        hai_pal::task::spawn(async move {
+            let font_file = &get_hai_env().font_file;
+            let asset_full_path = entry_dir()
+                .join("assets/")
+                .unwrap()
+                .join(font_file)
+                .unwrap();
 
-    let font_data = match hai_pal::fs::read(&asset_full_path).await {
-        Ok(data) => data,
-        Err(e) => {
-            error!(
-                "Failed to read font file: {}, text rendering may not work.",
-                e
-            );
-            return;
-        }
-    };
+            info!("Loading font file: {}", asset_full_path);
 
-    let _huozi = Huozi::new(font_data);
-    huozi.lock().replace(_huozi);
-}
+            let font_data = match hai_pal::fs::read(&asset_full_path).await {
+                Ok(data) => data,
+                Err(e) => {
+                    error!(
+                        "Failed to read font file: {}, text rendering may not work.",
+                        e
+                    );
+                    return;
+                }
+            };
 
-impl TextRenderer {
+            let _huozi = Huozi::new(font_data);
+            huozi.lock().replace(_huozi);
+        });
+    }
+
     fn update_vertices(
         &self,
         device: &Arc<Device>,

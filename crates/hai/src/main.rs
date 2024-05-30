@@ -64,6 +64,9 @@ fn main_entry() {
 
                     let sprite_renderer = SpriteRenderer::new(&device, &config);
                     let text_renderer = TextRenderer::new(&device, &config);
+
+                    text_renderer.init_huozi_from_env();
+
                     // use sprite renderer on video node
                     // #[cfg(feature = "video")]
                     // let video_renderer = SpriteRenderer::new(&device, &config);
