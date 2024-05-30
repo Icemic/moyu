@@ -1,15 +1,15 @@
 use hai_macros::Node;
 use huozi::glyph_vertices::GlyphVertices;
 use huozi::layout::{Color, LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle};
-use log::info;
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
 use hai_core::nodes::NodeBase;
-use hai_core::traits::{Command, Focusable, FocusablePayload, Node, NodeBaseTrait};
-use hai_core::utils::convert::to_js;
 #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
-use hai_core::utils::convert::{from_js, JSValue};
+use hai_core::traits::Command;
+use hai_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
+#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
+use hai_core::utils::convert::{from_js, to_js, JSValue};
 
 #[derive(Debug, Default, Node)]
 pub struct Text {
@@ -291,6 +291,7 @@ impl Node for Text {
         Some(self)
     }
 
+    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn as_command(&mut self) -> Option<&mut dyn Command> {
         Some(self)
     }
@@ -308,7 +309,7 @@ pub enum TextCommmad {
 impl Command for Text {
     fn execute(&mut self, _payload: &mut JSValue) -> anyhow::Result<Option<JSValue>> {
         let payload: TextCommmad = from_js(_payload)?;
-        info!("Text received: {:?}", payload);
+        log::info!("Text received: {:?}", payload);
         match payload {
             TextCommmad::SetText { text } => {
                 self.text = text;
