@@ -1492,7 +1492,7 @@ dependencies = [
  "env_logger",
  "hai_pal",
  "log",
- "quickjspp",
+ "quickjs-rusty",
  "spin_sleep",
  "tokio",
 ]
@@ -1976,10 +1976,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "libquickjspp-sys"
-version = "0.6.0-rc.1"
+name = "libquickjs-ng-sys"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fece79c64edeed22b319fd1fe825c09b5dad896b186eb4395ec9c5b35f629613"
+checksum = "be23182da2db75e5d33633c01880f8b1818e5fba83553e9dac35d98326be7c45"
 dependencies = [
  "cc",
  "copy_dir",
@@ -2628,14 +2628,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "quickjspp"
-version = "0.6.0-rc.1"
+name = "quickjs-rusty"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2475298ca3670f771035bfddf5655c2a52811a4d84bf409200f8257d1a91c2f9"
+checksum = "93db3f1993e9374d51cc67d16d3f5d40404a28996daad6418b21b11924d86f5c"
 dependencies = [
  "anyhow",
  "chrono",
- "libquickjspp-sys",
+ "libquickjs-ng-sys",
  "num-bigint",
  "num-traits",
  "serde",

@@ -4,7 +4,7 @@ use hai_js_runtime::{prelude::*, *};
 #[cfg(not(feature = "web"))]
 use hai_macros::hai_bindgen;
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
-use hai_runtime::quickjspp::{JSContext, RawJSValue};
+use hai_runtime::quickjs_rusty::{JSContext, RawJSValue};
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::wasm_bindgen;
 

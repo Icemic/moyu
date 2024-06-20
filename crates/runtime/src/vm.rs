@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use hai_pal::env::entry_dir;
-use quickjspp::{Arguments, Context, ExecutionError, JsFunction, OwnedJsValue};
+use quickjs_rusty::{Arguments, Context, ExecutionError, JsFunction, OwnedJsValue};
 use std::sync::Mutex;
 use tokio::sync::oneshot::{Receiver, Sender};
 

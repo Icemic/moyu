@@ -18,7 +18,7 @@ impl<'a, 'b> JSValue<'a, 'b> {
 }
 
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
-use hai_runtime::quickjspp::{JSContext, OwnedJsValue};
+use hai_runtime::quickjs_rusty::{JSContext, OwnedJsValue};
 
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
 pub type JSValue = OwnedJsValue;
@@ -26,7 +26,7 @@ pub type JSValue = OwnedJsValue;
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
 pub fn from_js<'a, T: serde::Deserialize<'a>>(value: &'a JSValue) -> anyhow::Result<T> {
     use anyhow::format_err;
-    pub use hai_runtime::quickjspp::serde::from_js;
+    pub use hai_runtime::quickjs_rusty::serde::from_js;
 
     match from_js(value.context(), value) {
         Ok(v) => Ok(v),
@@ -61,7 +61,7 @@ pub fn to_js<T: serde::Serialize>(
     value: &T,
 ) -> anyhow::Result<OwnedJsValue> {
     use anyhow::format_err;
-    pub use hai_runtime::quickjspp::serde::to_js;
+    pub use hai_runtime::quickjs_rusty::serde::to_js;
 
     match to_js(context, &value) {
         Ok(v) => Ok(v),

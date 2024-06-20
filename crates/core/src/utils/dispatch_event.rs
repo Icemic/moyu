@@ -48,7 +48,7 @@ pub struct HaiEvent {
 
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 pub fn dispatch_event(event: HaiEvent) {
-    use hai_runtime::quickjspp::{owned, OwnedJsValue};
+    use hai_runtime::quickjs_rusty::{owned, OwnedJsValue};
 
     get_runtime_handle().spawn(async move {
         let vm = get_vm();
