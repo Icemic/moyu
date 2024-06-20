@@ -21,6 +21,6 @@ pub fn get_vm<'a>() -> &'a Arc<QuickVM> {
     unsafe { JSVM.get() }
 }
 
-pub mod quickjspp {
-    pub use quickjspp::*;
+pub mod quickjs_rusty {
+    pub use quickjs_rusty::*;
 }

@@ -1,5 +1,5 @@
-use quickjspp::console::Level;
-use quickjspp::OwnedJsValue;
+use quickjs_rusty::console::Level;
+use quickjs_rusty::OwnedJsValue;
 
 pub fn log_handler(level: Level, args: Vec<OwnedJsValue>) {
     let formatted_string = format_string(args);
