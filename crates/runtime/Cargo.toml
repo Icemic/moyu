@@ -4,7 +4,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "hai_runtime"
 repository = "https://github.com/Icemic/hai"
-version = "0.6.0"
+version = "0.7.0"
 
 [dependencies]
 log = "0.4"
@@ -12,7 +12,7 @@ quickjs-rusty = "0.6.0"
 spin_sleep = "1.1"
 tokio = {version = "1", features = ["time", "sync"]}
 
-hai_pal = {version = "0.6", path = "../platform"}
+hai_pal = {version = "0.7", path = "../platform"}
 
 [dev-dependencies]
 env_logger = {version = "0.11"}
