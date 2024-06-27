@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "hai_audio"
 repository = "https://github.com/Icemic/hai"
-version = "0.6.0"
+version = "0.7.0"
 
 [features]
 default = ["quickjs"]
@@ -23,10 +23,10 @@ arc-swap = "1.6"
 
 [dependencies.hai_pal]
 path = "../platform"
-version = "0.6"
+version = "0.7"
 
 [dependencies.hai_core]
 default-features = false
 features = ["js_runtime"]
 path = "../core"
-version = "0.6"
+version = "0.7"

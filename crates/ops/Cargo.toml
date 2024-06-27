@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "hai_ops"
 repository = "https://github.com/Icemic/hai"
-version = "0.6.0"
+version = "0.7.0"
 
 [features]
 default = ["js_runtime", "quickjs"]
@@ -32,27 +32,27 @@ web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "Htm
 [dependencies.hai_macros]
 default-features = false
 path = "../macros"
-version = "0.4"
+version = "0.7"
 
 [dependencies.hai_pal]
 path = "../platform"
-version = "0.6"
+version = "0.7"
 
 [dependencies.hai_core]
 default-features = false
 path = "../core"
-version = "0.6"
+version = "0.7"
 
 [dependencies.hai_js_runtime]
 optional = true
 path = "../js_runtime"
-version = "0.6"
+version = "0.7"
 
 [dependencies.hai_runtime]
 optional = true
 path = "../runtime"
-version = "0.6"
+version = "0.7"
 
 [dependencies.hai_nodes]
 path = "../nodes"
-version = "0.6"
+version = "0.7"

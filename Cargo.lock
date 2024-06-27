@@ -1351,7 +1351,7 @@ dependencies = [
 
 [[package]]
 name = "hai"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "hai_audio",
  "hai_core",
@@ -1365,7 +1365,7 @@ dependencies = [
 
 [[package]]
 name = "hai_audio"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1378,7 +1378,7 @@ dependencies = [
 
 [[package]]
 name = "hai_core"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1408,7 +1408,7 @@ dependencies = [
 
 [[package]]
 name = "hai_js_runtime"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "futures",
@@ -1422,7 +1422,7 @@ dependencies = [
 
 [[package]]
 name = "hai_macros"
-version = "0.4.0"
+version = "0.7.0"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1432,7 +1432,7 @@ dependencies = [
 
 [[package]]
 name = "hai_nodes"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1450,7 +1450,7 @@ dependencies = [
 
 [[package]]
 name = "hai_ops"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "hai_core",
@@ -1467,7 +1467,7 @@ dependencies = [
 
 [[package]]
 name = "hai_pal"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",
@@ -1487,7 +1487,7 @@ dependencies = [
 
 [[package]]
 name = "hai_runtime"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "env_logger",
  "hai_pal",

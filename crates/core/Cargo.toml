@@ -5,7 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 name = "hai_core"
 repository = "https://github.com/Icemic/hai"
-version = "0.6.1"
+version = "0.7.0"
 
 [features]
 default = ["desktop", "js_runtime", "quickjs"]
@@ -58,18 +58,18 @@ huozi = {version = "0.5", optional = true}
 [dependencies.hai_js_runtime]
 optional = true
 path = "../js_runtime"
-version = "0.6"
+version = "0.7"
 
 [dependencies.hai_runtime]
 optional = true
 path = "../runtime"
-version = "0.6"
+version = "0.7"
 
 [dependencies.hai_pal]
 path = "../platform"
-version = "0.6"
+version = "0.7"
 
 [dependencies.hai_macros]
 default-features = false
 path = "../macros"
-version = "0.4"
+version = "0.7"
