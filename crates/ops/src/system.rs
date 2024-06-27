@@ -22,9 +22,7 @@ pub fn resize_window(
     factor: Option<f64>,
 ) -> Result<(), std::string::String> {
     let core = get_core();
-    core.event_proxy
-        .send_event(UserEvent::ResizeWindow(width, height, factor))
-        .unwrap();
+    core.send_event(UserEvent::ResizeWindow(width, height, factor));
     Ok(())
 }
 
@@ -32,9 +30,7 @@ pub fn resize_window(
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn set_idle() -> Result<(), std::string::String> {
     let core = get_core();
-    core.event_proxy
-        .send_event(UserEvent::WindowState(WindowState::Idle))
-        .unwrap();
+    core.send_event(UserEvent::WindowState(WindowState::Idle));
     Ok(())
 }
 
@@ -42,9 +38,7 @@ pub fn set_idle() -> Result<(), std::string::String> {
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn set_fullscreen() -> Result<(), std::string::String> {
     let core = get_core();
-    core.event_proxy
-        .send_event(UserEvent::WindowState(WindowState::Fullscreen))
-        .unwrap();
+    core.send_event(UserEvent::WindowState(WindowState::Fullscreen));
     Ok(())
 }
 
@@ -52,9 +46,7 @@ pub fn set_fullscreen() -> Result<(), std::string::String> {
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn set_maximized() -> Result<(), std::string::String> {
     let core = get_core();
-    core.event_proxy
-        .send_event(UserEvent::WindowState(WindowState::Maximized))
-        .unwrap();
+    core.send_event(UserEvent::WindowState(WindowState::Maximized));
     Ok(())
 }
 
@@ -62,9 +54,7 @@ pub fn set_maximized() -> Result<(), std::string::String> {
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn set_minimized() -> Result<(), std::string::String> {
     let core = get_core();
-    core.event_proxy
-        .send_event(UserEvent::WindowState(WindowState::Minimized))
-        .unwrap();
+    core.send_event(UserEvent::WindowState(WindowState::Minimized));
     Ok(())
 }
 
@@ -72,7 +62,7 @@ pub fn set_minimized() -> Result<(), std::string::String> {
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn quit() -> Result<(), std::string::String> {
     let core = get_core();
-    core.event_proxy.send_event(UserEvent::Quit).unwrap();
+    core.send_event(UserEvent::Quit);
     Ok(())
 }
 

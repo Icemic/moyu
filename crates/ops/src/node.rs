@@ -46,8 +46,7 @@ pub fn create_instance(
     mut props: JSValue,
 ) -> Result<u32, std::string::String> {
     let core = get_core();
-    let node_map = core.node_map.clone();
-    let mut node_map = node_map.write();
+    let mut node_map = core.node_map().write();
 
     let label = label.unwrap_or_default();
 
@@ -100,7 +99,7 @@ pub fn create_instance(
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn destroy_instance(node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
-    let mut node_map = core.node_map.write();
+    let mut node_map = core.node_map().write();
 
     destroy_instance_recursive(&mut node_map, node_id)?;
 
@@ -140,8 +139,7 @@ fn destroy_instance_recursive(
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map.clone();
-    let node_map = node_map.read();
+    let node_map = core.node_map().read();
 
     let node = get_node(&node_map, node_id)?;
     let child_node = get_node(&node_map, child_node_id)?;
@@ -162,8 +160,7 @@ pub fn insert_child(
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map.clone();
-    let node_map = node_map.read();
+    let node_map = core.node_map().read();
 
     let node = get_node(&node_map, node_id)?;
     let child_node = get_node(&node_map, child_node_id)?;
@@ -184,8 +181,7 @@ pub fn insert_child_before(
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map.clone();
-    let node_map = node_map.read();
+    let node_map = core.node_map().read();
 
     let node = get_node(&node_map, node_id)?;
     let before_node = get_node(&node_map, before_node_id)?;
@@ -204,8 +200,7 @@ pub fn insert_child_before(
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map.clone();
-    let node_map = node_map.read();
+    let node_map = core.node_map().read();
 
     let node = get_node(&node_map, node_id)?;
     let child_node = get_node(&node_map, child_node_id)?;
@@ -222,8 +217,7 @@ pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string:
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map.clone();
-    let node_map = node_map.read();
+    let node_map = core.node_map().read();
 
     let node = get_node(&node_map, node_id)?;
 
@@ -240,7 +234,7 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
     let node_map = {
         let core = get_core();
 
-        core.node_map.clone()
+        core.node_map()
     };
     let node_map = node_map.read();
     let node = get_node(&node_map, node_id)?;
@@ -255,8 +249,7 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
 // #[cfg_attr(not(feature = "web"), hai_bindgen)]
 // pub fn get_translate(node_id: u32) -> Result<[f64; 2], std::string::String> {
 //     let core = get_core();
-//     let node_map = core.node_map.clone();
-//     let node_map = node_map.read();
+// //     let node_map = core.node_map().read();
 
 //     let node = get_node(&node_map, node_id)?;
 //     let node = node.write();
@@ -270,9 +263,7 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
 #[cfg_attr(not(feature = "web"), hai_bindgen)]
 pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map.clone();
-
-    let node_map = node_map.read();
+    let node_map = core.node_map().read();
     let node = get_node(&node_map, node_id)?;
     let mut node = node.write();
 
