@@ -60,10 +60,10 @@ pub type AfterRenderHandler = Box<
 >;
 
 pub struct Core {
-    pub config: Arc<Mutex<SurfaceConfiguration>>,
-    pub event_proxy: Arc<EventLoopProxy<UserEvent>>,
-    pub resource_manager: Arc<ResourceManager>,
-    pub renderers: Arc<Mutex<HashMap<String, Box<dyn Renderer>>>>,
+    pub(crate) config: Arc<Mutex<SurfaceConfiguration>>,
+    pub(crate) event_proxy: Arc<EventLoopProxy<UserEvent>>,
+    pub(crate) resource_manager: Arc<ResourceManager>,
+    pub(crate) renderers: Arc<Mutex<HashMap<String, Box<dyn Renderer>>>>,
 
     plugins: Arc<Mutex<HashMap<String, Arc<Mutex<dyn Plugin>>>>>,
 
@@ -78,31 +78,31 @@ pub struct Core {
     /// time elapsed since last frame, in microseconds
     instant_last: ArcSwap<Instant>,
 
-    pub root_node: Arc<RwLock<dyn Node>>,
-    pub last_focused_position: ArcSwapOption<PhysicalPosition<f64>>,
-    pub last_focused_node: Arc<RwLock<Option<HitTestResult>>>,
-    pub mouse_down_id: AtomicU32,
-    pub node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
+    pub(crate) root_node: Arc<RwLock<dyn Node>>,
+    pub(crate) last_focused_position: ArcSwapOption<PhysicalPosition<f64>>,
+    pub(crate) last_focused_node: Arc<RwLock<Option<HitTestResult>>>,
+    pub(crate) mouse_down_id: AtomicU32,
+    pub(crate) node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
 
-    pub window_state: ArcSwap<WindowState>,
+    pub(crate) window_state: ArcSwap<WindowState>,
 
     /// redraw mode, default is `Auto`
-    pub redraw_mode: ArcSwap<HaiRedrawMode>,
+    pub(crate) redraw_mode: ArcSwap<HaiRedrawMode>,
     /// if `true`, the screen will be refreshed in next frame,
     /// by default it will be `true` to render every frame.
-    pub is_dirty: AtomicBool,
+    pub(crate) is_dirty: AtomicBool,
 
     // render interrupt handler
-    pub after_render_handler: Arc<Mutex<Option<AfterRenderHandler>>>,
+    pub(crate) after_render_handler: Arc<Mutex<Option<AfterRenderHandler>>>,
 
     // To avoid memory leak, we must put these at bottom to make sure [Device] is dropped last.
     // see: https://github.com/gfx-rs/wgpu/issues/5529
-    pub queue: Arc<Queue>,
-    pub device: Arc<Device>,
-    pub surface_size: Arc<RwLock<SurfaceSize>>,
-    pub surface: Arc<Surface<'static>>,
-    pub window: Arc<Window>,
-    pub instance: Arc<Instance>,
+    pub(crate) queue: Arc<Queue>,
+    pub(crate) device: Arc<Device>,
+    pub(crate) surface_size: Arc<RwLock<SurfaceSize>>,
+    pub(crate) surface: Arc<Surface<'static>>,
+    pub(crate) window: Arc<Window>,
+    pub(crate) instance: Arc<Instance>,
 }
 
 impl Drop for Core {
@@ -236,6 +236,18 @@ impl Core {
         );
     }
 
+    /// Get device of wgpu. This is useful when you need to do some low-level operations.
+    /// However, it may break the encapsulation of the framework, so use it with caution.
+    pub fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
+
+    /// Get queue of wgpu. This is useful when you need to do some low-level operations.
+    /// However, it may break the encapsulation of the framework, so use it with caution.
+    pub fn queue(&self) -> &Arc<Queue> {
+        &self.queue
+    }
+
     /// reset surface
     pub fn refresh(&self) {
         let config = self.config.lock();
@@ -298,6 +310,32 @@ impl Core {
         self.instance.poll_all(true);
         // apply new size
         self.surface.configure(&self.device, &config);
+    }
+
+    /// get whole node map
+    pub fn node_map(&self) -> &Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>> {
+        &self.node_map
+    }
+
+    /// get root node
+    pub fn root_node(&self) -> &Arc<RwLock<dyn Node>> {
+        &self.root_node
+    }
+
+    pub fn resource_manager(&self) -> &Arc<ResourceManager> {
+        &self.resource_manager
+    }
+
+    /// dispatch user event
+    pub fn send_event(&self, event: UserEvent) {
+        if let Err(err) = self.event_proxy.send_event(event) {
+            error!("Failed to send event: {:?}", err);
+        }
+    }
+
+    /// get current surface size
+    pub fn surface_size(&self) -> SurfaceSize {
+        self.surface_size.read().clone()
     }
 
     pub fn fullscreen(&self) -> bool {
@@ -363,6 +401,17 @@ impl Core {
         }
 
         self.window_state.store(Arc::new(state));
+    }
+
+    pub fn set_fullscreen_with_monitor(&self, monitor: Option<winit::monitor::MonitorHandle>) {
+        self.window
+            .set_fullscreen(Some(Fullscreen::Borderless(monitor)));
+        self.window_state.store(Arc::new(WindowState::Fullscreen));
+    }
+
+    /// force clear render queue in case of unexpected error (for example, memory leak).
+    pub fn clear_queue(&self) {
+        self.queue.submit(vec![]);
     }
 
     #[inline(always)]
