@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use hai_pal::env::entry_dir;
-use quickjs_rusty::{Arguments, Context, ExecutionError, JsFunction, OwnedJsValue};
+use quickjs_rusty::{Arguments, Context, ExecutionError, JsFunction, OwnedJsPromise, OwnedJsValue};
 use std::sync::Mutex;
 use tokio::sync::oneshot::{Receiver, Sender};
 
@@ -20,6 +20,7 @@ pub struct QuickVM {
     timer_tasks: Arc<Mutex<Vec<Rc<TimerTask>>>>,
     instant: Instant,
     call_tasks: Arc<Mutex<VecDeque<(String, Vec<OwnedJsValue>, Sender<()>)>>>,
+    to_be_closed: bool,
 }
 
 unsafe impl Send for QuickVM {}
@@ -142,6 +143,7 @@ impl QuickVM {
             timer_tasks,
             instant,
             call_tasks: Arc::new(Mutex::new(VecDeque::new())),
+            to_be_closed: false,
         }
     }
 
@@ -178,8 +180,14 @@ impl QuickVM {
     }
 
     /// Tick the VM, executing all pending timers
-    pub fn block_on_ticking(&self) -> ! {
+    pub fn block_on_ticking(&self) {
         loop {
+            {
+                if self.to_be_closed {
+                    break;
+                }
+            }
+
             // handle all pending calls
             let mut call_tasks = self.call_tasks.lock().unwrap();
             while let Some((name, args, sender)) = call_tasks.pop_front() {
@@ -247,6 +255,7 @@ impl Drop for QuickVM {
     fn drop(&mut self) {
         // clear all timer tasks before dropping the vm
         // or memory will leak
+        self.to_be_closed = true;
         self.timer_tasks.lock().unwrap().clear();
         self.call_tasks.lock().unwrap().clear();
     }
