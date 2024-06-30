@@ -7,8 +7,6 @@ use hai_core::core::Core;
 pub type SpawnRuntimeCallback =
     Box<dyn (FnOnce() -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>) + Send + Sync>;
 
-
-
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
@@ -16,9 +14,6 @@ pub fn spawn_runtime_with_core(
     _core: &Arc<Core>,
     spawn_callback: Option<SpawnRuntimeCallback>,
 ) -> hai_pal::visible_hand::VisibleHand<Arc<hai_runtime::QuickVM>> {
-    // desktop targets only
-    // spawn a v8 thread
-
     use hai_runtime::{get_vm, setup_vm};
     use log::error;
 
