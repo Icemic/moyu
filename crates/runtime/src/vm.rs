@@ -242,3 +242,12 @@ impl QuickVM {
         }
     }
 }
+
+impl Drop for QuickVM {
+    fn drop(&mut self) {
+        // clear all timer tasks before dropping the vm
+        // or memory will leak
+        self.timer_tasks.lock().unwrap().clear();
+        self.call_tasks.lock().unwrap().clear();
+    }
+}
