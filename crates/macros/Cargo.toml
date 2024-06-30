@@ -13,7 +13,6 @@ proc-macro = true
 [features]
 default = []
 quickjs = []
-v8 = []
 
 [dependencies]
 darling = "0.20"

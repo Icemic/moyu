@@ -2,7 +2,7 @@ mod bindgen;
 
 use proc_macro::TokenStream;
 
-#[cfg(any(feature = "quickjs", feature = "v8"))]
+#[cfg(feature = "quickjs")]
 #[proc_macro_attribute]
 pub fn hai_bindgen(args: TokenStream, func_body: TokenStream) -> TokenStream {
     bindgen::entry(args, func_body)
