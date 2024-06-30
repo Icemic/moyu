@@ -160,7 +160,7 @@ impl QuickVM {
         receiver
     }
 
-    pub fn prepare_entry(&self) -> Result<(), ExecutionError> {
+    pub fn prepare_entry(&self) -> Result<OwnedJsPromise, ExecutionError> {
         let module_name = {
             let entry_dir = entry_dir();
 
@@ -172,7 +172,9 @@ impl QuickVM {
             }
         };
 
-        self.context.run_module(&module_name)
+        let promise = self.context.run_module(&module_name)?;
+
+        Ok(promise)
     }
 
     /// Tick the VM, executing all pending timers
