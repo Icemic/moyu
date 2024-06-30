@@ -49,22 +49,24 @@ pub struct HaiEvent {
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 pub fn dispatch_event(event: HaiEvent) {
     use hai_runtime::quickjs_rusty::{owned, OwnedJsValue};
+    use hai_runtime::try_get_vm;
 
     get_runtime_handle().spawn(async move {
-        let vm = get_vm();
-        let context = vm.context().context_raw();
-        if let Err(err) = get_vm()
-            .call_function(
-                "__hai_receive_event",
-                vec![
-                    owned!(context, format!("{:?}", event.kind)),
-                    owned!(context, event.target_id),
-                    owned!(context, event.bubble_target_ids),
-                ],
-            )
-            .await
-        {
-            error!("failed to dispatch event: {:?}", err);
+        if let Some(vm) = try_get_vm() {
+            let context = vm.context().context_raw();
+            if let Err(err) = vm
+                .call_function(
+                    "__hai_receive_event",
+                    vec![
+                        owned!(context, format!("{:?}", event.kind)),
+                        owned!(context, event.target_id),
+                        owned!(context, event.bubble_target_ids),
+                    ],
+                )
+                .await
+            {
+                error!("failed to dispatch event: {:?}", err);
+            }
         }
     });
 }
