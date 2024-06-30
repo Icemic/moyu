@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 use anyhow::Result;
+use log::debug;
 
 /// A holder for global variables that release resources when dropped.
 pub struct InvisibleHand<T> {
@@ -25,6 +26,10 @@ impl<T> InvisibleHand<T> {
         self.once_lock.get().expect("Resource not initialized")
     }
 
+    pub fn try_get(&self) -> Option<&T> {
+        self.once_lock.get()
+    }
+
     pub fn intervent(&'static mut self) -> VisibleHand<T> {
         VisibleHand {
             once_lock: &mut self.once_lock,
@@ -38,6 +43,10 @@ pub struct VisibleHand<T: 'static> {
 
 impl<T> Drop for VisibleHand<T> {
     fn drop(&mut self) {
+        debug!(
+            "dropping global variable of type: {}",
+            std::any::type_name::<T>()
+        );
         let _ = self.once_lock.take();
     }
 }
