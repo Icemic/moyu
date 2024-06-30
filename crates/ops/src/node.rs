@@ -1,6 +1,4 @@
 use anyhow::Result;
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
-use hai_js_runtime::{prelude::*, *};
 #[cfg(not(feature = "web"))]
 use hai_macros::hai_bindgen;
 use hai_pal::sync::{RwLock, RwLockReadGuard};

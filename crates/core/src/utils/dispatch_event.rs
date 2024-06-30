@@ -3,11 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use hai_pal::task::get_runtime_handle;
 
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
-use hai_js_runtime::get_vm;
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
-use hai_runtime::get_vm;
-
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "kind")]
 pub enum HaiEventKind {
@@ -69,9 +64,4 @@ pub fn dispatch_event(event: HaiEvent) {
             }
         }
     });
-}
-
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
-pub fn dispatch_event(_: HaiEvent) {
-    log::error!("dispatch_event is not implemented for v8 runtime, nothing will happen");
 }

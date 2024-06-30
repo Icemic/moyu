@@ -3,7 +3,6 @@ default-members = ["crates/hai"]
 members = [
   "crates/hai",
   "crates/core",
-  "crates/js_runtime",
   "crates/runtime",
   "crates/platform",
   "crates/macros",
