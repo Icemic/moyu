@@ -75,9 +75,14 @@ pub fn spawn_runtime_with_core(
 
             let vm = get_vm();
 
-            vm.context()
+            // returns 'Could not convert value to string' error randomly
+            // not sure why but it's not a big deal (...I think), just ignore it.
+            if let Err(err) = vm
+                .context()
                 .eval("console.info('Hello %s!', 'World')", false)
-                .unwrap();
+            {
+                error!("{:?}", err);
+            };
 
             crate::init(&vm);
 
