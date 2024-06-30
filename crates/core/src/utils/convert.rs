@@ -1,21 +1,5 @@
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "v8"))]
-use hai_js_runtime::v8::{HandleScope, Local, Value};
-
 #[cfg(feature = "web")]
 pub type JSValue = wasm_bindgen::JsValue;
-
-#[cfg(all(not(feature = "web"), feature = "v8"))]
-pub struct JSValue<'a, 'b> {
-    pub scope: &'b mut HandleScope<'a>,
-    pub value: Local<'b, Value>,
-}
-
-#[cfg(all(not(feature = "web"), feature = "v8"))]
-impl<'a, 'b> JSValue<'a, 'b> {
-    pub fn new(scope: &'b mut HandleScope<'a>, value: Local<'b, Value>) -> Self {
-        Self { scope, value }
-    }
-}
 
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
 use hai_runtime::quickjs_rusty::{JSContext, OwnedJsValue};
@@ -31,20 +15,6 @@ pub fn from_js<'a, T: serde::Deserialize<'a>>(value: &'a JSValue) -> anyhow::Res
     match from_js(value.context(), value) {
         Ok(v) => Ok(v),
         Err(err) => Err(format_err!(err.to_string())),
-    }
-}
-
-#[cfg(all(not(feature = "web"), feature = "v8"))]
-pub fn from_js<'a, 'b, T: serde::Deserialize<'a>>(
-    value: &mut JSValue<'a, 'b>,
-) -> anyhow::Result<T> {
-    use anyhow::format_err;
-    use hai_js_runtime::serde_v8;
-
-    match serde_v8::from_v8(value.scope, value.value) {
-        Ok(v) => Ok(v),
-        Err(serde_v8::Error::Message(msg)) => Err(format_err!(msg)),
-        Err(err) => Err(format_err!(err)),
     }
 }
 
@@ -66,21 +36,6 @@ pub fn to_js<T: serde::Serialize>(
     match to_js(context, &value) {
         Ok(v) => Ok(v),
         Err(err) => Err(format_err!(err.to_string())),
-    }
-}
-
-#[cfg(all(not(feature = "web"), feature = "v8"))]
-pub fn to_js<'a, 'b, T: serde::Serialize>(
-    scope: &'b mut HandleScope<'a>,
-    value: &T,
-) -> anyhow::Result<Local<'b, Value>> {
-    use anyhow::format_err;
-    use hai_js_runtime::serde_v8;
-
-    match serde_v8::to_v8(scope, value) {
-        Ok(v) => Ok(v),
-        Err(serde_v8::Error::Message(msg)) => Err(format_err!(msg)),
-        Err(err) => Err(format_err!(err)),
     }
 }
 

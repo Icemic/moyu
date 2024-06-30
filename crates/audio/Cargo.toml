@@ -10,7 +10,6 @@ version = "0.7.0"
 [features]
 default = ["quickjs"]
 quickjs = ["hai_core/quickjs"]
-v8 = ["hai_core/v8"]
 
 [dependencies]
 anyhow = "1.0"
