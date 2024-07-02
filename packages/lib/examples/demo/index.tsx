@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 
-import { createRoot, useTransition } from '../../src/lib';
+import { createRoot, hai, useTransition } from '../../src/lib';
 import { ListButton } from './components/list-button';
 import { TextWindow } from './components/textwindow';
 import { Dialog } from './components/dialog';
@@ -38,6 +38,43 @@ function App() {
     console.info('点击了', yes ? '确定' : '取消');
     setShowDialog(false);
   };
+
+  useEffect(() => {
+    try {
+      void (
+        hai.executePluginCommand('audio', {
+          subCommand: 'load',
+          name: 'test',
+          src: 'audio/test.ogg',
+          autoPlay: false,
+        }) as Promise<void>
+      )
+        .then(() => console.log('audio loaded'))
+        .then(() => {
+          console.log('audio loaded');
+
+          hai.executePluginCommand('audio', {
+            subCommand: 'play',
+            name: 'test',
+          });
+
+          // setTimeout(() => {
+          //   hai.executePluginCommand('audio', {
+          //     subCommand: 'release',
+          //     name: 'test',
+          //   });
+          // }, 10000);
+
+          hai.executePluginCommand('audio', {
+            subCommand: 'setPanning',
+            name: 'test',
+            panning: 0,
+          });
+        });
+    } catch (error) {
+      console.error('audio command error:', error.message);
+    }
+  }, []);
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback} onError={logError}>
