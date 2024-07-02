@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
+use hai_pal::task::get_runtime_handle;
 use kira::manager::backend::DefaultBackend;
 use kira::manager::AudioManagerSettings;
 use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
@@ -10,10 +11,9 @@ use serde::{Deserialize, Serialize};
 
 use hai_core::traits::Command;
 use hai_core::traits::Plugin;
-use hai_core::utils::convert::{from_js, JSValue};
+use hai_core::utils::convert::{create_promise, from_js, JSValue};
 use hai_pal::env::entry_dir;
 use hai_pal::sync::Mutex;
-use hai_pal::task::get_runtime_handle;
 
 use crate::audio::{Audio, AudioLoadingState};
 
@@ -51,7 +51,12 @@ impl AudioManager {
         }
     }
 
-    pub fn load_audio(&mut self, name: &str, src: &str, auto_play: bool) -> Result<()> {
+    pub fn load_audio(
+        &mut self,
+        name: &str,
+        src: &str,
+        auto_play: bool,
+    ) -> hai_pal::task::JoinHandle<Result<()>> {
         debug!("audio will load from {}", src);
 
         let audio = self.get_audio(name).unwrap();
@@ -65,7 +70,7 @@ impl AudioManager {
                 Err(e) => {
                     log::error!("Failed to open file: {}", e);
                     audio.lock().loading_state = AudioLoadingState::Failed;
-                    return;
+                    return Err(e);
                 }
             };
 
@@ -74,7 +79,7 @@ impl AudioManager {
                 Err(e) => {
                     log::error!("Failed to create sound data: {}", e);
                     audio.lock().loading_state = AudioLoadingState::Failed;
-                    return;
+                    return Err(e.into());
                 }
             };
 
@@ -83,7 +88,7 @@ impl AudioManager {
                 Err(e) => {
                     log::error!("Failed to play sound: {}", e);
                     audio.lock().loading_state = AudioLoadingState::Failed;
-                    return;
+                    return Err(e.into());
                 }
             };
 
@@ -96,9 +101,9 @@ impl AudioManager {
             if !auto_play {
                 audio.stop().unwrap();
             }
-        });
 
-        Ok(())
+            Ok(())
+        })
     }
 
     pub fn get_audio(&self, name: &str) -> Option<Arc<Mutex<Audio>>> {
@@ -187,7 +192,10 @@ impl Command for AudioManager {
                 auto_play,
             } => {
                 self.create_audio(&name);
-                self.load_audio(&name, &src, auto_play.unwrap_or(false))?;
+                let fut = self.load_audio(&name, &src, auto_play.unwrap_or(false));
+                let promise = create_promise(async move { fut.await? })?;
+                let promise = promise.into_value();
+                return Ok(Some(promise));
             }
             AudioCommmad::Release { name } => {
                 self.remove_audio(&name);
