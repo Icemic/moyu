@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase", tag = "kind")]
 pub enum HaiEventKind {
     MouseEnter,
     MouseLeave,
