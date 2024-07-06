@@ -312,7 +312,7 @@ impl Command for Text {
                 self.base_mut().pend_update();
             }
             TextCommmad::GetCursorPos => {
-                return Ok(Some(to_js(_payload, &[11, 22])?));
+                return Ok(Some(to_js(&[11, 22])?));
             }
         }
 

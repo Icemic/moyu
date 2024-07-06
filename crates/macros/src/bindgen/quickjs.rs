@@ -90,15 +90,33 @@ pub fn entry(_args: TokenStream, func_body: TokenStream) -> TokenStream {
         if let Type::Path(t) = &*ty {
             let name = get_type_string(&ty);
 
-            if name.starts_with("Result<") {
-                if !name.starts_with("Result<()") {
+            if name.starts_with("Result<") || name.starts_with("anyhow::Result<") {
+                if !name.starts_with("Result<()") && !name.starts_with("anyhow::Result<()") {
                     let return_type = &t.path.segments[0];
                     if let PathArguments::AngleBracketed(a) = &return_type.arguments {
                         let result_ok_type = a.args[0].to_token_stream();
-                        return_block = quote! {
-                            let ret = to_js::<#result_ok_type>(__context, &ret)?;
-                            Ok(Some(unsafe { ret.extract() }))
-                        };
+                        let result_ok_type_name = result_ok_type.to_string();
+                        match result_ok_type_name.replace(" ", "").as_str() {
+                            "JSValue" => {
+                                return_block = quote! {
+                                    Ok(Some(unsafe { ret.extract() }))
+                                };
+                            }
+                            "Option<JSValue>" => {
+                                return_block = quote! {
+                                    match ret {
+                                        Some(v) => Ok(Some(unsafe { v.extract() })),
+                                        None => Ok(None::<RawJSValue>),
+                                    }
+                                };
+                            }
+                            _ => {
+                                return_block = quote! {
+                                    let ret = to_js::<#result_ok_type>(&ret)?;
+                                    Ok(Some(unsafe { ret.extract() }))
+                                };
+                            }
+                        }
                     }
                 } else {
                     return_block = quote! { Ok(None::<RawJSValue>) };

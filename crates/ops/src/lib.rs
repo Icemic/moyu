@@ -2,13 +2,15 @@ mod node;
 pub mod spawn;
 mod system;
 
+use hai_core::utils::convert::JSValue;
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 use hai_runtime::{
     quickjs_rusty::{JSContext, RawJSValue},
     QuickVM,
 };
+#[cfg(feature = "web")]
+use wasm_bindgen::prelude::wasm_bindgen;
 
-#[cfg(not(feature = "web"))]
 use self::{node::*, system::*};
 
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
@@ -65,7 +67,7 @@ fn receive_command(
         let command_args = JSValue::own(context, &args[1]);
         OwnedJsArray::try_from_value(command_args)?.raw_elements()
     };
-    let command_args = &command_args;
+    let command_args = command_args.as_slice();
 
     // info!("command_name: {}", command_name);
 
@@ -95,9 +97,6 @@ fn execute_node_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use anyhow::anyhow;
-
-    use hai_core::core::get_core;
     use hai_core::utils::convert::from_js;
     use hai_core::utils::convert::JSValue;
 
@@ -105,6 +104,26 @@ fn execute_node_command(
     let node_id: u32 = from_js(&node_id)?;
 
     let mut payload = JSValue::own(context, &args[1]);
+
+    execute_node_command_inner(node_id, &mut payload).map(|v| v.map(|v| unsafe { v.extract() }))
+}
+
+#[cfg(feature = "web")]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+pub fn execute_node_command(
+    node_id: u32,
+    mut payload: JSValue,
+) -> Result<Option<JSValue>, std::string::String> {
+    execute_node_command_inner(node_id, &mut payload).map_err(|e| e.to_string())
+}
+
+#[inline]
+fn execute_node_command_inner(
+    node_id: u32,
+    payload: &mut JSValue,
+) -> anyhow::Result<Option<JSValue>> {
+    use anyhow::anyhow;
+    use hai_core::core::get_core;
 
     if payload.is_object() {
         let core = get_core();
@@ -114,13 +133,11 @@ fn execute_node_command(
         let mut node = node.write();
 
         if let Some(node) = node.as_command() {
-            node.execute(&mut payload)
-                .map(|v| v.map(|v| unsafe { v.extract() }))
-                .map_err(|e| {
-                    let err = anyhow!(e);
-                    log::error!("Error executing node command: {:?}", err);
-                    err
-                })
+            node.execute(payload).map_err(|e| {
+                let err = anyhow!(e);
+                log::error!("Error executing node command: {:?}", err);
+                err
+            })
         } else {
             Err(anyhow!(
                 "Node id {} of type `{}` does not implement Command",
@@ -138,9 +155,6 @@ fn execute_plugin_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use anyhow::anyhow;
-
-    use hai_core::core::get_core;
     use hai_core::utils::convert::from_js;
     use hai_core::utils::convert::JSValue;
 
@@ -148,6 +162,27 @@ fn execute_plugin_command(
     let plugin_name: &str = from_js(&plugin_name)?;
 
     let mut payload = JSValue::own(context, &args[1]);
+
+    execute_plugin_command_inner(plugin_name, &mut payload)
+        .map(|v| v.map(|v| unsafe { v.extract() }))
+}
+
+#[cfg(feature = "web")]
+#[cfg_attr(feature = "web", wasm_bindgen)]
+pub fn execute_plugin_command(
+    plugin_name: &str,
+    mut payload: JSValue,
+) -> Result<Option<JSValue>, std::string::String> {
+    execute_plugin_command_inner(plugin_name, &mut payload).map_err(|e| e.to_string())
+}
+
+#[inline]
+fn execute_plugin_command_inner(
+    plugin_name: &str,
+    payload: &mut JSValue,
+) -> anyhow::Result<Option<JSValue>> {
+    use anyhow::anyhow;
+    use hai_core::core::get_core;
 
     if payload.is_object() {
         let core = get_core();
@@ -159,14 +194,11 @@ fn execute_plugin_command(
         let mut plugin = plugin.lock();
 
         if let Some(plugin) = plugin.as_command() {
-            plugin
-                .execute(&mut payload)
-                .map(|v| v.map(|v| unsafe { v.extract() }))
-                .map_err(|e| {
-                    let err = anyhow!(e);
-                    log::error!("Error executing plugin command: {:?}", err);
-                    err
-                })
+            plugin.execute(payload).map_err(|e| {
+                let err = anyhow!(e);
+                log::error!("Error executing plugin command: {:?}", err);
+                err
+            })
         } else {
             log::warn!("Plugin `{}` does not implement Command", plugin_name);
             Err(anyhow!(

@@ -91,7 +91,7 @@ pub fn entry_dir() -> Url {
 
 #[cfg(not(feature = "web"))]
 fn get_entry_dir_local(entry_dir: &String) -> Url {
-    let local_path = env::current_dir().unwrap();
+    let local_path = std::env::current_dir().unwrap();
     let local_path = local_path.join(entry_dir);
     if local_path.is_file() {
         Url::from_file_path(&local_path).unwrap()
