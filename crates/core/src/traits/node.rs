@@ -5,7 +5,6 @@ use crate::utils::convert::JSValue;
 
 use super::Command;
 use super::Focusable;
-use super::ThreadFeature;
 
 pub trait Node: NodeBaseTrait + Debug {
     /// node type identifier
@@ -46,5 +45,3 @@ impl PartialEq for dyn Node {
         self.base().id() == other.base().id()
     }
 }
-
-impl ThreadFeature for dyn Node {}
