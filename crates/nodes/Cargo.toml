@@ -8,12 +8,14 @@ repository = "https://github.com/Icemic/hai"
 version = "0.7.0"
 
 [features]
-default = ["js_runtime", "quickjs", "text"]
+default = []
+desktop = ["hai_core/quickjs", "hai_pal/desktop"]
 js_runtime = ["hai_core/js_runtime"]
 quickjs = ["hai_core/quickjs"]
+web = ["hai_core/web", "hai_pal/web"]
+
 text = ["dep:huozi", "dep:glam"]
 video = ["dep:ffmpeg-rs"]
-web = []
 yuv_sprite = []
 
 [dependencies]

@@ -8,8 +8,9 @@ repository = "https://github.com/Icemic/hai"
 version = "0.7.0"
 
 [features]
-default = ["quickjs"]
-quickjs = ["hai_core/quickjs"]
+default = []
+desktop = []
+web = []
 
 [dependencies]
 anyhow = "1.0"
