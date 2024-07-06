@@ -27,6 +27,7 @@ struct Args {
     example: bool,
     name: String,
     features: Option<String>,
+    no_default_features: bool,
     host: Option<String>,
     port: Option<String>,
 }
@@ -38,6 +39,7 @@ impl Args {
         let example = args.contains("--example");
 
         let features: Option<String> = args.opt_value_from_str("--features").unwrap();
+        let no_default_features = args.contains("--no-default-features");
         let host: Option<String> = args.opt_value_from_str("--host").unwrap();
         let port: Option<String> = args.opt_value_from_str("--port").unwrap();
 
@@ -60,6 +62,7 @@ impl Args {
                 example,
                 name: unused_args.remove(0),
                 features,
+                no_default_features,
                 host,
                 port,
             }),
@@ -121,6 +124,9 @@ pub fn run_wasm() {
     }
     if let Some(features) = &args.features {
         cargo_args.extend(["--features", features]);
+    }
+    if args.no_default_features {
+        cargo_args.push("--no-default-features");
     }
     if args.release {
         cargo_args.push("--release");
