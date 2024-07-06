@@ -562,9 +562,9 @@ checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
 name = "chrono"
-version = "0.4.37"
+version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a0d04d43504c61aa6c7531f1871dd0d418d91130162063b789da00fd7057a5e"
+checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
@@ -985,9 +985,9 @@ checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 
 [[package]]
 name = "fastrand"
-version = "2.0.2"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "658bd65b1cf4c852a3cc96f18a8ce7b5640f6b703f905c7d74532294c2a63984"
+checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
 
 [[package]]
 name = "fdeflate"
@@ -1332,6 +1332,8 @@ dependencies = [
  "log",
  "spin_sleep",
  "tokio",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -1371,6 +1373,7 @@ dependencies = [
  "serde-wasm-bindgen",
  "tokio",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "wgpu",
  "winit",
@@ -1438,6 +1441,8 @@ dependencies = [
  "serde",
  "tokio",
  "url",
+ "wasm-bindgen-futures",
+ "web-time 1.1.0",
 ]
 
 [[package]]
@@ -1827,9 +1832,9 @@ dependencies = [
 
 [[package]]
 name = "js-sys"
-version = "0.3.69"
+version = "0.3.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29c15563dc2726973df627357ce0c9ddddbea194836909d655df6a75d2cf296d"
+checksum = "406cda4b368d531c842222cf9d2600a9a4acce8d29423695379c6868a143a9ee"
 dependencies = [
  "wasm-bindgen",
 ]
@@ -3740,8 +3745,7 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 [[package]]
 name = "wasm-bindgen"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4be2531df63900aeb2bca0daaaddec08491ee64ceecbee5076636a3b026795a8"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "cfg-if",
  "wasm-bindgen-macro",
@@ -3750,8 +3754,7 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-backend"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "614d787b966d3989fa7bb98a654e369c762374fd3213d212cfc0251257e747da"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "bumpalo",
  "log",
@@ -3765,8 +3768,7 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-cli-support"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca821da8c1ae6c87c5e94493939a206daa8587caff227c6032e0061a3d80817f"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "anyhow",
  "base64",
@@ -3787,18 +3789,18 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-externref-xform"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "102582726b35a30d53157fbf8de3d0f0fed4c40c0c7951d69a034e9ef01da725"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "anyhow",
  "walrus",
+ "wasm-bindgen-wasm-conventions",
 ]
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.4.42"
+version = "0.4.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76bc14366121efc8dbb487ab05bcc9d346b3b5ec0eaa76e46594cabbe51762c0"
+checksum = "877b9c3f61ceea0e56331985743b13f3d25c406a7098d45180fb5f09bc19ed97"
 dependencies = [
  "cfg-if",
  "js-sys",
@@ -3809,8 +3811,7 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-macro"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1f8823de937b71b9460c0c34e25f3da88250760bec0ebac694b49997550d726"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -3819,8 +3820,7 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-macro-support"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e94f17b526d0a461a191c78ea52bbce64071ed5c04c9ffe424dcb38f74171bb7"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3832,24 +3832,22 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-multi-value-xform"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3498e4799f43523d780ceff498f04d882a8dbc9719c28020034822e5952f32a4"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "anyhow",
  "walrus",
+ "wasm-bindgen-wasm-conventions",
 ]
 
 [[package]]
 name = "wasm-bindgen-shared"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af190c94f2773fdb3729c55b007a722abb5384da03bc0986df4c289bf5567e96"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 
 [[package]]
 name = "wasm-bindgen-threads-xform"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d5add359b7f7d09a55299a9d29be54414264f2b8cf84f8c8fda5be9269b5dd9"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "anyhow",
  "walrus",
@@ -3859,18 +3857,18 @@ dependencies = [
 [[package]]
 name = "wasm-bindgen-wasm-conventions"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c04e3607b810e76768260db3a5f2e8beb477cb089ef8726da85c8eb9bd3b575"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "anyhow",
+ "leb128",
  "walrus",
+ "wasmparser",
 ]
 
 [[package]]
 name = "wasm-bindgen-wasm-interpreter"
 version = "0.2.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ea966593c8243a33eb4d643254eb97a69de04e89462f46cf6b4f506aae89b3a"
+source = "git+https://github.com/Icemic/wasm-bindgen?branch=option_jsvalue#c0bd5788790985ca7c5f2d17cd57936614181b5d"
 dependencies = [
  "anyhow",
  "log",
@@ -4004,9 +4002,9 @@ dependencies = [
 
 [[package]]
 name = "web-sys"
-version = "0.3.69"
+version = "0.3.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77afa9a11836342370f4817622a2f0f418b134426d91a82dfb48f532d2ec13ef"
+checksum = "96565907687f7aceb35bc5fc03770a8a0471d82e479f25832f54a0e3f4b28446"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -4017,6 +4015,16 @@ name = "web-time"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa30049b1c872b72c89866d458eae9f20380ab280ffd1b1e18df2d3e2d98cfe0"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-time"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",
@@ -4462,7 +4470,7 @@ dependencies = [
  "wayland-protocols",
  "wayland-protocols-plasma",
  "web-sys",
- "web-time",
+ "web-time 0.2.4",
  "windows-sys 0.48.0",
  "x11-dl",
  "x11rb",

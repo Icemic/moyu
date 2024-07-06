@@ -14,17 +14,36 @@ release = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["desktop"]
-desktop = ["hai_core/desktop", "hai_nodes/text", "hai_ops/text"]
-video = ["hai_core/video"]
+default = ["web", "text"]
+
+desktop = [
+  "hai_core/desktop",
+  "hai_nodes/desktop",
+  "hai_ops/desktop",
+  "hai_pal/desktop",
+  "hai_ops/js_runtime",
+  "hai_ops/quickjs",
+  "dep:tokio",
+]
 web = [
   "hai_core/web",
+  "hai_nodes/web",
+  "hai_ops/web",
+  "hai_pal/web",
+  "hai_ops/js_runtime",
+  "dep:wasm-bindgen",
+  "dep:web-sys",
 ]
+
+text = ["hai_nodes/text", "hai_ops/text"]
+video = ["hai_core/video"]
 
 [dependencies]
 log = "0.4"
 spin_sleep = "1.1"
-tokio = {version = "1", features = ["rt-multi-thread", "macros"]}
+tokio = {version = "1", features = ["rt-multi-thread", "macros"], optional = true}
+wasm-bindgen = {version = "0.2.83", default-features = false, optional = true}
+web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"], optional = true}
 
 [dependencies.hai_core]
 path = "../core"
