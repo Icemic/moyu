@@ -39,8 +39,9 @@ function App() {
     setShowDialog(false);
   };
 
-  useEffect(() => {
-    try {
+  const handleListButtonClick = (index: number) => {
+    if (index === 5) {
+      console.log('点击了项目6');
       void (
         hai.executePluginCommand('audio', {
           subCommand: 'load',
@@ -48,33 +49,22 @@ function App() {
           src: 'audio/test.ogg',
           autoPlay: false,
         }) as Promise<void>
-      )
-        .then(() => console.log('audio loaded'))
-        .then(() => {
-          console.log('audio loaded');
-
-          hai.executePluginCommand('audio', {
-            subCommand: 'play',
-            name: 'test',
-          });
-
-          // setTimeout(() => {
-          //   hai.executePluginCommand('audio', {
-          //     subCommand: 'release',
-          //     name: 'test',
-          //   });
-          // }, 10000);
-
-          hai.executePluginCommand('audio', {
-            subCommand: 'setPanning',
-            name: 'test',
-            panning: 0,
-          });
-        });
-    } catch (error) {
-      console.error('audio command error:', error.message);
+      ).then(() => {
+        console.log('audio loaded');
+      });
+    } else if (index === 6) {
+      console.log('点击了项目7');
+      void hai.executePluginCommand('audio', {
+        subCommand: 'setVolume',
+        name: 'test',
+        volume: 1.0,
+      });
+      void hai.executePluginCommand('audio', {
+        subCommand: 'play',
+        name: 'test',
+      });
     }
-  }, []);
+  };
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback} onError={logError}>
@@ -91,7 +81,13 @@ function App() {
         <container label="列表容器" x={0} y={0}>
           <sprite label="列表底纹" src="mask.png" scaleX={200} scaleY={420} />
           {transitions((style, { item, index }) => (
-            <ListButton style={style} label={`item-${index}`} title={item} index={index} />
+            <ListButton
+              style={style}
+              label={`item-${index}`}
+              title={item}
+              index={index}
+              onClick={handleListButtonClick}
+            />
           ))}
         </container>
       </container>
