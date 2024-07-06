@@ -1,13 +1,11 @@
 use arc_swap::{ArcSwap, ArcSwapOption};
-use hai_pal::env::get_hai_env;
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
+use hai_pal::time::Instant;
 use hai_pal::visible_hand::{InvisibleHand, VisibleHand};
 use log::{debug, error, info, warn};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
-#[cfg(not(feature = "web"))]
-use std::time::Instant;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, PhysicalPosition, Size};
@@ -17,7 +15,6 @@ use winit::window::{CursorIcon, Fullscreen, Window};
 
 use crate::base::*;
 use crate::user_event::WindowState;
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::dispatch_event::{dispatch_event, HaiEvent, HaiEventKind};
 use crate::utils::hit_test::{hit_test, HitTestResult};
 use crate::utils::walk::walk_nodes_top_bottom;
@@ -290,8 +287,6 @@ impl Core {
 
     // reconfigure the surface everytime the window's size changes
     pub fn resize_surface(&self, new_size: SurfaceSize) {
-        let (width, height) = new_size.physical_size();
-
         let mut config = self.config.lock();
 
         config.width = width;
@@ -534,7 +529,7 @@ impl Core {
     pub fn render(&self, window: &Window) -> Result<(), wgpu::SurfaceError> {
         // fps
         #[cfg(not(feature = "web"))]
-        if get_hai_env().show_fps {
+        if hai_pal::env::get_hai_env().show_fps {
             let (instant, frames) = &mut *self.frames_in_duration.lock();
             let duration = instant.elapsed().as_secs_f32();
             if duration >= 1. {
@@ -684,7 +679,6 @@ impl Core {
         let last_focused_node = self.last_focused_node.clone();
 
         match event {
-            #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
             WindowEvent::CursorMoved { position, .. } => {
                 self.handle_focus_changes(position);
 
@@ -693,7 +687,6 @@ impl Core {
 
                 true
             }
-            #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
             WindowEvent::CursorLeft { .. } => {
                 let mut last_focused_node = last_focused_node.write();
                 if let Some(last_focused_node) = &*last_focused_node {
@@ -706,7 +699,6 @@ impl Core {
                 *last_focused_node = None;
                 true
             }
-            #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
             WindowEvent::MouseInput { button, state, .. } => {
                 if let Some(last_focused_position) = self.last_focused_position.load().as_ref() {
                     self.handle_focus_changes(last_focused_position);
@@ -774,7 +766,6 @@ impl Core {
         }
     }
 
-    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn handle_focus_changes(&self, position: &PhysicalPosition<f64>) {
         let root_node = &self.root_node;
         let last_focused_node = &self.last_focused_node;

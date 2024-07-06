@@ -55,13 +55,15 @@ pub fn spawn_runtime_with_core(
 
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
-#[cfg(all(feature = "web", not(feature = "js_runtime")))]
-pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
+#[cfg(feature = "web")]
+pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
     use log::debug;
 
     if let Some(spawn_callback) = spawn_callback {
         let async_callback = spawn_callback();
-        wasm_bindgen_futures::spawn_local(spawn_callback);
+        wasm_bindgen_futures::spawn_local(async move {
+            async_callback.await;
+        });
     }
 
     wasm_bindgen_futures::spawn_local(async move {
@@ -74,7 +76,7 @@ pub fn spawn_runtime_with_core(core: &Arc<Core>, spawn_callback: Option<SpawnRun
             .create_element("script")
             .expect("Cannot create script element.");
         root_script
-            .set_attribute("src", env::entry_dir().as_str())
+            .set_attribute("src", hai_pal::env::entry_dir().as_str())
             .unwrap();
         root_script.set_attribute("type", "module").unwrap();
 

@@ -7,7 +7,6 @@ use wgpu::Buffer;
 use hai_core::nodes::NodeBase;
 use hai_core::resource::TextureId;
 use hai_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use hai_core::utils::convert::{from_js, JSValue};
 
 // #[node]
@@ -72,7 +71,6 @@ impl Node for Sprite {
         "sprite"
     }
 
-    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: SpriteProps = from_js(props).unwrap();
 

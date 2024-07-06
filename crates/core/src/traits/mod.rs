@@ -1,13 +1,13 @@
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 mod command;
+mod common;
 mod focusable;
 mod node;
 mod plugin;
 mod renderable;
 mod renderer;
 
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 pub use command::*;
+pub use common::*;
 pub use focusable::*;
 pub use node::*;
 pub use plugin::*;

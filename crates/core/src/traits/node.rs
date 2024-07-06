@@ -1,14 +1,13 @@
 use std::{any::Any, fmt::Debug};
 
 use crate::nodes::NodeBase;
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use crate::utils::convert::JSValue;
 
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use super::Command;
 use super::Focusable;
+use super::ThreadFeature;
 
-pub trait Node: NodeBaseTrait + Send + Sync + Debug {
+pub trait Node: NodeBaseTrait + Debug {
     /// node type identifier
     fn node_type(&self) -> &'static str;
 
@@ -19,7 +18,6 @@ pub trait Node: NodeBaseTrait + Send + Sync + Debug {
     }
 
     /// method called when the properties of the node need to be updated
-    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, _props: &mut JSValue) {
         // defaults to do nothing
     }
@@ -30,7 +28,6 @@ pub trait Node: NodeBaseTrait + Send + Sync + Debug {
     }
 
     /// return Some(self) manually if you've implemented Command for the node
-    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn as_command(&mut self) -> Option<&mut dyn Command> {
         None
     }
@@ -49,3 +46,5 @@ impl PartialEq for dyn Node {
         self.base().id() == other.base().id()
     }
 }
+
+impl ThreadFeature for dyn Node {}

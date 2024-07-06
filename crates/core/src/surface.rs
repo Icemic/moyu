@@ -1,4 +1,4 @@
-use hai_pal::env::{get_hai_env, RenderingBackend, RenderingPresentMode};
+use hai_pal::env::{get_hai_env, RenderingBackend};
 use log::info;
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
@@ -33,8 +33,10 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Windo
             .and_then(|win| win.document())
             .and_then(|doc| doc.body())
             .and_then(|body| {
-                body.append_child(&web_sys::Element::from(window.canvas()))
-                    .ok()
+                body.append_child(&web_sys::Element::from(
+                    window.canvas().expect("canvas not found"),
+                ))
+                .ok()
             })
             .expect("couldn't append canvas to document body");
     }
@@ -56,8 +58,8 @@ pub fn create_wgpu_surface(
     let (instance, surface, device, queue, config) =
         futures::executor::block_on(create_surface_inner(window, &window.inner_size()));
     #[cfg(feature = "web")]
-    let (surface, device, queue, config) =
-        { pollster::block_on(create_surface_inner(&window, &window.inner_size())) };
+    let (instance, surface, device, queue, config) =
+        { pollster::block_on(create_surface_inner(window, &PhysicalSize::new(1280, 720))) };
     let instance = Arc::new(instance);
     let surface = Arc::new(surface);
     let device = Arc::new(device);
@@ -159,7 +161,7 @@ pub(self) async fn create_surface_inner(
 
     #[cfg(not(feature = "web"))]
     let present_mode = match get_hai_env().present_mode {
-        RenderingPresentMode::Recommended => {
+        hai_pal::env::RenderingPresentMode::Recommended => {
             if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
                 wgpu::PresentMode::Mailbox
             } else if caps.present_modes.contains(&wgpu::PresentMode::FifoRelaxed) {
@@ -168,8 +170,8 @@ pub(self) async fn create_surface_inner(
                 wgpu::PresentMode::Fifo
             }
         }
-        RenderingPresentMode::AutoVsync => wgpu::PresentMode::AutoVsync,
-        RenderingPresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
+        hai_pal::env::RenderingPresentMode::AutoVsync => wgpu::PresentMode::AutoVsync,
+        hai_pal::env::RenderingPresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
     };
 
     #[cfg(feature = "web")]
