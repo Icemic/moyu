@@ -3,7 +3,7 @@ use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use wgpu::{BindGroupLayout, CommandEncoder, Device, Queue, RenderPass, RenderPipeline};
 
-use super::{Node, RendererUpdatePayload, ThreadFeature};
+use super::{Node, RendererUpdatePayload};
 
 pub trait Renderer {
     fn name(&self) -> &'static str;
@@ -30,5 +30,3 @@ pub trait Renderer {
         node: &'b dyn Node,
     );
 }
-
-impl ThreadFeature for dyn Renderer {}
