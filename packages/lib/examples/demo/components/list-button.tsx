@@ -23,10 +23,11 @@ export interface ListButtonProps {
   title: string;
   index: number;
   style: Record<string, SpringValue<any>>;
+  onClick?: (index: number) => void;
 }
 
 export function ListButton(props: ListButtonProps) {
-  const { label, title, index, style } = props;
+  const { label, title, index, style, onClick } = props;
 
   const [springs, api] = useSpring(() => ({
     from: {
@@ -74,6 +75,7 @@ export function ListButton(props: ListButtonProps) {
         fillColor={springs.fillColor}
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
+        onClick={() => onClick?.(index)}
         cursor={'pointer'}
       />
     </animated.container>
