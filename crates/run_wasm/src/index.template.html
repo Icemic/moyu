@@ -7,32 +7,30 @@
   </head>
 
   <body>
-    <!-- <script type="module" src="./{{name}}.js"></script> -->
-    <script>
-      // window.hai = wasm_bindgen;
-      // wasm_bindgen("./{{name}}_bg.wasm")
-    </script>
-    <script type="module">
-      // import init from "./{{name}}.js";
-      // window.addEventListener("load", async () => {
-      //   window.hai = await init();
-      // });
-    </script>
     <script type="module">
       import * as hai from './hai.js';
       window.addEventListener('load', async () => {
         await hai.default();
-        window.hai = {pushCommand(name, args) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-          return hai[name](...args);
-        }};
-        // hai.pushCommand = function pushCommand(name, args) {
-        //   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        //   return hai[name](...args);
-        // };
+        window.hai = {
+          pushCommand(name, args) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            return hai[name](...args);
+          },
+          executeNodeCommand(...args) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            return hai.execute_node_command(...args);
+          },
+          executePluginCommand(...args) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            return hai.execute_plugin_command(...args);
+          },
+        };
 
-        hai.wasm_start();
+        window.hai_start = () => {
+          hai.wasm_start();
+        };
       });
     </script>
+    <button onclick="window.hai_start()">Start</button>
   </body>
 </html>

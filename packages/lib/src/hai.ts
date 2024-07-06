@@ -23,15 +23,6 @@ declare global {
   var __hai_receive_event: (kind: string, target_id: number, bubble_target_ids: number[]) => void;
 }
 
-if (hai && typeof hai.pushCommand === 'undefined') {
-  const __hai = hai;
-  window.hai = {};
-  hai.pushCommand = function pushCommand(name: string, args: any[]) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return __hai[name](...args);
-  };
-}
-
 globalThis.__hai_receive_event = (kind: string, target_id: number, bubble_target_ids: number[]) => {
   const node = STATE.nodeMap[target_id];
   console.log('event:', kind, target_id, node.label, bubble_target_ids.join(','));
