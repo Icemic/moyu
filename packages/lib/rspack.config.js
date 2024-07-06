@@ -61,6 +61,12 @@ module.exports = {
       publicPath: '/',
       directory: './examples/demo',
     },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers':
+        'X-Requested-With, content-type, Authorization, cache-control, pragma, upgrade-insecure-requests, user-agent',
+    },
   },
   builtins: {
     react: {
