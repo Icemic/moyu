@@ -1,6 +1,9 @@
 #[cfg(feature = "web")]
 pub type JSValue = wasm_bindgen::JsValue;
+#[cfg(feature = "web")]
+pub type OwnedJsPromise = web_sys::js_sys::Promise;
 
+#[cfg(all(not(feature = "web"), feature = "quickjs"))]
 use hai_runtime::quickjs_rusty::OwnedJsPromise;
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
 use hai_runtime::quickjs_rusty::{JSContext, OwnedJsValue};
@@ -20,21 +23,18 @@ pub fn from_js<'a, T: serde::Deserialize<'a>>(value: &'a JSValue) -> anyhow::Res
 }
 
 #[cfg(feature = "web")]
-pub fn from_js<'a, T: erde::de::DeserializeOwned>(
-    value: &mut JSValue,
-) -> Result<T, serde_wasm_bindgen::Error> {
-    serde_wasm_bindgen::from_value(value.to_owned())
+pub fn from_js<'a, T: serde::de::DeserializeOwned>(value: &mut JSValue) -> anyhow::Result<T> {
+    use anyhow::anyhow;
+
+    serde_wasm_bindgen::from_value(value.to_owned()).map_err(|e| anyhow!(e.to_string()))
 }
 
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
-pub fn to_js<T: serde::Serialize>(
-    context: *mut JSContext,
-    value: &T,
-) -> anyhow::Result<OwnedJsValue> {
+pub fn to_js<T: serde::Serialize>(ref_value: &JSValue, value: &T) -> anyhow::Result<OwnedJsValue> {
     use anyhow::format_err;
     pub use hai_runtime::quickjs_rusty::serde::to_js;
 
-    match to_js(context, &value) {
+    match to_js(ref_value.context(), &value) {
         Ok(v) => Ok(v),
         Err(err) => Err(format_err!(err.to_string())),
     }
@@ -42,12 +42,22 @@ pub fn to_js<T: serde::Serialize>(
 
 #[allow(dead_code)]
 #[cfg(feature = "web")]
-pub fn to_js<'a, T: serde::Serialize>(value: &T) -> Result<JSValue, serde_wasm_bindgen::Error> {
-    serde_wasm_bindgen::to_value(value)
+pub fn to_js<'a, T: serde::Serialize>(_ref_value: &JSValue, value: &T) -> anyhow::Result<JSValue> {
+    use anyhow::anyhow;
+
+    serde_wasm_bindgen::to_value(value).map_err(|e| anyhow!(e.to_string()).into())
+}
+
+#[allow(dead_code)]
+#[cfg(feature = "web")]
+pub(crate) fn to_js_web<'a, T: serde::Serialize>(value: &T) -> anyhow::Result<JSValue> {
+    use anyhow::anyhow;
+
+    serde_wasm_bindgen::to_value(value).map_err(|e| anyhow!(e.to_string()).into())
 }
 
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
-pub fn create_promise<F, V>(future: F) -> anyhow::Result<OwnedJsPromise>
+pub fn create_promise<F, V>(future: F) -> anyhow::Result<JSValue>
 where
     F: core::future::Future<Output = Result<V, anyhow::Error>> + Send + 'static,
     V: serde::Serialize + Send,
@@ -75,6 +85,28 @@ where
             }
         }
     });
+
+    Ok(promise.into_value())
+}
+
+#[cfg(feature = "web")]
+pub fn create_promise<F, V>(future: F) -> anyhow::Result<JSValue>
+where
+    F: core::future::Future<Output = Result<V, anyhow::Error>> + 'static,
+    V: serde::Serialize,
+{
+    use wasm_bindgen_futures::future_to_promise;
+
+    let promise = future_to_promise(async move {
+        match future.await {
+            Ok(value) => Ok(serde_wasm_bindgen::to_value(&value)
+                // .map(|v| v.0)
+                .unwrap()),
+            Err(err) => Err(wasm_bindgen::JsValue::from_str(&err.to_string())),
+        }
+    });
+
+    let promise = wasm_bindgen::JsValue::from(promise);
 
     Ok(promise)
 }

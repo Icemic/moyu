@@ -1,5 +1,4 @@
 use arc_swap::{ArcSwap, ArcSwapOption};
-use once_cell::sync::OnceCell;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -64,10 +63,4 @@ pub enum TextureStatus {
     Ready,
     /// something occurs
     Error,
-}
-
-static EMPTY_TEXTURE: OnceCell<Arc<Texture>> = OnceCell::new();
-
-pub fn get_empty_texture() -> &'static Arc<Texture> {
-    EMPTY_TEXTURE.get_or_init(|| Arc::new(Texture::new()))
 }

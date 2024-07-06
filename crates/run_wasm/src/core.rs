@@ -97,7 +97,7 @@ pub fn run_wasm() {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let project_root = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .ancestors()
-        .nth(1)
+        .nth(2)
         .unwrap()
         .to_path_buf();
     let mut cargo_args = vec![

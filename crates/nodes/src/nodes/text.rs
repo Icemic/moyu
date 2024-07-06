@@ -5,10 +5,8 @@ use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
 use hai_core::nodes::NodeBase;
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use hai_core::traits::Command;
 use hai_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 use hai_core::utils::convert::{from_js, to_js, JSValue};
 
 #[derive(Debug, Default, Node)]
@@ -177,7 +175,6 @@ impl Node for Text {
         "text"
     }
 
-    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: TextProps = match from_js(props) {
             Ok(props) => props,
@@ -291,13 +288,11 @@ impl Node for Text {
         Some(self)
     }
 
-    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
     fn as_command(&mut self) -> Option<&mut dyn Command> {
         Some(self)
     }
 }
 
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "subCommand")]
 pub enum TextCommmad {
@@ -305,7 +300,6 @@ pub enum TextCommmad {
     GetCursorPos,
 }
 
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
 impl Command for Text {
     fn execute(&mut self, _payload: &mut JSValue) -> anyhow::Result<Option<JSValue>> {
         let payload: TextCommmad = from_js(_payload)?;
@@ -318,7 +312,7 @@ impl Command for Text {
                 self.base_mut().pend_update();
             }
             TextCommmad::GetCursorPos => {
-                return Ok(Some(to_js(_payload.context(), &[11, 22])?));
+                return Ok(Some(to_js(_payload, &[11, 22])?));
             }
         }
 

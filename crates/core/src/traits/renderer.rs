@@ -3,12 +3,9 @@ use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use wgpu::{BindGroupLayout, CommandEncoder, Device, Queue, RenderPass, RenderPipeline};
 
-use super::{Node, RendererUpdatePayload};
+use super::{Node, RendererUpdatePayload, ThreadFeature};
 
-pub trait Renderer
-where
-    Self: Send + Sync,
-{
+pub trait Renderer {
     fn name(&self) -> &'static str;
     fn render_pipeline(&self) -> &RenderPipeline;
     fn bind_group_layout(&self) -> &BindGroupLayout;
@@ -33,3 +30,5 @@ where
         node: &'b dyn Node,
     );
 }
+
+impl ThreadFeature for dyn Renderer {}

@@ -63,18 +63,3 @@ pub fn quit() -> Result<(), std::string::String> {
     core.send_event(UserEvent::Quit);
     Ok(())
 }
-
-#[wasm_bindgen]
-#[cfg(feature = "web")]
-pub fn load_resources() {
-    use futures::future::poll_fn;
-
-    wasm_bindgen_futures::spawn_local(async {
-        let resource_manager = {
-            let core = get_core();
-            core.resource_manager.clone()
-        };
-        let mut resource_manager = resource_manager.lock();
-        poll_fn(|cx| resource_manager.poll(cx)).await;
-    });
-}

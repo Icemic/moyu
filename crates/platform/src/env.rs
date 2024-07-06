@@ -3,8 +3,6 @@ mod present_mode;
 
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-#[cfg(not(feature = "web"))]
-use std::env;
 use url::Url;
 
 pub use self::backend::RenderingBackend;
@@ -15,6 +13,7 @@ static HAI_ENV: OnceCell<HaiConfig> = OnceCell::new();
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct HaiConfig {
+    #[cfg(not(feature = "web"))]
     pub entry: String,
     pub show_fps: bool,
     pub present_mode: RenderingPresentMode,
@@ -27,7 +26,12 @@ pub struct HaiConfig {
 impl Default for HaiConfig {
     fn default() -> Self {
         Self {
-            entry: env::current_dir().unwrap().to_str().unwrap().to_string(),
+            #[cfg(not(feature = "web"))]
+            entry: std::env::current_dir()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string(),
             show_fps: false,
             present_mode: RenderingPresentMode::default(),
             backend: RenderingBackend::default(),
@@ -67,19 +71,22 @@ pub fn entry_dir() -> Url {
     #[cfg(not(feature = "web"))]
     let entry_dir = &get_hai_env().entry;
     #[cfg(feature = "web")]
-    let entry_dir = "http://localhost:3020/examples/bunnyMark/index.ts".to_string();
+    let entry_dir = "http://localhost:8080/demo.js";
 
     if entry_dir.starts_with("http://")
         || entry_dir.starts_with("https://")
         || entry_dir.starts_with("file://")
     {
-        Url::parse(entry_dir).unwrap()
-    } else if cfg!(not(feature = "web")) && !entry_dir.contains("://") {
-        #[cfg(not(feature = "web"))]
-        get_entry_dir_local(entry_dir)
-    } else {
-        unimplemented!("unsupported entry '{}'.", entry_dir);
+        return Url::parse(entry_dir).unwrap();
     }
+
+    #[cfg(not(feature = "web"))]
+    if !entry_dir.contains("://") {
+        #[cfg(not(feature = "web"))]
+        return get_entry_dir_local(entry_dir);
+    }
+
+    unimplemented!("unsupported entry '{}'.", entry_dir);
 }
 
 #[cfg(not(feature = "web"))]

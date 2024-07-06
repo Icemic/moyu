@@ -8,9 +8,10 @@ use hai_core::winit::event::Event;
 use hai_core::winit::window::Window;
 use hai_core::{create_hai_core, setup};
 use hai_nodes::renderer::{SpriteRenderer, TextRenderer};
-use hai_ops::spawn::spawn_runtime_with_core;
 use hai_pal::sync::Mutex;
 use hai_pal::{env, logger, platform};
+
+pub use hai_ops::*;
 
 fn main_entry() {
     env::setup();
@@ -32,6 +33,7 @@ fn main_entry() {
     let mut _jsvm_handle = None;
     let mut _core_handle = None;
 
+    #[cfg(not(feature = "web"))]
     let mut loop_helper = {
         // get max refresh rate of all monitors
         let mut refresh_rate_max: f64 = 60.0;
@@ -52,9 +54,11 @@ fn main_entry() {
 
     event_loop
         .run(move |event, event_loop| {
+            #[cfg(not(feature = "web"))]
             loop_helper.loop_start();
             match event {
                 Event::AboutToWait => {
+                    #[cfg(not(feature = "web"))]
                     loop_helper.loop_sleep();
                 }
                 Event::Resumed => {
@@ -101,7 +105,7 @@ fn main_entry() {
                     // core.register_renderer("video".to_string(), Box::new(video_renderer));
 
                     _core_handle = Some(set_core(_core.clone()));
-                    _jsvm_handle = Some(spawn_runtime_with_core(&_core, None));
+                    _jsvm_handle = Some(hai_ops::spawn::spawn_runtime_with_core(&_core, None));
 
                     _window.set_visible(true);
 
@@ -132,6 +136,11 @@ async fn main() {
 
 #[cfg(feature = "web")]
 use wasm_bindgen::prelude::wasm_bindgen;
+
+#[cfg(feature = "web")]
+fn main() {
+    log::info!("hai web version");
+}
 
 #[cfg(feature = "web")]
 #[cfg_attr(feature = "web", wasm_bindgen)]

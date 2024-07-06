@@ -1,8 +1,8 @@
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::Arc;
 
 use anyhow::Result;
-use hai_pal::task::get_runtime_handle;
 use kira::manager::backend::DefaultBackend;
 use kira::manager::AudioManagerSettings;
 use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
@@ -56,14 +56,14 @@ impl AudioManager {
         name: &str,
         src: &str,
         auto_play: bool,
-    ) -> hai_pal::task::JoinHandle<Result<()>> {
+    ) -> impl Future<Output = Result<()>> + 'static {
         debug!("audio will load from {}", src);
 
         let audio = self.get_audio(name).unwrap();
         let manager = self.manager.clone();
         let asset_full_path = entry_dir().join("assets/").unwrap().join(src).unwrap();
 
-        get_runtime_handle().spawn(async move {
+        return async move {
             audio.lock().loading_state = AudioLoadingState::Loading;
             let file = match hai_pal::fs::open(&asset_full_path).await {
                 Ok(file) => file,
@@ -103,7 +103,7 @@ impl AudioManager {
             }
 
             Ok(())
-        })
+        };
     }
 
     pub fn get_audio(&self, name: &str) -> Option<Arc<Mutex<Audio>>> {
@@ -193,8 +193,7 @@ impl Command for AudioManager {
             } => {
                 self.create_audio(&name);
                 let fut = self.load_audio(&name, &src, auto_play.unwrap_or(false));
-                let promise = create_promise(async move { fut.await? })?;
-                let promise = promise.into_value();
+                let promise = create_promise(async move { fut.await })?;
                 return Ok(Some(promise));
             }
             AudioCommmad::Release { name } => {
