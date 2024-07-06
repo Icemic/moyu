@@ -4,9 +4,7 @@ pub type JSValue = wasm_bindgen::JsValue;
 pub type OwnedJsPromise = web_sys::js_sys::Promise;
 
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
-use hai_runtime::quickjs_rusty::OwnedJsPromise;
-#[cfg(all(not(feature = "web"), feature = "quickjs"))]
-use hai_runtime::quickjs_rusty::{JSContext, OwnedJsValue};
+use hai_runtime::quickjs_rusty::{OwnedJsPromise, OwnedJsValue};
 
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
 pub type JSValue = OwnedJsValue;
@@ -30,11 +28,14 @@ pub fn from_js<'a, T: serde::de::DeserializeOwned>(value: &mut JSValue) -> anyho
 }
 
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
-pub fn to_js<T: serde::Serialize>(ref_value: &JSValue, value: &T) -> anyhow::Result<OwnedJsValue> {
+pub fn to_js<T: serde::Serialize>(value: &T) -> anyhow::Result<OwnedJsValue> {
     use anyhow::format_err;
+    use hai_runtime::get_vm;
     pub use hai_runtime::quickjs_rusty::serde::to_js;
 
-    match to_js(ref_value.context(), &value) {
+    let context = get_vm().context().context_raw();
+
+    match to_js(context, &value) {
         Ok(v) => Ok(v),
         Err(err) => Err(format_err!(err.to_string())),
     }
@@ -42,15 +43,7 @@ pub fn to_js<T: serde::Serialize>(ref_value: &JSValue, value: &T) -> anyhow::Res
 
 #[allow(dead_code)]
 #[cfg(feature = "web")]
-pub fn to_js<'a, T: serde::Serialize>(_ref_value: &JSValue, value: &T) -> anyhow::Result<JSValue> {
-    use anyhow::anyhow;
-
-    serde_wasm_bindgen::to_value(value).map_err(|e| anyhow!(e.to_string()).into())
-}
-
-#[allow(dead_code)]
-#[cfg(feature = "web")]
-pub(crate) fn to_js_web<'a, T: serde::Serialize>(value: &T) -> anyhow::Result<JSValue> {
+pub fn to_js<'a, T: serde::Serialize>(value: &T) -> anyhow::Result<JSValue> {
     use anyhow::anyhow;
 
     serde_wasm_bindgen::to_value(value).map_err(|e| anyhow!(e.to_string()).into())
@@ -73,14 +66,12 @@ where
         match future.await {
             Ok(value) => {
                 resolve
-                    .call(vec![to_js(vm.context().context_raw(), &value).unwrap()])
+                    .call(vec![to_js(&value).unwrap()])
                     .expect("Failed to resolve promise");
             }
             Err(err) => {
                 reject
-                    .call(vec![
-                        to_js(vm.context().context_raw(), &err.to_string()).unwrap()
-                    ])
+                    .call(vec![to_js(&err.to_string()).unwrap()])
                     .expect("Failed to reject promise");
             }
         }
