@@ -289,8 +289,17 @@ impl Core {
     pub fn resize_surface(&self, new_size: SurfaceSize) {
         let mut config = self.config.lock();
 
-        config.width = width;
-        config.height = height;
+        if cfg!(feature = "web") {
+            // on web, we need to set physical size to logical size
+            // wtf, not sure why this is needed, but it works.
+            let (width, height) = new_size.logical_size();
+            config.width = width.round() as u32;
+            config.height = height.round() as u32;
+        } else {
+            let (width, height) = new_size.physical_size();
+            config.width = width;
+            config.height = height;
+        }
 
         *(self.surface_size.write()) = new_size;
 
