@@ -76,6 +76,7 @@ impl SpriteRenderer {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[SpriteVertex::desc()],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -96,6 +97,7 @@ impl SpriteRenderer {
                     }),
                     write_mask: ColorWrites::ALL,
                 })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
