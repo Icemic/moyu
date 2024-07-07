@@ -33,7 +33,8 @@ pub fn to_js<T: serde::Serialize>(value: &T) -> anyhow::Result<OwnedJsValue> {
     use hai_runtime::get_vm;
     pub use hai_runtime::quickjs_rusty::serde::to_js;
 
-    let context = get_vm().context().context_raw();
+    // since `to_js` is always called in quickjs thread, it's safe to get context directly.
+    let context = unsafe { get_vm().context().context_raw() };
 
     match to_js(context, &value) {
         Ok(v) => Ok(v),
@@ -53,7 +54,7 @@ pub fn to_js<'a, T: serde::Serialize>(value: &T) -> anyhow::Result<JSValue> {
 pub fn create_promise<F, V>(future: F) -> anyhow::Result<JSValue>
 where
     F: core::future::Future<Output = Result<V, anyhow::Error>> + Send + 'static,
-    V: serde::Serialize + Send,
+    V: serde::Serialize + Send + 'static,
 {
     use hai_pal::task::get_runtime_handle;
     use hai_runtime::get_vm;
@@ -64,16 +65,16 @@ where
 
     get_runtime_handle().spawn(async move {
         match future.await {
-            Ok(value) => {
+            Ok(value) => vm.with_context(move |_| {
                 resolve
                     .call(vec![to_js(&value).unwrap()])
                     .expect("Failed to resolve promise");
-            }
-            Err(err) => {
+            }),
+            Err(err) => vm.with_context(move |_| {
                 reject
                     .call(vec![to_js(&err.to_string()).unwrap()])
                     .expect("Failed to reject promise");
-            }
+            }),
         }
     });
 
