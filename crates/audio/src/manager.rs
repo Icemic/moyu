@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 use kira::manager::backend::DefaultBackend;
 use kira::manager::AudioManagerSettings;
 use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
+use kira::sound::{EndPosition, PlaybackPosition, Region};
+use kira::StartTime;
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +19,34 @@ use hai_pal::env::entry_dir;
 use hai_pal::sync::Mutex;
 
 use crate::audio::{Audio, AudioLoadingState};
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioSettings {
+    pub delay_time: Option<f64>,
+    pub start_position: f64,
+    pub reverse: bool,
+    pub loop_region: Option<(f64, f64)>,
+    pub volume: f64,
+    pub playback_rate: f64,
+    pub panning: f64,
+    pub auto_play: bool,
+}
+
+impl Default for AudioSettings {
+    fn default() -> Self {
+        Self {
+            delay_time: None,
+            start_position: 0.0,
+            reverse: false,
+            loop_region: None,
+            volume: 1.0,
+            playback_rate: 1.0,
+            panning: 0.5,
+            auto_play: false,
+        }
+    }
+}
 
 pub struct AudioManager {
     manager: Arc<Mutex<kira::manager::AudioManager<DefaultBackend>>>,
@@ -55,7 +86,7 @@ impl AudioManager {
         &mut self,
         name: &str,
         src: &str,
-        auto_play: bool,
+        settings: AudioSettings,
     ) -> impl Future<Output = Result<()>> + 'static {
         debug!("audio will load from {}", src);
 
@@ -74,7 +105,7 @@ impl AudioManager {
                 }
             };
 
-            let sound_data = match StaticSoundData::from_cursor(file, StaticSoundSettings::new()) {
+            let sound_data = match StaticSoundData::from_cursor(file) {
                 Ok(data) => data,
                 Err(e) => {
                     log::error!("Failed to create sound data: {}", e);
@@ -82,6 +113,27 @@ impl AudioManager {
                     return Err(e.into());
                 }
             };
+
+            let sound_data = sound_data.with_settings(StaticSoundSettings {
+                start_time: settings
+                    .delay_time
+                    .map(|v| StartTime::Delayed(Duration::from_secs_f64(v)))
+                    .unwrap_or_default(),
+                start_position: PlaybackPosition::Seconds(settings.start_position),
+                reverse: settings.reverse,
+                loop_region: settings.loop_region.map(|(start, end)| Region {
+                    start: PlaybackPosition::Seconds(start),
+                    end: if end == -1.0 {
+                        EndPosition::EndOfAudio
+                    } else {
+                        EndPosition::Custom(PlaybackPosition::Seconds(end))
+                    },
+                }),
+                volume: settings.volume.into(),
+                playback_rate: settings.playback_rate.into(),
+                panning: settings.panning.into(),
+                ..Default::default()
+            });
 
             let handle = match manager.lock().play(sound_data) {
                 Ok(handle) => handle,
@@ -98,7 +150,7 @@ impl AudioManager {
             audio.loading_state = AudioLoadingState::Loaded;
 
             // audio will play automatically by default, so if auto_play is false, stop it
-            if !auto_play {
+            if !settings.auto_play {
                 audio.stop().unwrap();
             }
 
@@ -131,7 +183,7 @@ pub enum AudioCommmad {
     Load {
         name: String,
         src: String,
-        auto_play: Option<bool>,
+        settings: Option<AudioSettings>,
     },
     Release {
         name: String,
@@ -169,11 +221,6 @@ pub enum AudioCommmad {
         start: f64,
         end: f64,
     },
-    SetPlaybackRegion {
-        name: String,
-        start: f64,
-        end: f64,
-    },
     SetPanning {
         name: String,
         panning: f64,
@@ -189,10 +236,10 @@ impl Command for AudioManager {
             AudioCommmad::Load {
                 name,
                 src,
-                auto_play,
+                settings,
             } => {
                 self.create_audio(&name);
-                let fut = self.load_audio(&name, &src, auto_play.unwrap_or(false));
+                let fut = self.load_audio(&name, &src, settings.unwrap_or_default());
                 let promise = create_promise(async move { fut.await })?;
                 return Ok(Some(promise));
             }
@@ -234,10 +281,6 @@ impl Command for AudioManager {
             AudioCommmad::SetLoopRegion { name, start, end } => {
                 let audio = self.get_audio(&name).unwrap();
                 audio.lock().set_loop_region(start, end)?;
-            }
-            AudioCommmad::SetPlaybackRegion { name, start, end } => {
-                let audio = self.get_audio(&name).unwrap();
-                audio.lock().set_playback_region(start, end)?;
             }
             AudioCommmad::SetPanning { name, panning } => {
                 let audio = self.get_audio(&name).unwrap();

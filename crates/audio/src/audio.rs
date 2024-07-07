@@ -34,37 +34,37 @@ impl Audio {
 
     pub fn play(&mut self) -> Result<()> {
         self.find_and(|handle| {
-            handle.seek_to(0.0)?;
-            handle.resume(Tween::default())?;
+            handle.seek_to(0.0);
+            handle.resume(Tween::default());
             Ok(())
         })
     }
 
     pub fn stop(&mut self) -> Result<()> {
         self.find_and(|handle| {
-            handle.pause(Tween::default())?;
-            handle.seek_to(0.0)?;
+            handle.pause(Tween::default());
+            handle.seek_to(0.0);
             Ok(())
         })
     }
 
     pub fn pause(&mut self) -> Result<()> {
         self.find_and(|handle| {
-            handle.pause(Tween::default())?;
+            handle.pause(Tween::default());
             Ok(())
         })
     }
 
     pub fn resume(&mut self) -> Result<()> {
         self.find_and(|handle| {
-            handle.resume(Tween::default())?;
+            handle.resume(Tween::default());
             Ok(())
         })
     }
 
     pub fn stop_and_release(&mut self) -> Result<()> {
         self.find_and(|handle| {
-            handle.stop(Tween::default())?;
+            handle.stop(Tween::default());
             Ok(())
         })?;
         self.sound = None;
@@ -73,49 +73,42 @@ impl Audio {
 
     pub fn set_volume(&mut self, volume: f64) -> Result<()> {
         self.find_and(|handle| {
-            handle.set_volume(Volume::Amplitude(volume), Tween::default())?;
+            handle.set_volume(Volume::Amplitude(volume), Tween::default());
             Ok(())
         })
     }
 
     pub fn seek_by(&mut self, seconds: f64) -> Result<()> {
         self.find_and(|handle| {
-            handle.seek_by(seconds)?;
+            handle.seek_by(seconds);
             Ok(())
         })
     }
 
     pub fn seek_to(&mut self, seconds: f64) -> Result<()> {
         self.find_and(|handle| {
-            handle.seek_to(seconds)?;
+            handle.seek_to(seconds);
             Ok(())
         })
     }
 
     pub fn set_playback_rate(&mut self, rate: f64) -> Result<()> {
         self.find_and(|handle| {
-            handle.set_playback_rate(rate, Tween::default())?;
+            handle.set_playback_rate(rate, Tween::default());
             Ok(())
         })
     }
 
     pub fn set_loop_region(&mut self, start: f64, end: f64) -> Result<()> {
         self.find_and(|handle| {
-            handle.set_loop_region(start..end)?;
-            Ok(())
-        })
-    }
-
-    pub fn set_playback_region(&mut self, start: f64, end: f64) -> Result<()> {
-        self.find_and(|handle| {
-            handle.set_playback_region(start..end)?;
+            handle.set_loop_region(start..end);
             Ok(())
         })
     }
 
     pub fn set_panning(&mut self, panning: f64) -> Result<()> {
         self.find_and(|handle| {
-            handle.set_panning(panning, Tween::default())?;
+            handle.set_panning(panning, Tween::default());
             Ok(())
         })
     }

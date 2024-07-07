@@ -19,7 +19,7 @@ fn play() -> Result<()> {
 
     let file = std::fs::File::open(path)?;
 
-    let sound_data = StaticSoundData::from_media_source(file, StaticSoundSettings::new())?;
+    let sound_data = StaticSoundData::from_media_source(file)?;
 
     let mut handle = manager.play(sound_data)?;
 
@@ -30,7 +30,7 @@ fn play() -> Result<()> {
         i += 1;
 
         if i == 10 {
-            handle.stop(Tween::default())?;
+            handle.stop(Tween::default());
         }
     }
 }
