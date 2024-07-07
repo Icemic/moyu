@@ -1,11 +1,7 @@
-#[cfg(feature = "web")]
-use futures::{Future, FutureExt};
 use hai_pal::{env::entry_dir, sync::RwLock};
 use hai_pal::{fs, task};
 use image::GenericImageView;
 use log::debug;
-#[cfg(feature = "web")]
-use std::pin::Pin;
 use std::{collections::HashMap, sync::Arc};
 use wgpu::{Device, Queue};
 
