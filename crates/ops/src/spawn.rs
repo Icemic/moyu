@@ -17,11 +17,15 @@ pub fn spawn_runtime_with_core(
     use hai_runtime::{get_vm, setup_vm};
     use log::error;
 
-    let vm_handle = setup_vm();
+    let (sender, receiver) = std::sync::mpsc::channel();
 
     std::thread::Builder::new()
         .name("quickjs".to_string())
-        .spawn(|| {
+        .spawn(move || {
+            let _vm_handle = setup_vm();
+
+            sender.send(_vm_handle).unwrap();
+
             let handle = hai_pal::task::get_runtime_handle();
 
             if let Some(spawn_callback) = spawn_callback {
@@ -50,7 +54,7 @@ pub fn spawn_runtime_with_core(
         })
         .ok();
 
-    vm_handle
+    receiver.recv().unwrap()
 }
 
 /// spawn a thread with javascript runtime and executes scripts
