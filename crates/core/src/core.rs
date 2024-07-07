@@ -95,9 +95,11 @@ pub struct Core {
     // To avoid memory leak, we must put these at bottom to make sure [Device] is dropped last.
     // see: https://github.com/gfx-rs/wgpu/issues/5529
     pub(crate) queue: Arc<Queue>,
+    // To avoid STATUS_ACCESS_VIOLATION on quit, [Surface] must not be the last one to drop, wth...
+    // see: https://github.com/gfx-rs/wgpu/issues/5637
+    pub(crate) surface: Arc<Surface<'static>>,
     pub(crate) device: Arc<Device>,
     pub(crate) surface_size: Arc<RwLock<SurfaceSize>>,
-    pub(crate) surface: Arc<Surface<'static>>,
     pub(crate) window: Arc<Window>,
     pub(crate) instance: Arc<Instance>,
 }
