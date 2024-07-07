@@ -8,7 +8,7 @@ version = "0.7.0"
 
 [dependencies]
 log = "0.4"
-quickjs-rusty = "0.6.1"
+quickjs-rusty = "0.6.3"
 spin_sleep = "1.1"
 tokio = {version = "1", features = ["time", "sync"]}
 

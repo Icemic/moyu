@@ -20,6 +20,7 @@ pub struct QuickVM {
     timer_tasks: Arc<Mutex<Vec<Rc<TimerTask>>>>,
     instant: Instant,
     call_tasks: Arc<Mutex<VecDeque<(String, Vec<OwnedJsValue>, Sender<()>)>>>,
+    async_tasks: Arc<Mutex<VecDeque<Box<dyn FnOnce(&Self)>>>>,
     to_be_closed: bool,
 }
 
@@ -143,13 +144,40 @@ impl QuickVM {
             timer_tasks,
             instant,
             call_tasks: Arc::new(Mutex::new(VecDeque::new())),
+            async_tasks: Arc::new(Mutex::new(VecDeque::new())),
             to_be_closed: false,
         }
     }
 
-    /// get the context of the vm, make sure to lock the vm before calling this function
+    /// Get the context of the vm, make sure to lock the vm before calling this function.
+    ///
+    /// This function must be called in the same thread where the vm is created.
+    #[inline]
     pub fn context(&self) -> &Context {
+        debug_assert_eq!(
+            std::thread::current().name(),
+            Some("quickjs"),
+            "Detected called from wrong thread."
+        );
+
         &self.context
+    }
+
+    /// Execute a function in the context of the vm and in quickjs thread.
+    pub fn with_context(&self, f: impl FnOnce(&Self) + 'static) {
+        self.async_tasks.lock().unwrap().push_back(Box::new(f));
+    }
+
+    ///
+    /// Call a function directly instead of pushing it to the task queue.
+    ///
+    /// This function must be called in the same thread where the vm is created.
+    pub fn call_function_direct(
+        &self,
+        name: &str,
+        args: Vec<OwnedJsValue>,
+    ) -> Result<OwnedJsValue, ExecutionError> {
+        self.context().call_function(name, args)
     }
 
     pub fn call_function(&self, name: &str, args: Vec<OwnedJsValue>) -> Receiver<()> {
@@ -174,7 +202,7 @@ impl QuickVM {
             }
         };
 
-        let promise = self.context.run_module(&module_name)?;
+        let promise = self.context().run_module(&module_name)?;
 
         Ok(promise)
     }
@@ -188,17 +216,28 @@ impl QuickVM {
                 }
             }
 
+            // like microtasks in js, execute all async tasks until the queue is empty
+            loop {
+                let mut async_tasks = self.async_tasks.lock().unwrap();
+                if let Some(task) = async_tasks.pop_front() {
+                    drop(async_tasks);
+                    task(&self);
+                } else {
+                    break;
+                }
+            }
+
             // handle all pending calls
             let mut call_tasks = self.call_tasks.lock().unwrap();
             while let Some((name, args, sender)) = call_tasks.pop_front() {
-                let _result = self.context.call_function(&name, args);
+                let _result = self.context().call_function(&name, args);
                 sender.send(()).unwrap();
             }
 
             // drop the lock before executing the tasks to avoid deadlocks
             drop(call_tasks);
 
-            self.context.execute_pending_job().unwrap();
+            self.context().execute_pending_job().unwrap();
 
             // filter out all tasks that are ready to be executed
             let timer_tasks = self.timer_tasks.lock().unwrap();
