@@ -17,6 +17,13 @@ export interface HaiListenerAttributes {
   onMouseDown?: (event: HaiEvent) => void;
   onMouseUp?: (event: HaiEvent) => void;
   onMouseMove?: (event: HaiEvent) => void;
+  onKeyDown?: (event: HaiEvent) => void;
+  onKeyUp?: (event: HaiEvent) => void;
+  onKeyPress?: (event: HaiEvent) => void;
+  onTouchStart?: (event: HaiEvent) => void;
+  onTouchMove?: (event: HaiEvent) => void;
+  onTouchEnd?: (event: HaiEvent) => void;
+  onTouchCancel?: (event: HaiEvent) => void;
 }
 
 export interface HaiNodeAttributes extends HaiListenerAttributes {

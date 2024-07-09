@@ -50,6 +50,13 @@ globalThis.__hai_receive_event = (kind: string, target_id: number, bubble_target
     case 'MouseUp':
     case 'MouseMove':
     case 'Click':
+    case 'KeyDown':
+    case 'KeyUp':
+    case 'KeyPress':
+    case 'TouchStart':
+    case 'TouchMove':
+    case 'TouchEnd':
+    case 'TouchCancel':
       node?.listeners?.['on' + kind]?.(event);
       while (propagate && bubble_target_ids.length) {
         event.current_target_id = bubble_target_ids.pop()!;
