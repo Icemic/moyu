@@ -18,5 +18,6 @@ pub trait Focusable: Node {
 #[derive(Debug)]
 pub struct FocusablePayload {
     pub surface_size: SurfaceSize,
+    pub stage_size: SurfaceSize,
     pub resource_manager: Arc<ResourceManager>,
 }

@@ -31,5 +31,6 @@ pub struct RendererUpdatePayload {
     pub timestamp: f64,
     pub delta: u32,
     pub surface_size: SurfaceSize,
+    pub stage_size: SurfaceSize,
     pub resource_manager: Arc<ResourceManager>,
 }

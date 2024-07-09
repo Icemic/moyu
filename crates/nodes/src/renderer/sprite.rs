@@ -183,7 +183,7 @@ impl Renderer for SpriteRenderer {
     ) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-        let scale_factor = payload.surface_size.scale_factor() as f32;
+        let scale_factor = payload.stage_size.scale_factor() as f32;
 
         let node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
 

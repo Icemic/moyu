@@ -99,7 +99,11 @@ pub struct Core {
     // see: https://github.com/gfx-rs/wgpu/issues/5637
     pub(crate) surface: Arc<Surface<'static>>,
     pub(crate) device: Arc<Device>,
+    /// Size of current surface, which means the size of the window on desktop platforms, the size of the canvas \
+    /// on web platform, and the size of the screen on mobile platforms.
     pub(crate) surface_size: Arc<RwLock<SurfaceSize>>,
+    /// Size of stage, which is the content size set by user.
+    pub(crate) stage_size: Arc<RwLock<SurfaceSize>>,
     pub(crate) window: Arc<Window>,
     pub(crate) instance: Arc<Instance>,
 }
@@ -133,11 +137,11 @@ impl Core {
         let resource_manager = ResourceManager::new(device.clone(), queue.clone());
         let renderers = HashMap::default();
 
-        let surface_size = SurfaceSize::default();
+        let stage_size = SurfaceSize::default();
 
         let staging_belt = Arc::new(Mutex::new(StagingBelt::new(0)));
 
-        let logical_size = surface_size.logical_size_f32();
+        let logical_size = stage_size.logical_size_f32();
         let mvp_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("MVP Buffer"),
             contents: bytemuck::bytes_of(&MVPMatrix::from_logical_size(logical_size)),
@@ -155,7 +159,8 @@ impl Core {
 
         Self {
             instance,
-            surface_size: Arc::new(RwLock::new(surface_size)),
+            surface_size: Arc::new(RwLock::new(stage_size)),
+            stage_size: Arc::new(RwLock::new(stage_size)),
             surface,
             device,
             queue,
@@ -221,17 +226,15 @@ impl Core {
      * Set screen size before first render, which should not be called after render loop started.
      */
     pub fn set_screen_size(&self, physical_size: (u32, u32), scale_factor: f64) {
-        let mut surface_size = self.surface_size.write();
+        let mut stage_size = self.stage_size.write();
 
-        surface_size.set_scale_factor(scale_factor);
-        surface_size.set_physical_size(physical_size.0, physical_size.1);
+        stage_size.set_scale_factor(scale_factor);
+        stage_size.set_physical_size(physical_size.0, physical_size.1);
 
         self.queue.write_buffer(
             &self.mvp_buffer,
             0,
-            bytemuck::bytes_of(&MVPMatrix::from_logical_size(
-                surface_size.logical_size_f32(),
-            )),
+            bytemuck::bytes_of(&MVPMatrix::from_logical_size(stage_size.logical_size_f32())),
         );
     }
 
@@ -271,8 +274,8 @@ impl Core {
         let window_maximized = window.is_maximized();
 
         if logical_width > 0. && logical_height > 0. {
-            let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
-            self.resize_surface(surface_size);
+            let stage_size = SurfaceSize::new(logical_width, logical_height, factor);
+            self.resize_surface(stage_size);
 
             let window_size = Size::Logical(LogicalSize::new(logical_width, logical_height));
 
@@ -303,7 +306,7 @@ impl Core {
             config.height = height;
         }
 
-        *(self.surface_size.write()) = new_size;
+        *(self.stage_size.write()) = new_size;
 
         self.queue.write_buffer(
             &self.mvp_buffer,
@@ -340,8 +343,8 @@ impl Core {
     }
 
     /// get current surface size
-    pub fn surface_size(&self) -> SurfaceSize {
-        self.surface_size.read().clone()
+    pub fn stage_size(&self) -> SurfaceSize {
+        self.stage_size.read().clone()
     }
 
     pub fn fullscreen(&self) -> bool {
@@ -478,7 +481,7 @@ impl Core {
                         }
                         WindowEvent::CloseRequested => event_loop.exit(),
                         WindowEvent::Resized(physical_size) => {
-                            let surface_size = SurfaceSize::from_physical_size(
+                            let stage_size = SurfaceSize::from_physical_size(
                                 physical_size,
                                 window.scale_factor(),
                             );
@@ -486,7 +489,7 @@ impl Core {
                             if physical_size.width == 0 || physical_size.height == 0 {
                                 // window minimized, ignore
                             } else {
-                                self.resize_surface(surface_size);
+                                self.resize_surface(stage_size);
                             }
 
                             if window.fullscreen().is_some() {
@@ -502,7 +505,7 @@ impl Core {
                             debug!("window state changes to {:?}", self.window_state.load());
                         }
                         WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                            self.surface_size.write().set_scale_factor(*scale_factor);
+                            self.stage_size.write().set_scale_factor(*scale_factor);
                         }
                         _ => {}
                     }
@@ -568,6 +571,7 @@ impl Core {
         let mut staging_belt = self.staging_belt.lock();
 
         let surface_size = self.surface_size.read();
+        let stage_size = self.stage_size.read();
 
         let output = surface.get_current_texture()?;
         let view = output
@@ -595,6 +599,7 @@ impl Core {
                 timestamp,
                 delta: instant_last.elapsed().as_micros() as u32,
                 surface_size: *surface_size,
+                stage_size: *stage_size,
                 resource_manager: self.resource_manager.clone(),
             };
 
@@ -602,9 +607,7 @@ impl Core {
 
             walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
                 let mut _child = child.write();
-                _child
-                    .base_mut()
-                    .update(parent.base(), &surface_size, false);
+                _child.base_mut().update(parent.base(), &stage_size, false);
 
                 let node_type = _child.node_type();
 
@@ -781,17 +784,22 @@ impl Core {
         let root_node = &self.root_node;
         let last_focused_node = &self.last_focused_node;
 
+        let stage_size = {
+            let stage_size = self.stage_size.read();
+            *stage_size
+        };
         let surface_size = {
             let surface_size = self.surface_size.read();
             *surface_size
         };
-        let scale_factor = surface_size.scale_factor();
+        let scale_factor = stage_size.scale_factor();
 
         let global_logical_x = (position.x / scale_factor) as f32;
         let global_logical_y = (position.y / scale_factor) as f32;
 
         let upload_payload = FocusablePayload {
             surface_size,
+            stage_size,
             resource_manager: self.resource_manager.clone(),
         };
 
