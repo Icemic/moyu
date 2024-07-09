@@ -23,6 +23,7 @@ NAME:
 ";
 
 struct Args {
+    lib: bool,
     release: bool,
     example: bool,
     name: String,
@@ -35,6 +36,7 @@ struct Args {
 impl Args {
     pub fn from_env() -> Result<Self, String> {
         let mut args = Arguments::from_env();
+        let lib = args.contains("--lib");
         let release = args.contains("--release");
         let example = args.contains("--example");
 
@@ -58,6 +60,7 @@ impl Args {
         match unused_args.len() {
             0 => Err("Expected NAME arg, but there was no NAME arg".to_string()),
             1 => Ok(Args {
+                lib,
                 release,
                 example,
                 name: unused_args.remove(0),
@@ -117,6 +120,9 @@ pub fn run_wasm() {
         "--target-dir",
         "target/wasm-examples-target",
     ];
+    if args.lib {
+        cargo_args.push("--lib");
+    }
     if args.example {
         cargo_args.extend(["--example", &args.name]);
     } else {
