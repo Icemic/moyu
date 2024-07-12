@@ -1,4 +1,5 @@
 use arc_swap::{ArcSwap, ArcSwapOption};
+use hai_pal::env::WindowState;
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
 use hai_pal::time::Instant;
 use hai_pal::visible_hand::{InvisibleHand, VisibleHand};

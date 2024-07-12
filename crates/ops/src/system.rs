@@ -1,6 +1,7 @@
 use anyhow::Result;
 #[cfg(not(feature = "web"))]
 use hai_macros::hai_bindgen;
+use hai_pal::env::WindowState;
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 use hai_runtime::quickjs_rusty::{JSContext, RawJSValue};
 #[cfg(feature = "web")]
@@ -8,7 +9,6 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use hai_core::core::get_core;
 use hai_core::user_event::UserEvent;
-use hai_core::user_event::WindowState;
 #[cfg(not(feature = "web"))]
 use hai_core::utils::convert::{from_js, JSValue};
 

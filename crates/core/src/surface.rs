@@ -1,8 +1,8 @@
 use hai_pal::env::{get_hai_env, RenderingBackend};
-use log::info;
+use log::{info, warn};
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
-use winit::dpi::{LogicalSize, Size};
+use winit::dpi::Size;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopWindowTarget};
 use winit::window::WindowBuilder;
 use winit::{dpi::PhysicalSize, window::Window};
@@ -16,13 +16,34 @@ pub fn create_eventloop() -> EventLoop<UserEvent> {
 }
 
 pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Window> {
+    let env = get_hai_env();
     // create window
-    let window = WindowBuilder::new()
-        .with_inner_size(Size::Logical(LogicalSize::new(1280., 720.)))
-        .with_resizable(false)
+    let mut builder = WindowBuilder::new()
+        .with_inner_size(Size::Logical(env.surface_size.into()))
+        .with_resizable(env.window_resizable)
         .with_visible(false)
-        .build(event_loop)
-        .unwrap();
+        .with_active(true)
+        .with_title(&env.window_title)
+        .with_min_inner_size(PhysicalSize::new(400, 300));
+
+    match env.window_state {
+        hai_pal::env::WindowState::Maximized => {
+            builder = builder.with_maximized(true);
+        }
+        hai_pal::env::WindowState::Minimized => {
+            warn!("You should not start with a minimized window.");
+        }
+        hai_pal::env::WindowState::Fullscreen => {
+            builder = builder.with_fullscreen(Some(winit::window::Fullscreen::Borderless(
+                event_loop.primary_monitor(),
+            )));
+        }
+        _ => {
+            // idle
+        }
+    };
+
+    let window = builder.build(event_loop).unwrap();
 
     // web target only
     // add a canvas element to dom as 'window'
