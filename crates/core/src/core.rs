@@ -15,7 +15,6 @@ use winit::event_loop::{EventLoopProxy, EventLoopWindowTarget};
 use winit::window::{CursorIcon, Fullscreen, Window};
 
 use crate::base::*;
-use crate::user_event::WindowState;
 use crate::utils::dispatch_event::{dispatch_event, HaiEvent, HaiEventKind};
 use crate::utils::hit_test::{hit_test, HitTestResult};
 use crate::utils::walk::walk_nodes_top_bottom;
@@ -138,14 +137,20 @@ impl Core {
         let resource_manager = ResourceManager::new(device.clone(), queue.clone());
         let renderers = HashMap::default();
 
+        let surface_size = SurfaceSize::default();
         let stage_size = SurfaceSize::default();
 
         let staging_belt = Arc::new(Mutex::new(StagingBelt::new(0)));
 
-        let logical_size = stage_size.logical_size_f32();
+        let surface_logical_size = surface_size.logical_size_f32();
+        let stage_logical_size = stage_size.logical_size_f32();
+
         let mvp_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("MVP Buffer"),
-            contents: bytemuck::bytes_of(&MVPMatrix::from_logical_size(logical_size)),
+            contents: bytemuck::bytes_of(&MVPMatrix::from_logical_size(
+                stage_logical_size,
+                surface_logical_size,
+            )),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -223,19 +228,25 @@ impl Core {
         plugins.get(name).cloned()
     }
 
-    /**
-     * Set screen size before first render, which should not be called after render loop started.
-     */
-    pub fn set_screen_size(&self, physical_size: (u32, u32), scale_factor: f64) {
-        let mut stage_size = self.stage_size.write();
-
-        stage_size.set_scale_factor(scale_factor);
-        stage_size.set_physical_size(physical_size.0, physical_size.1);
+    ///
+    /// Sets the size of the stage, which will refresh the MVP matrix buffer.
+    ///
+    /// And it should not be called after render loop started.
+    pub(crate) fn set_stage_and_surface_size(
+        &self,
+        stage_size: SurfaceSize,
+        surface_size: SurfaceSize,
+    ) {
+        *self.stage_size.write() = stage_size;
+        *self.surface_size.write() = surface_size;
 
         self.queue.write_buffer(
             &self.mvp_buffer,
             0,
-            bytemuck::bytes_of(&MVPMatrix::from_logical_size(stage_size.logical_size_f32())),
+            bytemuck::bytes_of(&MVPMatrix::from_logical_size(
+                stage_size.logical_size_f32(),
+                surface_size.logical_size_f32(),
+            )),
         );
     }
 
@@ -275,8 +286,8 @@ impl Core {
         let window_maximized = window.is_maximized();
 
         if logical_width > 0. && logical_height > 0. {
-            let stage_size = SurfaceSize::new(logical_width, logical_height, factor);
-            self.resize_surface(stage_size);
+            let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
+            self.resize_stage(surface_size);
 
             let window_size = Size::Logical(LogicalSize::new(logical_width, logical_height));
 
@@ -292,7 +303,7 @@ impl Core {
     }
 
     // reconfigure the surface everytime the window's size changes
-    pub fn resize_surface(&self, new_size: SurfaceSize) {
+    pub fn resize_stage(&self, new_size: SurfaceSize) {
         let mut config = self.config.lock();
 
         if cfg!(feature = "web") {
@@ -307,12 +318,17 @@ impl Core {
             config.height = height;
         }
 
-        *(self.stage_size.write()) = new_size;
+        *(self.surface_size.write()) = new_size;
+
+        let stage_size = self.stage_size.read().logical_size_f32();
 
         self.queue.write_buffer(
             &self.mvp_buffer,
             0,
-            bytemuck::bytes_of(&MVPMatrix::from_logical_size(new_size.logical_size_f32())),
+            bytemuck::bytes_of(&MVPMatrix::from_logical_size(
+                stage_size,
+                new_size.logical_size_f32(),
+            )),
         );
 
         // Finish all queue commands before reconfigure.
@@ -490,7 +506,7 @@ impl Core {
                             if physical_size.width == 0 || physical_size.height == 0 {
                                 // window minimized, ignore
                             } else {
-                                self.resize_surface(stage_size);
+                                self.resize_stage(stage_size);
                             }
 
                             if window.fullscreen().is_some() {

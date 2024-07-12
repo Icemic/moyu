@@ -7,6 +7,7 @@ pub mod traits;
 pub mod user_event;
 pub mod utils;
 
+use base::SurfaceSize;
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::event_loop::EventLoopProxy;
@@ -55,7 +56,11 @@ pub fn create_hai_core(
     // set screen size
     let size = window.inner_size();
     let scale_factor = window.scale_factor();
-    core.set_screen_size((size.width, size.height), scale_factor);
+
+    let stage_size = SurfaceSize::from_physical_size(&size, scale_factor);
+    let surface_size = SurfaceSize::from_physical_size(&size, scale_factor);
+
+    core.set_stage_and_surface_size(stage_size, surface_size);
 
     // make core sharable among threads
 
