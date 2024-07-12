@@ -76,6 +76,7 @@ pub struct Core {
     instant_last: ArcSwap<Instant>,
 
     pub(crate) root_node: Arc<RwLock<dyn Node>>,
+    /// Record the last focused position relative to the window.
     pub(crate) last_focused_position: ArcSwapOption<PhysicalPosition<f64>>,
     pub(crate) last_focused_node: Arc<RwLock<Option<HitTestResult>>>,
     pub(crate) mouse_down_id: AtomicU32,
@@ -102,8 +103,9 @@ pub struct Core {
     /// Size of current surface, which means the size of the window on desktop platforms, the size of the canvas \
     /// on web platform, and the size of the screen on mobile platforms.
     pub(crate) surface_size: Arc<RwLock<SurfaceSize>>,
-    /// Size of stage, which is the content size set by user.
+    /// Size of stage, which is the content size set by user. Cannot be changed once set.
     pub(crate) stage_size: Arc<RwLock<SurfaceSize>>,
+    pub(crate) stage_transform: Arc<RwLock<(f32, f32, f32)>>,
     pub(crate) window: Arc<Window>,
     pub(crate) instance: Arc<Instance>,
 }
@@ -138,6 +140,13 @@ impl Core {
         stage_size.set_logical_size(env.stage_size.0 as f64, env.stage_size.1 as f64);
         // use current monitor scale factor
         stage_size.set_scale_factor(scale_factor);
+
+        let (scale, translate_x, translate_y) = get_scale_and_translate(
+            env.stage_size.0 as f32,
+            env.stage_size.1 as f32,
+            size.width as f32,
+            size.height as f32,
+        );
 
         // create root node
         let root_node = Container::new("Root Node".to_string());
@@ -176,6 +185,7 @@ impl Core {
             instance,
             surface_size: Arc::new(RwLock::new(stage_size)),
             stage_size: Arc::new(RwLock::new(stage_size)),
+            stage_transform: Arc::new(RwLock::new((scale, translate_x, translate_y))),
             surface,
             device,
             queue,
@@ -317,6 +327,15 @@ impl Core {
                 new_size.logical_size_f32(),
             )),
         );
+
+        let (scale, translate_x, translate_y) = get_scale_and_translate(
+            stage_size.0,
+            stage_size.1,
+            new_size.logical_size_f32().0,
+            new_size.logical_size_f32().1,
+        );
+
+        *(self.stage_transform.write()) = (scale, translate_x, translate_y);
 
         // Finish all queue commands before reconfigure.
         // This is essential on DirectX 12 backend to avoid unexpected error.

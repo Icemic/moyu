@@ -71,7 +71,7 @@ impl MVPMatrix {
 /// Returned translate values are in logical pixels.
 ///
 /// The stage will be scaled to fit the surface and centered.
-fn get_scale_and_translate(
+pub fn get_scale_and_translate(
     stage_width: f32,
     stage_height: f32,
     surface_width: f32,
