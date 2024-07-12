@@ -10,17 +10,32 @@ pub use self::present_mode::RenderingPresentMode;
 
 static HAI_ENV: OnceCell<HaiConfig> = OnceCell::new();
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WindowState {
+    Idle,
+    Maximized,
+    Minimized,
+    Fullscreen,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct HaiConfig {
     #[cfg(not(feature = "web"))]
     pub entry: String,
-    pub show_fps: bool,
+    pub font_file: String,
+    pub window_title: String,
+    pub window_state: WindowState,
+    pub window_resizable: bool,
+    pub surface_size: (u32, u32),
+    pub stage_size: (u32, u32),
     pub present_mode: RenderingPresentMode,
     pub backend: RenderingBackend,
     /// see https://docs.rs/wgpu/latest/wgpu/type.SurfaceConfiguration.html#structfield.desired_maximum_frame_latency
     pub desired_maximum_frame_latency: u32,
-    pub font_file: String,
+
+    pub show_fps: bool,
 }
 
 impl Default for HaiConfig {
@@ -32,11 +47,16 @@ impl Default for HaiConfig {
                 .to_str()
                 .unwrap()
                 .to_string(),
-            show_fps: false,
+            font_file: "fonts/default.subset.otf".to_string(),
+            window_title: "Hai no engine".to_string(),
+            window_state: WindowState::Idle,
+            window_resizable: false,
+            surface_size: (1280, 720),
+            stage_size: (1280, 720),
             present_mode: RenderingPresentMode::default(),
             backend: RenderingBackend::default(),
             desired_maximum_frame_latency: 2,
-            font_file: "fonts/default.otf".to_string(),
+            show_fps: false,
         }
     }
 }
@@ -50,8 +70,7 @@ pub fn setup() {
     let env = match envy::prefixed("HAI_").from_env::<HaiConfig>() {
         Ok(config) => config,
         Err(error) => {
-            println!("Failed to read config: {}", error);
-            HaiConfig::default()
+            panic!("Failed to read config: {}", error);
         }
     };
 

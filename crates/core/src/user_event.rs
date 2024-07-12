@@ -1,5 +1,6 @@
 use std::ffi::c_void;
 
+use hai_pal::env::WindowState;
 use winit::window::CursorIcon;
 
 #[allow(dead_code)]
@@ -17,11 +18,3 @@ pub enum UserEvent {
 
 unsafe impl Send for UserEvent {}
 unsafe impl Sync for UserEvent {}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WindowState {
-    Idle,
-    Maximized,
-    Minimized,
-    Fullscreen,
-}
