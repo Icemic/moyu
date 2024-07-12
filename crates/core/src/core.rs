@@ -1,5 +1,5 @@
 use arc_swap::{ArcSwap, ArcSwapOption};
-use hai_pal::env::WindowState;
+use hai_pal::env::{get_hai_env, WindowState};
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
 use hai_pal::time::Instant;
 use hai_pal::visible_hand::{InvisibleHand, VisibleHand};
@@ -127,6 +127,18 @@ impl Core {
         config: SurfaceConfiguration,
         event_proxy: Arc<EventLoopProxy<UserEvent>>,
     ) -> Self {
+        let env = get_hai_env();
+
+        // store surface and stage size
+        let size = window.inner_size();
+        let scale_factor = window.scale_factor();
+        let surface_size = SurfaceSize::from_physical_size(&size, scale_factor);
+
+        let mut stage_size = SurfaceSize::default();
+        stage_size.set_logical_size(env.stage_size.0 as f64, env.stage_size.1 as f64);
+        // use current monitor scale factor
+        stage_size.set_scale_factor(scale_factor);
+
         // create root node
         let root_node = Container::new("Root Node".to_string());
         let root_node = Arc::new(RwLock::new(root_node));
@@ -136,9 +148,6 @@ impl Core {
 
         let resource_manager = ResourceManager::new(device.clone(), queue.clone());
         let renderers = HashMap::default();
-
-        let surface_size = SurfaceSize::default();
-        let stage_size = SurfaceSize::default();
 
         let staging_belt = Arc::new(Mutex::new(StagingBelt::new(0)));
 
@@ -226,28 +235,6 @@ impl Core {
     pub fn get_plugin(&self, name: &str) -> Option<Arc<Mutex<dyn Plugin>>> {
         let plugins = self.plugins.lock();
         plugins.get(name).cloned()
-    }
-
-    ///
-    /// Sets the size of the stage, which will refresh the MVP matrix buffer.
-    ///
-    /// And it should not be called after render loop started.
-    pub(crate) fn set_stage_and_surface_size(
-        &self,
-        stage_size: SurfaceSize,
-        surface_size: SurfaceSize,
-    ) {
-        *self.stage_size.write() = stage_size;
-        *self.surface_size.write() = surface_size;
-
-        self.queue.write_buffer(
-            &self.mvp_buffer,
-            0,
-            bytemuck::bytes_of(&MVPMatrix::from_logical_size(
-                stage_size.logical_size_f32(),
-                surface_size.logical_size_f32(),
-            )),
-        );
     }
 
     /// Get device of wgpu. This is useful when you need to do some low-level operations.
