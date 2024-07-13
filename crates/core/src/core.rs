@@ -815,10 +815,18 @@ impl Core {
             let surface_size = self.surface_size.read();
             *surface_size
         };
+        let (scale, translate_x, translate_y) = {
+            let stage_transform = self.stage_transform.read();
+            *stage_transform
+        };
+
         let scale_factor = stage_size.scale_factor();
 
         let global_logical_x = (position.x / scale_factor) as f32;
         let global_logical_y = (position.y / scale_factor) as f32;
+
+        let stage_logical_x = (global_logical_x - translate_x) / scale;
+        let stage_logical_y = (global_logical_y - translate_y) / scale;
 
         let upload_payload = FocusablePayload {
             surface_size,
@@ -829,12 +837,7 @@ impl Core {
         let mut last_focused_node = last_focused_node.write();
 
         // get node under pointer
-        if let Some(node) = hit_test(
-            root_node,
-            global_logical_x,
-            global_logical_y,
-            &upload_payload,
-        ) {
+        if let Some(node) = hit_test(root_node, stage_logical_x, stage_logical_y, &upload_payload) {
             if let Some(last_focused_node) = &*last_focused_node {
                 // if last focused node is the same as current node, it's a mouse move event
                 if last_focused_node == &node {
