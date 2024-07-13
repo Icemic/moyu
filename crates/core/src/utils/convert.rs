@@ -10,7 +10,7 @@ use hai_runtime::quickjs_rusty::{OwnedJsPromise, OwnedJsValue};
 pub type JSValue = OwnedJsValue;
 
 #[cfg(all(not(feature = "web"), feature = "quickjs"))]
-pub fn from_js<'a, T: serde::Deserialize<'a>>(value: &'a JSValue) -> anyhow::Result<T> {
+pub fn from_js<T: serde::de::DeserializeOwned>(value: &JSValue) -> anyhow::Result<T> {
     use anyhow::format_err;
     pub use hai_runtime::quickjs_rusty::serde::from_js;
 

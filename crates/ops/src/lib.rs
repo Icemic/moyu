@@ -62,7 +62,9 @@ fn receive_command(
     use hai_core::utils::convert::JSValue;
 
     let command_name = JSValue::own(context, &args[0]);
-    let command_name: &str = from_js(&command_name)?;
+    let command_name = from_js::<String>(&command_name)?;
+    let command_name = command_name.as_str();
+
     let command_args = {
         let command_args = JSValue::own(context, &args[1]);
         OwnedJsArray::try_from_value(command_args)?.raw_elements()
@@ -159,7 +161,8 @@ fn execute_plugin_command(
     use hai_core::utils::convert::JSValue;
 
     let plugin_name = JSValue::own(context, &args[0]);
-    let plugin_name: &str = from_js(&plugin_name)?;
+    let plugin_name = from_js::<String>(&plugin_name)?;
+    let plugin_name = plugin_name.as_str();
 
     let mut payload = JSValue::own(context, &args[1]);
 
