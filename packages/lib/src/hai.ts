@@ -32,11 +32,9 @@ interface HaiRawEvent {
 }
 
 globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
-  console.log('event:', JSON.stringify(raw_event));
   const { kind, targetId: target_id, bubbleTargetIds: bubble_target_ids, location, identifier } = raw_event;
 
   const node = STATE.nodeMap[target_id];
-  console.log('event:', kind, target_id, node.label, bubble_target_ids.join(','));
 
   let propagate = true;
   let preventDefault = false;
@@ -104,7 +102,6 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
       // simulate mouse events as same as browsers
       if (kind === 'TouchEnd' && !STATE.touchMoved[identifier!] && !preventDefault) {
         for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click']) {
-          console.log('simulate', eventKind, STATE.touchMoved[identifier!]);
           propagate = true;
           event.kind = eventKind;
           node?.listeners?.['on' + eventKind]?.(event);
@@ -149,14 +146,6 @@ export interface HaiEvent {
 export function addEventListener(name: string, callback: (...args: any[]) => void) {
   hai.pushCommand('add_event_listener', [name, callback]);
 }
-
-// uncomment this to print all commands
-// const pushCommand = hai.pushCommand;
-// hai.pushCommand = function (name: string, args: any[], callback?: (...args: any[]) => void) {
-//   console.log('name', name);
-//   console.log('args', JSON.stringify(args[0]));
-//   return pushCommand(name, args, callback);
-// };
 
 export function loadPreset(name: string) {
   hai.pushCommand('load_preset', [name]);
