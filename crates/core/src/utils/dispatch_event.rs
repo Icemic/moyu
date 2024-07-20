@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::hit_test::HitTestTarget;
+
 #[derive(Clone, Copy, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub enum HaiEventKind {
     #[default]
@@ -44,6 +46,30 @@ pub struct HaiEvent {
     /// for touch event
     pub identifier: Option<u32>,
 }
+
+/// Struct for storing the state of a pointer device state
+#[derive(Debug, Default, PartialEq)]
+pub struct PointerState {
+    /// the device type of the current event
+    pub device_type: DeviceType,
+    /// the location of the current event, (client_x, client_y, screen_x, screen_y) in order
+    pub location: (u32, u32, u32, u32),
+    /// record the current target, which is the result of hit test from current pointer location
+    pub current_target: Option<HitTestTarget>,
+    /// if the pointer is down (at MouseDown or TouchStart event), record the initial node id
+    pub down_id: Option<u32>,
+}
+
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
+pub enum DeviceType {
+    #[default]
+    Mouse,
+    // identifier
+    Finger(u32),
+    Stylus,
+}
+
+pub const MOUSE_IDENTIFIER: i32 = -1;
 
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 pub fn dispatch_event(event: HaiEvent) {

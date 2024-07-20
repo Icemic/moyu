@@ -8,14 +8,15 @@ use crate::traits::{FocusablePayload, Node};
 use super::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use super::walk::walk_nodes_bottom_top;
 
-pub struct HitTestResult {
-    pub target: Arc<RwLock<dyn Node>>,
+#[derive(Debug)]
+pub struct HitTestTarget {
+    pub node: Arc<RwLock<dyn Node>>,
     pub parent_ids: Vec<u32>,
 }
 
-impl PartialEq for HitTestResult {
+impl PartialEq for HitTestTarget {
     fn eq(&self, other: &Self) -> bool {
-        self.target.read().base().id() == other.target.read().base().id()
+        self.node.read().base().id() == other.node.read().base().id()
     }
 }
 
@@ -24,7 +25,7 @@ pub fn hit_test<'a>(
     global_logical_x: f32,
     global_logical_y: f32,
     upload_payload: &FocusablePayload,
-) -> Option<HitTestResult> {
+) -> Option<HitTestTarget> {
     let root_node = root_node.read();
     let mut focused_node = None;
 
@@ -52,8 +53,8 @@ pub fn hit_test<'a>(
                     let hit = focusable.contains(local_logical_x, local_logical_y, upload_payload);
 
                     if hit {
-                        focused_node = Some(HitTestResult {
-                            target: child.clone(),
+                        focused_node = Some(HitTestTarget {
+                            node: child.clone(),
                             parent_ids: parent_ids.to_vec(),
                         });
                     }

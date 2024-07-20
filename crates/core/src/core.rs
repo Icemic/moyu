@@ -1,11 +1,11 @@
-use arc_swap::{ArcSwap, ArcSwapOption};
+use arc_swap::ArcSwap;
 use hai_pal::env::{get_hai_env, WindowState};
 use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
 use hai_pal::time::Instant;
 use hai_pal::visible_hand::{InvisibleHand, VisibleHand};
 use log::{debug, error, info, warn};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
@@ -15,8 +15,10 @@ use winit::event_loop::{EventLoopProxy, EventLoopWindowTarget};
 use winit::window::{CursorIcon, Fullscreen, Window};
 
 use crate::base::*;
-use crate::utils::dispatch_event::{dispatch_event, HaiEvent, HaiEventKind};
-use crate::utils::hit_test::{hit_test, HitTestResult};
+use crate::utils::dispatch_event::{
+    dispatch_event, DeviceType, HaiEvent, HaiEventKind, PointerState, MOUSE_IDENTIFIER,
+};
+use crate::utils::hit_test::hit_test;
 use crate::utils::walk::walk_nodes_top_bottom;
 use crate::{nodes::Container, resource::ResourceManager, traits::*, user_event::UserEvent};
 
@@ -56,6 +58,58 @@ pub type AfterRenderHandler = Box<
         + Sync,
 >;
 
+macro_rules! get_pointer_state {
+    ($self:ident, $name:ident, $identifier:expr) => {
+        let pointer_map = $self.pointer_map.read();
+        let pointer_state = pointer_map.get(&$identifier);
+
+        if pointer_state.is_none() {
+            error!("Pointer state not found for identifier {}", $identifier);
+            return;
+        }
+
+        let $name = pointer_state.unwrap();
+    };
+
+    ($self:ident, $name:ident, $identifier:expr, $ret:expr) => {
+        let pointer_map = $self.pointer_map.read();
+        let pointer_state = pointer_map.get(&$identifier);
+
+        if pointer_state.is_none() {
+            error!("Pointer state not found for identifier {}", $identifier);
+            return $ret;
+        }
+
+        let $name = pointer_state.unwrap();
+    };
+}
+
+macro_rules! get_pointer_state_mut {
+    ($self:ident, $name:ident, $identifier:expr) => {
+        let mut pointer_map = $self.pointer_map.write();
+        let pointer_state = pointer_map.get_mut(&$identifier);
+
+        if pointer_state.is_none() {
+            error!("Pointer state not found for identifier {}", $identifier);
+            return;
+        }
+
+        let $name = pointer_state.unwrap();
+    };
+
+    ($self:ident, $name:ident, $identifier:expr, $ret:expr) => {
+        let mut pointer_map = $self.pointer_map.write();
+        let pointer_state = pointer_map.get_mut(&$identifier);
+
+        if pointer_state.is_none() {
+            error!("Pointer state not found for identifier {}", $identifier);
+            return $ret;
+        }
+
+        let $name = pointer_state.unwrap();
+    };
+}
+
 pub struct Core {
     pub(crate) config: Arc<Mutex<SurfaceConfiguration>>,
     pub(crate) event_proxy: Arc<EventLoopProxy<UserEvent>>,
@@ -76,11 +130,9 @@ pub struct Core {
     instant_last: ArcSwap<Instant>,
 
     pub(crate) root_node: Arc<RwLock<dyn Node>>,
-    /// Record the last hover position (client_x, client_y, screen_x, screen_y).
-    pub(crate) last_hover_position: ArcSwapOption<(u32, u32, u32, u32)>,
-    pub(crate) last_hover_node: Arc<RwLock<Option<HitTestResult>>>,
-    pub(crate) mouse_down_id: AtomicU32,
     pub(crate) node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
+    /// map for current pointer states, mouse event is stored in index -1 while touch events are stored in their identifier
+    pub(crate) pointer_map: Arc<RwLock<HashMap<i32, PointerState>>>,
 
     pub(crate) window_state: ArcSwap<WindowState>,
 
@@ -155,6 +207,10 @@ impl Core {
         let mut node_map: HashMap<u32, Arc<RwLock<dyn Node>>> = Default::default();
         node_map.insert(0, root_node.clone());
 
+        let mut pointer_map: HashMap<i32, PointerState> = Default::default();
+        // add mouse pointer which is always there
+        pointer_map.insert(MOUSE_IDENTIFIER, PointerState::default());
+
         let resource_manager = ResourceManager::new(device.clone(), queue.clone());
         let renderers = HashMap::default();
 
@@ -206,10 +262,8 @@ impl Core {
             instant_last: ArcSwap::new(Arc::new(Instant::now())),
 
             root_node,
-            last_hover_position: ArcSwapOption::new(None),
-            last_hover_node: Arc::new(RwLock::new(None)),
-            mouse_down_id: AtomicU32::new(0),
             node_map: Arc::new(RwLock::new(node_map)),
+            pointer_map: Arc::new(RwLock::new(pointer_map)),
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
             redraw_mode: ArcSwap::new(Arc::new(HaiRedrawMode::Auto)),
@@ -710,30 +764,33 @@ impl Core {
     pub fn input(&self, window: &Window, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
-                self.handle_hover_changes(window, position, false);
+                self.handle_hover_changes(window, position, MOUSE_IDENTIFIER);
 
                 true
             }
             // clear hover node when cursor leaves window
             WindowEvent::CursorLeft { .. } => {
-                if let Some(last_hover_node) = self.pop_last_hover_node() {
-                    let location = self.get_last_hover_position();
+                get_pointer_state!(self, pointer_state, MOUSE_IDENTIFIER, true);
+
+                if let Some(last_hover_node) = &pointer_state.current_target {
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseLeave,
-                        target_id: *last_hover_node.target.read().base().id(),
+                        target_id: *last_hover_node.node.read().base().id(),
                         bubble_target_ids: last_hover_node.parent_ids.clone(),
-                        location,
+                        location: Some(pointer_state.location),
                         identifier: None,
                     });
                 }
                 true
             }
             WindowEvent::MouseInput { button, state, .. } => {
-                if let Some(last_hover_node) = &*self.last_hover_node.read() {
-                    let target_id = *last_hover_node.target.read().base().id();
+                get_pointer_state_mut!(self, pointer_state, MOUSE_IDENTIFIER, true);
+
+                if let Some(last_hover_node) = &pointer_state.current_target {
+                    let target_id = *last_hover_node.node.read().base().id();
                     let bubble_target_ids = last_hover_node.parent_ids.clone();
 
-                    let location = self.get_last_hover_position();
+                    let location = Some(pointer_state.location);
 
                     match state {
                         ElementState::Pressed => {
@@ -745,7 +802,7 @@ impl Core {
                                 identifier: None,
                             });
                             if let winit::event::MouseButton::Left = button {
-                                self.mouse_down_id.store(target_id, Ordering::Relaxed);
+                                pointer_state.down_id = Some(target_id);
                             }
                         }
                         ElementState::Released => {
@@ -757,8 +814,9 @@ impl Core {
                                 identifier: None,
                             });
 
-                            let pressed_target_id = self.mouse_down_id.swap(0, Ordering::Relaxed);
-                            if pressed_target_id == target_id {
+                            let down_id = pointer_state.down_id.take();
+
+                            if down_id == Some(target_id) {
                                 match button {
                                     winit::event::MouseButton::Left => {
                                         dispatch_event(HaiEvent {
@@ -798,21 +856,27 @@ impl Core {
                 true
             }
             WindowEvent::Touch(touch) => {
-                let last_location = self.get_last_hover_position();
-                self.handle_hover_changes(window, &touch.location, true);
-                let location = self.get_last_hover_position();
+                self.get_ensure_pointer_state(touch.id as i32, DeviceType::Finger(touch.id as u32));
 
-                if last_location == location && touch.phase == TouchPhase::Moved {
+                let last_location = {
+                    get_pointer_state!(self, pointer_state, touch.id as i32, true);
+                    pointer_state.location
+                };
+
+                self.handle_hover_changes(window, &touch.location, touch.id as i32);
+
+                get_pointer_state!(self, pointer_state, touch.id as i32, true);
+
+                if last_location == pointer_state.location && touch.phase == TouchPhase::Moved {
                     // ignore duplicated touch move event
                     return true;
                 }
 
-                let last_hover_node = self.last_hover_node.clone();
-                let last_hover_node = last_hover_node.read();
-
-                if let Some(last_hover_node) = &*last_hover_node {
-                    let target_id = *last_hover_node.target.read().base().id();
+                if let Some(last_hover_node) = &pointer_state.current_target {
+                    let target_id = *last_hover_node.node.read().base().id();
                     let bubble_target_ids = last_hover_node.parent_ids.clone();
+
+                    let location = Some(pointer_state.location);
 
                     match touch.phase {
                         TouchPhase::Started => {
@@ -864,10 +928,9 @@ impl Core {
         &self,
         window: &Window,
         position: &PhysicalPosition<f64>,
-        is_touch: bool,
+        identifier: i32,
     ) {
-        let root_node = &self.root_node;
-        let last_hover_node = &self.last_hover_node;
+        get_pointer_state_mut!(self, pointer_state, identifier);
 
         let stage_size = {
             let stage_size = self.stage_size.read();
@@ -901,7 +964,7 @@ impl Core {
             screen_logical_y.round() as u32,
         );
 
-        self.last_hover_position.store(Some(Arc::new(locations)));
+        pointer_state.location = locations;
 
         let upload_payload = FocusablePayload {
             surface_size,
@@ -909,20 +972,25 @@ impl Core {
             resource_manager: self.resource_manager.clone(),
         };
 
-        let mut last_hover_node = last_hover_node.write();
+        let last_hover_node = &mut pointer_state.current_target;
 
         // get node under pointer
-        if let Some(node) = hit_test(root_node, stage_logical_x, stage_logical_y, &upload_payload) {
-            if !is_touch {
+        if let Some(node) = hit_test(
+            &self.root_node,
+            stage_logical_x,
+            stage_logical_y,
+            &upload_payload,
+        ) {
+            if identifier == MOUSE_IDENTIFIER {
                 dispatch_event(HaiEvent {
                     kind: HaiEventKind::MouseMove,
-                    target_id: *node.target.read().base().id(),
+                    target_id: *node.node.read().base().id(),
                     bubble_target_ids: node.parent_ids.clone(),
                     location: Some(locations),
                     identifier: None,
                 });
 
-                if let Some(last_hover_node) = &*last_hover_node {
+                if let Some(last_hover_node) = last_hover_node {
                     if last_hover_node == &node {
                         // do nothing if last focused node is the same as current node
                         return;
@@ -931,7 +999,7 @@ impl Core {
                     // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseLeave,
-                        target_id: *last_hover_node.target.read().base().id(),
+                        target_id: *last_hover_node.node.read().base().id(),
                         bubble_target_ids: last_hover_node.parent_ids.clone(),
                         location: Some(locations),
                         identifier: None,
@@ -941,7 +1009,7 @@ impl Core {
                 // there is always a mouse enter event if current node is different from last focused node (may be None)
                 dispatch_event(HaiEvent {
                     kind: HaiEventKind::MouseEnter,
-                    target_id: *node.target.read().base().id(),
+                    target_id: *node.node.read().base().id(),
                     bubble_target_ids: node.parent_ids.clone(),
                     location: Some(locations),
                     identifier: None,
@@ -950,7 +1018,7 @@ impl Core {
 
             // debug!("pointer is over {}", node.read().base().label());
 
-            match node.target.read().base().cursor() {
+            match node.node.read().base().cursor() {
                 HaiCursor::Visible(cursor) => {
                     self.window.set_cursor_icon(*cursor);
                     self.window.set_cursor_visible(true);
@@ -965,13 +1033,13 @@ impl Core {
             // record last focused node
             *last_hover_node = Some(node);
         } else {
-            if !is_touch {
+            if identifier == MOUSE_IDENTIFIER {
                 // if no node under pointer, it's a mouse leave event if last focused node is not None
-                if let Some(last_hover_node) = &*last_hover_node {
+                if let Some(last_hover_node) = last_hover_node {
                     // TODO: mouse leave event
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseLeave,
-                        target_id: *last_hover_node.target.read().base().id(),
+                        target_id: *last_hover_node.node.read().base().id(),
                         bubble_target_ids: last_hover_node.parent_ids.clone(),
                         location: Some(locations),
                         identifier: None,
@@ -987,13 +1055,13 @@ impl Core {
         }
     }
 
-    fn get_last_hover_position(&self) -> Option<(u32, u32, u32, u32)> {
-        self.last_hover_position.load().as_ref().map(|pos| **pos)
-    }
-
-    fn pop_last_hover_node(&self) -> Option<HitTestResult> {
-        let last_hover_node = self.last_hover_node.clone();
-        let mut last_hover_node = last_hover_node.write();
-        last_hover_node.take()
+    /// Check if the pointer state exists, if not, create one.
+    fn get_ensure_pointer_state(&self, identifier: i32, device_type: DeviceType) {
+        let mut pointer_map = self.pointer_map.write();
+        pointer_map.entry(identifier).or_insert_with(|| {
+            let mut pointer_state = PointerState::default();
+            pointer_state.device_type = device_type;
+            pointer_state
+        });
     }
 }
