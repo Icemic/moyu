@@ -1,15 +1,14 @@
 import React from 'react';
-import { SpringValue, animated, useSpring } from '../../../src/lib';
-import { LayoutSytle, TextStyle } from '../../../src/declaration';
+import { SpringValue, animated, useSpring, HaiTextAttribute } from '@hai/lib';
 
-const LIST_TEXT_LAYOUT_STYLE: LayoutSytle = {
+const LIST_TEXT_LAYOUT_STYLE: HaiTextAttribute = {
   direction: 'horizontal' as const,
   boxWidth: 200,
   boxHeight: 36,
   glyphGridSize: 24,
 };
 
-const LIST_TEXT_STYLE_DEFAULT: TextStyle = {
+const LIST_TEXT_STYLE_DEFAULT: HaiTextAttribute = {
   fontSize: 24,
   lineHeight: 1.5,
   fillColor: 'rgba(255, 255, 255, 0.6)',

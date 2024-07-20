@@ -4,7 +4,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspace @hai/lib dev",
-    "build": "yarn workspace @hai/lib build"
-  }
+    "dev": "yarn workspace @hai/demo dev",
+    "build": "yarn workspace @hai/demo build",
+    "dev-lib": "yarn workspace @hai/lib dev",
+    "build-lib": "yarn workspace @hai/lib build"
+  },
+  "packageManager": "yarn@4.3.1"
 }

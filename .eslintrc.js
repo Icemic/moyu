@@ -35,7 +35,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['.eslintrc.js', '.prettierrc.js', 'jest.config.js'],
+      files: ['.eslintrc.js', '.prettierrc.js', 'jest.config.js', 'rspack.config.js'],
       env: {
         node: true,
       },

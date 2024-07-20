@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { animated, useSpring } from '../../../src/lib';
+import { animated, useSpring, Node } from '@hai/lib';
 import { Button } from './button';
-import { Node } from '../../../src/node';
 
 export interface TextWindowProps {
   onItemClicked?: (id: string) => void;

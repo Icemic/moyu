@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
-import { animated, useSpring, useTransition } from '../../../src/lib';
-import { HaiNodeAttributes } from '../../../src/declaration';
+import { animated, useSpring, useTransition, HaiNodeAttributes } from '@hai/lib';
 import { Button } from './button';
 
 export interface DialogProps extends HaiNodeAttributes {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 
-import { createRoot, hai, useTransition } from '../../src/lib';
+import { createRoot, hai, useTransition } from '@hai/lib';
 import { ListButton } from './components/list-button';
 import { TextWindow } from './components/textwindow';
 import { Dialog } from './components/dialog';

@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { animated, useSpring } from '../../../src/lib';
-import { HaiNodeAttributes } from '../../../src/declaration';
-import { HaiEvent } from '../../../src/hai';
+import { animated, useSpring, HaiNodeAttributes, HaiEvent } from '@hai/lib';
 
 export interface ButtonProps extends HaiNodeAttributes {
   fileName: string;
