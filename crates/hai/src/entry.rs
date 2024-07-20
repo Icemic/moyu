@@ -106,7 +106,11 @@ pub fn main_entry(event_loop: EventLoop<UserEvent>) {
 
                     _window.set_visible(true);
 
-                    move_to_center(&_window);
+                    // only for desktop platforms
+                    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+                    if !_window.is_maximized() && !_window.fullscreen().is_some() {
+                        move_to_center(&_window);
+                    }
 
                     window = Some(_window);
                     core = Some(_core);
