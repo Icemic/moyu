@@ -141,6 +141,8 @@ pub struct Core {
     /// if `true`, the screen will be refreshed in next frame,
     /// by default it will be `true` to render every frame.
     pub(crate) is_dirty: AtomicBool,
+    /// Pause the rendering process, default is `false`
+    pub(crate) is_paused: AtomicBool,
 
     // render interrupt handler
     pub(crate) after_render_handler: Arc<Mutex<Option<AfterRenderHandler>>>,
@@ -268,6 +270,7 @@ impl Core {
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
             redraw_mode: ArcSwap::new(Arc::new(HaiRedrawMode::Auto)),
             is_dirty: AtomicBool::new(true),
+            is_paused: AtomicBool::new(false),
 
             after_render_handler: Arc::new(Mutex::new(None)),
         }
@@ -514,7 +517,9 @@ impl Core {
                 let redraw_mode = self.redraw_mode.load();
                 match **redraw_mode {
                     HaiRedrawMode::Auto => {
-                        window.request_redraw();
+                        if !self.is_paused.load(Ordering::Relaxed) {
+                            window.request_redraw();
+                        }
                     }
                     HaiRedrawMode::Dirty => {
                         // skip rendering if not dirty
@@ -564,8 +569,10 @@ impl Core {
                             );
 
                             if physical_size.width == 0 || physical_size.height == 0 {
-                                // window minimized, ignore
+                                // window minimized, stop rendering
+                                self.is_paused.store(true, Ordering::Relaxed);
                             } else {
+                                self.is_paused.store(false, Ordering::Relaxed);
                                 self.resize_stage(stage_size);
                             }
 
@@ -879,10 +886,7 @@ impl Core {
                     return true;
                 }
 
-                println!("aaa4");
-
                 if let Some(last_hover_node) = &pointer_state.current_target {
-                    println!("aaaaa");
                     let target_id = *last_hover_node.node.read().base().id();
                     let bubble_target_ids = last_hover_node.parent_ids.clone();
 
