@@ -764,7 +764,8 @@ impl Core {
     pub fn input(&self, window: &Window, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
-                self.handle_hover_changes(window, position, MOUSE_IDENTIFIER);
+                self.handle_pointer_move(window, position, MOUSE_IDENTIFIER);
+                self.handle_pointer_hover(MOUSE_IDENTIFIER);
 
                 true
             }
@@ -856,23 +857,32 @@ impl Core {
                 true
             }
             WindowEvent::Touch(touch) => {
-                self.get_ensure_pointer_state(touch.id as i32, DeviceType::Finger(touch.id as u32));
+                let identifier = touch.id as i32;
+
+                self.get_ensure_pointer_state(identifier, DeviceType::Finger(identifier as u32));
 
                 let last_location = {
-                    get_pointer_state!(self, pointer_state, touch.id as i32, true);
+                    get_pointer_state!(self, pointer_state, identifier, true);
                     pointer_state.location
                 };
 
-                self.handle_hover_changes(window, &touch.location, touch.id as i32);
+                self.handle_pointer_move(window, &touch.location, identifier);
 
-                get_pointer_state!(self, pointer_state, touch.id as i32, true);
+                if touch.phase == TouchPhase::Started {
+                    self.handle_pointer_hover(identifier);
+                }
+
+                get_pointer_state!(self, pointer_state, identifier, true);
 
                 if last_location == pointer_state.location && touch.phase == TouchPhase::Moved {
                     // ignore duplicated touch move event
                     return true;
                 }
 
+                println!("aaa4");
+
                 if let Some(last_hover_node) = &pointer_state.current_target {
+                    println!("aaaaa");
                     let target_id = *last_hover_node.node.read().base().id();
                     let bubble_target_ids = last_hover_node.parent_ids.clone();
 
@@ -924,7 +934,7 @@ impl Core {
     }
 
     /// Handle hover changes on mouse move or touch, and record locations relative to client and screen (always in logical).
-    fn handle_hover_changes(
+    fn handle_pointer_move(
         &self,
         window: &Window,
         position: &PhysicalPosition<f64>,
@@ -936,10 +946,7 @@ impl Core {
             let stage_size = self.stage_size.read();
             *stage_size
         };
-        let surface_size = {
-            let surface_size = self.surface_size.read();
-            *surface_size
-        };
+
         let (scale, translate_x, translate_y) = {
             let stage_transform = self.stage_transform.read();
             *stage_transform
@@ -965,6 +972,18 @@ impl Core {
         );
 
         pointer_state.location = locations;
+    }
+
+    fn handle_pointer_hover(&self, identifier: i32) {
+        let surface_size = {
+            let surface_size = self.surface_size.read();
+            *surface_size
+        };
+
+        let stage_size = {
+            let stage_size = self.stage_size.read();
+            *stage_size
+        };
 
         let upload_payload = FocusablePayload {
             surface_size,
@@ -972,13 +991,16 @@ impl Core {
             resource_manager: self.resource_manager.clone(),
         };
 
+        get_pointer_state_mut!(self, pointer_state, identifier);
+
         let last_hover_node = &mut pointer_state.current_target;
+        let location = Some(pointer_state.location);
 
         // get node under pointer
         if let Some(node) = hit_test(
             &self.root_node,
-            stage_logical_x,
-            stage_logical_y,
+            pointer_state.location.0 as f32,
+            pointer_state.location.1 as f32,
             &upload_payload,
         ) {
             if identifier == MOUSE_IDENTIFIER {
@@ -986,7 +1008,7 @@ impl Core {
                     kind: HaiEventKind::MouseMove,
                     target_id: *node.node.read().base().id(),
                     bubble_target_ids: node.parent_ids.clone(),
-                    location: Some(locations),
+                    location,
                     identifier: None,
                 });
 
@@ -1001,7 +1023,7 @@ impl Core {
                         kind: HaiEventKind::MouseLeave,
                         target_id: *last_hover_node.node.read().base().id(),
                         bubble_target_ids: last_hover_node.parent_ids.clone(),
-                        location: Some(locations),
+                        location,
                         identifier: None,
                     });
                 }
@@ -1011,7 +1033,7 @@ impl Core {
                     kind: HaiEventKind::MouseEnter,
                     target_id: *node.node.read().base().id(),
                     bubble_target_ids: node.parent_ids.clone(),
-                    location: Some(locations),
+                    location,
                     identifier: None,
                 });
             }
@@ -1041,7 +1063,7 @@ impl Core {
                         kind: HaiEventKind::MouseLeave,
                         target_id: *last_hover_node.node.read().base().id(),
                         bubble_target_ids: last_hover_node.parent_ids.clone(),
-                        location: Some(locations),
+                        location,
                         identifier: None,
                     });
 
