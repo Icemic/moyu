@@ -297,5 +297,6 @@ impl Drop for QuickVM {
         self.to_be_closed = true;
         self.timer_tasks.lock().unwrap().clear();
         self.call_tasks.lock().unwrap().clear();
+        self.async_tasks.lock().unwrap().clear();
     }
 }
