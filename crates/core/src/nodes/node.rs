@@ -484,6 +484,7 @@ impl Drop for NodeBase {
             kind: HaiEventKind::NodeDestroyed,
             target_id: self.id,
             bubble_target_ids: vec![],
+            ..Default::default()
         });
     }
 }

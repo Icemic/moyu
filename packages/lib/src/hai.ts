@@ -20,14 +20,26 @@ declare global {
   }
 
   // eslint-disable-next-line no-var
-  var __hai_receive_event: (kind: string, target_id: number, bubble_target_ids: number[]) => void;
+  var __hai_receive_event: (event: HaiRawEvent) => void;
 }
 
-globalThis.__hai_receive_event = (kind: string, target_id: number, bubble_target_ids: number[]) => {
+interface HaiRawEvent {
+  kind: string;
+  targetId: number;
+  bubbleTargetIds: number[];
+  location?: [number, number, number, number];
+  identifier?: number;
+}
+
+globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
+  console.log('event:', JSON.stringify(raw_event));
+  const { kind, targetId: target_id, bubbleTargetIds: bubble_target_ids, location, identifier } = raw_event;
+
   const node = STATE.nodeMap[target_id];
   console.log('event:', kind, target_id, node.label, bubble_target_ids.join(','));
 
   let propagate = true;
+  let preventDefault = false;
 
   const event: HaiEvent = {
     kind,
@@ -38,7 +50,21 @@ globalThis.__hai_receive_event = (kind: string, target_id: number, bubble_target
     stopPropagation: () => {
       propagate = false;
     },
+    preventDefault: () => {
+      preventDefault = true;
+    },
   };
+
+  if (location) {
+    event.client_x = location[0];
+    event.client_y = location[1];
+    event.screen_x = location[2];
+    event.screen_y = location[3];
+  }
+
+  if (identifier) {
+    event.identifier = identifier;
+  }
 
   switch (kind) {
     case 'NodeDestroyed':
@@ -53,15 +79,49 @@ globalThis.__hai_receive_event = (kind: string, target_id: number, bubble_target
     case 'KeyDown':
     case 'KeyUp':
     case 'KeyPress':
-    case 'TouchStart':
-    case 'TouchMove':
-    case 'TouchEnd':
-    case 'TouchCancel':
       node?.listeners?.['on' + kind]?.(event);
       while (propagate && bubble_target_ids.length) {
         event.current_target_id = bubble_target_ids.pop()!;
         event.current_target_label = STATE.nodeMap[event.current_target_id]?.label;
         STATE.nodeMap[event.current_target_id]?.listeners?.['on' + kind]?.(event);
+      }
+
+      break;
+    case 'TouchStart':
+    case 'TouchMove':
+    case 'TouchEnd':
+    case 'TouchCancel':
+      node?.listeners?.['on' + kind]?.(event);
+      {
+        const _bubble_target_ids = [...bubble_target_ids];
+        while (propagate && _bubble_target_ids.length) {
+          event.current_target_id = _bubble_target_ids.pop()!;
+          event.current_target_label = STATE.nodeMap[event.current_target_id]?.label;
+          STATE.nodeMap[event.current_target_id]?.listeners?.['on' + kind]?.(event);
+        }
+      }
+
+      if (kind === 'TouchStart') {
+        STATE.touchMoved[identifier!] = false;
+      } else if (kind === 'TouchMove') {
+        STATE.touchMoved[identifier!] = true;
+      } else if (kind === 'TouchEnd' || kind === 'TouchCancel') {
+        delete STATE.touchMoved[identifier!];
+      }
+
+      // simulate mouse events as same as browsers
+      if (kind === 'TouchEnd' && !STATE.touchMoved[identifier!] && !preventDefault) {
+        for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click']) {
+          propagate = true;
+          event.kind = eventKind;
+          node?.listeners?.['on' + eventKind]?.(event);
+          const _bubble_target_ids = [...bubble_target_ids];
+          while (propagate && _bubble_target_ids.length) {
+            event.current_target_id = _bubble_target_ids.pop()!;
+            event.current_target_label = STATE.nodeMap[event.current_target_id]?.label;
+            STATE.nodeMap[event.current_target_id]?.listeners?.['on' + eventKind]?.(event);
+          }
+        }
       }
 
       break;
@@ -76,7 +136,13 @@ export interface HaiEvent {
   current_target_id: number;
   target_label?: string;
   current_target_label?: string;
+  client_x?: number;
+  client_y?: number;
+  screen_x?: number;
+  screen_y?: number;
+  identifier?: number;
   stopPropagation: () => void;
+  preventDefault: () => void;
 }
 
 export function addEventListener(name: string, callback: (...args: any[]) => void) {
