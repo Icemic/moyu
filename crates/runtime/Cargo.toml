@@ -1,7 +1,7 @@
 [package]
 description = "Javascript runtime for Hai based on QuickJS."
 edition = "2021"
-license = "Apache-2.0"
+license = "MPL-2.0"
 name = "hai_runtime"
 repository = "https://github.com/Icemic/hai"
 version = "0.7.0"

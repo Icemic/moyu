@@ -2,7 +2,7 @@
 authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "Audio plugin for Hai."
 edition = "2021"
-license = "Apache-2.0"
+license = "MPL-2.0"
 name = "hai_audio"
 repository = "https://github.com/Icemic/hai"
 version = "0.7.0"

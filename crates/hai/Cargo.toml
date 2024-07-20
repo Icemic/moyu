@@ -2,7 +2,7 @@
 authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "An experimental game engine for building visual novels."
 edition = "2021"
-license = "Apache-2.0"
+license = "MPL-2.0"
 name = "hai"
 repository = "https://github.com/Icemic/hai"
 version = "0.7.0"
