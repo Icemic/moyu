@@ -75,6 +75,9 @@ export function ListButton(props: ListButtonProps) {
         fillColor={springs.fillColor}
         onMouseEnter={handleEnter}
         onMouseLeave={handleLeave}
+        onTouchStart={handleEnter}
+        onTouchEnd={handleLeave}
+        onTouchCancel={handleLeave}
         onClick={() => onClick?.(index)}
         cursor={'pointer'}
       />

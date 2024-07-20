@@ -85,6 +85,9 @@ export function Button(props: ButtonProps) {
       onMouseLeave={handleLeave}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
+      onTouchStart={handleMouseDown}
+      onTouchEnd={handleMouseUp}
+      onTouchCancel={handleMouseUp}
       onClick={onClick}
     >
       <animated.sprite

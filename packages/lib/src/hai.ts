@@ -101,17 +101,10 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
         }
       }
 
-      if (kind === 'TouchStart') {
-        STATE.touchMoved[identifier!] = false;
-      } else if (kind === 'TouchMove') {
-        STATE.touchMoved[identifier!] = true;
-      } else if (kind === 'TouchEnd' || kind === 'TouchCancel') {
-        delete STATE.touchMoved[identifier!];
-      }
-
       // simulate mouse events as same as browsers
       if (kind === 'TouchEnd' && !STATE.touchMoved[identifier!] && !preventDefault) {
         for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click']) {
+          console.log('simulate', eventKind, STATE.touchMoved[identifier!]);
           propagate = true;
           event.kind = eventKind;
           node?.listeners?.['on' + eventKind]?.(event);
@@ -122,6 +115,14 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
             STATE.nodeMap[event.current_target_id]?.listeners?.['on' + eventKind]?.(event);
           }
         }
+      }
+
+      if (kind === 'TouchStart') {
+        STATE.touchMoved[identifier!] = false;
+      } else if (kind === 'TouchMove') {
+        STATE.touchMoved[identifier!] = true;
+      } else if (kind === 'TouchEnd' || kind === 'TouchCancel') {
+        delete STATE.touchMoved[identifier!];
       }
 
       break;
