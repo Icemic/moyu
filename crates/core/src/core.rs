@@ -10,7 +10,7 @@ use std::sync::Arc;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, PhysicalPosition, Size};
-use winit::event::{ElementState, Event, WindowEvent};
+use winit::event::{ElementState, Event, TouchPhase, WindowEvent};
 use winit::event_loop::{EventLoopProxy, EventLoopWindowTarget};
 use winit::window::{CursorIcon, Fullscreen, Window};
 
@@ -76,9 +76,9 @@ pub struct Core {
     instant_last: ArcSwap<Instant>,
 
     pub(crate) root_node: Arc<RwLock<dyn Node>>,
-    /// Record the last focused position relative to the window.
-    pub(crate) last_focused_position: ArcSwapOption<PhysicalPosition<f64>>,
-    pub(crate) last_focused_node: Arc<RwLock<Option<HitTestResult>>>,
+    /// Record the last hover position (client_x, client_y, screen_x, screen_y).
+    pub(crate) last_hover_position: ArcSwapOption<(u32, u32, u32, u32)>,
+    pub(crate) last_hover_node: Arc<RwLock<Option<HitTestResult>>>,
     pub(crate) mouse_down_id: AtomicU32,
     pub(crate) node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
 
@@ -206,8 +206,8 @@ impl Core {
             instant_last: ArcSwap::new(Arc::new(Instant::now())),
 
             root_node,
-            last_focused_position: ArcSwapOption::new(None),
-            last_focused_node: Arc::new(RwLock::new(None)),
+            last_hover_position: ArcSwapOption::new(None),
+            last_hover_node: Arc::new(RwLock::new(None)),
             mouse_down_id: AtomicU32::new(0),
             node_map: Arc::new(RwLock::new(node_map)),
 
@@ -476,7 +476,7 @@ impl Core {
                 window_id,
             } if window_id == window.id() => {
                 // makes State to have priority over main()
-                if !self.input(event) {
+                if !self.input(window, event) {
                     // UPDATED!
                     match event {
                         WindowEvent::RedrawRequested => {
@@ -707,38 +707,33 @@ impl Core {
     }
 
     #[inline(always)]
-    pub fn input(&self, event: &WindowEvent) -> bool {
-        let last_focused_node = self.last_focused_node.clone();
-
+    pub fn input(&self, window: &Window, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
-                self.handle_focus_changes(position);
-
-                self.last_focused_position
-                    .store(Some(Arc::new(position.to_owned())));
+                self.handle_hover_changes(window, position, false);
 
                 true
             }
+            // clear hover node when cursor leaves window
             WindowEvent::CursorLeft { .. } => {
-                let mut last_focused_node = last_focused_node.write();
-                if let Some(last_focused_node) = &*last_focused_node {
+                if let Some(last_hover_node) = self.pop_last_hover_node() {
+                    let location = self.get_last_hover_position();
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseLeave,
-                        target_id: *last_focused_node.target.read().base().id(),
-                        bubble_target_ids: last_focused_node.parent_ids.clone(),
+                        target_id: *last_hover_node.target.read().base().id(),
+                        bubble_target_ids: last_hover_node.parent_ids.clone(),
+                        location,
+                        identifier: None,
                     });
                 }
-                *last_focused_node = None;
                 true
             }
             WindowEvent::MouseInput { button, state, .. } => {
-                if let Some(last_focused_position) = self.last_focused_position.load().as_ref() {
-                    self.handle_focus_changes(last_focused_position);
-                }
+                if let Some(last_hover_node) = &*self.last_hover_node.read() {
+                    let target_id = *last_hover_node.target.read().base().id();
+                    let bubble_target_ids = last_hover_node.parent_ids.clone();
 
-                if let Some(last_focused_node) = &*self.last_focused_node.read() {
-                    let target_id = *last_focused_node.target.read().base().id();
-                    let bubble_target_ids = last_focused_node.parent_ids.clone();
+                    let location = self.get_last_hover_position();
 
                     match state {
                         ElementState::Pressed => {
@@ -746,6 +741,8 @@ impl Core {
                                 kind: HaiEventKind::MouseDown,
                                 target_id,
                                 bubble_target_ids,
+                                location,
+                                identifier: None,
                             });
                             if let winit::event::MouseButton::Left = button {
                                 self.mouse_down_id.store(target_id, Ordering::Relaxed);
@@ -756,6 +753,8 @@ impl Core {
                                 kind: HaiEventKind::MouseUp,
                                 target_id,
                                 bubble_target_ids: bubble_target_ids.clone(),
+                                location,
+                                identifier: None,
                             });
 
                             let pressed_target_id = self.mouse_down_id.swap(0, Ordering::Relaxed);
@@ -766,6 +765,8 @@ impl Core {
                                             kind: HaiEventKind::Click,
                                             target_id,
                                             bubble_target_ids,
+                                            location,
+                                            identifier: None,
                                         });
                                     }
                                     winit::event::MouseButton::Right => {
@@ -773,6 +774,8 @@ impl Core {
                                             kind: HaiEventKind::ContextMenu,
                                             target_id,
                                             bubble_target_ids,
+                                            location,
+                                            identifier: None,
                                         });
                                     }
                                     winit::event::MouseButton::Back => {
@@ -794,13 +797,77 @@ impl Core {
                 }
                 true
             }
+            WindowEvent::Touch(touch) => {
+                let last_location = self.get_last_hover_position();
+                self.handle_hover_changes(window, &touch.location, true);
+                let location = self.get_last_hover_position();
+
+                if last_location == location && touch.phase == TouchPhase::Moved {
+                    // ignore duplicated touch move event
+                    return true;
+                }
+
+                let last_hover_node = self.last_hover_node.clone();
+                let last_hover_node = last_hover_node.read();
+
+                if let Some(last_hover_node) = &*last_hover_node {
+                    let target_id = *last_hover_node.target.read().base().id();
+                    let bubble_target_ids = last_hover_node.parent_ids.clone();
+
+                    match touch.phase {
+                        TouchPhase::Started => {
+                            dispatch_event(HaiEvent {
+                                kind: HaiEventKind::TouchStart,
+                                target_id,
+                                bubble_target_ids,
+                                location,
+                                identifier: Some(touch.id as u32),
+                            });
+                        }
+                        TouchPhase::Moved => {
+                            dispatch_event(HaiEvent {
+                                kind: HaiEventKind::TouchMove,
+                                target_id,
+                                bubble_target_ids,
+                                location,
+                                identifier: Some(touch.id as u32),
+                            });
+                        }
+                        TouchPhase::Ended => {
+                            dispatch_event(HaiEvent {
+                                kind: HaiEventKind::TouchEnd,
+                                target_id,
+                                bubble_target_ids,
+                                location,
+                                identifier: Some(touch.id as u32),
+                            });
+                        }
+                        TouchPhase::Cancelled => {
+                            dispatch_event(HaiEvent {
+                                kind: HaiEventKind::TouchCancel,
+                                target_id,
+                                bubble_target_ids,
+                                location,
+                                identifier: Some(touch.id as u32),
+                            });
+                        }
+                    }
+                }
+                true
+            }
             _ => false,
         }
     }
 
-    fn handle_focus_changes(&self, position: &PhysicalPosition<f64>) {
+    /// Handle hover changes on mouse move or touch, and record locations relative to client and screen (always in logical).
+    fn handle_hover_changes(
+        &self,
+        window: &Window,
+        position: &PhysicalPosition<f64>,
+        is_touch: bool,
+    ) {
         let root_node = &self.root_node;
-        let last_focused_node = &self.last_focused_node;
+        let last_hover_node = &self.last_hover_node;
 
         let stage_size = {
             let stage_size = self.stage_size.read();
@@ -815,13 +882,26 @@ impl Core {
             *stage_transform
         };
 
+        let window_position = window.inner_position().unwrap_or_default();
         let scale_factor = stage_size.scale_factor();
 
         let global_logical_x = (position.x / scale_factor) as f32;
         let global_logical_y = (position.y / scale_factor) as f32;
 
+        let screen_logical_x = ((window_position.x as f64 + position.x) / scale_factor) as f32;
+        let screen_logical_y = ((window_position.y as f64 + position.y) / scale_factor) as f32;
+
         let stage_logical_x = (global_logical_x - translate_x) / scale;
         let stage_logical_y = (global_logical_y - translate_y) / scale;
+
+        let locations = (
+            stage_logical_x.round() as u32,
+            stage_logical_y.round() as u32,
+            screen_logical_x.round() as u32,
+            screen_logical_y.round() as u32,
+        );
+
+        self.last_hover_position.store(Some(Arc::new(locations)));
 
         let upload_payload = FocusablePayload {
             surface_size,
@@ -829,38 +909,42 @@ impl Core {
             resource_manager: self.resource_manager.clone(),
         };
 
-        let mut last_focused_node = last_focused_node.write();
+        let mut last_hover_node = last_hover_node.write();
 
         // get node under pointer
         if let Some(node) = hit_test(root_node, stage_logical_x, stage_logical_y, &upload_payload) {
-            if let Some(last_focused_node) = &*last_focused_node {
-                // if last focused node is the same as current node, it's a mouse move event
-                if last_focused_node == &node {
-                    // TODO: mouse move event
-                    // dispatch_event(HaiEvent {
-                    //     kind: HaiEventKind::MouseMove,
-                    //     target_id: *node.read().base().id(),
-                    // });
-                    return;
+            if !is_touch {
+                dispatch_event(HaiEvent {
+                    kind: HaiEventKind::MouseMove,
+                    target_id: *node.target.read().base().id(),
+                    bubble_target_ids: node.parent_ids.clone(),
+                    location: Some(locations),
+                    identifier: None,
+                });
+
+                if let Some(last_hover_node) = &*last_hover_node {
+                    if last_hover_node == &node {
+                        // do nothing if last focused node is the same as current node
+                        return;
+                    }
+
+                    // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
+                    dispatch_event(HaiEvent {
+                        kind: HaiEventKind::MouseLeave,
+                        target_id: *last_hover_node.target.read().base().id(),
+                        bubble_target_ids: last_hover_node.parent_ids.clone(),
+                        location: Some(locations),
+                        identifier: None,
+                    });
                 }
 
-                // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
-                dispatch_event(HaiEvent {
-                    kind: HaiEventKind::MouseLeave,
-                    target_id: *last_focused_node.target.read().base().id(),
-                    bubble_target_ids: last_focused_node.parent_ids.clone(),
-                });
+                // there is always a mouse enter event if current node is different from last focused node (may be None)
                 dispatch_event(HaiEvent {
                     kind: HaiEventKind::MouseEnter,
                     target_id: *node.target.read().base().id(),
                     bubble_target_ids: node.parent_ids.clone(),
-                });
-            } else {
-                // if last focused node is None, it's only a mouse enter event
-                dispatch_event(HaiEvent {
-                    kind: HaiEventKind::MouseEnter,
-                    target_id: *node.target.read().base().id(),
-                    bubble_target_ids: node.parent_ids.clone(),
+                    location: Some(locations),
+                    identifier: None,
                 });
             }
 
@@ -879,23 +963,37 @@ impl Core {
             }
 
             // record last focused node
-            *last_focused_node = Some(node);
+            *last_hover_node = Some(node);
         } else {
-            // if no node under pointer, it's a mouse leave event if last focused node is not None
-            if let Some(last_focused_node) = &*last_focused_node {
-                // TODO: mouse leave event
-                dispatch_event(HaiEvent {
-                    kind: HaiEventKind::MouseLeave,
-                    target_id: *last_focused_node.target.read().base().id(),
-                    bubble_target_ids: last_focused_node.parent_ids.clone(),
-                });
+            if !is_touch {
+                // if no node under pointer, it's a mouse leave event if last focused node is not None
+                if let Some(last_hover_node) = &*last_hover_node {
+                    // TODO: mouse leave event
+                    dispatch_event(HaiEvent {
+                        kind: HaiEventKind::MouseLeave,
+                        target_id: *last_hover_node.target.read().base().id(),
+                        bubble_target_ids: last_hover_node.parent_ids.clone(),
+                        location: Some(locations),
+                        identifier: None,
+                    });
 
-                self.window.set_cursor_icon(CursorIcon::Default);
-                self.window.set_cursor_visible(true);
-                debug!("set cursor to default");
+                    self.window.set_cursor_icon(CursorIcon::Default);
+                    self.window.set_cursor_visible(true);
+                    debug!("set cursor to default");
+                }
             }
 
-            *last_focused_node = None;
+            *last_hover_node = None;
         }
+    }
+
+    fn get_last_hover_position(&self) -> Option<(u32, u32, u32, u32)> {
+        self.last_hover_position.load().as_ref().map(|pos| **pos)
+    }
+
+    fn pop_last_hover_node(&self) -> Option<HitTestResult> {
+        let last_hover_node = self.last_hover_node.clone();
+        let mut last_hover_node = last_hover_node.write();
+        last_hover_node.take()
     }
 }

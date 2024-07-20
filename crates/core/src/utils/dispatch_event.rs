@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub enum HaiEventKind {
+    #[default]
+    Unknown,
+
     MouseEnter,
     MouseLeave,
     MouseDown,
@@ -28,13 +31,18 @@ pub enum HaiEventKind {
     NodeDestroyed,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HaiEvent {
-    #[serde(flatten)]
+    // #[serde(flatten)]
     pub kind: HaiEventKind,
     pub target_id: u32,
     pub bubble_target_ids: Vec<u32>,
+    /// for mouse event and touch event,
+    /// client_x, client_y, screen_x, screen_y in order
+    pub location: Option<(u32, u32, u32, u32)>,
+    /// for touch event
+    pub identifier: Option<u32>,
 }
 
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
@@ -46,14 +54,8 @@ pub fn dispatch_event(event: HaiEvent) {
     hai_pal::task::get_runtime_handle().spawn(async move {
         if let Some(vm) = try_get_vm() {
             vm.with_context(move |vm| {
-                if let Err(err) = vm.call_function_direct(
-                    "__hai_receive_event",
-                    vec![
-                        to_js(&format!("{:?}", event.kind)).unwrap(),
-                        to_js(&event.target_id).unwrap(),
-                        to_js(&event.bubble_target_ids).unwrap(),
-                    ],
-                ) {
+                let event = to_js(&event).unwrap();
+                if let Err(err) = vm.call_function_direct("__hai_receive_event", vec![event]) {
                     log::error!("failed to dispatch event: {:?}", err);
                 }
             })
