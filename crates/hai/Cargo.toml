@@ -42,7 +42,6 @@ video = ["hai_nodes/video"]
 name = "hai"
 path = "src/main.rs"
 
-
 [lib]
 crate_type = ["cdylib"]
 name = "hai_lib"
@@ -57,7 +56,7 @@ web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "Htm
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.14.1"
-winit = {version = "*", features = ["android-game-activity"]}
+winit = {version = "0.29", features = ["android-game-activity"]}
 
 [dependencies.hai_core]
 path = "../core"

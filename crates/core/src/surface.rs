@@ -146,6 +146,7 @@ pub(self) async fn create_surface_inner(
                 required_features: adapter.features(),
                 required_limits,
                 label: None,
+                memory_hints: wgpu::MemoryHints::Performance,
             },
             None, // Trace path
         )
