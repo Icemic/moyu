@@ -135,6 +135,7 @@ pub struct Core {
     pub(crate) pointer_map: Arc<RwLock<HashMap<i32, PointerState>>>,
 
     pub(crate) window_state: ArcSwap<WindowState>,
+    pub(crate) cursor_state: ArcSwap<HaiCursor>,
 
     /// redraw mode, default is `Auto`
     pub(crate) redraw_mode: ArcSwap<HaiRedrawMode>,
@@ -268,6 +269,7 @@ impl Core {
             pointer_map: Arc::new(RwLock::new(pointer_map)),
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
+            cursor_state: ArcSwap::new(Arc::new(HaiCursor::default())),
             redraw_mode: ArcSwap::new(Arc::new(HaiRedrawMode::Auto)),
             is_dirty: AtomicBool::new(true),
             is_paused: AtomicBool::new(false),
@@ -1025,19 +1027,7 @@ impl Core {
                 });
             }
 
-            // debug!("pointer is over {}", node.read().base().label());
-
-            match node.node.read().base().cursor() {
-                HaiCursor::Visible(cursor) => {
-                    self.window.set_cursor_icon(*cursor);
-                    self.window.set_cursor_visible(true);
-                    debug!("set cursor to {}", cursor.name());
-                }
-                HaiCursor::Hidden => {
-                    self.window.set_cursor_visible(false);
-                    debug!("set cursor to hidden");
-                }
-            }
+            self.set_cursor(node.node.read().base().cursor().clone());
 
             // record last focused node
             *last_hover_node = Some(node);
@@ -1054,9 +1044,7 @@ impl Core {
                         identifier: None,
                     });
 
-                    self.window.set_cursor_icon(CursorIcon::Default);
-                    self.window.set_cursor_visible(true);
-                    debug!("set cursor to default");
+                    self.set_cursor(HaiCursor::Visible(CursorIcon::Default));
                 }
             }
 
@@ -1072,5 +1060,24 @@ impl Core {
             pointer_state.device_type = device_type;
             pointer_state
         });
+    }
+
+    #[inline]
+    fn set_cursor(&self, cursor: HaiCursor) {
+        let prev_cursor = self.cursor_state.swap(Arc::new(cursor.clone()));
+
+        if *prev_cursor != cursor {
+            match cursor {
+                HaiCursor::Visible(cursor) => {
+                    self.window.set_cursor_icon(cursor);
+                    self.window.set_cursor_visible(true);
+                    debug!("set cursor to {}", cursor.name());
+                }
+                HaiCursor::Hidden => {
+                    self.window.set_cursor_visible(false);
+                    debug!("set cursor to hidden");
+                }
+            }
+        }
     }
 }
