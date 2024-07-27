@@ -157,17 +157,19 @@ pub(self) async fn create_surface_inner(
     let format = *caps
         .formats
         .iter()
-        .find(|f| f.is_srgb())
+        .find(|f| !f.is_srgb())
         .expect("Cannot find a proper surface format.");
 
-    info!("Surface format: {:?}", format);
+    info!("Available surface format: {:?}", caps.formats);
+    info!("Selected surface format: {:?}", format);
 
     let alpha_mode = *caps
         .alpha_modes
         .get(0)
         .expect("Cannot find a proper surface alpha mode.");
 
-    info!("Alpha mode: {:?}", alpha_mode);
+    info!("Available alpha mode: {:?}", caps.alpha_modes);
+    info!("Selected alpha mode: {:?}", alpha_mode);
 
     #[cfg(not(feature = "web"))]
     let present_mode = match get_hai_env().present_mode {
