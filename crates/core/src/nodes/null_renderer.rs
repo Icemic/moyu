@@ -43,12 +43,5 @@ impl Renderer for VoidRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn render<'a, 'b: 'a>(
-        &'b self,
-        _: &Arc<Device>,
-        _: &Arc<Queue>,
-        _: &mut RenderPass<'a>,
-        _: &'b dyn Node,
-    ) {
-    }
+    fn render(&self, _: &Arc<Device>, _: &Arc<Queue>, _: &mut RenderPass, _: &dyn Node) {}
 }

@@ -1,6 +1,6 @@
 use arc_swap::ArcSwap;
 use hai_pal::env::{get_hai_env, WindowState};
-use hai_pal::sync::{Mutex, RwLock, RwLockReadGuard};
+use hai_pal::sync::{Mutex, RwLock};
 use hai_pal::time::Instant;
 use hai_pal::visible_hand::{InvisibleHand, VisibleHand};
 use log::{debug, error, info, warn};
@@ -649,9 +649,6 @@ impl Core {
         let queue = self.queue.clone();
         let root_node = self.root_node.clone();
 
-        let renderers = self.renderers.clone();
-        let mut renderers = renderers.lock();
-
         let mut staging_belt = self.staging_belt.lock();
 
         let surface_size = self.surface_size.read();
@@ -687,33 +684,6 @@ impl Core {
                 resource_manager: self.resource_manager.clone(),
             };
 
-            let mut nodes: Vec<Arc<RwLock<dyn Node>>> = vec![];
-
-            walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
-                let mut _child = child.write();
-                _child.base_mut().update(parent.base(), &stage_size, false);
-
-                let node_type = _child.node_type();
-
-                if let Some(current_renderer) = renderers.get_mut(node_type) {
-                    current_renderer.update(
-                        &mut *_child,
-                        &device,
-                        &queue,
-                        &mut belt_encoder,
-                        &mut staging_belt,
-                        &upload_payload,
-                    );
-                    drop(_child);
-                    nodes.push(child);
-                }
-
-                false
-            });
-
-            // FIXME: too many loops
-            let childs: Vec<RwLockReadGuard<dyn Node>> = nodes.iter().map(|n| n.read()).collect();
-
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -728,16 +698,29 @@ impl Core {
                 ..Default::default()
             });
 
-            let childs: Vec<&dyn Node> = childs.iter().map(|n| &**n).collect();
+            render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
 
-            for child in childs {
-                let node_type = child.node_type();
+            walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
+                let mut _child = child.write();
+                _child.base_mut().update(parent.base(), &stage_size, false);
 
-                if let Some(current_renderer) = renderers.get(node_type) {
-                    render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
-                    current_renderer.render(&device, &queue, &mut render_pass, child);
+                let node_type = _child.node_type();
+
+                if let Some(current_renderer) = self.renderers.lock().get_mut(node_type) {
+                    current_renderer.update(
+                        &mut *_child,
+                        &device,
+                        &queue,
+                        &mut belt_encoder,
+                        &mut staging_belt,
+                        &upload_payload,
+                    );
+
+                    current_renderer.render(&device, &queue, &mut render_pass, &*_child);
                 }
-            }
+
+                false
+            });
         }
 
         // call after render callback if registered

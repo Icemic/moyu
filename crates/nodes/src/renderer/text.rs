@@ -531,12 +531,12 @@ impl Renderer for TextRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn render<'a, 'b: 'a>(
-        &'b self,
+    fn render(
+        &self,
         _: &Arc<Device>,
         _: &Arc<Queue>,
-        render_pass: &mut RenderPass<'a>,
-        node: &'b dyn Node,
+        render_pass: &mut RenderPass,
+        node: &dyn Node,
     ) {
         if !node.base().visible() {
             return;

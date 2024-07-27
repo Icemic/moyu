@@ -22,11 +22,11 @@ pub trait Renderer {
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
     );
-    fn render<'a, 'b: 'a>(
-        &'b self,
+    fn render(
+        &self,
         device: &Arc<Device>,
         queue: &Arc<Queue>,
-        render_pass: &mut RenderPass<'a>,
-        node: &'b dyn Node,
+        render_pass: &mut RenderPass,
+        node: &dyn Node,
     );
 }
