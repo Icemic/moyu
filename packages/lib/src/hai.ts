@@ -41,10 +41,10 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
 
   const event: HaiEvent = {
     kind,
-    target_id,
-    current_target_id: target_id,
-    target_label: node.label,
-    current_target_label: node.label,
+    targetId: target_id,
+    currentTargetId: target_id,
+    targetLabel: node.label,
+    currentTargetLabel: node.label,
     stopPropagation: () => {
       propagate = false;
     },
@@ -54,10 +54,10 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
   };
 
   if (location) {
-    event.client_x = location[0];
-    event.client_y = location[1];
-    event.screen_x = location[2];
-    event.screen_y = location[3];
+    event.clientX = location[0];
+    event.clientY = location[1];
+    event.screenX = location[2];
+    event.screenY = location[3];
   }
 
   if (identifier) {
@@ -79,9 +79,9 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
     case 'KeyPress':
       node?.listeners?.['on' + kind]?.(event);
       while (propagate && bubble_target_ids.length) {
-        event.current_target_id = bubble_target_ids.pop()!;
-        event.current_target_label = STATE.nodeMap[event.current_target_id]?.label;
-        STATE.nodeMap[event.current_target_id]?.listeners?.['on' + kind]?.(event);
+        event.currentTargetId = bubble_target_ids.pop()!;
+        event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
+        STATE.nodeMap[event.currentTargetId]?.listeners?.['on' + kind]?.(event);
       }
 
       break;
@@ -93,9 +93,9 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
       {
         const _bubble_target_ids = [...bubble_target_ids];
         while (propagate && _bubble_target_ids.length) {
-          event.current_target_id = _bubble_target_ids.pop()!;
-          event.current_target_label = STATE.nodeMap[event.current_target_id]?.label;
-          STATE.nodeMap[event.current_target_id]?.listeners?.['on' + kind]?.(event);
+          event.currentTargetId = _bubble_target_ids.pop()!;
+          event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
+          STATE.nodeMap[event.currentTargetId]?.listeners?.['on' + kind]?.(event);
         }
       }
 
@@ -107,9 +107,9 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
           node?.listeners?.['on' + eventKind]?.(event);
           const _bubble_target_ids = [...bubble_target_ids];
           while (propagate && _bubble_target_ids.length) {
-            event.current_target_id = _bubble_target_ids.pop()!;
-            event.current_target_label = STATE.nodeMap[event.current_target_id]?.label;
-            STATE.nodeMap[event.current_target_id]?.listeners?.['on' + eventKind]?.(event);
+            event.currentTargetId = _bubble_target_ids.pop()!;
+            event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
+            STATE.nodeMap[event.currentTargetId]?.listeners?.['on' + eventKind]?.(event);
           }
         }
       }
@@ -130,14 +130,14 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
 
 export interface HaiEvent {
   kind: string;
-  target_id: number;
-  current_target_id: number;
-  target_label?: string;
-  current_target_label?: string;
-  client_x?: number;
-  client_y?: number;
-  screen_x?: number;
-  screen_y?: number;
+  targetId: number;
+  currentTargetId: number;
+  targetLabel?: string;
+  currentTargetLabel?: string;
+  clientX?: number;
+  clientY?: number;
+  screenX?: number;
+  screenY?: number;
   identifier?: number;
   stopPropagation: () => void;
   preventDefault: () => void;
