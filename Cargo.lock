@@ -1344,7 +1344,7 @@ dependencies = [
  "hai_ops",
  "hai_pal",
  "log",
- "spin_sleep",
+ "spin_sleep_util",
  "tokio",
  "wasm-bindgen",
  "web-sys",
@@ -3188,6 +3188,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "368a978649eaf70006b082e79c832bd72556ac1393eaf564d686e919dca2347f"
 dependencies = [
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "spin_sleep_util"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f0a8402dff6fc447faddc8bebac9bc3645e5addde1d2293cfd2919d1a8e7efd"
+dependencies = [
+ "spin_sleep",
 ]
 
 [[package]]

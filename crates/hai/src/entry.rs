@@ -33,30 +33,27 @@ pub fn main_entry(event_loop: EventLoop<UserEvent>) {
     #[cfg(not(feature = "web"))]
     let mut loop_helper = {
         // get max refresh rate of all monitors
-        let mut refresh_rate_max: f64 = 60.0;
+        let mut refresh_rate_max = 60_000;
         for monitor in event_loop.available_monitors() {
             refresh_rate_max = refresh_rate_max.max(
                 monitor
                     .refresh_rate_millihertz()
-                    .map(|v| v as f64 / 1000.0)
-                    .unwrap_or(60.0),
+                    .map(|v| v)
+                    .unwrap_or(refresh_rate_max),
             );
         }
 
-        log::info!("max refresh rate: {}", refresh_rate_max);
+        log::info!("max refresh rate: {}", refresh_rate_max / 1000);
 
-        // create loop helper with target refresh rate set to be double of max refresh rate
-        spin_sleep::LoopHelper::builder().build_with_target_rate(refresh_rate_max * 2.0)
+        spin_sleep_util::interval(std::time::Duration::from_secs(1) / (refresh_rate_max / 1000))
     };
 
     event_loop
         .run(move |event, event_loop| {
-            #[cfg(not(feature = "web"))]
-            loop_helper.loop_start();
             match event {
                 Event::AboutToWait => {
                     #[cfg(not(feature = "web"))]
-                    loop_helper.loop_sleep();
+                    loop_helper.tick();
                 }
                 Event::Resumed => {
                     let _window = create_window(event_loop);
