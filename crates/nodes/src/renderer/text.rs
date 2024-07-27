@@ -159,6 +159,7 @@ impl TextRenderer {
                 alpha_to_coverage_enabled: false,
             },
             multiview: None,
+            cache: None,
         });
 
         let huozi = Arc::new(Mutex::new(None));
@@ -387,7 +388,13 @@ impl Renderer for TextRenderer {
         let need_relayout = node.base_mut().pop_update_vertices();
 
         if need_relayout {
-            match huozi.layout_parse(&node.text, &node.layout_style, &node.text_style, None) {
+            match huozi.layout_parse(
+                &node.text,
+                &node.layout_style,
+                &node.text_style,
+                huozi::ColorSpace::SRGB,
+                None,
+            ) {
                 Ok((glyphs, total_width, total_height)) => {
                     // set layout size
                     node.total_width = total_width;

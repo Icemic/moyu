@@ -118,6 +118,7 @@ impl SpriteRenderer {
                 alpha_to_coverage_enabled: false,
             },
             multiview: None,
+            cache: None,
         });
 
         // index buffers for each sprite are always the same.
