@@ -41,8 +41,8 @@ pub struct HaiEvent {
     pub target_id: u32,
     pub bubble_target_ids: Vec<u32>,
     /// for mouse event and touch event,
-    /// client_x, client_y, screen_x, screen_y in order
-    pub location: Option<(u32, u32, u32, u32)>,
+    /// client_x, client_y, screen_x, screen_y, x, y in order
+    pub location: Option<(u32, u32, u32, u32, f32, f32)>,
     /// for touch event
     pub identifier: Option<u32>,
 }
@@ -52,8 +52,8 @@ pub struct HaiEvent {
 pub struct PointerState {
     /// the device type of the current event
     pub device_type: DeviceType,
-    /// the location of the current event, (client_x, client_y, screen_x, screen_y) in order
-    pub location: (u32, u32, u32, u32),
+    /// the location of the current event, (client_x, client_y, screen_x, screen_y, x, y) in order
+    pub location: (u32, u32, u32, u32, f32, f32),
     /// record the current target, which is the result of hit test from current pointer location
     pub current_target: Option<HitTestTarget>,
     /// if the pointer is down (at MouseDown or TouchStart event), record the initial node id
