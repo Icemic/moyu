@@ -42,11 +42,6 @@ impl Focusable for Sprite {
         if let Some(texture_id) = self.texture_id.load().as_ref() {
             if let Some(texture) = payload.resource_manager.try_get_texture(texture_id) {
                 let (width, height) = texture.size();
-                let offset_x = self.base().anchor().x * width as f32;
-                let offset_y = self.base().anchor().y * height as f32;
-
-                let x = x + offset_x;
-                let y = y + offset_y;
 
                 if x > 0. && x < width as f32 && y > 0. && y < height as f32 {
                     return true;
