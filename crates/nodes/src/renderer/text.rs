@@ -396,6 +396,8 @@ impl Renderer for TextRenderer {
 
                     node.glyph_vertices = glyphs;
 
+                    node.base_mut().set_size(total_width, total_height);
+
                     // updates the sdf texture only when the image version is changed
                     let image_version = huozi.image_version();
 
