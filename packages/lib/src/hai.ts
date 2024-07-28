@@ -27,7 +27,7 @@ interface HaiRawEvent {
   kind: string;
   targetId: number;
   bubbleTargetIds: number[];
-  location?: [number, number, number, number];
+  location?: [number, number, number, number, number, number];
   identifier?: number;
 }
 
@@ -58,6 +58,8 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
     event.clientY = location[1];
     event.screenX = location[2];
     event.screenY = location[3];
+    event.layerX = location[4];
+    event.layerY = location[5];
   }
 
   if (identifier) {
@@ -138,6 +140,8 @@ export interface HaiEvent {
   clientY?: number;
   screenX?: number;
   screenY?: number;
+  layerX?: number;
+  layerY?: number;
   identifier?: number;
   stopPropagation: () => void;
   preventDefault: () => void;

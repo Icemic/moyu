@@ -18,7 +18,7 @@ use crate::base::*;
 use crate::utils::dispatch_event::{
     dispatch_event, DeviceType, HaiEvent, HaiEventKind, PointerState, MOUSE_IDENTIFIER,
 };
-use crate::utils::hit_test::hit_test;
+use crate::utils::hit_test::{get_local_logical_position, hit_test};
 use crate::utils::walk::walk_nodes_top_bottom;
 use crate::{nodes::Container, resource::ResourceManager, traits::*, user_event::UserEvent};
 
@@ -757,7 +757,7 @@ impl Core {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
                 self.handle_pointer_move(window, position, MOUSE_IDENTIFIER);
-                self.handle_pointer_hover(MOUSE_IDENTIFIER);
+                self.handle_pointer_hover(MOUSE_IDENTIFIER, true);
 
                 true
             }
@@ -859,10 +859,7 @@ impl Core {
                 };
 
                 self.handle_pointer_move(window, &touch.location, identifier);
-
-                if touch.phase == TouchPhase::Started {
-                    self.handle_pointer_hover(identifier);
-                }
+                self.handle_pointer_hover(identifier, touch.phase == TouchPhase::Started);
 
                 get_pointer_state!(self, pointer_state, identifier, true);
 
@@ -958,12 +955,14 @@ impl Core {
             stage_logical_y.round() as u32,
             screen_logical_x.round() as u32,
             screen_logical_y.round() as u32,
+            0.,
+            0.,
         );
 
         pointer_state.location = locations;
     }
 
-    fn handle_pointer_hover(&self, identifier: i32) {
+    fn handle_pointer_hover(&self, identifier: i32, refresh_hover_node: bool) {
         let surface_size = {
             let surface_size = self.surface_size.read();
             *surface_size
@@ -983,72 +982,109 @@ impl Core {
         get_pointer_state_mut!(self, pointer_state, identifier);
 
         let last_hover_node = &mut pointer_state.current_target;
-        let location = Some(pointer_state.location);
 
-        // get node under pointer
-        if let Some(node) = hit_test(
-            &self.root_node,
-            pointer_state.location.0 as f32,
-            pointer_state.location.1 as f32,
-            &upload_payload,
-        ) {
-            if identifier == MOUSE_IDENTIFIER {
-                dispatch_event(HaiEvent {
-                    kind: HaiEventKind::MouseMove,
-                    target_id: *node.node.read().base().id(),
-                    bubble_target_ids: node.parent_ids.clone(),
-                    location,
-                    identifier: None,
-                });
+        if refresh_hover_node {
+            // get node under pointer
+            if let Some(node) = hit_test(
+                &self.root_node,
+                pointer_state.location.0 as f32,
+                pointer_state.location.1 as f32,
+                &upload_payload,
+            ) {
+                let node_ref = node.node.read();
+                let (x, y) = get_local_logical_position(
+                    &*node_ref,
+                    pointer_state.location.0 as f32,
+                    pointer_state.location.1 as f32,
+                );
 
-                if let Some(last_hover_node) = last_hover_node {
-                    if last_hover_node == &node {
-                        // do nothing if last focused node is the same as current node
-                        return;
+                pointer_state.location.4 = x;
+                pointer_state.location.5 = y;
+
+                drop(node_ref);
+
+                if identifier == MOUSE_IDENTIFIER {
+                    dispatch_event(HaiEvent {
+                        kind: HaiEventKind::MouseMove,
+                        target_id: *node.node.read().base().id(),
+                        bubble_target_ids: node.parent_ids.clone(),
+                        location: Some(pointer_state.location),
+                        identifier: None,
+                    });
+
+                    if let Some(last_hover_node) = last_hover_node {
+                        if last_hover_node == &node {
+                            // do nothing if last focused node is the same as current node
+                            return;
+                        }
+
+                        let node_ref = last_hover_node.node.read();
+                        let (x, y) = get_local_logical_position(
+                            &*node_ref,
+                            pointer_state.location.0 as f32,
+                            pointer_state.location.1 as f32,
+                        );
+
+                        let mut location = pointer_state.location.clone();
+
+                        location.4 = x;
+                        location.5 = y;
+
+                        // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
+                        dispatch_event(HaiEvent {
+                            kind: HaiEventKind::MouseLeave,
+                            target_id: *node_ref.base().id(),
+                            bubble_target_ids: last_hover_node.parent_ids.clone(),
+                            location: Some(location),
+                            identifier: None,
+                        });
                     }
 
-                    // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
+                    // there is always a mouse enter event if current node is different from last focused node (may be None)
                     dispatch_event(HaiEvent {
-                        kind: HaiEventKind::MouseLeave,
-                        target_id: *last_hover_node.node.read().base().id(),
-                        bubble_target_ids: last_hover_node.parent_ids.clone(),
-                        location,
+                        kind: HaiEventKind::MouseEnter,
+                        target_id: *node.node.read().base().id(),
+                        bubble_target_ids: node.parent_ids.clone(),
+                        location: Some(pointer_state.location),
                         identifier: None,
                     });
                 }
 
-                // there is always a mouse enter event if current node is different from last focused node (may be None)
+                self.set_cursor(node.node.read().base().cursor().clone());
+
+                // record last focused node
+                *last_hover_node = Some(node);
+
+                return;
+            } else {
+                *last_hover_node = None;
+            }
+        }
+
+        // if no node under pointer, it's a mouse leave event if last focused node is not None
+        if let Some(last_hover_node) = last_hover_node {
+            let node_ref = last_hover_node.node.read();
+            let (x, y) = get_local_logical_position(
+                &*node_ref,
+                pointer_state.location.0 as f32,
+                pointer_state.location.1 as f32,
+            );
+
+            pointer_state.location.4 = x;
+            pointer_state.location.5 = y;
+
+            if identifier == MOUSE_IDENTIFIER {
+                // TODO: mouse leave event
                 dispatch_event(HaiEvent {
-                    kind: HaiEventKind::MouseEnter,
-                    target_id: *node.node.read().base().id(),
-                    bubble_target_ids: node.parent_ids.clone(),
-                    location,
+                    kind: HaiEventKind::MouseLeave,
+                    target_id: *node_ref.base().id(),
+                    bubble_target_ids: last_hover_node.parent_ids.clone(),
+                    location: Some(pointer_state.location),
                     identifier: None,
                 });
+
+                self.set_cursor(HaiCursor::Visible(CursorIcon::Default));
             }
-
-            self.set_cursor(node.node.read().base().cursor().clone());
-
-            // record last focused node
-            *last_hover_node = Some(node);
-        } else {
-            if identifier == MOUSE_IDENTIFIER {
-                // if no node under pointer, it's a mouse leave event if last focused node is not None
-                if let Some(last_hover_node) = last_hover_node {
-                    // TODO: mouse leave event
-                    dispatch_event(HaiEvent {
-                        kind: HaiEventKind::MouseLeave,
-                        target_id: *last_hover_node.node.read().base().id(),
-                        bubble_target_ids: last_hover_node.parent_ids.clone(),
-                        location,
-                        identifier: None,
-                    });
-
-                    self.set_cursor(HaiCursor::Visible(CursorIcon::Default));
-                }
-            }
-
-            *last_hover_node = None;
         }
     }
 

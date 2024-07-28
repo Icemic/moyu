@@ -34,18 +34,8 @@ pub fn hit_test<'a>(
         &mut |child, _, parent_ids| {
             let child_ref = child.read();
 
-            let p = child_ref
-                .base()
-                .global_transform()
-                .inverse()
-                .transform_point3(Vec3::new(
-                    global_logical_x / VIEWPORT_WIDTH,
-                    global_logical_y / VIEWPORT_HEIGHT,
-                    1.0,
-                ));
-
-            let local_logical_x = p.x * VIEWPORT_WIDTH;
-            let local_logical_y = p.y * VIEWPORT_HEIGHT;
+            let (local_logical_x, local_logical_y) =
+                get_local_logical_position(&*child_ref, global_logical_x, global_logical_y);
 
             let hit = match child_ref.as_focusable() {
                 Some(focusable) => {
@@ -71,4 +61,23 @@ pub fn hit_test<'a>(
     );
 
     focused_node
+}
+
+#[inline]
+pub fn get_local_logical_position(
+    node: &dyn Node,
+    global_logical_x: f32,
+    global_logical_y: f32,
+) -> (f32, f32) {
+    let p = node
+        .base()
+        .global_transform()
+        .inverse()
+        .transform_point3(Vec3::new(
+            global_logical_x / VIEWPORT_WIDTH,
+            global_logical_y / VIEWPORT_HEIGHT,
+            1.0,
+        ));
+
+    (p.x * VIEWPORT_WIDTH, p.y * VIEWPORT_HEIGHT)
 }
