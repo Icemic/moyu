@@ -6,7 +6,7 @@ use wgpu::Buffer;
 
 use hai_core::nodes::NodeBase;
 use hai_core::traits::Command;
-use hai_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
+use hai_core::traits::{Focusable, Node, NodeBaseTrait};
 use hai_core::utils::convert::{from_js, to_js, JSValue};
 
 #[derive(Debug, Default, Node)]
@@ -76,18 +76,7 @@ impl Text {
     }
 }
 
-impl Focusable for Text {
-    fn contains(&self, x: f32, y: f32, _: &FocusablePayload) -> bool {
-        let width = self.total_width;
-        let height = self.total_height;
-
-        if x > 0. && x < width as f32 && y > 0. && y < height as f32 {
-            return true;
-        }
-
-        false
-    }
-}
+impl Focusable for Text {}
 
 /**
  * To be compatible with react-spring inside JS runtime, we have to flatten the struct.
