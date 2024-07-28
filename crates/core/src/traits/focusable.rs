@@ -12,7 +12,13 @@ pub trait Focusable: Node {
        You may need to select property width and height, then handle `anchor` property to make it work.
        Or, if it is not square, you may need to do something more complex to calculate the correct area.
     */
-    fn contains(&self, x: f32, y: f32, payload: &FocusablePayload) -> bool;
+    fn contains(&self, x: f32, y: f32, _: &FocusablePayload) -> bool {
+        if x > 0. && x < *self.base().width() as f32 && y > 0. && y < *self.base().height() as f32 {
+            return true;
+        }
+
+        false
+    }
 }
 
 #[derive(Debug)]

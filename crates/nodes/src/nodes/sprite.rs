@@ -6,7 +6,7 @@ use wgpu::Buffer;
 
 use hai_core::nodes::NodeBase;
 use hai_core::resource::TextureId;
-use hai_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
+use hai_core::traits::{Focusable, Node, NodeBaseTrait};
 use hai_core::utils::convert::{from_js, JSValue};
 
 // #[node]
@@ -37,21 +37,7 @@ impl Sprite {
     }
 }
 
-impl Focusable for Sprite {
-    fn contains(&self, x: f32, y: f32, payload: &FocusablePayload) -> bool {
-        if let Some(texture_id) = self.texture_id.load().as_ref() {
-            if let Some(texture) = payload.resource_manager.try_get_texture(texture_id) {
-                let (width, height) = texture.size();
-
-                if x > 0. && x < width as f32 && y > 0. && y < height as f32 {
-                    return true;
-                }
-            }
-        }
-
-        false
-    }
-}
+impl Focusable for Sprite {}
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
