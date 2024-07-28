@@ -424,8 +424,8 @@ impl NodeBase {
             let b = (rotation + skew_y).sin() * scale_x;
             let c = -(rotation - skew_x).sin() * scale_y;
             let d = (rotation - skew_x).cos() * scale_y;
-            let tx = x - ((pivot_x * a) + (pivot_y * c));
-            let ty = y - ((pivot_x * b) + (pivot_y * d));
+            let tx = x - ((pivot_x * a) + (pivot_y * c)) + anchor_x;
+            let ty = y - ((pivot_x * b) + (pivot_y * d)) + anchor_y;
 
             // use logical size to calculate transform matrix, so that the transform matrix will not be affected by scale ratio
             let tx = tx / VIEWPORT_WIDTH;
@@ -435,8 +435,8 @@ impl NodeBase {
             self.transform.x_axis.y = b;
             self.transform.y_axis.x = c;
             self.transform.y_axis.y = d;
-            self.transform.z_axis.x = tx + anchor_x;
-            self.transform.z_axis.y = ty + anchor_y;
+            self.transform.z_axis.x = tx;
+            self.transform.z_axis.y = ty;
 
             // refresh global transform matrix
             let mut global_transform = *parent.global_transform();
