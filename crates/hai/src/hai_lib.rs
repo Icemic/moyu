@@ -17,10 +17,7 @@ async fn android_main(app: AndroidApp) {
     std::env::set_var("HAI_ENTRY", "http://localhost:8080/demo.js");
 
     hai_pal::env::setup();
-
-    android_logger::init_once(
-        android_logger::Config::default().with_max_level(log::LevelFilter::Info),
-    );
+    hai_pal::logger::setup();
 
     let event_loop: EventLoop<UserEvent> = winit::event_loop::EventLoopBuilder::with_user_event()
         .with_android_app(app)

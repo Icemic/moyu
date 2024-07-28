@@ -1337,7 +1337,6 @@ dependencies = [
 name = "hai"
 version = "0.7.0"
 dependencies = [
- "android_logger",
  "hai_audio",
  "hai_core",
  "hai_nodes",
@@ -1440,6 +1439,7 @@ dependencies = [
 name = "hai_pal"
 version = "0.7.0"
 dependencies = [
+ "android_logger",
  "anyhow",
  "console_error_panic_hook",
  "console_log",
