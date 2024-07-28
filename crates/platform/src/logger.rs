@@ -1,10 +1,25 @@
-#[cfg(not(feature = "web"))]
+#[cfg(debug_assertions)]
+const LOG_FILTER: &str = "info,hai=debug,hai_*=debug,wgpu=error";
+#[cfg(not(debug_assertions))]
+const LOG_FILTER: &str = "warn,hai=info,hai_*=info,wgpu=error";
+
+#[cfg(all(not(feature = "web"), not(target_os = "android")))]
 pub fn setup() {
-    #[cfg(debug_assertions)]
-    let env = env_logger::Env::default().default_filter_or("info,hai=debug,hai_*=debug,wgpu=error");
-    #[cfg(not(debug_assertions))]
-    let env = env_logger::Env::default().default_filter_or("warn,hai=info,hai_*=info,hai_runtime::console=debug,wgpu=error");
+    let env = env_logger::Env::default().default_filter_or(LOG_FILTER);
     env_logger::init_from_env(env);
+}
+
+#[cfg(target_os = "android")]
+pub fn setup() {
+    android_logger::init_once(
+        android_logger::Config::default()
+            .with_max_level(log::LevelFilter::Debug)
+            .with_filter(
+                android_logger::FilterBuilder::new()
+                    .parse(LOG_FILTER)
+                    .build(),
+            ),
+    );
 }
 
 #[cfg(feature = "web")]
