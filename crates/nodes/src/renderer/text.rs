@@ -221,9 +221,6 @@ impl TextRenderer {
         fade_progress: f32,
     ) {
         let glyphs = &node.glyph_vertices[..last_index];
-        let total_width = node.total_width;
-        let total_height = node.total_height;
-        let anchor = node.base().anchor();
 
         // transform to global
         let transform = node.base().global_transform();
@@ -274,11 +271,8 @@ impl TextRenderer {
         for (i, vertex) in vertices.iter_mut().enumerate() {
             // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
             // y axis is inverted, so we need to invert it back, apply transform and invert it again
-            let p = transform.transform_point3(Vec3::new(
-                vertex.position[0] - total_width as f32 * anchor.x,
-                vertex.position[1] - total_height as f32 * anchor.y,
-                1.0,
-            ));
+            let p =
+                transform.transform_point3(Vec3::new(vertex.position[0], vertex.position[1], 1.0));
 
             vertex.position[0] = p.x;
             vertex.position[1] = p.y;
