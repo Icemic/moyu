@@ -27,11 +27,9 @@ pub fn calculate_rect_vertices(
     let tx = global_transform.z_axis.x;
     let ty = global_transform.z_axis.y;
 
-    let anchor = node.base().anchor();
-
-    let w1 = -anchor.x * width;
+    let w1 = 0.;
     let w0 = w1 + width;
-    let h1 = -anchor.y * height;
+    let h1 = 0.;
     let h0 = h1 + height;
 
     // left top

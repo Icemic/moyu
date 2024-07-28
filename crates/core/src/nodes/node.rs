@@ -417,6 +417,8 @@ impl NodeBase {
             let skew_y = self.skew.y;
             let pivot_x = self.pivot.x;
             let pivot_y = self.pivot.y;
+            let anchor_x = self.anchor.x;
+            let anchor_y = self.anchor.y;
 
             let a = (rotation + skew_y).cos() * scale_x;
             let b = (rotation + skew_y).sin() * scale_x;
@@ -433,8 +435,8 @@ impl NodeBase {
             self.transform.x_axis.y = b;
             self.transform.y_axis.x = c;
             self.transform.y_axis.y = d;
-            self.transform.z_axis.x = tx;
-            self.transform.z_axis.y = ty;
+            self.transform.z_axis.x = tx + anchor_x;
+            self.transform.z_axis.y = ty + anchor_y;
 
             // refresh global transform matrix
             let mut global_transform = *parent.global_transform();
