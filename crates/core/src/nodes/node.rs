@@ -17,6 +17,10 @@ pub struct NodeBase {
     label: String,
     /// id
     id: u32,
+    /// calculated width of the node
+    width: u32,
+    /// calculated height of the node
+    height: u32,
     /// anchor point
     anchor: Point,
     /// pivot point
@@ -62,6 +66,8 @@ impl NodeBase {
         Self {
             label,
             id,
+            width: 0,
+            height: 0,
             anchor: Point::default(),
             pivot: Point::default(),
             translate: Point::default(),
@@ -115,6 +121,14 @@ impl NodeBase {
     }
 
     #[inline]
+    pub fn width(&self) -> &u32 {
+        &self.width
+    }
+    #[inline]
+    pub fn height(&self) -> &u32 {
+        &self.height
+    }
+    #[inline]
     pub fn anchor(&self) -> &Point {
         &self.anchor
     }
@@ -163,6 +177,22 @@ impl NodeBase {
         &self.cursor
     }
 
+    #[inline]
+    pub fn set_size(&mut self, width: u32, height: u32) {
+        self.width = width;
+        self.height = height;
+        self._update_id += 1;
+    }
+    #[inline]
+    pub fn set_width(&mut self, width: u32) {
+        self.width = width;
+        self._update_id += 1;
+    }
+    #[inline]
+    pub fn set_height(&mut self, height: u32) {
+        self.height = height;
+        self._update_id += 1;
+    }
     #[inline]
     pub fn set_anchor(&mut self, x: f32, y: f32) {
         self.anchor.x = x;
@@ -415,10 +445,16 @@ impl NodeBase {
             let scale_y = self.scale.y;
             let skew_x = self.skew.x;
             let skew_y = self.skew.y;
-            let pivot_x = self.pivot.x;
-            let pivot_y = self.pivot.y;
-            let anchor_x = self.anchor.x;
-            let anchor_y = self.anchor.y;
+
+            let width = self.width as f32;
+            let height = self.height as f32;
+            let parent_width = parent.width as f32;
+            let parent_height = parent.height as f32;
+
+            let pivot_x = self.pivot.x * width;
+            let pivot_y = self.pivot.y * height;
+            let anchor_x = self.anchor.x * parent_width;
+            let anchor_y = self.anchor.y * parent_height;
 
             let a = (rotation + skew_y).cos() * scale_x;
             let b = (rotation + skew_y).sin() * scale_x;

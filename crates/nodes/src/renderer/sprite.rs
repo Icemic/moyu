@@ -195,6 +195,15 @@ impl Renderer for SpriteRenderer {
                 return;
             }
 
+            {
+                // set size if not set
+                let node = node.base_mut();
+                if node.width() == &0 && node.height() == &0 {
+                    let (tex_width, tex_height) = texture.size();
+                    node.set_size(tex_width, tex_height);
+                }
+            }
+
             let (tex_width, tex_height) = texture.size();
 
             let width = (tex_width as f32 * scale_factor) / (VIEWPORT_WIDTH * scale_factor);
