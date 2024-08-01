@@ -9,15 +9,49 @@ use hai_core::resource::TextureId;
 use hai_core::traits::{Focusable, Node, NodeBaseTrait};
 use hai_core::utils::convert::{from_js, JSValue};
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SpriteMode {
+    #[default]
+    Normal,
+    Nineslice,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NineSliceMode {
+    /// Stretch edge and center areas to fill the bounds.
+    #[default]
+    Stretch,
+    /// Repeat edge and center areas to fill the bounds.
+    Repeat,
+    /// Repeat edge and center areas to fill the bounds, but mirror the texture on each repeat.
+    Mirror,
+    /// Leave edge and center areas blank (do not draw center area).
+    Blank,
+}
+
 // #[node]
 #[derive(Debug, Default, Node)]
 pub struct Sprite {
     /// loaded texture
     pub texture_id: ArcSwapOption<TextureId>,
-    /// clip area
+    /// texture source path
+    pub src: Option<String>,
+
+    /// sprite mode, `normal` (default) or `nineslice`
+    pub mode: SpriteMode,
+    /// (for sprite mode) clip area
     pub area: [f32; 4],
 
-    pub src: Option<String>,
+    /// (for nineslice mode) bounds, [left, top, right, bottom]
+    pub bounds: [f32; 4],
+    /// (for nineslice mode) nine slice mode
+    pub nine_slice_mode: NineSliceMode,
+    /// (for nineslice mode) target width
+    pub target_width: f32,
+    /// (for nineslice mode) target height
+    pub target_height: f32,
 
     pub vertex_buffer: Option<Buffer>,
 
@@ -29,8 +63,13 @@ impl Sprite {
     pub fn new(label: String) -> Self {
         Sprite {
             texture_id: ArcSwapOption::default(),
-            area: [0., 0., 1., 1.],
             src: None,
+            mode: SpriteMode::Normal,
+            area: [0., 0., 1., 1.],
+            bounds: [0., 0., 0., 0.],
+            nine_slice_mode: NineSliceMode::Stretch,
+            target_width: 0.,
+            target_height: 0.,
             vertex_buffer: None,
             node_base: NodeBase::new(label),
         }
@@ -43,7 +82,12 @@ impl Focusable for Sprite {}
 #[serde(rename_all = "camelCase")]
 pub struct SpriteProps {
     pub src: Option<String>,
+    pub mode: Option<SpriteMode>,
     pub area: Option<[f32; 4]>,
+    pub bounds: Option<[f32; 4]>,
+    pub nine_slice_mode: Option<NineSliceMode>,
+    pub target_width: Option<f32>,
+    pub target_height: Option<f32>,
 }
 
 impl Node for Sprite {
@@ -61,8 +105,28 @@ impl Node for Sprite {
             self.src = Some(src);
         }
 
+        if let Some(mode) = props.mode {
+            self.mode = mode;
+        }
+
         if let Some(area) = props.area {
             self.area = area;
+        }
+
+        if let Some(bounds) = props.bounds {
+            self.bounds = bounds;
+        }
+
+        if let Some(nine_slice_mode) = props.nine_slice_mode {
+            self.nine_slice_mode = nine_slice_mode;
+        }
+
+        if let Some(target_width) = props.target_width {
+            self.target_width = target_width;
+        }
+
+        if let Some(target_height) = props.target_height {
+            self.target_height = target_height;
         }
 
         // force update vertices
