@@ -706,9 +706,9 @@ impl Core {
                 let mut _child = child.write();
                 _child.base_mut().update(parent.base(), &stage_size, false);
 
-                let node_type = _child.node_type();
+                let renderer_type = _child.renderer_type();
 
-                if let Some(current_renderer) = self.renderers.lock().get_mut(node_type) {
+                if let Some(current_renderer) = self.renderers.lock().get_mut(renderer_type) {
                     current_renderer.update(
                         &mut *_child,
                         &device,
