@@ -10,15 +10,16 @@ use hai_core::nodes::{Texture, TextureStatus};
 use hai_core::resource::TextureId;
 use hai_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use hai_core::utils::calculate::calculate_rect_vertices;
-use hai_core::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+use hai_core::utils::constants::{NINESLICE_INDICES, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use hai_core::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
 
-use crate::nodes::Sprite;
+use crate::nodes::{Sprite, SpriteMode};
 
 /// the number of vertices in a sprite is always 4.
 // pub static NUM_VERTICES: u32 = 4;
 
 static NUM_INDICES: u32 = RECTANGLE_INDICES.len() as u32;
+static NUM_INDICES_NINESLICE: u32 = NINESLICE_INDICES.len() as u32;
 
 pub struct SpriteRenderer {
     pipeline: RenderPipeline,
@@ -124,7 +125,9 @@ impl SpriteRenderer {
         // index buffers for each sprite are always the same.
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Sprite Renderer Index Buffer"),
-            contents: bytemuck::cast_slice(RECTANGLE_INDICES),
+            // NINESLICE_INDICES includes RECTANGLE_INDICES, so we can use it for both,
+            // and adjust the range when drawing.
+            contents: bytemuck::cast_slice(NINESLICE_INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
 
@@ -205,12 +208,135 @@ impl Renderer for SpriteRenderer {
             }
 
             let (tex_width, tex_height) = texture.size();
+            let (tex_width, tex_height) = (tex_width as f32, tex_height as f32);
 
-            let width = (tex_width as f32 * scale_factor) / (VIEWPORT_WIDTH * scale_factor);
-            let height = (tex_height as f32 * scale_factor) / (VIEWPORT_HEIGHT * scale_factor);
+            let width = (tex_width * scale_factor) / (VIEWPORT_WIDTH * scale_factor);
+            let height = (tex_height * scale_factor) / (VIEWPORT_HEIGHT * scale_factor);
 
             if node.base_mut().pop_update_vertices() {
-                let vertices = calculate_rect_vertices(node, width, height, &node.area);
+                let vertices = match node.mode {
+                    SpriteMode::Normal => {
+                        calculate_rect_vertices(node, width, height, &[0., 0.], &node.area).to_vec()
+                    }
+                    SpriteMode::Nineslice => {
+                        //
+                        // (0,0)                            texture width
+                        //     +-----------------------------------------------------------------------------+
+                        //     |    (ax0,ay0)           |       area width                |                  |
+                        //     |         +--------------+---------------------------------+------+           |
+                        //     |         |      (1)     | top         (2)                 |  (3) |           |
+                        //     |     ----+--------------|---------------------------------|------+---        |
+                        //     |         |     left     |                                 |      |           |
+                        //     |         |     (4)      |              (5)                |  (6) |  area     | texture height
+                        //     |         |              |                                 |      | height    |
+                        //     |         |              |                                 | right|           |
+                        //     |     ----+--------------|---------------------------------+------+---        |
+                        //     |         |      (7)     |              (8)         bottom |  (9) |           |
+                        //     |         +--------------+---------------------------------+------+           |
+                        //     |                        |                                 |   (ax1,ay1)      |
+                        //     +-------------------------------------------------- --------------------------+
+                        //                                                                                     (1,1)
+
+                        let [ax0, ay0, ax1, ay1] = node.area;
+                        let [bleft, btop, bright, bbottom] = node.bounds;
+
+                        // bounds relative to texture coordinates
+                        let left = bleft * (ax1 - ax0) + ax0;
+                        let top = btop * (ay1 - ay0) + ay0;
+                        let right = bright * (ax1 - ax0) + (1. - ax1);
+                        let bottom = bbottom * (ay1 - ay0) + (1. - ay1);
+
+                        // get the minimum width and height of the nine slice area (which means both edge and center are shrinked to 0)
+                        let min_width = tex_width * (left + right);
+                        let min_height = tex_height * (top + bottom);
+
+                        // meshes to store vertices of 9 slices
+                        let mut meshes = vec![];
+
+                        // left top
+                        meshes.extend(calculate_rect_vertices(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[0., 0.],
+                            &[ax0, ay0, (ax0 + left), (ay0 + top)],
+                        ));
+
+                        // left center
+                        meshes.extend(calculate_rect_vertices(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[0., btop],
+                            &[ax0, (ay0 + top), (ax0 + left), (ay1 - bottom)],
+                        ));
+
+                        // left bottom
+                        meshes.extend(calculate_rect_vertices(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[0., 1. - bbottom],
+                            &[ax0, (ay1 - bottom), (ax0 + left), ay1],
+                        ));
+
+                        // center top
+                        meshes.extend(calculate_rect_vertices(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[bleft, 0.],
+                            &[(ax0 + left), ay0, (ax1 - right), (ay0 + top)],
+                        ));
+
+                        // center center
+                        meshes.extend(calculate_rect_vertices(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[bleft, btop],
+                            &[(ax0 + left), (ay0 + top), (ax1 - right), (ay1 - bottom)],
+                        ));
+
+                        // center bottom
+                        meshes.extend(calculate_rect_vertices(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[bleft, 1. - bbottom],
+                            &[(ax0 + left), (ay1 - bottom), (ax1 - right), ay1],
+                        ));
+
+                        // right top
+                        meshes.extend(calculate_rect_vertices(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[1. - bright, 0.],
+                            &[(ax1 - right), ay0, ax1, (ay0 + top)],
+                        ));
+
+                        // right center
+                        meshes.extend(calculate_rect_vertices(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[1. - bright, btop],
+                            &[(ax1 - right), (ay0 + top), ax1, (ay1 - bottom)],
+                        ));
+
+                        // right bottom
+                        meshes.extend(calculate_rect_vertices(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[1. - bright, 1. - bbottom],
+                            &[(ax1 - right), (ay1 - bottom), ax1, ay1],
+                        ));
+
+                        meshes
+                    }
+                };
 
                 if node.vertex_buffer.is_none() {
                     let vertex_buffer =
@@ -260,7 +386,10 @@ impl Renderer for SpriteRenderer {
         let mut bind_group = None;
         let mut vertex_buffer = None;
 
+        let mode;
+
         if let Some(sprite) = node.as_any().downcast_ref::<Sprite>() {
+            mode = sprite.mode;
             if let Some(texture_id) = sprite.texture_id.load().as_ref() {
                 bind_group = self.bind_group_map.get(texture_id);
                 vertex_buffer = sprite.vertex_buffer.as_ref();
@@ -281,8 +410,12 @@ impl Renderer for SpriteRenderer {
             render_pass.set_bind_group(1, bind_group.unwrap(), &[]);
             render_pass.set_vertex_buffer(0, vertex_buffer.unwrap().slice(..));
 
-            // FIXME: NUM_INDICES depends on which renderer the child matches.
-            render_pass.draw_indexed(0..NUM_INDICES, 0, 0..1);
+            let num_indices = match mode {
+                SpriteMode::Normal => NUM_INDICES,
+                SpriteMode::Nineslice => NUM_INDICES_NINESLICE,
+            };
+
+            render_pass.draw_indexed(0..num_indices, 0, 0..1);
         }
     }
 }

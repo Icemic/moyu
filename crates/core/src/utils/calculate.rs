@@ -8,6 +8,7 @@ pub fn calculate_rect_vertices(
     node: &dyn Node,
     tex_width: f32,
     tex_height: f32,
+    origin: &[f32; 2],
     area: &[f32; 4],
 ) -> [SpriteVertex; 4] {
     let [x0, y0, x1, y1] = area.to_owned();
@@ -27,9 +28,9 @@ pub fn calculate_rect_vertices(
     let tx = global_transform.z_axis.x;
     let ty = global_transform.z_axis.y;
 
-    let w1 = 0.;
+    let w1 = origin[0] * tex_width;
     let w0 = w1 + width;
-    let h1 = 0.;
+    let h1 = origin[1] * tex_height;
     let h0 = h1 + height;
 
     // left top
