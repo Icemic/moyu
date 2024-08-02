@@ -215,9 +215,15 @@ impl Renderer for SpriteRenderer {
 
             if node.base_mut().pop_update_vertices() {
                 let vertices = match node.mode {
-                    SpriteMode::Normal => {
-                        calculate_rect_vertices(node, width, height, &[0., 0.], &node.area).to_vec()
-                    }
+                    SpriteMode::Normal => calculate_rect_vertices(
+                        node,
+                        width,
+                        height,
+                        &[0., 0.],
+                        &node.area,
+                        &[1., 1.],
+                    )
+                    .to_vec(),
                     SpriteMode::Nineslice => {
                         //
                         // (0,0)                            texture width
@@ -240,15 +246,28 @@ impl Renderer for SpriteRenderer {
                         let [ax0, ay0, ax1, ay1] = node.area;
                         let [bleft, btop, bright, bbottom] = node.bounds;
 
+                        let bcenter_h = 1. - bleft - bright;
+                        let bcenter_v = 1. - btop - bbottom;
+
                         // bounds relative to texture coordinates
-                        let left = bleft * (ax1 - ax0) + ax0;
-                        let top = btop * (ay1 - ay0) + ay0;
-                        let right = bright * (ax1 - ax0) + (1. - ax1);
-                        let bottom = bbottom * (ay1 - ay0) + (1. - ay1);
+                        let left = bleft * (ax1 - ax0);
+                        let top = btop * (ay1 - ay0);
+                        let right = bright * (ax1 - ax0);
+                        let bottom = bbottom * (ay1 - ay0);
+                        let center_h = (1. - bleft - bright) * (ax1 - ax0);
+                        let center_v = (1. - btop - bbottom) * (ay1 - ay0);
 
                         // get the minimum width and height of the nine slice area (which means both edge and center are shrinked to 0)
-                        let min_width = tex_width * (left + right);
-                        let min_height = tex_height * (top + bottom);
+                        let min_center_width = tex_width * center_h;
+                        let min_center_height = tex_height * center_v;
+
+                        let target_center_width =
+                            (node.target_width - tex_width * (left + right)).max(0.);
+                        let target_center_height =
+                            (node.target_height - tex_height * (top + bottom)).max(0.);
+
+                        let center_h_scale = target_center_width / min_center_width;
+                        let center_v_scale = target_center_height / min_center_height;
 
                         // meshes to store vertices of 9 slices
                         let mut meshes = vec![];
@@ -260,6 +279,7 @@ impl Renderer for SpriteRenderer {
                             tex_height,
                             &[0., 0.],
                             &[ax0, ay0, (ax0 + left), (ay0 + top)],
+                            &[1., 1.],
                         ));
 
                         // left center
@@ -269,6 +289,7 @@ impl Renderer for SpriteRenderer {
                             tex_height,
                             &[0., btop],
                             &[ax0, (ay0 + top), (ax0 + left), (ay1 - bottom)],
+                            &[1., center_v_scale],
                         ));
 
                         // left bottom
@@ -276,8 +297,9 @@ impl Renderer for SpriteRenderer {
                             node,
                             tex_width,
                             tex_height,
-                            &[0., 1. - bbottom],
+                            &[0., btop + bcenter_v * center_v_scale],
                             &[ax0, (ay1 - bottom), (ax0 + left), ay1],
+                            &[1., 1.],
                         ));
 
                         // center top
@@ -287,6 +309,7 @@ impl Renderer for SpriteRenderer {
                             tex_height,
                             &[bleft, 0.],
                             &[(ax0 + left), ay0, (ax1 - right), (ay0 + top)],
+                            &[center_h_scale, 1.],
                         ));
 
                         // center center
@@ -296,6 +319,7 @@ impl Renderer for SpriteRenderer {
                             tex_height,
                             &[bleft, btop],
                             &[(ax0 + left), (ay0 + top), (ax1 - right), (ay1 - bottom)],
+                            &[center_h_scale, center_v_scale],
                         ));
 
                         // center bottom
@@ -303,8 +327,9 @@ impl Renderer for SpriteRenderer {
                             node,
                             tex_width,
                             tex_height,
-                            &[bleft, 1. - bbottom],
+                            &[bleft, btop + bcenter_v * center_v_scale],
                             &[(ax0 + left), (ay1 - bottom), (ax1 - right), ay1],
+                            &[center_h_scale, 1.],
                         ));
 
                         // right top
@@ -312,8 +337,9 @@ impl Renderer for SpriteRenderer {
                             node,
                             tex_width,
                             tex_height,
-                            &[1. - bright, 0.],
+                            &[bleft + bcenter_h * center_h_scale, 0.],
                             &[(ax1 - right), ay0, ax1, (ay0 + top)],
+                            &[1., 1.],
                         ));
 
                         // right center
@@ -321,8 +347,9 @@ impl Renderer for SpriteRenderer {
                             node,
                             tex_width,
                             tex_height,
-                            &[1. - bright, btop],
+                            &[bleft + bcenter_h * center_h_scale, btop],
                             &[(ax1 - right), (ay0 + top), ax1, (ay1 - bottom)],
+                            &[1., center_v_scale],
                         ));
 
                         // right bottom
@@ -330,8 +357,12 @@ impl Renderer for SpriteRenderer {
                             node,
                             tex_width,
                             tex_height,
-                            &[1. - bright, 1. - bbottom],
+                            &[
+                                bleft + bcenter_h * center_h_scale,
+                                btop + bcenter_v * center_v_scale,
+                            ],
                             &[(ax1 - right), (ay1 - bottom), ax1, ay1],
+                            &[1., 1.],
                         ));
 
                         meshes
