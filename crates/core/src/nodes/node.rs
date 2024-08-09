@@ -102,6 +102,11 @@ impl NodeBase {
         self._update_id += 1;
     }
 
+    #[inline]
+    pub fn cancel_update(&mut self) {
+        self._update_id = self._current_update_id;
+    }
+
     /// pop vertices update flag, returns the current flag value, and set it to false
     #[inline]
     pub fn pop_update_vertices(&mut self) -> bool {
