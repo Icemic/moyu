@@ -107,6 +107,8 @@ impl Node for Sprite {
 
         if let Some(mode) = props.mode {
             self.mode = mode;
+            // reset size when mode changed, those values will be recalculated in render
+            self.base_mut().set_size(0, 0);
         }
 
         if let Some(area) = props.area {
@@ -123,10 +125,18 @@ impl Node for Sprite {
 
         if let Some(target_width) = props.target_width {
             self.target_width = target_width;
+            // use target width as width when mode is nineslice
+            if self.mode == SpriteMode::Nineslice {
+                self.base_mut().set_width(target_width);
+            }
         }
 
         if let Some(target_height) = props.target_height {
             self.target_height = target_height;
+            // use target height as height when mode is nineslice
+            if self.mode == SpriteMode::Nineslice {
+                self.base_mut().set_height(target_height);
+            }
         }
 
         // force update vertices
