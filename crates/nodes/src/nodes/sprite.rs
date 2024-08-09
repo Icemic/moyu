@@ -49,9 +49,9 @@ pub struct Sprite {
     /// (for nineslice mode) nine slice mode
     pub nine_slice_mode: NineSliceMode,
     /// (for nineslice mode) target width
-    pub target_width: f32,
+    pub target_width: u32,
     /// (for nineslice mode) target height
-    pub target_height: f32,
+    pub target_height: u32,
 
     pub vertex_buffer: Option<Buffer>,
 
@@ -68,8 +68,8 @@ impl Sprite {
             area: [0., 0., 1., 1.],
             bounds: [0., 0., 0., 0.],
             nine_slice_mode: NineSliceMode::Stretch,
-            target_width: 0.,
-            target_height: 0.,
+            target_width: 0,
+            target_height: 0,
             vertex_buffer: None,
             node_base: NodeBase::new(label),
         }
@@ -86,8 +86,8 @@ pub struct SpriteProps {
     pub area: Option<[f32; 4]>,
     pub bounds: Option<[f32; 4]>,
     pub nine_slice_mode: Option<NineSliceMode>,
-    pub target_width: Option<f32>,
-    pub target_height: Option<f32>,
+    pub target_width: Option<u32>,
+    pub target_height: Option<u32>,
 }
 
 impl Node for Sprite {

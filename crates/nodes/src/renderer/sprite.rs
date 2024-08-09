@@ -262,9 +262,9 @@ impl Renderer for SpriteRenderer {
                         let min_center_height = tex_height * center_v;
 
                         let target_center_width =
-                            (node.target_width - tex_width * (left + right)).max(0.);
+                            (node.target_width as f32 - tex_width * (left + right)).max(0.);
                         let target_center_height =
-                            (node.target_height - tex_height * (top + bottom)).max(0.);
+                            (node.target_height as f32 - tex_height * (top + bottom)).max(0.);
 
                         let center_h_scale = target_center_width / min_center_width;
                         let center_v_scale = target_center_height / min_center_height;
