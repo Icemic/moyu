@@ -18,6 +18,7 @@ export default class BunnyMark {
 
       const id = hai.createInstance('sprite', '', {
         src: texture,
+        pivot: [0.5, 1.0],
         anchor: [0.5, 1.0],
       });
 
