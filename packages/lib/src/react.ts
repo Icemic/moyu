@@ -217,9 +217,8 @@ const hostConfig: HostConfig<
     return null;
   },
   detachDeletedInstance: function (node: Node): void {
-    console.error('getInstanceFromScope not implement');
     // node will be destroyed by the engine
-    // throw new Error('Function not implemented.');
+    // just do nothing here
   },
 };
 
