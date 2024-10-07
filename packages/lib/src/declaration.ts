@@ -53,6 +53,11 @@ export type HaiContainerAttributes = HaiNodeAttributes;
 export interface HaiSpriteAttribute extends HaiNodeAttributes {
   src?: string;
   area?: [number, number, number, number];
+  mode?: 'normal' | 'nineslice';
+  bounds?: [number, number, number, number];
+  nineSliceMode?: 'stretch' | 'repeat' | 'mirror' | 'blank';
+  targetWidth?: number;
+  targetHeight?: number;
 }
 
 export interface HaiYUVSpriteAttribute extends HaiNodeAttributes {
