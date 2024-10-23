@@ -9,5 +9,8 @@
     "dev-lib": "yarn workspace @hai/lib dev",
     "build-lib": "yarn workspace @hai/lib build"
   },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4"
+  },
   "packageManager": "yarn@4.3.1"
 }
