@@ -36,6 +36,8 @@ pub enum NineSliceMode {
 pub struct Sprite {
     /// loaded texture
     pub texture_id: ArcSwapOption<TextureId>,
+    /// next texture id to load, it will replace `texture_id` after loaded and reset to None
+    pub next_texture_id: ArcSwapOption<TextureId>,
     /// texture source path
     pub src: Option<String>,
 
@@ -63,6 +65,7 @@ impl Sprite {
     pub fn new(label: String) -> Self {
         Sprite {
             texture_id: ArcSwapOption::default(),
+            next_texture_id: ArcSwapOption::default(),
             src: None,
             mode: SpriteMode::Normal,
             area: [0., 0., 1., 1.],
@@ -99,9 +102,10 @@ impl Node for Sprite {
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: SpriteProps = from_js(props).unwrap();
 
+        // set pending change to next_texture_id, avoid texture loading in render (may cause flash)
         if let Some(src) = props.src {
             let texture_id = Arc::new(TextureId::Path(src.clone()));
-            self.texture_id.store(Some(texture_id));
+            self.next_texture_id.store(Some(texture_id));
             self.src = Some(src);
         }
 
