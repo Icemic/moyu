@@ -191,6 +191,16 @@ impl Renderer for SpriteRenderer {
 
         let node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
 
+        // check if there's a pending texture change
+        if let Some(next_texture_id) = node.next_texture_id.load().as_ref() {
+            let texture = payload.resource_manager.get_texture(next_texture_id);
+
+            if TextureStatus::Ready == texture.status() {
+                node.texture_id.store(Some(next_texture_id.clone()));
+                node.next_texture_id.store(None);
+            }
+        }
+
         if let Some(texture_id) = node.texture_id.load().as_ref() {
             let texture = payload.resource_manager.get_texture(texture_id);
 
