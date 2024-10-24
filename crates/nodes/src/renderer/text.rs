@@ -396,9 +396,19 @@ impl Renderer for TextRenderer {
 
                     node.glyph_vertices = glyphs;
 
-                    // set size but cancel the pending update
-                    node.base_mut().set_size(total_width, total_height);
-                    node.base_mut().cancel_update();
+                    // Set size if size is different,
+                    // this will trigger another relayout which is in fact unnecessary.
+                    // What we need is to update the vertices only (base_mut().update() is called before
+                    // child's update, so we have to emit update again).
+                    if node.base_mut().width() != &total_width
+                        || node.base_mut().height() != &total_height
+                    {
+                        node.base_mut().set_size(total_width, total_height);
+
+                        // current transform matrix is not right because the size is not updated yet
+                        // so we have to skip this tick until the next one when the transform matrix is updated
+                        return;
+                    }
 
                     // updates the sdf texture only when the image version is changed
                     let image_version = huozi.image_version();
