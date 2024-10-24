@@ -1,11 +1,15 @@
 use std::collections::VecDeque;
+use std::ffi::{c_int, c_void};
 use std::ptr::null_mut;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
 use hai_pal::env::entry_dir;
-use quickjs_rusty::{Arguments, Context, ExecutionError, JsFunction, OwnedJsPromise, OwnedJsValue};
+use quickjs_rusty::{
+    Arguments, Context, ExecutionError, JSContext, JsFunction, OwnedJsPromise, OwnedJsValue,
+    RawJSValue,
+};
 use std::sync::Mutex;
 use tokio::sync::oneshot::{Receiver, Sender};
 
@@ -54,6 +58,9 @@ impl QuickVM {
             Some(Box::new(module_normalize)),
             null_mut(),
         );
+
+        context
+            .set_host_promise_rejection_tracker(Some(host_promise_rejection_tracker), null_mut());
 
         let timer_tasks = Arc::new(Mutex::new(Vec::new()));
         let instant = Instant::now();
@@ -299,4 +306,19 @@ impl Drop for QuickVM {
         self.call_tasks.lock().unwrap().clear();
         self.async_tasks.lock().unwrap().clear();
     }
+}
+
+unsafe extern "C" fn host_promise_rejection_tracker(
+    ctx: *mut JSContext,
+    _promise: RawJSValue,
+    reason: RawJSValue,
+    is_handled: c_int,
+    _opaque: *mut c_void,
+) {
+    let reason = OwnedJsValue::own(ctx, &reason);
+    log::error!(
+        "Promise rejection: {:?}, handled: {}",
+        reason.js_to_string(),
+        is_handled
+    );
 }
