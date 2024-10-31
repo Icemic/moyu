@@ -1,7 +1,7 @@
-import { ClassAttributes, ReactNode } from 'react';
-import * as PropTypes from 'prop-types';
+import type * as PropTypes from 'prop-types';
+import type { ClassAttributes, ReactNode } from 'react';
 import type { HaiEvent } from './hai';
-import { Node } from './node';
+import type { Node } from './node';
 
 export type DetailedHaiProps<E extends HaiNodeAttributes> = ClassAttributes<Node> & E;
 
@@ -152,9 +152,11 @@ declare module 'react' {
       render(): React.ReactNode;
     }
     interface ElementAttributesProperty {
+      // biome-ignore lint/complexity/noBannedTypes: ask Meta
       props: {};
     }
     interface ElementChildrenAttribute {
+      // biome-ignore lint/complexity/noBannedTypes: ask Meta
       children: {};
     }
 
@@ -173,14 +175,14 @@ declare module 'react' {
           IsExactlyAny<P> extends true
           ? T
           : // If declared props have indexed properties, ignore inferred props entirely as keyof gets widened
-          string extends keyof P
-          ? P
-          : // Prefer declared types which are not exactly any
-            Pick<P, NotExactlyAnyPropertyKeys<P>> &
-              // For props which are exactly any, use the type inferred from propTypes if present
-              Pick<T, Exclude<keyof T, NotExactlyAnyPropertyKeys<P>>> &
-              // Keep leftover props not specified in propTypes
-              Pick<P, Exclude<keyof P, keyof T>>
+            string extends keyof P
+            ? P
+            : // Prefer declared types which are not exactly any
+              Pick<P, NotExactlyAnyPropertyKeys<P>> &
+                // For props which are exactly any, use the type inferred from propTypes if present
+                Pick<T, Exclude<keyof T, NotExactlyAnyPropertyKeys<P>>> &
+                // Keep leftover props not specified in propTypes
+                Pick<P, Exclude<keyof P, keyof T>>
         : never;
 
     type InexactPartial<T> = { [K in keyof T]?: T[K] | undefined };
@@ -200,17 +202,19 @@ declare module 'react' {
     type ReactManagedAttributes<C, P> = C extends { propTypes: infer T; defaultProps: infer D }
       ? Defaultize<MergePropTypes<P, PropTypes.InferProps<T>>, D>
       : C extends { propTypes: infer T }
-      ? MergePropTypes<P, PropTypes.InferProps<T>>
-      : C extends { defaultProps: infer D }
-      ? Defaultize<P, D>
-      : P;
+        ? MergePropTypes<P, PropTypes.InferProps<T>>
+        : C extends { defaultProps: infer D }
+          ? Defaultize<P, D>
+          : P;
 
     // We can't recurse forever because `type` can't be self-referential;
     // let's assume it's reasonable to do a single React.lazy() around a single React.memo() / vice-versa
     type LibraryManagedAttributes<C, P> = C extends
       | React.MemoExoticComponent<infer T>
+      // biome-ignore lint/suspicious/noRedeclare: ask Meta
       | React.LazyExoticComponent<infer T>
-      ? T extends React.MemoExoticComponent<infer U> | React.LazyExoticComponent<infer U>
+      ? // biome-ignore lint/suspicious/noRedeclare: ask Meta
+        T extends React.MemoExoticComponent<infer U> | React.LazyExoticComponent<infer U>
         ? ReactManagedAttributes<U, P>
         : ReactManagedAttributes<T, P>
       : ReactManagedAttributes<C, P>;

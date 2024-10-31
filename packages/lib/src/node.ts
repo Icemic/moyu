@@ -18,7 +18,7 @@ export class Node {
   props: Record<string, any> = {};
   listeners: Record<string, (evt: hai.HaiEvent) => any> = {};
 
-  static create(label = '', type: string, props: Record<string, any>) {
+  static create(label: string, type: string, props: Record<string, any>) {
     const { children: _, ...rest } = props;
     const node = new Node();
     node.label = label;
