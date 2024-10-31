@@ -1,8 +1,8 @@
-import { Globals, createStringInterpolator, colors, raf } from '@react-spring/shared';
 import { createHost } from '@react-spring/animated';
-import { primitives } from './primitives';
-import { WithAnimated } from './animated';
+import { Globals, colors, createStringInterpolator, raf } from '@react-spring/shared';
 import type { Node as HaiNode } from '../node';
+import type { WithAnimated } from './animated';
+import { primitives } from './primitives';
 
 Globals.assign({
   createStringInterpolator,

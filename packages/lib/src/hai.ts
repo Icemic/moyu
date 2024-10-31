@@ -1,8 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
 import { STATE } from './state';
 
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 declare const hai: {
   pushCommand: (name: string, args: any[], callback?: (...args: any[]) => void) => any;
   executeNodeCommand: (nodeId: number, payload: HaiCommandPayload) => any;
@@ -19,7 +16,6 @@ declare global {
     hai: any;
   }
 
-  // eslint-disable-next-line no-var
   var __hai_receive_event: (event: HaiRawEvent) => void;
 }
 
@@ -62,10 +58,6 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
     event.layerY = location[5];
   }
 
-  if (identifier) {
-    event.identifier = identifier;
-  }
-
   switch (kind) {
     case 'NodeDestroyed':
       delete STATE.nodeMap[target_id];
@@ -79,11 +71,12 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
     case 'KeyDown':
     case 'KeyUp':
     case 'KeyPress':
-      node?.listeners?.['on' + kind]?.(event);
+      node?.listeners?.[`on${kind}`]?.(event);
       while (propagate && bubble_target_ids.length) {
+        // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
         event.currentTargetId = bubble_target_ids.pop()!;
         event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
-        STATE.nodeMap[event.currentTargetId]?.listeners?.['on' + kind]?.(event);
+        STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${kind}`]?.(event);
       }
 
       break;
@@ -91,37 +84,45 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
     case 'TouchMove':
     case 'TouchEnd':
     case 'TouchCancel':
-      node?.listeners?.['on' + kind]?.(event);
+      if (typeof identifier === 'undefined') {
+        console.error('Touch event without identifier');
+        break;
+      }
+
+      event.identifier = identifier;
+      node?.listeners?.[`on${kind}`]?.(event);
       {
         const _bubble_target_ids = [...bubble_target_ids];
         while (propagate && _bubble_target_ids.length) {
+          // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
           event.currentTargetId = _bubble_target_ids.pop()!;
           event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
-          STATE.nodeMap[event.currentTargetId]?.listeners?.['on' + kind]?.(event);
+          STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${kind}`]?.(event);
         }
       }
 
       // simulate mouse events as same as browsers
-      if (kind === 'TouchEnd' && !STATE.touchMoved[identifier!] && !preventDefault) {
+      if (kind === 'TouchEnd' && !STATE.touchMoved[identifier] && !preventDefault) {
         for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click']) {
           propagate = true;
           event.kind = eventKind;
-          node?.listeners?.['on' + eventKind]?.(event);
+          node?.listeners?.[`on${eventKind}`]?.(event);
           const _bubble_target_ids = [...bubble_target_ids];
           while (propagate && _bubble_target_ids.length) {
+            // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
             event.currentTargetId = _bubble_target_ids.pop()!;
             event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
-            STATE.nodeMap[event.currentTargetId]?.listeners?.['on' + eventKind]?.(event);
+            STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${eventKind}`]?.(event);
           }
         }
       }
 
       if (kind === 'TouchStart') {
-        STATE.touchMoved[identifier!] = false;
+        STATE.touchMoved[identifier] = false;
       } else if (kind === 'TouchMove') {
-        STATE.touchMoved[identifier!] = true;
+        STATE.touchMoved[identifier] = true;
       } else if (kind === 'TouchEnd' || kind === 'TouchCancel') {
-        delete STATE.touchMoved[identifier!];
+        delete STATE.touchMoved[identifier];
       }
 
       break;

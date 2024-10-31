@@ -1,10 +1,10 @@
-import Reconciler from 'react-reconciler';
-import { HostConfig } from 'react-reconciler';
-import { DefaultEventPriority } from 'react-reconciler/constants';
 import { omitBy } from 'lodash-es';
+import type { ReactElement } from 'react';
+import Reconciler from 'react-reconciler';
+import type { HostConfig } from 'react-reconciler';
+import { DefaultEventPriority } from 'react-reconciler/constants';
+import type { DetailedHaiProps, HaiNodeAttributes } from './declaration';
 import { Node } from './node';
-import { ReactElement } from 'react';
-import { DetailedHaiProps, HaiNodeAttributes } from './declaration';
 
 type Type = string;
 type Props = DetailedHaiProps<HaiNodeAttributes>;
@@ -45,7 +45,7 @@ const hostConfig: HostConfig<
    */
   createInstance(type, props, _root, _hostContext, _internalInstanceHandle) {
     console.debug('createInstance', type);
-    const node = Node.create(props.label, type, props);
+    const node = Node.create(props.label ?? '', type, props);
     return node;
   },
 
@@ -82,7 +82,7 @@ const hostConfig: HostConfig<
     oldProps: Record<string, any>,
     newProps: Record<string, any>,
     _rootContainerInstance,
-    _hostContext
+    _hostContext,
   ) => {
     const { label, children, ...props } = newProps;
     const changedProps = omitBy(props, (value, key) => oldProps[key] === value);
@@ -192,31 +192,29 @@ const hostConfig: HostConfig<
     console.error('clearContainer not implement');
     // container.children.splice(0);
   },
-  getCurrentEventPriority: function (): number {
-    return DefaultEventPriority;
-  },
+  getCurrentEventPriority: (): number => DefaultEventPriority,
   getInstanceFromNode(node: any): Reconciler.Fiber | null | undefined {
     console.error('getInstanceFromNode not implement');
     throw new Error('Function not implemented.');
   },
-  beforeActiveInstanceBlur: function (): void {
+  beforeActiveInstanceBlur: (): void => {
     console.error('beforeActiveInstanceBlur not implement');
     // throw new Error('Function not implemented.');
   },
-  afterActiveInstanceBlur: function (): void {
+  afterActiveInstanceBlur: (): void => {
     console.error('afterActiveInstanceBlur not implement');
     // throw new Error('Function not implemented.');
   },
-  prepareScopeUpdate: function (scopeInstance: any, instance: any): void {
+  prepareScopeUpdate: (scopeInstance: any, instance: any): void => {
     console.error('prepareScopeUpdate not implement');
     // throw new Error('Function not implemented.');
   },
-  getInstanceFromScope: function (scopeInstance: any): Node | null {
+  getInstanceFromScope: (scopeInstance: any): Node | null => {
     console.error('getInstanceFromScope not implement');
     // throw new Error('Function not implemented.');
     return null;
   },
-  detachDeletedInstance: function (node: Node): void {
+  detachDeletedInstance: (node: Node): void => {
     // node will be destroyed by the engine
     // just do nothing here
   },
@@ -245,7 +243,7 @@ export function createRoot(options?: RootOptions) {
       ((err) => {
         console.error('unrecoverable error: ', err);
       }),
-    null
+    null,
   );
 
   return {

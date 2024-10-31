@@ -1,17 +1,15 @@
+import type { FluidValue } from '@react-spring/shared';
+import type { AssignableKeys, ComponentPropsWithRef, ElementType } from '@react-spring/types';
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { CSSProperties, ForwardRefExoticComponent, FC, JSX } from 'react';
-import { AssignableKeys, ComponentPropsWithRef, ElementType } from '@react-spring/types';
-import { FluidValue } from '@react-spring/shared';
-import { Primitives } from './primitives';
+import type { CSSProperties, FC, ForwardRefExoticComponent, JSX } from 'react';
+import type { Primitives } from './primitives';
 
 type AnimatedPrimitives = {
   [P in Primitives]: AnimatedComponent<FC<JSX.IntrinsicElements[P]>>;
 };
 
 /** The type of the `animated()` function */
-export type WithAnimated = {
-  <T extends ElementType>(wrappedComponent: T): AnimatedComponent<T>;
-} & AnimatedPrimitives;
+export type WithAnimated = (<T extends ElementType>(wrappedComponent: T) => AnimatedComponent<T>) & AnimatedPrimitives;
 
 /** The type of an `animated()` component */
 export type AnimatedComponent<T extends ElementType> = ForwardRefExoticComponent<
@@ -28,14 +26,14 @@ type AnimatedProp<T> = [T, T] extends [infer T, infer DT]
   ? [DT] extends [never]
     ? never
     : DT extends void
-    ? undefined
-    : DT extends object
-    ? [AssignableKeys<DT, CSSProperties>] extends [never]
-      ? DT extends ReadonlyArray<any>
-        ? AnimatedStyles<DT>
-        : DT
-      : AnimatedStyle<T>
-    : DT | AnimatedLeaf<T>
+      ? undefined
+      : DT extends object
+        ? [AssignableKeys<DT, CSSProperties>] extends [never]
+          ? DT extends ReadonlyArray<any>
+            ? AnimatedStyles<DT>
+            : DT
+          : AnimatedStyle<T>
+        : DT | AnimatedLeaf<T>
   : never;
 
 // An animated array of style objects
@@ -56,15 +54,15 @@ type AnimatedStyle<T> = [T, T] extends [infer T, infer DT]
   ? DT extends void
     ? undefined
     : [DT] extends [never]
-    ? never
-    : DT extends object
-    ? { [P in keyof DT]: AnimatedStyle<DT[P]> }
-    : DT | AnimatedLeaf<T>
+      ? never
+      : DT extends object
+        ? { [P in keyof DT]: AnimatedStyle<DT[P]> }
+        : DT | AnimatedLeaf<T>
   : never;
 
 // An animated primitive (or an array of them)
-type AnimatedLeaf<T> = Exclude<T, object | void> | Extract<T, ReadonlyArray<number | string>> extends infer U
+type AnimatedLeaf<T> = Exclude<T, object | undefined> | Extract<T, ReadonlyArray<number | string>> extends infer U
   ? [U] extends [never]
     ? never
-    : FluidValue<U | Exclude<T, object | void>>
+    : FluidValue<U | Exclude<T, object | undefined>>
   : never;
