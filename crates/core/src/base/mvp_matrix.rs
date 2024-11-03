@@ -78,8 +78,8 @@ pub fn get_scale_and_translate(
     surface_height: f32,
 ) -> (f32, f32, f32) {
     let scale = {
-        let scale_x = surface_width / stage_width as f32;
-        let scale_y = surface_height / stage_height as f32;
+        let scale_x = surface_width / stage_width;
+        let scale_y = surface_height / stage_height;
         if scale_x > scale_y {
             scale_y
         } else {
@@ -87,8 +87,8 @@ pub fn get_scale_and_translate(
         }
     };
 
-    let translate_x = ((surface_width - stage_width as f32 * scale) / 2.).max(0.);
-    let translate_y = ((surface_height - stage_height as f32 * scale) / 2.).max(0.);
+    let translate_x = ((surface_width - stage_width * scale) / 2.).max(0.);
+    let translate_y = ((surface_height - stage_height * scale) / 2.).max(0.);
 
     (scale, translate_x, translate_y)
 }

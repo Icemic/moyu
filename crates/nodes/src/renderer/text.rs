@@ -48,7 +48,7 @@ impl TextRenderer {
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8Unorm,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &vec![],
+            view_formats: &[],
         });
 
         let _view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -319,7 +319,7 @@ impl TextRenderer {
         } else {
             node.num_indices = indices.len() as u32;
 
-            if vertices.len() == 0 || indices.len() == 0 {
+            if vertices.is_empty() || indices.is_empty() {
                 return;
             }
 
@@ -331,7 +331,7 @@ impl TextRenderer {
                     node.vertex_buffer.as_ref().unwrap(),
                     0,
                     (buf_vertices.len() as u64).try_into().unwrap(),
-                    &device,
+                    device,
                 )
                 .copy_from_slice(buf_vertices);
             staging_belt
@@ -340,7 +340,7 @@ impl TextRenderer {
                     node.index_buffer.as_ref().unwrap(),
                     0,
                     (buf_indices.len() as u64).try_into().unwrap(),
-                    &device,
+                    device,
                 )
                 .copy_from_slice(buf_indices);
         }
@@ -349,7 +349,7 @@ impl TextRenderer {
 
 impl Renderer for TextRenderer {
     fn name(&self) -> &'static str {
-        return "text";
+        "text"
     }
 
     fn render_pipeline(&self) -> &RenderPipeline {
@@ -434,7 +434,7 @@ impl Renderer for TextRenderer {
                                 mip_level: 0,
                                 origin: wgpu::Origin3d::ZERO,
                             },
-                            &sdf_bitmap,
+                            sdf_bitmap,
                             wgpu::ImageDataLayout {
                                 offset: 0,
                                 bytes_per_row: Some(4 * sdf_bitmap.width()),
@@ -475,7 +475,7 @@ impl Renderer for TextRenderer {
                     } else {
                         // calculate the progress in the current glyph
                         index = progress.ceil() as usize;
-                        progress = progress % 1.0;
+                        progress %= 1.0;
                     }
 
                     (index, Some(index.saturating_sub(1)), progress as f32)
@@ -504,7 +504,7 @@ impl Renderer for TextRenderer {
                             .glyph_vertices
                             .iter()
                             .position(|g| (g.row + 1) as f64 >= progress);
-                        progress = progress % 1.0;
+                        progress %= 1.0;
                     }
 
                     (index, fade_from_index, progress as f32)

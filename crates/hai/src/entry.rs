@@ -38,7 +38,6 @@ pub fn main_entry(event_loop: EventLoop<UserEvent>) {
             refresh_rate_max = refresh_rate_max.max(
                 monitor
                     .refresh_rate_millihertz()
-                    .map(|v| v)
                     .unwrap_or(refresh_rate_max),
             );
         }
@@ -105,7 +104,7 @@ pub fn main_entry(event_loop: EventLoop<UserEvent>) {
 
                     // only for desktop platforms
                     #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-                    if !_window.is_maximized() && !_window.fullscreen().is_some() {
+                    if !_window.is_maximized() && _window.fullscreen().is_none() {
                         move_to_center(&_window);
                     }
 

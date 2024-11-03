@@ -19,7 +19,7 @@ impl Transform {
 
     /// multiply with a transform
     pub fn multiply(&mut self, transform: Self) {
-        self.0 = self.0 * transform.0;
+        self.0 *= transform.0;
     }
 }
 

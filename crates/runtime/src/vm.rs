@@ -46,6 +46,12 @@ pub enum TimerTaskKind {
     Interval,
 }
 
+impl Default for QuickVM {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuickVM {
     pub fn new() -> Self {
         let context = Context::builder()
@@ -121,14 +127,14 @@ impl QuickVM {
             let timer_tasks = timer_tasks.clone();
             let clear_timer = move |args: Arguments| {
                 let args = args.into_vec();
-                if args.len() < 1 {
+                if args.is_empty() {
                     return;
                 }
 
                 // Do not panic if the argument is not a number
                 // On MDN, https://developer.mozilla.org/en-US/docs/Web/API/clearTimeout
                 // "Passing an invalid ID to clearTimeout() silently does nothing; no exception is thrown. "
-                if let Ok(timer_id) = i32::try_from(args.get(0).cloned().unwrap()) {
+                if let Ok(timer_id) = i32::try_from(args.first().cloned().unwrap()) {
                     let mut timer_tasks = timer_tasks.lock().unwrap();
                     if let Some(index) = timer_tasks
                         .iter()
@@ -218,7 +224,7 @@ impl QuickVM {
                 let mut async_tasks = self.async_tasks.lock().unwrap();
                 if let Some(task) = async_tasks.pop_front() {
                     drop(async_tasks);
-                    task(&self);
+                    task(self);
                 } else {
                     break;
                 }

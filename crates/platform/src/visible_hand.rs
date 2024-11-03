@@ -8,6 +8,12 @@ pub struct InvisibleHand<T> {
     once_lock: OnceLock<T>,
 }
 
+impl<T> Default for InvisibleHand<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> InvisibleHand<T> {
     pub const fn new() -> Self {
         Self {
@@ -69,9 +75,9 @@ mod tests {
         unsafe {
             _GLOBAL_HAND.set(1).unwrap();
             let hand = _GLOBAL_HAND.intervent();
-            assert_eq!(_GLOBAL_HAND.once_lock.get().is_some(), true);
+            assert!(_GLOBAL_HAND.once_lock.get().is_some());
             drop(hand);
-            assert_eq!(_GLOBAL_HAND.once_lock.get().is_some(), false);
+            assert!(_GLOBAL_HAND.once_lock.get().is_none());
         }
     }
 }

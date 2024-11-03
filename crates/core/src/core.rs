@@ -429,7 +429,7 @@ impl Core {
 
     /// get current surface size
     pub fn stage_size(&self) -> SurfaceSize {
-        self.stage_size.read().clone()
+        *self.stage_size.read()
     }
 
     pub fn fullscreen(&self) -> bool {
@@ -1028,7 +1028,7 @@ impl Core {
                             pointer_state.location.1 as f32,
                         );
 
-                        let mut location = pointer_state.location.clone();
+                        let mut location = pointer_state.location;
 
                         location.4 = x;
                         location.5 = y;

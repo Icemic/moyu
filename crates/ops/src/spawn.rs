@@ -44,7 +44,7 @@ pub fn spawn_runtime_with_core(
                 error!("{:?}", err);
             };
 
-            crate::init(&vm);
+            crate::init(vm);
 
             if let Err(err) = vm.prepare_entry() {
                 error!("{:?}", err);
