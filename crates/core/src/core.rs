@@ -1,5 +1,5 @@
 use arc_swap::ArcSwap;
-use hai_pal::env::{get_hai_env, WindowState};
+use hai_pal::config::{get_engine_config, WindowState};
 use hai_pal::sync::{Mutex, RwLock};
 use hai_pal::time::Instant;
 use hai_pal::visible_hand::{InvisibleHand, VisibleHand};
@@ -184,7 +184,7 @@ impl Core {
         config: SurfaceConfiguration,
         event_proxy: Arc<EventLoopProxy<UserEvent>>,
     ) -> Self {
-        let env = get_hai_env();
+        let env = get_engine_config();
 
         // store surface and stage size
         let size = window.inner_size();
@@ -632,7 +632,7 @@ impl Core {
     pub fn render(&self, window: &Window) -> Result<(), wgpu::SurfaceError> {
         // fps
         #[cfg(not(feature = "web"))]
-        if hai_pal::env::get_hai_env().show_fps {
+        if hai_pal::config::get_engine_config().show_fps {
             let (instant, frames) = &mut *self.frames_in_duration.lock();
             let duration = instant.elapsed().as_secs_f32();
             if duration >= 1. {

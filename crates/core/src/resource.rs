@@ -1,4 +1,4 @@
-use hai_pal::{env::entry_dir, sync::RwLock};
+use hai_pal::{config::entry_dir, sync::RwLock};
 use hai_pal::{fs, task};
 use image::GenericImageView;
 use log::debug;

@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use hai_core::traits::Command;
 use hai_core::traits::Plugin;
 use hai_core::utils::convert::{create_promise, from_js, JSValue};
-use hai_pal::env::entry_dir;
+use hai_pal::config::entry_dir;
 use hai_pal::sync::Mutex;
 
 use crate::audio::{Audio, AudioLoadingState};

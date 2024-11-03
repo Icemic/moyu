@@ -99,7 +99,7 @@ pub fn setup() {
     }
 }
 
-pub fn get_hai_env() -> &'static HaiConfig {
+pub fn get_engine_config() -> &'static HaiConfig {
     HAI_ENV.get().unwrap()
 }
 
@@ -126,6 +126,6 @@ fn parse_entry_dir(entry_dir: &String) -> Url {
 }
 
 pub fn entry_dir() -> Url {
-    let entry_dir = get_hai_env().entry.as_ref().unwrap();
+    let entry_dir = get_engine_config().entry.as_ref().unwrap();
     parse_entry_dir(entry_dir)
 }

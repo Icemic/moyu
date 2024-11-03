@@ -1,7 +1,7 @@
 use anyhow::Result;
 #[cfg(not(feature = "web"))]
 use hai_macros::hai_bindgen;
-use hai_pal::env::WindowState;
+use hai_pal::config::WindowState;
 #[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
 use hai_runtime::quickjs_rusty::{JSContext, RawJSValue};
 #[cfg(feature = "web")]
