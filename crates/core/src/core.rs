@@ -192,13 +192,16 @@ impl Core {
         let surface_size = SurfaceSize::from_physical_size(&size, scale_factor);
 
         let mut stage_size = SurfaceSize::default();
-        stage_size.set_logical_size(env.stage_size.0 as f64, env.stage_size.1 as f64);
+        stage_size.set_logical_size(
+            env.stage_size.width() as f64,
+            env.stage_size.height() as f64,
+        );
         // use current monitor scale factor
         stage_size.set_scale_factor(scale_factor);
 
         let (scale, translate_x, translate_y) = get_scale_and_translate(
-            env.stage_size.0 as f32,
-            env.stage_size.1 as f32,
+            env.stage_size.width() as f32,
+            env.stage_size.height() as f32,
             size.width as f32,
             size.height as f32,
         );
