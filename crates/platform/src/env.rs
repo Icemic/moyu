@@ -1,6 +1,8 @@
 mod backend;
+mod logical_size;
 mod present_mode;
 
+use logical_size::HaiLogicalSize;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -28,8 +30,8 @@ pub struct HaiConfig {
     pub window_title: String,
     pub window_state: WindowState,
     pub window_resizable: bool,
-    pub surface_size: (u32, u32),
-    pub stage_size: (u32, u32),
+    pub surface_size: HaiLogicalSize,
+    pub stage_size: HaiLogicalSize,
     pub present_mode: RenderingPresentMode,
     pub backend: RenderingBackend,
     /// see https://docs.rs/wgpu/latest/wgpu/type.SurfaceConfiguration.html#structfield.desired_maximum_frame_latency
@@ -51,8 +53,8 @@ impl Default for HaiConfig {
             window_title: "Hai no engine".to_string(),
             window_state: WindowState::Idle,
             window_resizable: false,
-            surface_size: (1280, 720),
-            stage_size: (1280, 720),
+            surface_size: "1280x720".parse().unwrap(),
+            stage_size: "1280x720".parse().unwrap(),
             present_mode: RenderingPresentMode::default(),
             backend: RenderingBackend::default(),
             desired_maximum_frame_latency: 2,

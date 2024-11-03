@@ -19,7 +19,7 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Windo
     let env = get_hai_env();
     // create window
     let mut builder = WindowBuilder::new()
-        .with_inner_size(Size::Logical(env.surface_size.into()))
+        .with_inner_size(Size::Logical(env.surface_size.as_tuple().into()))
         .with_resizable(env.window_resizable)
         .with_visible(false)
         .with_active(true)
