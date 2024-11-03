@@ -1,4 +1,4 @@
-pub mod env;
+pub mod config;
 pub mod fs;
 pub mod logger;
 pub mod platform;

@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
-use hai_pal::env::get_hai_env;
+use hai_pal::config::get_engine_config;
 use quickjs_rusty::{
     Arguments, Context, ExecutionError, JSContext, JsFunction, OwnedJsPromise, OwnedJsValue,
     RawJSValue,
@@ -198,7 +198,9 @@ impl QuickVM {
     }
 
     pub fn prepare_entry(&self) -> Result<OwnedJsPromise, ExecutionError> {
-        let promise = self.context().run_module(&get_hai_env().entry_filename)?;
+        let promise = self
+            .context()
+            .run_module(&get_engine_config().entry_filename)?;
         Ok(promise)
     }
 

@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use glam::Vec3;
-use hai_pal::env::{entry_dir, get_hai_env};
+use hai_pal::config::{entry_dir, get_engine_config};
 use hai_pal::sync::Mutex;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
@@ -184,7 +184,7 @@ impl TextRenderer {
     pub fn init_huozi_from_env(&self) {
         let huozi = self.huozi.clone();
         hai_pal::task::spawn(async move {
-            let font_file = &get_hai_env().font_file;
+            let font_file = &get_engine_config().font_file;
             let asset_full_path = entry_dir()
                 .join("assets/")
                 .unwrap()

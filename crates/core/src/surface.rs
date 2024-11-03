@@ -1,4 +1,4 @@
-use hai_pal::env::{get_hai_env, RenderingBackend};
+use hai_pal::config::{get_engine_config, RenderingBackend};
 use log::{info, warn};
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
@@ -16,7 +16,7 @@ pub fn create_eventloop() -> EventLoop<UserEvent> {
 }
 
 pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Window> {
-    let env = get_hai_env();
+    let env = get_engine_config();
     // create window
     let mut builder = WindowBuilder::new()
         .with_inner_size(Size::Logical(env.surface_size.as_tuple().into()))
@@ -27,13 +27,13 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Windo
         .with_min_inner_size(PhysicalSize::new(400, 300));
 
     match env.window_state {
-        hai_pal::env::WindowState::Maximized => {
+        hai_pal::config::WindowState::Maximized => {
             builder = builder.with_maximized(true);
         }
-        hai_pal::env::WindowState::Minimized => {
+        hai_pal::config::WindowState::Minimized => {
             warn!("You should not start with a minimized window.");
         }
-        hai_pal::env::WindowState::Fullscreen => {
+        hai_pal::config::WindowState::Fullscreen => {
             builder = builder.with_fullscreen(Some(winit::window::Fullscreen::Borderless(
                 event_loop.primary_monitor(),
             )));
@@ -101,7 +101,7 @@ pub(self) async fn create_surface_inner(
 ) {
     // The instance is a handle to our GPU
     // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
-    let backends = match get_hai_env().backend {
+    let backends = match get_engine_config().backend {
         RenderingBackend::Auto => wgpu::Backends::all(),
         RenderingBackend::Vulkan => wgpu::Backends::VULKAN,
         RenderingBackend::Metal => wgpu::Backends::METAL,
@@ -173,8 +173,8 @@ pub(self) async fn create_surface_inner(
     info!("Selected alpha mode: {:?}", alpha_mode);
 
     #[cfg(not(feature = "web"))]
-    let present_mode = match get_hai_env().present_mode {
-        hai_pal::env::RenderingPresentMode::Recommended => {
+    let present_mode = match get_engine_config().present_mode {
+        hai_pal::config::RenderingPresentMode::Recommended => {
             if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
                 wgpu::PresentMode::Mailbox
             } else if caps.present_modes.contains(&wgpu::PresentMode::FifoRelaxed) {
@@ -183,8 +183,8 @@ pub(self) async fn create_surface_inner(
                 wgpu::PresentMode::Fifo
             }
         }
-        hai_pal::env::RenderingPresentMode::AutoVsync => wgpu::PresentMode::AutoVsync,
-        hai_pal::env::RenderingPresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
+        hai_pal::config::RenderingPresentMode::AutoVsync => wgpu::PresentMode::AutoVsync,
+        hai_pal::config::RenderingPresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
     };
 
     #[cfg(feature = "web")]
@@ -210,7 +210,7 @@ pub(self) async fn create_surface_inner(
         present_mode,
         alpha_mode,
         view_formats: vec![],
-        desired_maximum_frame_latency: get_hai_env().desired_maximum_frame_latency,
+        desired_maximum_frame_latency: get_engine_config().desired_maximum_frame_latency,
     };
     surface.configure(&device, &config);
 

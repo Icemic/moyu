@@ -80,7 +80,7 @@ pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntim
             .create_element("script")
             .expect("Cannot create script element.");
         root_script
-            .set_attribute("src", hai_pal::env::entry_dir().as_str())
+            .set_attribute("src", hai_pal::config::entry_dir().as_str())
             .unwrap();
         root_script.set_attribute("type", "module").unwrap();
 

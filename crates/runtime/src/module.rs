@@ -1,6 +1,6 @@
 use log::{error, info};
 
-use hai_pal::env::entry_dir;
+use hai_pal::config::entry_dir;
 use hai_pal::url::{resolve_package_from, Url};
 use hai_pal::{fs, task};
 
