@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
-use hai_pal::env::entry_dir;
+use hai_pal::env::get_hai_env;
 use quickjs_rusty::{
     Arguments, Context, ExecutionError, JSContext, JsFunction, OwnedJsPromise, OwnedJsValue,
     RawJSValue,
@@ -198,19 +198,7 @@ impl QuickVM {
     }
 
     pub fn prepare_entry(&self) -> Result<OwnedJsPromise, ExecutionError> {
-        let module_name = {
-            let entry_dir = entry_dir();
-
-            if entry_dir.to_string().ends_with('/') {
-                "./index".to_string()
-            } else {
-                let specifier = entry_dir.path_segments().unwrap().last().unwrap();
-                format!("./{}", specifier)
-            }
-        };
-
-        let promise = self.context().run_module(&module_name)?;
-
+        let promise = self.context().run_module(&get_hai_env().entry_filename)?;
         Ok(promise)
     }
 

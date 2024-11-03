@@ -24,8 +24,8 @@ pub enum WindowState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct HaiConfig {
-    #[cfg(not(feature = "web"))]
-    pub entry: String,
+    pub entry: Option<String>,
+    pub entry_filename: String,
     pub font_file: String,
     pub window_title: String,
     pub window_state: WindowState,
@@ -43,12 +43,8 @@ pub struct HaiConfig {
 impl Default for HaiConfig {
     fn default() -> Self {
         Self {
-            #[cfg(not(feature = "web"))]
-            entry: std::env::current_dir()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string(),
+            entry: None,
+            entry_filename: "index.js".to_string(),
             font_file: "fonts/default.subset.otf".to_string(),
             window_title: "Hai no engine".to_string(),
             window_state: WindowState::Idle,
@@ -63,37 +59,51 @@ impl Default for HaiConfig {
     }
 }
 
-#[cfg(not(feature = "web"))]
 pub fn setup() {
     use dotenv::dotenv;
     // load custom env from .env file
     dotenv().ok();
 
-    let env = match envy::prefixed("HAI_").from_env::<HaiConfig>() {
-        Ok(config) => config,
-        Err(error) => {
-            panic!("Failed to read config: {}", error);
+    let mut entry = "./index.json".to_string();
+
+    loop {
+        let entry_dir = parse_entry_dir(&entry);
+        match pollster::block_on(crate::fs::read(&entry_dir)) {
+            Ok(content) => {
+                let mut config = match serde_json::from_slice::<HaiConfig>(&content) {
+                    Ok(content) => content,
+                    Err(error) => {
+                        panic!("Failed to parse entry file: {}", error);
+                    }
+                };
+
+                if let Some(_entry) = &config.entry {
+                    if entry.as_str() != _entry.as_str() {
+                        println!("redirecting entry file to: {}", _entry);
+                        entry = _entry.clone();
+                        continue;
+                    }
+                }
+
+                config.entry = Some(entry);
+
+                HAI_ENV.set(config).unwrap();
+                break;
+            }
+            Err(_) => {
+                println!("config file cannot be loaded, using default value.");
+                HAI_ENV.set(HaiConfig::default()).unwrap();
+                break;
+            }
         }
-    };
-
-    HAI_ENV.set(env).unwrap();
-}
-
-#[cfg(feature = "web")]
-pub fn setup() {
-    HAI_ENV.set(HaiConfig::default()).unwrap();
+    }
 }
 
 pub fn get_hai_env() -> &'static HaiConfig {
     HAI_ENV.get().unwrap()
 }
 
-pub fn entry_dir() -> Url {
-    #[cfg(not(feature = "web"))]
-    let entry_dir = &get_hai_env().entry;
-    #[cfg(feature = "web")]
-    let entry_dir = "http://localhost:8080/demo.js";
-
+fn parse_entry_dir(entry_dir: &String) -> Url {
     if entry_dir.starts_with("http://")
         || entry_dir.starts_with("https://")
         || entry_dir.starts_with("file://")
@@ -103,20 +113,19 @@ pub fn entry_dir() -> Url {
 
     #[cfg(not(feature = "web"))]
     if !entry_dir.contains("://") {
-        #[cfg(not(feature = "web"))]
-        return get_entry_dir_local(entry_dir);
+        let local_path = std::env::current_dir().unwrap();
+        let local_path = local_path.join(entry_dir);
+        if local_path.is_file() {
+            return Url::from_file_path(&local_path).unwrap();
+        } else {
+            return Url::from_directory_path(&local_path).unwrap();
+        }
     }
 
     unimplemented!("unsupported entry '{}'.", entry_dir);
 }
 
-#[cfg(not(feature = "web"))]
-fn get_entry_dir_local(entry_dir: &String) -> Url {
-    let local_path = std::env::current_dir().unwrap();
-    let local_path = local_path.join(entry_dir);
-    if local_path.is_file() {
-        Url::from_file_path(&local_path).unwrap()
-    } else {
-        Url::from_directory_path(&local_path).unwrap()
-    }
+pub fn entry_dir() -> Url {
+    let entry_dir = get_hai_env().entry.as_ref().unwrap();
+    parse_entry_dir(entry_dir)
 }
