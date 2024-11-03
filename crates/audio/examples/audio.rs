@@ -1,7 +1,7 @@
 use anyhow::Result;
 use kira::{
     manager::{backend::DefaultBackend, AudioManager, AudioManagerSettings},
-    sound::static_sound::{StaticSoundData, StaticSoundSettings},
+    sound::static_sound::StaticSoundData,
     tween::Tween,
 };
 

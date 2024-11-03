@@ -89,7 +89,7 @@ pub fn create_wgpu_surface(
     (instance, surface, device, queue, config)
 }
 
-pub(self) async fn create_surface_inner(
+ async fn create_surface_inner(
     window: &Arc<Window>,
     size: &PhysicalSize<u32>,
 ) -> (
@@ -165,8 +165,7 @@ pub(self) async fn create_surface_inner(
     info!("Selected surface format: {:?}", format);
 
     let alpha_mode = *caps
-        .alpha_modes
-        .get(0)
+        .alpha_modes.first()
         .expect("Cannot find a proper surface alpha mode.");
 
     info!("Available alpha mode: {:?}", caps.alpha_modes);

@@ -9,6 +9,12 @@ pub struct Texture {
     pub sampler: ArcSwapOption<wgpu::Sampler>,
 }
 
+impl Default for Texture {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Texture {
     pub fn new() -> Self {
         Self {

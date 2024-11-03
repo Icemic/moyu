@@ -240,7 +240,7 @@ impl Command for AudioManager {
             } => {
                 self.create_audio(&name);
                 let fut = self.load_audio(&name, &src, settings.unwrap_or_default());
-                let promise = create_promise(async move { fut.await })?;
+                let promise = create_promise(fut)?;
                 return Ok(Some(promise));
             }
             AudioCommmad::Release { name } => {
