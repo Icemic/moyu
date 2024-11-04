@@ -22,7 +22,7 @@ pub enum WindowState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct HaiConfig {
     pub entry: Option<String>,
     pub entry_filename: String,
@@ -36,7 +36,7 @@ pub struct HaiConfig {
     pub backend: RenderingBackend,
     /// see https://docs.rs/wgpu/latest/wgpu/type.SurfaceConfiguration.html#structfield.desired_maximum_frame_latency
     pub desired_maximum_frame_latency: u32,
-
+    #[serde(rename = "showFPS")]
     pub show_fps: bool,
 }
 
@@ -45,8 +45,8 @@ impl Default for HaiConfig {
         Self {
             entry: None,
             entry_filename: "index.js".to_string(),
-            font_file: "fonts/default.subset.otf".to_string(),
-            window_title: "Hai no engine".to_string(),
+            font_file: "fonts/default.otf".to_string(),
+            window_title: "Doufu".to_string(),
             window_state: WindowState::Idle,
             window_resizable: false,
             surface_size: "1280x720".parse().unwrap(),
