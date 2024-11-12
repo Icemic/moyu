@@ -10,20 +10,22 @@ export type DetailedHaiProps<E extends HaiNodeAttributes> = ClassAttributes<Node
 //   ref: LegacyRef<T>;
 // }
 
+export type HaiEventHandler = (event: HaiEvent) => void;
+
 export interface HaiListenerAttributes {
-  onClick?: (event: HaiEvent) => void;
-  onMouseEnter?: (event: HaiEvent) => void;
-  onMouseLeave?: (event: HaiEvent) => void;
-  onMouseDown?: (event: HaiEvent) => void;
-  onMouseUp?: (event: HaiEvent) => void;
-  onMouseMove?: (event: HaiEvent) => void;
-  onKeyDown?: (event: HaiEvent) => void;
-  onKeyUp?: (event: HaiEvent) => void;
-  onKeyPress?: (event: HaiEvent) => void;
-  onTouchStart?: (event: HaiEvent) => void;
-  onTouchMove?: (event: HaiEvent) => void;
-  onTouchEnd?: (event: HaiEvent) => void;
-  onTouchCancel?: (event: HaiEvent) => void;
+  onClick?: HaiEventHandler;
+  onMouseEnter?: HaiEventHandler;
+  onMouseLeave?: HaiEventHandler;
+  onMouseDown?: HaiEventHandler;
+  onMouseUp?: HaiEventHandler;
+  onMouseMove?: HaiEventHandler;
+  onKeyDown?: HaiEventHandler;
+  onKeyUp?: HaiEventHandler;
+  onKeyPress?: HaiEventHandler;
+  onTouchStart?: HaiEventHandler;
+  onTouchMove?: HaiEventHandler;
+  onTouchEnd?: HaiEventHandler;
+  onTouchCancel?: HaiEventHandler;
 }
 
 export interface HaiNodeAttributes extends HaiListenerAttributes {
@@ -175,14 +177,14 @@ declare module 'react' {
           IsExactlyAny<P> extends true
           ? T
           : // If declared props have indexed properties, ignore inferred props entirely as keyof gets widened
-            string extends keyof P
-            ? P
-            : // Prefer declared types which are not exactly any
-              Pick<P, NotExactlyAnyPropertyKeys<P>> &
-                // For props which are exactly any, use the type inferred from propTypes if present
-                Pick<T, Exclude<keyof T, NotExactlyAnyPropertyKeys<P>>> &
-                // Keep leftover props not specified in propTypes
-                Pick<P, Exclude<keyof P, keyof T>>
+          string extends keyof P
+          ? P
+          : // Prefer declared types which are not exactly any
+            Pick<P, NotExactlyAnyPropertyKeys<P>> &
+              // For props which are exactly any, use the type inferred from propTypes if present
+              Pick<T, Exclude<keyof T, NotExactlyAnyPropertyKeys<P>>> &
+              // Keep leftover props not specified in propTypes
+              Pick<P, Exclude<keyof P, keyof T>>
         : never;
 
     type InexactPartial<T> = { [K in keyof T]?: T[K] | undefined };
@@ -202,10 +204,10 @@ declare module 'react' {
     type ReactManagedAttributes<C, P> = C extends { propTypes: infer T; defaultProps: infer D }
       ? Defaultize<MergePropTypes<P, PropTypes.InferProps<T>>, D>
       : C extends { propTypes: infer T }
-        ? MergePropTypes<P, PropTypes.InferProps<T>>
-        : C extends { defaultProps: infer D }
-          ? Defaultize<P, D>
-          : P;
+      ? MergePropTypes<P, PropTypes.InferProps<T>>
+      : C extends { defaultProps: infer D }
+      ? Defaultize<P, D>
+      : P;
 
     // We can't recurse forever because `type` can't be self-referential;
     // let's assume it's reasonable to do a single React.lazy() around a single React.memo() / vice-versa
