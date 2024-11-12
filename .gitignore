@@ -12,6 +12,7 @@ dist/
 
 /local-test
 .env
+/index.json
 /3rdparty
 *.dll
 *.otf
