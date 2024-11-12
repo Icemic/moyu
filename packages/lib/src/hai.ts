@@ -27,13 +27,14 @@ interface HaiRawEvent {
   identifier?: number;
 }
 
+const globalEventListeners: Record<string, ((event: HaiEvent) => void)[]> = {};
+
 globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
   const { kind, targetId: target_id, bubbleTargetIds: bubble_target_ids, location, identifier } = raw_event;
 
   const node = STATE.nodeMap[target_id];
 
   let propagate = true;
-  let preventDefault = false;
 
   const event: HaiEvent = {
     kind,
@@ -45,8 +46,9 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
       propagate = false;
     },
     preventDefault: () => {
-      preventDefault = true;
+      event.defaultPrevented = true;
     },
+    defaultPrevented: false,
   };
 
   if (location) {
@@ -102,7 +104,7 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
       }
 
       // simulate mouse events as same as browsers
-      if (kind === 'TouchEnd' && !STATE.touchMoved[identifier] && !preventDefault) {
+      if (kind === 'TouchEnd' && !STATE.touchMoved[identifier] && !event.defaultPrevented) {
         for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click']) {
           propagate = true;
           event.kind = eventKind;
@@ -129,6 +131,12 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
     default:
       break;
   }
+
+  if (propagate) {
+    for (const listener of globalEventListeners[kind.toLowerCase()] ?? []) {
+      listener(event);
+    }
+  }
 };
 
 export interface HaiEvent {
@@ -146,10 +154,7 @@ export interface HaiEvent {
   identifier?: number;
   stopPropagation: () => void;
   preventDefault: () => void;
-}
-
-export function addEventListener(name: string, callback: (...args: any[]) => void) {
-  hai.pushCommand('add_event_listener', [name, callback]);
+  defaultPrevented: boolean;
 }
 
 export function loadPreset(name: string) {
@@ -249,4 +254,16 @@ export function executeNodeCommand(nodeId: number, payload: HaiCommandPayload) {
 
 export function executePluginCommand(pluginName: string, payload: HaiCommandPayload) {
   return hai.executePluginCommand(pluginName, payload);
+}
+
+export function addEventListener(name: string, callback: (...args: any[]) => void): () => void {
+  if (!globalEventListeners[name]) {
+    globalEventListeners[name] = [];
+  }
+
+  globalEventListeners[name].push(callback);
+
+  return () => {
+    globalEventListeners[name] = globalEventListeners[name].filter((cb) => cb !== callback);
+  };
 }
