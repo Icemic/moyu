@@ -1,4 +1,4 @@
-import Bunny, { Bounds } from './bunny';
+import Bunny, { type Bounds } from './bunny';
 import { hai } from '../..';
 
 export default class BunnyMark {

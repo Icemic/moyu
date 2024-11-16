@@ -8,14 +8,9 @@ module.exports = {
   context: __dirname,
   entry: {
     bunnymark: './examples/bunnyMark/index.ts',
-    react: './examples/react/index.tsx',
-    demo: {
-      import: './examples/demo/index.tsx',
-      baseUri: '/demo11',
-      publicPath: '/demo11/',
-    },
   },
   resolve: {
+    symlinks: false,
     extensions: ['...', '.ts', '.tsx', '.jsx'],
   },
   module: {
@@ -59,7 +54,7 @@ module.exports = {
     webSocketServer: false,
     static: {
       publicPath: '/',
-      directory: './examples/demo',
+      directory: './examples',
     },
     headers: {
       'Access-Control-Allow-Origin': '*',
@@ -68,11 +63,6 @@ module.exports = {
         'X-Requested-With, content-type, Authorization, cache-control, pragma, upgrade-insecure-requests, user-agent',
     },
     compress: true,
-  },
-  builtins: {
-    react: {
-      refresh: false,
-    },
   },
   plugins: [
     new rspack.DefinePlugin({

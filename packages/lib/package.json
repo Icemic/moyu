@@ -2,10 +2,12 @@
   "name": "@doufu-moe/kit",
   "version": "0.1.0",
   "description": "Software Development Kit of Doufu Visual Novel Engine",
-  "main": "src/lib.ts",
+  "main": "dist/lib.js",
+  "module": "src/lib.ts",
+  "types": "dist/lib.d.ts",
   "scripts": {
-    "dev-rspack": "rspack dev",
-    "dev": "vite",
+    "dev": "rspack dev",
+    "prepack": "tsc --outDir ./dist",
     "build": "tsc --outDir ./dist",
     "watch": "tsc --outDir ./dist -w"
   },
@@ -25,14 +27,12 @@
     "react": "^18.2.0"
   },
   "devDependencies": {
-    "@rspack/cli": "0.5.4",
-    "@rspack/core": "0.5.4",
+    "@rspack/cli": "^1.1.1",
+    "@rspack/core": "^1.1.1",
     "@types/node": ">=22",
     "@types/react": "^18.2.0",
     "@types/react-reconciler": "^0.28.8",
-    "@vitejs/plugin-react": "^3.0.1",
     "react": "^18.2.0",
-    "typescript": "^5.6.3",
-    "vite": "^4.2.1"
+    "typescript": "^5.6.3"
   }
 }
