@@ -1,7 +1,7 @@
 import type { FluidValue } from '@react-spring/shared';
 import type { AssignableKeys, ComponentPropsWithRef, ElementType } from '@react-spring/types';
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import type { CSSProperties, FC, ForwardRefExoticComponent, JSX } from 'react';
+import type { CSSProperties, FC, ForwardRefExoticComponent } from 'react';
+import type { JSX } from '../declaration';
 import type { Primitives } from './primitives';
 
 type AnimatedPrimitives = {

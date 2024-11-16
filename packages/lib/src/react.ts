@@ -1,4 +1,4 @@
-import { omitBy } from 'lodash-es';
+import { omitBy } from './utils';
 import type { ReactElement } from 'react';
 import Reconciler from 'react-reconciler';
 import type { HostConfig } from 'react-reconciler';

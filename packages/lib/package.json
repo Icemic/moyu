@@ -6,18 +6,20 @@
   "scripts": {
     "dev-rspack": "rspack dev",
     "dev": "vite",
-    "build": "tsc ./src/lib.ts --outDir ./dist",
-    "watch": "tsc ./src/lib.ts --outDir ./dist -w"
+    "build": "tsc --outDir ./dist",
+    "watch": "tsc --outDir ./dist -w"
   },
   "author": "Icemic <bingfeng.web@gmail.com>",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "@react-spring/animated": "^9.7.3",
     "@react-spring/core": "^9.7.3",
     "@react-spring/rafz": "^9.7.3",
     "@react-spring/shared": "^9.7.3",
-    "lodash-es": "^4.17.21",
-    "react-reconciler": "^0.29.0"
+    "react-reconciler": "^0.29.2"
   },
   "peerDependencies": {
     "react": "^18.2.0"
@@ -25,15 +27,12 @@
   "devDependencies": {
     "@rspack/cli": "0.5.4",
     "@rspack/core": "0.5.4",
-    "@types/lodash-es": "^4.17.6",
-    "@types/node": ">=20",
-    "@types/react": "^18.0.27",
-    "@types/react-reconciler": "^0.28.2",
+    "@types/node": ">=22",
+    "@types/react": "^18.2.0",
+    "@types/react-reconciler": "^0.28.8",
     "@vitejs/plugin-react": "^3.0.1",
-    "cross-env": "^7.0.3",
     "react": "^18.2.0",
-    "rimraf": "^4.1.2",
-    "typescript": "^4.9.5",
+    "typescript": "^5.6.3",
     "vite": "^4.2.1"
   }
 }
