@@ -103,9 +103,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@doufu-moe/kit@workspace:packages/lib":
+"@doufu-moe/kit@workspace:packages/kit":
   version: 0.0.0-use.local
-  resolution: "@doufu-moe/kit@workspace:packages/lib"
+  resolution: "@doufu-moe/kit@workspace:packages/kit"
   dependencies:
     "@react-spring/animated": "npm:^9.7.3"
     "@react-spring/core": "npm:^9.7.3"
