@@ -146,91 +146,12 @@ export interface HaiTextAttribute extends HaiNodeAttributes {
   shadowWidth?: number;
 }
 
-declare module 'react' {
-  /* eslint-disable */
-  namespace JSX {
-    interface Element extends React.ReactElement<any, any> {}
-    interface ElementClass extends React.Component<any> {
-      render(): React.ReactNode;
-    }
-    interface ElementAttributesProperty {
-      // biome-ignore lint/complexity/noBannedTypes: ask Meta
-      props: {};
-    }
-    interface ElementChildrenAttribute {
-      // biome-ignore lint/complexity/noBannedTypes: ask Meta
-      children: {};
-    }
-
-    // naked 'any' type in a conditional type will short circuit and union both the then/else branches
-    // so boolean is only resolved for T = any
-    type IsExactlyAny<T> = boolean extends (T extends never ? true : false) ? true : false;
-
-    type ExactlyAnyPropertyKeys<T> = { [K in keyof T]: IsExactlyAny<T[K]> extends true ? K : never }[keyof T];
-    type NotExactlyAnyPropertyKeys<T> = Exclude<keyof T, ExactlyAnyPropertyKeys<T>>;
-
-    // Try to resolve ill-defined props like for JS users: props can be any, or sometimes objects with properties of type any
-    type MergePropTypes<P, T> =
-      // Distribute over P in case it is a union type
-      P extends any
-        ? // If props is type any, use propTypes definitions
-          IsExactlyAny<P> extends true
-          ? T
-          : // If declared props have indexed properties, ignore inferred props entirely as keyof gets widened
-          string extends keyof P
-          ? P
-          : // Prefer declared types which are not exactly any
-            Pick<P, NotExactlyAnyPropertyKeys<P>> &
-              // For props which are exactly any, use the type inferred from propTypes if present
-              Pick<T, Exclude<keyof T, NotExactlyAnyPropertyKeys<P>>> &
-              // Keep leftover props not specified in propTypes
-              Pick<P, Exclude<keyof P, keyof T>>
-        : never;
-
-    type InexactPartial<T> = { [K in keyof T]?: T[K] | undefined };
-
-    // Any prop that has a default prop becomes optional, but its type is unchanged
-    // Undeclared default props are augmented into the resulting allowable attributes
-    // If declared props have indexed properties, ignore default props entirely as keyof gets widened
-    // Wrap in an outer-level conditional type to allow distribution over props that are unions
-    type Defaultize<P, D> = P extends any
-      ? string extends keyof P
-        ? P
-        : Pick<P, Exclude<keyof P, keyof D>> &
-            InexactPartial<Pick<P, Extract<keyof P, keyof D>>> &
-            InexactPartial<Pick<D, Exclude<keyof D, keyof P>>>
-      : never;
-
-    type ReactManagedAttributes<C, P> = C extends { propTypes: infer T; defaultProps: infer D }
-      ? Defaultize<MergePropTypes<P, PropTypes.InferProps<T>>, D>
-      : C extends { propTypes: infer T }
-      ? MergePropTypes<P, PropTypes.InferProps<T>>
-      : C extends { defaultProps: infer D }
-      ? Defaultize<P, D>
-      : P;
-
-    // We can't recurse forever because `type` can't be self-referential;
-    // let's assume it's reasonable to do a single React.lazy() around a single React.memo() / vice-versa
-    type LibraryManagedAttributes<C, P> = C extends
-      | React.MemoExoticComponent<infer T>
-      // biome-ignore lint/suspicious/noRedeclare: ask Meta
-      | React.LazyExoticComponent<infer T>
-      ? // biome-ignore lint/suspicious/noRedeclare: ask Meta
-        T extends React.MemoExoticComponent<infer U> | React.LazyExoticComponent<infer U>
-        ? ReactManagedAttributes<U, P>
-        : ReactManagedAttributes<T, P>
-      : ReactManagedAttributes<C, P>;
-
-    interface IntrinsicAttributes extends React.Attributes {}
-    interface IntrinsicClassAttributes<T> extends React.ClassAttributes<T> {}
-    /* eslint-enable */
-
-    interface IntrinsicElements {
-      container: DetailedHaiProps<HaiContainerAttributes>;
-      sprite: DetailedHaiProps<HaiSpriteAttribute>;
-      yuvsprite: DetailedHaiProps<HaiYUVSpriteAttribute>;
-      video: DetailedHaiProps<HaiVideoAttribute>;
-      text: DetailedHaiProps<HaiTextAttribute>;
-    }
+export declare namespace JSX {
+  interface IntrinsicElements {
+    container: DetailedHaiProps<HaiContainerAttributes>;
+    sprite: DetailedHaiProps<HaiSpriteAttribute>;
+    yuvsprite: DetailedHaiProps<HaiYUVSpriteAttribute>;
+    video: DetailedHaiProps<HaiVideoAttribute>;
+    text: DetailedHaiProps<HaiTextAttribute>;
   }
 }
