@@ -154,13 +154,16 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
   }
 };
 
-globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
-  return globalRequestAnimationFrameListeners.push(callback) - 1;
-};
+// detect if it is running in browser, if not, polyfill requestAnimationFrame
+if (!globalThis.document) {
+  globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
+    return globalRequestAnimationFrameListeners.push(callback) - 1;
+  };
 
-globalThis.cancelAnimationFrame = (handle: number) => {
-  delete globalRequestAnimationFrameListeners[handle];
-};
+  globalThis.cancelAnimationFrame = (handle: number) => {
+    delete globalRequestAnimationFrameListeners[handle];
+  };
+}
 
 export interface HaiEvent {
   kind: string;
