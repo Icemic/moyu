@@ -778,9 +778,10 @@ impl Core {
                 get_pointer_state!(self, pointer_state, MOUSE_IDENTIFIER, true);
 
                 if let Some(last_hover_node) = &pointer_state.current_target {
+                    let target_id = *last_hover_node.node.read().base().id();
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseLeave,
-                        target_id: *last_hover_node.node.read().base().id(),
+                        target_id,
                         bubble_target_ids: last_hover_node.parent_ids.clone(),
                         location: Some(pointer_state.location),
                         identifier: None,
@@ -1016,9 +1017,11 @@ impl Core {
                 drop(node_ref);
 
                 if identifier == MOUSE_IDENTIFIER {
+                    let target_id = *node.node.read().base().id();
+
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseMove,
-                        target_id: *node.node.read().base().id(),
+                        target_id,
                         bubble_target_ids: node.parent_ids.clone(),
                         location: Some(pointer_state.location),
                         identifier: None,
@@ -1042,10 +1045,15 @@ impl Core {
                         location.4 = x;
                         location.5 = y;
 
+                        let target_id = *node_ref.base().id();
+
+                        // drop node guard before dispatching event, since it may cause deadlock
+                        drop(node_ref);
+
                         // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
                         dispatch_event(HaiEvent {
                             kind: HaiEventKind::MouseLeave,
-                            target_id: *node_ref.base().id(),
+                            target_id,
                             bubble_target_ids: last_hover_node.parent_ids.clone(),
                             location: Some(location),
                             identifier: None,
@@ -1055,7 +1063,7 @@ impl Core {
                     // there is always a mouse enter event if current node is different from last focused node (may be None)
                     dispatch_event(HaiEvent {
                         kind: HaiEventKind::MouseEnter,
-                        target_id: *node.node.read().base().id(),
+                        target_id,
                         bubble_target_ids: node.parent_ids.clone(),
                         location: Some(pointer_state.location),
                         identifier: None,
@@ -1086,10 +1094,14 @@ impl Core {
             pointer_state.location.5 = y;
 
             if identifier == MOUSE_IDENTIFIER {
-                // TODO: mouse leave event
+                let target_id = *node_ref.base().id();
+
+                // drop node guard before dispatching event, since it may cause deadlock
+                drop(node_ref);
+
                 dispatch_event(HaiEvent {
                     kind: HaiEventKind::MouseLeave,
-                    target_id: *node_ref.base().id(),
+                    target_id,
                     bubble_target_ids: last_hover_node.parent_ids.clone(),
                     location: Some(pointer_state.location),
                     identifier: None,
