@@ -1,16 +1,6 @@
 import * as hai from './hai';
 import { STATE } from './state';
 
-// const HAI_EVENT_KINDS = [
-//   'NodeDestroyed',
-//   'MouseEnter',
-//   'MouseLeave',
-//   'MouseDown',
-//   'MouseUp',
-//   'MouseMove',
-//   'Click',
-// ] as const;
-
 export class Node {
   nodeId!: number;
   label?: string;
