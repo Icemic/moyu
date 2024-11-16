@@ -59,16 +59,11 @@ impl Default for HaiConfig {
     }
 }
 
-pub fn setup() {
-    use dotenv::dotenv;
-    // load custom env from .env file
-    dotenv().ok();
-
-    let mut entry = "./index.json".to_string();
+pub async fn setup() {
 
     loop {
         let entry_dir = parse_entry_dir(&entry);
-        match pollster::block_on(crate::fs::read(&entry_dir)) {
+        match crate::fs::read(&entry_dir).await {
             Ok(content) => {
                 let mut config = match serde_json::from_slice::<HaiConfig>(&content) {
                     Ok(content) => content,

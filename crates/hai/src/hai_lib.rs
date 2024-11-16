@@ -13,7 +13,7 @@ async fn android_main(app: AndroidApp) {
     use hai_core::user_event::UserEvent;
     use hai_core::winit::event_loop::EventLoop;
 
-    hai_pal::config::setup();
+    hai_pal::config::setup().await;
     hai_pal::logger::setup();
 
     let event_loop: EventLoop<UserEvent> = winit::event_loop::EventLoopBuilder::with_user_event()
@@ -25,8 +25,8 @@ async fn android_main(app: AndroidApp) {
 
 #[cfg(feature = "web")]
 #[cfg_attr(feature = "web", wasm_bindgen::prelude::wasm_bindgen)]
-pub fn wasm_start() {
-    hai_pal::config::setup();
+pub async fn wasm_start() {
+    hai_pal::config::setup().await;
     hai_pal::logger::setup();
 
     let event_loop = hai_core::surface::create_eventloop();

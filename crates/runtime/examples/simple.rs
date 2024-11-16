@@ -3,7 +3,7 @@ use log::error;
 
 #[tokio::main]
 async fn main() {
-    hai_pal::config::setup();
+    hai_pal::config::setup().await;
     env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
         .init();
