@@ -8,6 +8,9 @@
 
   <body>
     <script type="module">
+      const urlParams = new URLSearchParams(window.location.search);
+      window.__hai_entry = urlParams.get('entry');
+
       import * as hai from './hai_lib.js';
       window.addEventListener('load', async () => {
         await hai.default();

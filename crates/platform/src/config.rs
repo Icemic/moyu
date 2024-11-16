@@ -60,9 +60,19 @@ impl Default for HaiConfig {
 }
 
 pub async fn setup() {
+    #[cfg(not(feature = "web"))]
+    let mut entry = "./index.json".to_string();
+
+    #[cfg(feature = "web")]
+    let mut entry = web_sys::window()
+        .unwrap()
+        .get("__hai_entry")
+        .map(|v| v.as_string().unwrap())
+        .unwrap_or("./index.json".to_string());
 
     loop {
         let entry_dir = parse_entry_dir(&entry);
+        log::info!("loading entry file: {}", entry_dir);
         match crate::fs::read(&entry_dir).await {
             Ok(content) => {
                 let mut config = match serde_json::from_slice::<HaiConfig>(&content) {
@@ -115,6 +125,12 @@ fn parse_entry_dir(entry_dir: &String) -> Url {
         } else {
             return Url::from_directory_path(&local_path).unwrap();
         }
+    }
+
+    #[cfg(feature = "web")]
+    if !entry_dir.contains("://") {
+        let local_path = web_sys::window().unwrap().location().href().unwrap();
+        return Url::parse(&local_path).unwrap().join(entry_dir).unwrap();
     }
 
     unimplemented!("unsupported entry '{}'.", entry_dir);
