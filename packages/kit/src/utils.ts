@@ -4,7 +4,7 @@ export function omitBy<T extends Record<string, any>>(
 ): Partial<T> {
   const result: Partial<T> = {};
   for (const key of Object.keys(object) as (keyof T)[]) {
-    if (predicate(object[key], key)) {
+    if (!predicate(object[key], key)) {
       result[key] = object[key];
     }
   }
