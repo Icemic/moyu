@@ -28,9 +28,27 @@ interface HaiRawEvent {
 }
 
 const globalEventListeners: Record<string, ((event: HaiEvent) => void)[]> = {};
+const globalRequestAnimationFrameListeners: FrameRequestCallback[] = [];
 
 globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
   const { kind, targetId: target_id, bubbleTargetIds: bubble_target_ids, location, identifier } = raw_event;
+
+  // handles non-dom events and return
+  switch (kind) {
+    case 'NodeDestroyed':
+      delete STATE.nodeMap[target_id];
+      return;
+    case 'AnimationFrameCallback': {
+      const listeners = globalRequestAnimationFrameListeners.splice(0);
+      const t = Date.now();
+      for (const listener of listeners) {
+        listener?.(t);
+      }
+      return;
+    }
+  }
+
+  // handles dom events
 
   const node = STATE.nodeMap[target_id];
 
@@ -61,9 +79,6 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
   }
 
   switch (kind) {
-    case 'NodeDestroyed':
-      delete STATE.nodeMap[target_id];
-      break;
     case 'MouseEnter':
     case 'MouseLeave':
     case 'MouseDown':
@@ -137,6 +152,14 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
       listener(event);
     }
   }
+};
+
+globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
+  return globalRequestAnimationFrameListeners.push(callback) - 1;
+};
+
+globalThis.cancelAnimationFrame = (handle: number) => {
+  delete globalRequestAnimationFrameListeners[handle];
 };
 
 export interface HaiEvent {
