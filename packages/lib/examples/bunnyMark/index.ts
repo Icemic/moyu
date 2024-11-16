@@ -1,4 +1,3 @@
-import { hai } from '../..';
 import BunnyMark from './bunnyMark';
 
 const bunnies = [
@@ -24,29 +23,15 @@ const bunnyMark = new BunnyMark(bunnies, {
   bottom: 720,
 });
 
-bunnyMark.addBunny(200);
+bunnyMark.addBunny(8000);
 
-hai.resizeWindow(800, 600);
-
-// setInterval(() => hai.loadResources(), 500);
-
-let i = 0;
-let cc = 0;
-
-let t = Date.now();
-const loop = () => {
-  setTimeout(loop, 16);
+const loop: FrameRequestCallback = (now) => {
   bunnyMark.update();
-  const t2 = Date.now();
-  // console.info(t2 - t);
-  cc += t2 - t;
-  i += 1;
-  console.info((cc / i) << 0);
-  t = t2;
+  requestAnimationFrame(loop);
 };
 
-setInterval(() => {
-  bunnyMark.addBunny(10);
-}, 1600);
+// setInterval(() => {
+//   bunnyMark.addBunny(10);
+// }, 1600);
 
-loop();
+requestAnimationFrame(loop);
