@@ -1,7 +1,7 @@
 {
-  "name": "@hai/lib",
+  "name": "@doufu-moe/kit",
   "version": "0.1.0",
-  "description": "Base library of Hai no Engine",
+  "description": "Software Development Kit of Doufu Visual Novel Engine",
   "main": "src/lib.ts",
   "scripts": {
     "dev-rspack": "rspack dev",

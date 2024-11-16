@@ -4,10 +4,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspace @hai/demo dev",
-    "build": "yarn workspace @hai/demo build",
-    "dev-lib": "yarn workspace @hai/lib dev",
-    "build-lib": "yarn workspace @hai/lib build"
+    "dev": "yarn workspace @doufu-moe/kit dev",
+    "build": "yarn workspace @doufu-moe/kit build"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4"
