@@ -61,6 +61,7 @@ pub fn spawn_runtime_with_core(
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(feature = "web")]
 pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
+    use hai_pal::config::{entry_dir, get_engine_config};
     use log::debug;
 
     if let Some(spawn_callback) = spawn_callback {
@@ -80,7 +81,13 @@ pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntim
             .create_element("script")
             .expect("Cannot create script element.");
         root_script
-            .set_attribute("src", hai_pal::config::entry_dir().as_str())
+            .set_attribute(
+                "src",
+                entry_dir()
+                    .join(&get_engine_config().entry_filename)
+                    .unwrap()
+                    .as_str(),
+            )
             .unwrap();
         root_script.set_attribute("type", "module").unwrap();
 

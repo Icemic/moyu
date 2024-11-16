@@ -32,6 +32,7 @@ web = [
   "hai_pal/web",
   "hai_ops/js_runtime",
   "dep:wasm-bindgen",
+  "dep:wasm-bindgen-futures",
   "dep:web-sys",
 ]
 
@@ -52,6 +53,7 @@ log = "0.4"
 spin_sleep_util = "0.1.1"
 tokio = {version = "1", features = ["rt-multi-thread", "macros"], optional = true}
 wasm-bindgen = {version = "0.2.83", default-features = false, optional = true}
+wasm-bindgen-futures = {version = "0.4", optional = true}
 web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"], optional = true}
 
 [target.'cfg(target_os = "android")'.dependencies]

@@ -10,7 +10,6 @@ version = "0.7.0"
 [features]
 default = []
 desktop = [
-  "dotenv",
   "env_logger",
   "node-resolve",
   "parking_lot",
@@ -23,6 +22,7 @@ web = [
   "parking_lot",
   "wasm-bindgen-futures",
   "web-time",
+  "web-sys",
 ]
 
 [dependencies]
@@ -35,7 +35,6 @@ reqwest = {version = "0.12", default-features = false, features = ["rustls-tls",
 serde = {version = "1.0", features = ["derive"]}
 url = "2.2"
 # deps for desktop platforms
-dotenv = {version = "0.15.0", optional = true}
 env_logger = {version = "0.11", optional = true}
 node-resolve = {version = "2.2", optional = true}
 serde_json = "1.0"
@@ -44,6 +43,7 @@ tokio = {version = "1", features = ["full"], optional = true}
 console_error_panic_hook = {version = "0.1", optional = true}
 console_log = {version = "1.0", features = ["color"], optional = true}
 wasm-bindgen-futures = {version = "0.4", optional = true}
+web-sys = {version = "0.3.56", features = ["Window", "Location"], optional = true}
 web-time = {version = "1.1", optional = true}
 
 [target.'cfg(target_os = "android")'.dependencies]

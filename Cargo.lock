@@ -918,12 +918,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
-
-[[package]]
 name = "downcast-rs"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1337,6 +1331,7 @@ dependencies = [
  "spin_sleep_util",
  "tokio",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "winit",
 ]
@@ -1434,7 +1429,6 @@ dependencies = [
  "anyhow",
  "console_error_panic_hook",
  "console_log",
- "dotenv",
  "env_logger",
  "log",
  "node-resolve",
@@ -1447,6 +1441,7 @@ dependencies = [
  "tokio",
  "url",
  "wasm-bindgen-futures",
+ "web-sys",
  "web-time 1.1.0",
 ]
 
