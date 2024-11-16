@@ -31,12 +31,12 @@ const globalEventListeners: Record<string, ((event: HaiEvent) => void)[]> = {};
 const globalRequestAnimationFrameListeners: FrameRequestCallback[] = [];
 
 globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
-  const { kind, targetId: target_id, bubbleTargetIds: bubble_target_ids, location, identifier } = raw_event;
+  const { kind, targetId, bubbleTargetIds, location, identifier } = raw_event;
 
   // handles non-dom events and return
   switch (kind) {
     case 'NodeDestroyed':
-      delete STATE.nodeMap[target_id];
+      delete STATE.nodeMap[targetId];
       return;
     case 'AnimationFrameCallback': {
       const listeners = globalRequestAnimationFrameListeners.splice(0);
@@ -50,14 +50,14 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
 
   // handles dom events
 
-  const node = STATE.nodeMap[target_id];
+  const node = STATE.nodeMap[targetId];
 
   let propagate = true;
 
   const event: HaiEvent = {
     kind,
-    targetId: target_id,
-    currentTargetId: target_id,
+    targetId,
+    currentTargetId: targetId,
     targetLabel: node.label,
     currentTargetLabel: node.label,
     stopPropagation: () => {
@@ -89,9 +89,9 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
     case 'KeyUp':
     case 'KeyPress':
       node?.listeners?.[`on${kind}`]?.(event);
-      while (propagate && bubble_target_ids.length) {
+      while (propagate && bubbleTargetIds.length) {
         // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
-        event.currentTargetId = bubble_target_ids.pop()!;
+        event.currentTargetId = bubbleTargetIds.pop()!;
         event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
         STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${kind}`]?.(event);
       }
@@ -109,10 +109,10 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
       event.identifier = identifier;
       node?.listeners?.[`on${kind}`]?.(event);
       {
-        const _bubble_target_ids = [...bubble_target_ids];
-        while (propagate && _bubble_target_ids.length) {
+        const _bubbleTargetIds = [...bubbleTargetIds];
+        while (propagate && _bubbleTargetIds.length) {
           // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
-          event.currentTargetId = _bubble_target_ids.pop()!;
+          event.currentTargetId = _bubbleTargetIds.pop()!;
           event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
           STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${kind}`]?.(event);
         }
@@ -124,10 +124,10 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
           propagate = true;
           event.kind = eventKind;
           node?.listeners?.[`on${eventKind}`]?.(event);
-          const _bubble_target_ids = [...bubble_target_ids];
-          while (propagate && _bubble_target_ids.length) {
+          const _bubbleTargetIds = [...bubbleTargetIds];
+          while (propagate && _bubbleTargetIds.length) {
             // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
-            event.currentTargetId = _bubble_target_ids.pop()!;
+            event.currentTargetId = _bubbleTargetIds.pop()!;
             event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
             STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${eventKind}`]?.(event);
           }
