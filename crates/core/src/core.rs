@@ -545,7 +545,16 @@ impl Core {
                     match event {
                         WindowEvent::RedrawRequested => {
                             match self.render(window) {
-                                Ok(_) => {}
+                                Ok(_) => {
+                                    // For real browsers, the callback should be executed before rendering,
+                                    // but in our asynchronous process, this would cause performance issues.
+                                    // Therefore, we only send a message after rendering to let the JavaScript
+                                    // environment align with v-sync.
+                                    dispatch_event(HaiEvent {
+                                        kind: HaiEventKind::AnimationFrameCallback,
+                                        ..Default::default()
+                                    });
+                                }
                                 // Reconfigure the surface if lost
                                 Err(wgpu::SurfaceError::Lost) => {
                                     warn!("surface lost, reconfigure.");

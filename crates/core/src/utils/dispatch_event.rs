@@ -31,6 +31,7 @@ pub enum HaiEventKind {
 
     // others
     NodeDestroyed,
+    AnimationFrameCallback,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
