@@ -101,12 +101,8 @@ pub fn dispatch_event(event: HaiEvent) {
     if let Some(__hai_receive_event) = window.get("__hai_receive_event") {
         if __hai_receive_event.is_function() {
             let __hai_receive_event = __hai_receive_event.unchecked_ref::<Function>();
-            let kind = to_js(&event.kind).unwrap();
-            let target_id = to_js(&event.target_id).unwrap();
-            let bubble_target_ids = to_js(&event.bubble_target_ids).unwrap();
-            __hai_receive_event
-                .call3(&window, &kind, &target_id, &bubble_target_ids)
-                .unwrap();
+            let event = to_js(&event).unwrap();
+            __hai_receive_event.call1(&window, &event).unwrap();
         }
     };
 }
