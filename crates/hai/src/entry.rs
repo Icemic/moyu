@@ -4,12 +4,13 @@ use hai_audio::AudioManager;
 use hai_core::core::set_core;
 use hai_core::surface::{create_wgpu_surface, create_window};
 use hai_core::user_event::UserEvent;
-use hai_core::winit::dpi::PhysicalPosition;
+use hai_core::winit::dpi::{PhysicalPosition, Size};
 use hai_core::winit::event::Event;
 use hai_core::winit::event_loop::EventLoop;
 use hai_core::winit::window::Window;
 use hai_core::{create_hai_core, setup};
 use hai_nodes::renderer::{SpriteRenderer, TextRenderer};
+use hai_pal::config::get_engine_config;
 use hai_pal::platform;
 use hai_pal::sync::Mutex;
 
@@ -102,7 +103,14 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
             .run(move |event, event_loop| {
                 match event {
                     Event::AboutToWait => {}
-                    Event::Resumed => {}
+                    Event::Resumed => {
+                        // workaround for Chrome since it doesn't apply the correct size
+                        if let Some(ref window) = window {
+                            let _ = window.request_inner_size(Size::Logical(
+                                get_engine_config().surface_size.as_tuple().into(),
+                            ));
+                        }
+                    }
                     Event::Suspended => {
                         unimplemented!("cannot handle Event::Suspended now.");
                     }
