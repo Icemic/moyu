@@ -85,3 +85,8 @@ pub fn block_on<T: Future>(future: T) -> T::Output {
     #[cfg(feature = "web")]
     unimplemented!("block_on is not supported in web mode.");
 }
+
+/// Block on a future without a runtime. Use it before the runtime is set up.
+pub fn block_on_without_runtime<T: Future>(future: T) -> T::Output {
+    pollster::block_on(future)
+}
