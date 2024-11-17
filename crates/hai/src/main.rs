@@ -11,5 +11,10 @@ async fn main() {
 
     let event_loop = hai_core::surface::create_eventloop();
 
-    entry::main_entry(event_loop);
+    entry::main_entry(event_loop).await;
+}
+
+#[cfg(feature = "web")]
+fn main() {
+    // Adds this function only to avoid the warning of "`main` function not found"
 }

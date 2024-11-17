@@ -14,7 +14,7 @@ use hai_pal::platform;
 use hai_pal::sync::Mutex;
 
 #[allow(dead_code)]
-pub fn main_entry(event_loop: EventLoop<UserEvent>) {
+pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
     // hold the global variable lifetime using VisibleHand
     let _async_runtime_handle = platform::setup();
 
@@ -47,17 +47,88 @@ pub fn main_entry(event_loop: EventLoop<UserEvent>) {
         spin_sleep_util::interval(std::time::Duration::from_secs(1) / (refresh_rate_max / 1000))
     };
 
+    #[cfg(feature = "web")]
+    {
+        let _window = create_window(&event_loop);
+
+        let (instance, surface, device, queue, config) = create_wgpu_surface(&_window).await;
+
+        let sprite_renderer = SpriteRenderer::new(&device, &config);
+        let text_renderer = TextRenderer::new(&device, &config);
+
+        text_renderer.init_huozi_from_env();
+
+        // use sprite renderer on video node
+        // #[cfg(feature = "video")]
+        // let video_renderer = SpriteRenderer::new(&device, &config);
+
+        let _core = create_hai_core(
+            instance,
+            surface,
+            device,
+            queue,
+            config,
+            &_window,
+            event_proxy.clone(),
+        );
+
+        // core.register_renderer("null".to_string(), null_renderer);
+        _core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
+        _core.register_renderer("text".to_string(), Box::new(text_renderer));
+
+        match AudioManager::new() {
+            Ok(audio_manager) => {
+                _core.register_plugin("audio".to_string(), Arc::new(Mutex::new(audio_manager)));
+            }
+            Err(err) => {
+                log::error!("failed to create audio manager: {}", err);
+            }
+        }
+
+        // #[cfg(feature = "video")]
+        // core.register_renderer("video".to_string(), Box::new(video_renderer));
+
+        _core_handle = Some(set_core(_core.clone()));
+        _jsvm_handle = Some(hai_ops::spawn::spawn_runtime_with_core(&_core, None));
+
+        _window.set_visible(true);
+
+        window = Some(_window);
+        core = Some(_core);
+
+        // use hai_core::winit::platform::web::EventLoopExtWebSys;
+
+        event_loop
+            .run(move |event, event_loop| {
+                match event {
+                    Event::AboutToWait => {}
+                    Event::Resumed => {}
+                    Event::Suspended => {
+                        unimplemented!("cannot handle Event::Suspended now.");
+                    }
+                    _ => {}
+                }
+                if let Some(ref window) = window {
+                    if let Some(ref core) = core {
+                        core.handle_events(&event, window, event_loop);
+                    }
+                }
+            })
+            .ok();
+    }
+
+    #[cfg(not(feature = "web"))]
     event_loop
         .run(move |event, event_loop| {
             match event {
                 Event::AboutToWait => {
-                    #[cfg(not(feature = "web"))]
                     loop_helper.tick();
                 }
                 Event::Resumed => {
                     let _window = create_window(event_loop);
 
-                    let (instance, surface, device, queue, config) = create_wgpu_surface(&_window);
+                    let (instance, surface, device, queue, config) =
+                        hai_pal::task::block_on_without_runtime(create_wgpu_surface(&_window));
 
                     let sprite_renderer = SpriteRenderer::new(&device, &config);
                     let text_renderer = TextRenderer::new(&device, &config);
@@ -111,6 +182,7 @@ pub fn main_entry(event_loop: EventLoop<UserEvent>) {
                     window = Some(_window);
                     core = Some(_core);
                 }
+
                 Event::Suspended => {
                     unimplemented!("cannot handle Event::Suspended now.");
                 }
@@ -126,6 +198,7 @@ pub fn main_entry(event_loop: EventLoop<UserEvent>) {
 }
 
 #[allow(dead_code)]
+#[inline]
 fn move_to_center(window: &Window) {
     if let Some(monitor) = window.current_monitor() {
         let monitor_size = monitor.size();

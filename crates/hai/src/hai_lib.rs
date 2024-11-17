@@ -20,7 +20,7 @@ async fn android_main(app: AndroidApp) {
         .with_android_app(app)
         .build()
         .unwrap();
-    entry::main_entry(event_loop);
+    entry::main_entry(event_loop).await;
 }
 
 #[cfg(feature = "web")]
@@ -30,5 +30,5 @@ pub async fn wasm_start() {
     hai_pal::config::setup().await;
 
     let event_loop = hai_core::surface::create_eventloop();
-    entry::main_entry(event_loop);
+    entry::main_entry(event_loop).await;
 }
