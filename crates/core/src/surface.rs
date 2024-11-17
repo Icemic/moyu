@@ -65,7 +65,7 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Windo
     Arc::new(window)
 }
 
-pub fn create_wgpu_surface(
+pub async fn create_wgpu_surface(
     window: &Arc<Window>,
 ) -> (
     Arc<Instance>,
@@ -77,10 +77,10 @@ pub fn create_wgpu_surface(
     // create wgpu surface
     #[cfg(not(feature = "web"))]
     let (instance, surface, device, queue, config) =
-        futures::executor::block_on(create_surface_inner(window, &window.inner_size()));
+        create_surface_inner(window, &window.inner_size()).await;
     #[cfg(feature = "web")]
     let (instance, surface, device, queue, config) =
-        { pollster::block_on(create_surface_inner(window, &PhysicalSize::new(1280, 720))) };
+        create_surface_inner(window, &PhysicalSize::new(1280, 720)).await;
     let instance = Arc::new(instance);
     let surface = Arc::new(surface);
     let device = Arc::new(device);
@@ -89,7 +89,7 @@ pub fn create_wgpu_surface(
     (instance, surface, device, queue, config)
 }
 
- async fn create_surface_inner(
+async fn create_surface_inner(
     window: &Arc<Window>,
     size: &PhysicalSize<u32>,
 ) -> (
@@ -165,7 +165,8 @@ pub fn create_wgpu_surface(
     info!("Selected surface format: {:?}", format);
 
     let alpha_mode = *caps
-        .alpha_modes.first()
+        .alpha_modes
+        .first()
         .expect("Cannot find a proper surface alpha mode.");
 
     info!("Available alpha mode: {:?}", caps.alpha_modes);
