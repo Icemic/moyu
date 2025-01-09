@@ -698,14 +698,22 @@ impl Core {
                 resource_manager: self.resource_manager.clone(),
             };
 
+            let color = &get_engine_config().background_color;
+            let color = wgpu::Color {
+                r: color.r,
+                g: color.g,
+                b: color.b,
+                a: color.a,
+            };
+
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
+                        load: wgpu::LoadOp::Clear(color),
+                        store: wgpu::StoreOp::Discard,
                     },
                 })],
                 depth_stencil_attachment: None,
