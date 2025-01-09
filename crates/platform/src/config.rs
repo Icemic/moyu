@@ -2,6 +2,7 @@ mod backend;
 mod logical_size;
 mod present_mode;
 
+use csscolorparser::Color;
 use logical_size::HaiLogicalSize;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -36,6 +37,7 @@ pub struct HaiConfig {
     pub backend: RenderingBackend,
     /// see https://docs.rs/wgpu/latest/wgpu/type.SurfaceConfiguration.html#structfield.desired_maximum_frame_latency
     pub desired_maximum_frame_latency: u32,
+    pub background_color: Color,
     #[serde(rename = "showFPS")]
     pub show_fps: bool,
 }
@@ -54,6 +56,7 @@ impl Default for HaiConfig {
             present_mode: RenderingPresentMode::default(),
             backend: RenderingBackend::default(),
             desired_maximum_frame_latency: 2,
+            background_color: Color::from_html("transparent").unwrap(),
             show_fps: false,
         }
     }
@@ -95,7 +98,8 @@ pub async fn setup() {
                 HAI_ENV.set(config).unwrap();
                 break;
             }
-            Err(_) => {
+            Err(err) => {
+                println!("error when loading config: {:?}", err);
                 println!("config file cannot be loaded, using default value.");
                 HAI_ENV.set(HaiConfig::default()).unwrap();
                 break;

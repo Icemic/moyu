@@ -42,6 +42,7 @@ tokio = {version = "1", features = ["full"], optional = true}
 # deps for web
 console_error_panic_hook = {version = "0.1", optional = true}
 console_log = {version = "1.0", features = ["color"], optional = true}
+csscolorparser = {version = "0.6", features = ["serde"]}
 wasm-bindgen-futures = {version = "0.4", optional = true}
 web-sys = {version = "0.3.56", features = ["Window", "Location"], optional = true}
 web-time = {version = "1.1", optional = true}
