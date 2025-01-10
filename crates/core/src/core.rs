@@ -309,6 +309,12 @@ impl Core {
         plugins.get(name).cloned()
     }
 
+    /// Get instance of wgpu. This is useful when you need to do some low-level operations.
+    /// However, it may break the encapsulation of the framework, so use it with caution.
+    pub fn instance(&self) -> &Arc<Instance> {
+        &self.instance
+    }
+
     /// Get device of wgpu. This is useful when you need to do some low-level operations.
     /// However, it may break the encapsulation of the framework, so use it with caution.
     pub fn device(&self) -> &Arc<Device> {
@@ -319,6 +325,12 @@ impl Core {
     /// However, it may break the encapsulation of the framework, so use it with caution.
     pub fn queue(&self) -> &Arc<Queue> {
         &self.queue
+    }
+
+    /// Get surface of wgpu. This is useful when you need to do some low-level operations.
+    /// However, it may break the encapsulation of the framework, so use it with caution.
+    pub fn surface(&self) -> &Arc<Surface<'static>> {
+        &self.surface
     }
 
     /// reset surface
