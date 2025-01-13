@@ -1393,6 +1393,7 @@ dependencies = [
 name = "hai_pal"
 version = "0.7.0"
 dependencies = [
+ "android-activity",
  "android_logger",
  "anyhow",
  "console_error_panic_hook",
@@ -1879,9 +1880,9 @@ dependencies = [
 
 [[package]]
 name = "libquickjs-ng-sys"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7df768fdfa0dd70aeeb0ae95ede08bd7fb5cdf63e98a45285fde3f086c66467"
+checksum = "cb34e7346569f1b942c2622d0227e821c739a97ec24d98cdeeb166e94511ac13"
 dependencies = [
  "bindgen 0.71.1",
  "cc",
