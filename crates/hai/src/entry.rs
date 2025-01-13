@@ -12,6 +12,7 @@ use hai_core::{create_hai_core, setup};
 use hai_nodes::renderer::{SpriteRenderer, TextRenderer};
 use hai_pal::platform;
 use hai_pal::sync::Mutex;
+use hai_scenario::ScenarioPlugin;
 
 #[allow(dead_code)]
 pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
@@ -171,6 +172,9 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
                             log::error!("failed to create audio manager: {}", err);
                         }
                     }
+
+                    let scenario = ScenarioPlugin::new();
+                    _core.register_plugin("scenario", Arc::new(Mutex::new(scenario)));
 
                     // #[cfg(feature = "video")]
                     // core.register_renderer("video", Box::new(video_renderer));

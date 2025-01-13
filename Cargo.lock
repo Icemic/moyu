@@ -1305,6 +1305,7 @@ dependencies = [
  "hai_nodes",
  "hai_ops",
  "hai_pal",
+ "hai_scenario",
  "log",
  "spin_sleep_util",
  "tokio",
@@ -1434,6 +1435,17 @@ dependencies = [
  "quickjs-rusty",
  "spin_sleep",
  "tokio",
+]
+
+[[package]]
+name = "hai_scenario"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "hai_core",
+ "hai_pal",
+ "log",
+ "serde",
 ]
 
 [[package]]
