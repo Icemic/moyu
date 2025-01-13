@@ -13,8 +13,8 @@ async fn android_main(app: AndroidApp) {
     use hai_core::user_event::UserEvent;
     use hai_core::winit::event_loop::EventLoop;
 
-    hai_pal::config::setup().await;
     hai_pal::logger::setup();
+    hai_pal::config::setup().await;
 
     let event_loop: EventLoop<UserEvent> = winit::event_loop::EventLoopBuilder::with_user_event()
         .with_android_app(app)

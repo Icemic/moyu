@@ -3,8 +3,8 @@ mod entry;
 #[cfg(not(feature = "web"))]
 #[tokio::main]
 async fn main() {
-    hai_pal::config::setup().await;
     hai_pal::logger::setup();
+    hai_pal::config::setup().await;
 
     #[cfg(debug_assertions)]
     log::debug!("Environtment: {:#?}", hai_pal::config::get_engine_config());
