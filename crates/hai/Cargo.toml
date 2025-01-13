@@ -38,6 +38,7 @@ hai_macros = {workspace = true}
 hai_nodes = {workspace = true}
 hai_ops = {workspace = true}
 hai_pal = {workspace = true}
+hai_scenario = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = {version = "1", features = ["rt-multi-thread", "macros"]}
