@@ -120,7 +120,13 @@ fn parse_entry_dir(entry_dir: &String) -> Url {
         return Url::parse(entry_dir).unwrap();
     }
 
-    #[cfg(not(feature = "web"))]
+    #[cfg(target_os = "android")]
+    if !entry_dir.contains("://") {
+        let local_path = Url::parse("file:///android_asset/").unwrap();
+        return local_path.join(entry_dir).unwrap();
+    }
+
+    #[cfg(all(not(feature = "web"), not(target_os = "android")))]
     if !entry_dir.contains("://") {
         let local_path = std::env::current_dir().unwrap();
         let local_path = local_path.join(entry_dir);

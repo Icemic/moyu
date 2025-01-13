@@ -1,12 +1,32 @@
 use std::io::Cursor;
+#[cfg(target_os = "android")]
+use std::io::Read;
 
 use anyhow::Result;
 #[cfg(not(feature = "web"))]
 use tokio::fs;
 use url::Url;
 
+#[cfg(target_os = "android")]
+use crate::platform::get_android_app;
+
 /// Open a file from a URL, returns a `Vec<u8>`
 pub async fn read(url: &Url) -> Result<Vec<u8>> {
+    // support reading files from android assets
+    #[cfg(target_os = "android")]
+    if url.scheme() == "file" && url.to_string().starts_with("file:///android_asset/") {
+        let asset_path = url.to_string().replace("file:///android_asset/", "");
+        let asset_manager = get_android_app().asset_manager();
+        let mut asset = asset_manager
+            .open(&std::ffi::CString::new(asset_path)?)
+            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?;
+        let mut buf = Vec::new();
+
+        asset.read_to_end(&mut buf)?;
+
+        return Ok(buf);
+    };
+
     #[cfg(not(feature = "web"))]
     if url.scheme() == "file" {
         return match fs::read(url.to_file_path().unwrap()).await {
