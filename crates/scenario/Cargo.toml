@@ -1,0 +1,23 @@
+[package]
+authors = ["Icemic <bingfeng.web@gmail.com>"]
+description = "Scenario plugin for Hai."
+edition = "2021"
+license = "MPL-2.0"
+name = "hai_scenario"
+repository = "https://github.com/Icemic/hai"
+version = "0.7.0"
+
+[dependencies]
+anyhow = "1.0"
+log = "0.4"
+serde = {version = "1.0", features = ["derive"]}
+
+[dependencies.hai_pal]
+path = "../platform"
+version = "0.7"
+
+[dependencies.hai_core]
+default-features = false
+features = ["js_runtime"]
+path = "../core"
+version = "0.7"
