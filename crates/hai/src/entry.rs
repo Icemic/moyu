@@ -159,16 +159,13 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
                         event_proxy.clone(),
                     );
 
-                    // core.register_renderer("null".to_string(), null_renderer);
-                    _core.register_renderer("sprite".to_string(), Box::new(sprite_renderer));
-                    _core.register_renderer("text".to_string(), Box::new(text_renderer));
+                    // core.register_renderer("null", null_renderer);
+                    _core.register_renderer("sprite", Box::new(sprite_renderer));
+                    _core.register_renderer("text", Box::new(text_renderer));
 
                     match AudioManager::new() {
                         Ok(audio_manager) => {
-                            _core.register_plugin(
-                                "audio".to_string(),
-                                Arc::new(Mutex::new(audio_manager)),
-                            );
+                            _core.register_plugin("audio", Arc::new(Mutex::new(audio_manager)));
                         }
                         Err(err) => {
                             log::error!("failed to create audio manager: {}", err);
@@ -176,7 +173,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
                     }
 
                     // #[cfg(feature = "video")]
-                    // core.register_renderer("video".to_string(), Box::new(video_renderer));
+                    // core.register_renderer("video", Box::new(video_renderer));
 
                     _core_handle = Some(set_core(_core.clone()));
                     _jsvm_handle = Some(hai_ops::spawn::spawn_runtime_with_core(&_core, None));

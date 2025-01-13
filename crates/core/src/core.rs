@@ -281,13 +281,13 @@ impl Core {
         }
     }
 
-    pub fn register_renderer(&self, name: String, renderer: Box<dyn Renderer>) {
+    pub fn register_renderer(&self, name: &str, renderer: Box<dyn Renderer>) {
         let mut renderers = self.renderers.lock();
-        if renderers.contains_key(&name) {
+        if renderers.contains_key(name) {
             error!("There's already a renderer named '{}'.", name);
             return;
         }
-        renderers.insert(name, renderer);
+        renderers.insert(name.to_owned(), renderer);
     }
 
     pub fn register_after_render_handler(&self, handler: AfterRenderHandler) {
@@ -295,13 +295,13 @@ impl Core {
         *after_render_handler = Some(handler);
     }
 
-    pub fn register_plugin(&self, name: String, plugin: Arc<Mutex<dyn Plugin>>) {
+    pub fn register_plugin(&self, name: &str, plugin: Arc<Mutex<dyn Plugin>>) {
         let mut plugins = self.plugins.lock();
-        if plugins.contains_key(&name) {
+        if plugins.contains_key(name) {
             error!("There's already a plugin named '{}'.", name);
             return;
         }
-        plugins.insert(name, plugin);
+        plugins.insert(name.to_owned(), plugin);
     }
 
     pub fn get_plugin(&self, name: &str) -> Option<Arc<Mutex<dyn Plugin>>> {
