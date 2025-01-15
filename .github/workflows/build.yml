@@ -2,21 +2,22 @@ name: Rust
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ['master']
   pull_request:
-    branches: [ "master" ]
+    branches: ['master']
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build Windows
-      run: cargo build --verbose
-    - name: Build Web
-      run: cargo build -p hai --lib --target wasm32-unknown-unknown --no-default-features --features web,text
+      - uses: actions/checkout@v4
+      - name: Build Windows
+        run: cargo build --verbose
+      - name: Build Web
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo build -p hai --lib --target wasm32-unknown-unknown
