@@ -9,10 +9,6 @@ version = "0.7.0"
 
 [features]
 default = []
-desktop = []
-js_runtime = []
-quickjs = []
-web = []
 
 text = ["dep:huozi", "dep:glam"]
 video = ["dep:ffmpeg-rs"]
@@ -36,7 +32,7 @@ glam = {version = "0.28", features = ["bytemuck"], optional = true}
 huozi = {version = "0.7", optional = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-hai_core = {workspace = true, features = ["js_runtime", "quickjs"]}
+hai_core = {workspace = true, features = ["js_runtime"]}
 
 [build-dependencies]
 cfg_aliases = {workspace = true}

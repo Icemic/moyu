@@ -16,9 +16,6 @@ release = true
 [features]
 default = ["text"]
 
-desktop = []
-web = []
-
 text = ["hai_nodes/text", "hai_ops/text"]
 video = ["hai_nodes/video"]
 
@@ -36,7 +33,7 @@ log = "0.4"
 spin_sleep_util = "0.1.1"
 
 hai_audio = {workspace = true}
-hai_core = {workspace = true}
+hai_core = {workspace = true, features = ["js_runtime"]}
 hai_macros = {workspace = true}
 hai_nodes = {workspace = true}
 hai_ops = {workspace = true}

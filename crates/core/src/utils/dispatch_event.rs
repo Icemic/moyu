@@ -72,7 +72,7 @@ pub enum DeviceType {
 
 pub const MOUSE_IDENTIFIER: i32 = -1;
 
-#[cfg(all(native, feature = "js_runtime", feature = "quickjs"))]
+#[cfg(all(native, feature = "js_runtime"))]
 pub fn dispatch_event(event: HaiEvent) {
     use hai_runtime::try_get_vm;
 

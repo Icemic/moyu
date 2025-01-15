@@ -9,10 +9,7 @@ version = "0.7.0"
 
 [features]
 default = []
-desktop = ["quickjs"]
-js_runtime = []
-quickjs = ["hai_macros/quickjs"]
-web = []
+js_runtime = ["hai_runtime"]
 
 [dependencies]
 anyhow = "1.0"
@@ -38,7 +35,7 @@ hai_macros = {workspace = true}
 hai_pal = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-hai_runtime = {workspace = true}
+hai_runtime = {workspace = true, optional = true}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 serde-wasm-bindgen = "0.6.5"
