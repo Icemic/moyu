@@ -1,20 +1,20 @@
 use std::future::Future;
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 use std::sync::Arc;
 
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 use tokio::runtime::Handle;
 
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 use crate::visible_hand::{InvisibleHand, VisibleHand};
 
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 pub type JoinHandle<T> = tokio::task::JoinHandle<T>;
 
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 static mut HANDLE: InvisibleHand<Arc<Handle>> = InvisibleHand::new();
 
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 pub(crate) fn setup_async_runtime() -> VisibleHand<Arc<Handle>> {
     let handle = Arc::new(tokio::runtime::Handle::current());
     unsafe {
@@ -24,13 +24,13 @@ pub(crate) fn setup_async_runtime() -> VisibleHand<Arc<Handle>> {
 }
 
 #[inline]
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 pub fn get_runtime_handle<'a>() -> &'a std::sync::Arc<Handle> {
     unsafe { HANDLE.get() }
 }
 
 #[inline]
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 fn current_handle() -> Arc<tokio::runtime::Handle> {
     match tokio::runtime::Handle::try_current() {
         Ok(handle) => Arc::new(handle),
@@ -40,7 +40,7 @@ fn current_handle() -> Arc<tokio::runtime::Handle> {
 
 /// Spawn a task.
 /// It can be called wherever you want even it is not in the context of a async runtime.
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 pub fn spawn<T>(future: T)
 where
     T: Future + Send + 'static,
@@ -51,7 +51,7 @@ where
 
 /// Spawn a task.
 /// It can be called wherever you want even it is not in the context of a async runtime.
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub fn spawn<T>(future: T)
 where
     T: Future + 'static,
@@ -69,20 +69,20 @@ where
     T: Future + 'static,
     T::Output: 'static,
 {
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     tokio::task::spawn_local(future);
 
-    #[cfg(feature = "web")]
+    #[cfg(web)]
     wasm_bindgen_futures::spawn_local(async move {
         future.await;
     });
 }
 
 pub fn block_on<T: Future>(future: T) -> T::Output {
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     return current_handle().block_on(future);
 
-    #[cfg(feature = "web")]
+    #[cfg(web)]
     unimplemented!("block_on is not supported in web mode.");
 }
 

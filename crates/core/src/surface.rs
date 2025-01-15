@@ -47,7 +47,7 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Windo
 
     // web target only
     // add a canvas element to dom as 'window'
-    #[cfg(all(feature = "web", target_arch = "wasm32"))]
+    #[cfg(web)]
     {
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()
@@ -75,10 +75,10 @@ pub async fn create_wgpu_surface(
     SurfaceConfiguration,
 ) {
     // create wgpu surface
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     let (instance, surface, device, queue, config) =
         create_surface_inner(window, &window.inner_size()).await;
-    #[cfg(feature = "web")]
+    #[cfg(web)]
     let (instance, surface, device, queue, config) =
         create_surface_inner(window, &PhysicalSize::new(1280, 720)).await;
     let instance = Arc::new(instance);
@@ -127,15 +127,16 @@ async fn create_surface_inner(
         .await
         .expect("No suitable GPU adapters found on the system.");
 
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     {
         let adapter_info = adapter.get_info();
         info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
     }
 
-    let required_limits = if !cfg!(feature = "web") {
+    let required_limits = if cfg!(native) {
         adapter.limits()
     } else {
+        // downgrade to webgl2 limits for web
         wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits())
     };
 
@@ -172,7 +173,7 @@ async fn create_surface_inner(
     info!("Available alpha mode: {:?}", caps.alpha_modes);
     info!("Selected alpha mode: {:?}", alpha_mode);
 
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     let present_mode = match get_engine_config().present_mode {
         hai_pal::config::RenderingPresentMode::Recommended => {
             if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
@@ -187,7 +188,7 @@ async fn create_surface_inner(
         hai_pal::config::RenderingPresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
     };
 
-    #[cfg(feature = "web")]
+    #[cfg(web)]
     let present_mode = wgpu::PresentMode::AutoVsync;
 
     info!("Present mode: {:?}", present_mode);

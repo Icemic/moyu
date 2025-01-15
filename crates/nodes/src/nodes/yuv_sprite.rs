@@ -6,7 +6,7 @@ use wgpu::Buffer;
 use hai_core::nodes::{NodeBase, Texture};
 use hai_core::resource::TextureId;
 use hai_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
-#[cfg(all(not(feature = "web"), feature = "js_runtime"))]
+#[cfg(all(native, feature = "js_runtime"))]
 use hai_core::utils::convert::{from_js, JSValue};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -73,7 +73,7 @@ impl Node for YUVSprite {
         "yuv_sprite"
     }
 
-    #[cfg(all(not(feature = "web"), feature = "js_runtime"))]
+    #[cfg(all(native, feature = "js_runtime"))]
     #[inline]
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: YUVSpriteProps = from_js(props).unwrap();

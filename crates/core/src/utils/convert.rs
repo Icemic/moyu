@@ -1,15 +1,15 @@
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub type JSValue = wasm_bindgen::JsValue;
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub type OwnedJsPromise = web_sys::js_sys::Promise;
 
-#[cfg(all(not(feature = "web"), feature = "quickjs"))]
+#[cfg(all(native, feature = "quickjs"))]
 use hai_runtime::quickjs_rusty::{OwnedJsPromise, OwnedJsValue};
 
-#[cfg(all(not(feature = "web"), feature = "quickjs"))]
+#[cfg(all(native, feature = "quickjs"))]
 pub type JSValue = OwnedJsValue;
 
-#[cfg(all(not(feature = "web"), feature = "quickjs"))]
+#[cfg(all(native, feature = "quickjs"))]
 pub fn from_js<T: serde::de::DeserializeOwned>(value: &JSValue) -> anyhow::Result<T> {
     use anyhow::format_err;
     pub use hai_runtime::quickjs_rusty::serde::from_js;
@@ -20,14 +20,14 @@ pub fn from_js<T: serde::de::DeserializeOwned>(value: &JSValue) -> anyhow::Resul
     }
 }
 
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub fn from_js<'a, T: serde::de::DeserializeOwned>(value: &mut JSValue) -> anyhow::Result<T> {
     use anyhow::anyhow;
 
     serde_wasm_bindgen::from_value(value.to_owned()).map_err(|e| anyhow!(e.to_string()))
 }
 
-#[cfg(all(not(feature = "web"), feature = "quickjs"))]
+#[cfg(all(native, feature = "quickjs"))]
 pub fn to_js<T: serde::Serialize>(value: &T) -> anyhow::Result<OwnedJsValue> {
     use anyhow::format_err;
     use hai_runtime::get_vm;
@@ -43,14 +43,14 @@ pub fn to_js<T: serde::Serialize>(value: &T) -> anyhow::Result<OwnedJsValue> {
 }
 
 #[allow(dead_code)]
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub fn to_js<'a, T: serde::Serialize>(value: &T) -> anyhow::Result<JSValue> {
     use anyhow::anyhow;
 
     serde_wasm_bindgen::to_value(value).map_err(|e| anyhow!(e.to_string()).into())
 }
 
-#[cfg(all(not(feature = "web"), feature = "quickjs"))]
+#[cfg(all(native, feature = "quickjs"))]
 pub fn create_promise<F, V>(future: F) -> anyhow::Result<JSValue>
 where
     F: core::future::Future<Output = Result<V, anyhow::Error>> + Send + 'static,
@@ -81,7 +81,7 @@ where
     Ok(promise.into_value())
 }
 
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub fn create_promise<F, V>(future: F) -> anyhow::Result<JSValue>
 where
     F: core::future::Future<Output = Result<V, anyhow::Error>> + 'static,

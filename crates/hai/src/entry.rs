@@ -30,7 +30,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
     let mut _jsvm_handle = None;
     let mut _core_handle = None;
 
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     let mut loop_helper = {
         // get max refresh rate of all monitors
         let mut refresh_rate_max = 60_000;
@@ -47,7 +47,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
         spin_sleep_util::interval(std::time::Duration::from_secs(1) / (refresh_rate_max / 1000))
     };
 
-    #[cfg(feature = "web")]
+    #[cfg(web)]
     {
         let _window = create_window(&event_loop);
 
@@ -127,7 +127,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
             .ok();
     }
 
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     event_loop
         .run(move |event, event_loop| {
             match event {

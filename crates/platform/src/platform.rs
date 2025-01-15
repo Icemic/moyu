@@ -1,18 +1,18 @@
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 use crate::visible_hand::VisibleHand;
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 use std::sync::Arc;
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 use tokio::runtime::Handle;
 
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 pub fn setup() -> VisibleHand<Arc<Handle>> {
     use crate::task;
 
     task::setup_async_runtime()
 }
 
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub fn setup() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     // console_error_panic_hook::set_once();

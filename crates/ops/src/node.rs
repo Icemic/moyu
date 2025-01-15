@@ -1,26 +1,27 @@
-use anyhow::Result;
-#[cfg(not(feature = "web"))]
-use hai_macros::hai_bindgen;
-use hai_pal::sync::{RwLock, RwLockReadGuard};
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
-use hai_runtime::quickjs_rusty::{JSContext, RawJSValue};
-use log::{debug, warn};
 use std::collections::HashMap;
 use std::sync::Arc;
-#[cfg(feature = "web")]
+
+use anyhow::Result;
+use log::{debug, warn};
+#[cfg(web)]
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use hai_core::core::get_core;
 use hai_core::nodes::Container;
 use hai_core::traits::{Node, NodeBaseTrait};
 use hai_core::utils::convert::JSValue;
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 use hai_core::utils::convert::{from_js, to_js};
+#[cfg(native)]
+use hai_macros::hai_bindgen;
 use hai_nodes::nodes::Sprite;
 #[cfg(feature = "text")]
 use hai_nodes::nodes::Text;
 #[cfg(feature = "video")]
 use hai_nodes::nodes::Video;
+use hai_pal::sync::{RwLock, RwLockReadGuard};
+#[cfg(native)]
+use hai_runtime::quickjs_rusty::{JSContext, RawJSValue};
 
 #[inline]
 pub(super) fn get_node<'a>(
@@ -36,8 +37,8 @@ pub(super) fn get_node<'a>(
     }
 }
 
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
+#[cfg_attr(web, wasm_bindgen)]
+#[cfg_attr(native, hai_bindgen)]
 pub fn create_instance(
     node_type: std::string::String,
     label: Option<std::string::String>,
@@ -93,8 +94,8 @@ pub fn create_instance(
  * whose reference count is only 2 (1 for the node_map and 1 for the node itself).
  * Otherwise, the node who has more reference count will not be destroyed and rema
  */
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
+#[cfg_attr(web, wasm_bindgen)]
+#[cfg_attr(native, hai_bindgen)]
 pub fn destroy_instance(node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
     let mut node_map = core.node_map().write();
@@ -133,8 +134,8 @@ fn destroy_instance_recursive(
     Ok(())
 }
 
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
+#[cfg_attr(web, wasm_bindgen)]
+#[cfg_attr(native, hai_bindgen)]
 pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map().read();
@@ -150,8 +151,8 @@ pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::St
     Ok(())
 }
 
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
+#[cfg_attr(web, wasm_bindgen)]
+#[cfg_attr(native, hai_bindgen)]
 pub fn insert_child(
     node_id: u32,
     index: usize,
@@ -171,8 +172,8 @@ pub fn insert_child(
     Ok(())
 }
 
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
+#[cfg_attr(web, wasm_bindgen)]
+#[cfg_attr(native, hai_bindgen)]
 pub fn insert_child_before(
     node_id: u32,
     before_node_id: u32,
@@ -194,8 +195,8 @@ pub fn insert_child_before(
     Ok(())
 }
 
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
+#[cfg_attr(web, wasm_bindgen)]
+#[cfg_attr(native, hai_bindgen)]
 pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map().read();
@@ -211,8 +212,8 @@ pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string:
     Ok(())
 }
 
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
+#[cfg_attr(web, wasm_bindgen)]
+#[cfg_attr(native, hai_bindgen)]
 pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map().read();
@@ -226,8 +227,8 @@ pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::St
     Ok(())
 }
 
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
+#[cfg_attr(web, wasm_bindgen)]
+#[cfg_attr(native, hai_bindgen)]
 pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> {
     let node_map = {
         let core = get_core();
@@ -243,8 +244,8 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
     Ok(())
 }
 
-// #[cfg_attr(feature = "web", wasm_bindgen)]
-// #[cfg_attr(not(feature = "web"), hai_bindgen)]
+// #[cfg_attr(web, wasm_bindgen)]
+// #[cfg_attr(native, hai_bindgen)]
 // pub fn get_translate(node_id: u32) -> Result<[f64; 2], std::string::String> {
 //     let core = get_core();
 // //     let node_map = core.node_map().read();
@@ -257,8 +258,8 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
 //     Ok([x, y])
 // }
 
-#[cfg_attr(feature = "web", wasm_bindgen)]
-#[cfg_attr(not(feature = "web"), hai_bindgen)]
+#[cfg_attr(web, wasm_bindgen)]
+#[cfg_attr(native, hai_bindgen)]
 pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map().read();

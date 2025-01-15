@@ -14,27 +14,10 @@ release = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["desktop", "text"]
+default = ["text"]
 
-desktop = [
-  "hai_core/desktop",
-  "hai_nodes/desktop",
-  "hai_ops/desktop",
-  "hai_pal/desktop",
-  "hai_ops/js_runtime",
-  "hai_ops/quickjs",
-  "dep:tokio",
-]
-web = [
-  "hai_core/web",
-  "hai_nodes/web",
-  "hai_ops/web",
-  "hai_pal/web",
-  "hai_ops/js_runtime",
-  "dep:wasm-bindgen",
-  "dep:wasm-bindgen-futures",
-  "dep:web-sys",
-]
+desktop = []
+web = []
 
 text = ["hai_nodes/text", "hai_ops/text"]
 video = ["hai_nodes/video"]
@@ -51,30 +34,22 @@ path = "src/hai_lib.rs"
 [dependencies]
 log = "0.4"
 spin_sleep_util = "0.1.1"
-tokio = {version = "1", features = ["rt-multi-thread", "macros"], optional = true}
-wasm-bindgen = {version = "0.2.83", default-features = false, optional = true}
-wasm-bindgen-futures = {version = "0.4", optional = true}
-web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"], optional = true}
+
+hai_audio = {workspace = true}
+hai_core = {workspace = true}
+hai_macros = {workspace = true}
+hai_nodes = {workspace = true}
+hai_ops = {workspace = true}
+hai_pal = {workspace = true}
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = {version = "1", features = ["rt-multi-thread", "macros"]}
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = {version = "0.2.83", default-features = false}
 
 [target.'cfg(target_os = "android")'.dependencies]
 winit = {version = "0.29", features = ["android-game-activity"]}
 
-[dependencies.hai_core]
-path = "../core"
-version = "0.7"
-
-[dependencies.hai_pal]
-path = "../platform"
-version = "0.7"
-
-[dependencies.hai_nodes]
-path = "../nodes"
-version = "0.7"
-
-[dependencies.hai_ops]
-path = "../ops"
-version = "0.7"
-
-[dependencies.hai_audio]
-path = "../audio"
-version = "0.7"
+[build-dependencies]
+cfg_aliases = {workspace = true}
