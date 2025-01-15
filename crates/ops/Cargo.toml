@@ -9,10 +9,6 @@ version = "0.7.0"
 
 [features]
 default = []
-desktop = []
-js_runtime = []
-quickjs = []
-web = []
 
 text = []
 video = []
@@ -27,8 +23,8 @@ hai_nodes = {workspace = true}
 hai_pal = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-hai_core = {workspace = true, features = ["js_runtime", "quickjs"]}
-hai_macros = {workspace = true, features = ["quickjs"]}
+hai_core = {workspace = true, features = ["js_runtime"]}
+hai_macros = {workspace = true, features = ["js_runtime"]}
 hai_runtime = {workspace = true}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

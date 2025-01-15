@@ -12,7 +12,7 @@ proc-macro = true
 
 [features]
 default = []
-quickjs = []
+js_runtime = []
 
 [dependencies]
 darling = "0.20"
