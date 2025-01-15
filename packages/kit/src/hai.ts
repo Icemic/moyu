@@ -52,6 +52,11 @@ globalThis.__hai_receive_event = (raw_event: HaiRawEvent) => {
 
   const node = STATE.nodeMap[targetId];
 
+  if (!node) {
+    console.error(`Node not found: ${targetId}`);
+    return;
+  }
+
   let propagate = true;
 
   const event: HaiEvent = {
