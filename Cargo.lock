@@ -1309,6 +1309,7 @@ dependencies = [
  "spin_sleep_util",
  "tokio",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "winit",
 ]
 
