@@ -9,10 +9,10 @@ version = "0.7.0"
 
 [features]
 default = []
-desktop = ["hai_core/quickjs", "hai_pal/desktop"]
-js_runtime = ["hai_core/js_runtime"]
-quickjs = ["hai_core/quickjs"]
-web = ["hai_core/web", "hai_pal/web"]
+desktop = []
+js_runtime = []
+quickjs = []
+web = []
 
 text = ["dep:huozi", "dep:glam"]
 video = ["dep:ffmpeg-rs"]
@@ -26,21 +26,17 @@ log = "0.4"
 serde = {version = "1.0", features = ["derive"]}
 wgpu = "22.0"
 
+hai_core = {workspace = true}
+hai_macros = {workspace = true}
+hai_pal = {workspace = true}
+
 # optional for features
 ffmpeg-rs = {version = "5.2.1", optional = true}
 glam = {version = "0.28", features = ["bytemuck"], optional = true}
 huozi = {version = "0.7", optional = true}
 
-[dependencies.hai_macros]
-default-features = false
-path = "../macros"
-version = "0.7"
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+hai_core = {workspace = true, features = ["js_runtime", "quickjs"]}
 
-[dependencies.hai_pal]
-path = "../platform"
-version = "0.7"
-
-[dependencies.hai_core]
-default-features = false
-path = "../core"
-version = "0.7"
+[build-dependencies]
+cfg_aliases = {workspace = true}

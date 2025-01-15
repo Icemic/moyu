@@ -3,7 +3,7 @@ const LOG_FILTER: &str = "info,hai=debug,hai_*=debug,wgpu=error";
 #[cfg(not(debug_assertions))]
 const LOG_FILTER: &str = "warn,hai=info,hai_*=info,wgpu=error";
 
-#[cfg(all(not(feature = "web"), not(target_os = "android")))]
+#[cfg(all(native, not(target_os = "android")))]
 pub fn setup() {
     let env = env_logger::Env::default().default_filter_or(LOG_FILTER);
     env_logger::init_from_env(env);
@@ -22,7 +22,7 @@ pub fn setup() {
     );
 }
 
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub fn setup() {
     use log::Level;
     #[cfg(debug_assertions)]

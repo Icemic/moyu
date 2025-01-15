@@ -9,7 +9,7 @@ pub type SpawnRuntimeCallback =
 
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+#[cfg(native)]
 pub fn spawn_runtime_with_core(
     _core: &Arc<Core>,
     spawn_callback: Option<SpawnRuntimeCallback>,
@@ -59,7 +59,7 @@ pub fn spawn_runtime_with_core(
 
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
     use hai_pal::config::{entry_dir, get_engine_config};
     use log::debug;

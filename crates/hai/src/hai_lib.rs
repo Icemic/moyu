@@ -23,8 +23,8 @@ async fn android_main(app: AndroidApp) {
     entry::main_entry(event_loop).await;
 }
 
-#[cfg(feature = "web")]
-#[cfg_attr(feature = "web", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg(web)]
+#[cfg_attr(web, wasm_bindgen::prelude::wasm_bindgen)]
 pub async fn wasm_start() {
     hai_pal::logger::setup();
     hai_pal::config::setup().await;

@@ -9,17 +9,10 @@ version = "0.7.0"
 
 [features]
 default = []
-desktop = ["hai_pal/desktop", "dep:tokio", "quickjs", "hai_runtime"]
+desktop = ["quickjs"]
 js_runtime = []
 quickjs = ["hai_macros/quickjs"]
-web = [
-  "hai_pal/web",
-  "wgpu/webgl",
-  "dep:serde-wasm-bindgen",
-  "dep:wasm-bindgen",
-  "dep:wasm-bindgen-futures",
-  "dep:web-sys",
-]
+web = []
 
 [dependencies]
 anyhow = "1.0"
@@ -37,27 +30,22 @@ image = {version = "0.25", default-features = false, features = [
   "webp",
 ]}
 log = "0.4"
-once_cell = "1.16"
+serde = {version = "1.0", features = ["derive"]}
 wgpu = "22.0"
 winit = "0.29"
 
-serde = {version = "1.0", features = ["derive"]}
-serde-wasm-bindgen = {version = "0.6.5", optional = true}
-tokio = {version = "1", features = ["full"], optional = true}
-wasm-bindgen = {version = "0.2.83", default-features = false, optional = true}
-wasm-bindgen-futures = {version = "0.4", optional = true}
-web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"], optional = true}
+hai_macros = {workspace = true}
+hai_pal = {workspace = true}
 
-[dependencies.hai_runtime]
-optional = true
-path = "../runtime"
-version = "0.7"
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+hai_runtime = {workspace = true}
 
-[dependencies.hai_pal]
-path = "../platform"
-version = "0.7"
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+serde-wasm-bindgen = "0.6.5"
+wasm-bindgen = {version = "0.2.83", default-features = false}
+wasm-bindgen-futures = "0.4"
+web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"]}
+wgpu = {version = "22.0", features = ["webgl"]}
 
-[dependencies.hai_macros]
-default-features = false
-path = "../macros"
-version = "0.7"
+[build-dependencies]
+cfg_aliases = {workspace = true}

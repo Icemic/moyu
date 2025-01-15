@@ -1,6 +1,6 @@
 mod entry;
 
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 #[tokio::main]
 async fn main() {
     hai_pal::logger::setup();
@@ -14,7 +14,7 @@ async fn main() {
     entry::main_entry(event_loop).await;
 }
 
-#[cfg(feature = "web")]
+#[cfg(web)]
 fn main() {
     // Adds this function only to avoid the warning of "`main` function not found"
 }

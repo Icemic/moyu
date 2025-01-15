@@ -3,7 +3,7 @@ use std::io::Cursor;
 use std::io::Read;
 
 use anyhow::Result;
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 use tokio::fs;
 use url::Url;
 
@@ -27,7 +27,7 @@ pub async fn read(url: &Url) -> Result<Vec<u8>> {
         return Ok(buf);
     };
 
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     if url.scheme() == "file" {
         return match fs::read(url.to_file_path().unwrap()).await {
             Ok(v) => Ok(v),

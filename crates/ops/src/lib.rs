@@ -3,17 +3,17 @@ pub mod spawn;
 mod system;
 
 use hai_core::utils::convert::JSValue;
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+#[cfg(native)]
 use hai_runtime::{
     quickjs_rusty::{JSContext, RawJSValue},
     QuickVM,
 };
-#[cfg(feature = "web")]
+#[cfg(web)]
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use self::{node::*, system::*};
 
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+#[cfg(native)]
 pub fn init(vm: &QuickVM) {
     let receive_command = vm
         .context()
@@ -51,7 +51,7 @@ pub fn init(vm: &QuickVM) {
         .unwrap();
 }
 
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+#[cfg(native)]
 fn receive_command(
     context: *mut JSContext,
     args: &[RawJSValue],
@@ -94,7 +94,7 @@ fn receive_command(
     }
 }
 
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+#[cfg(native)]
 fn execute_node_command(
     context: *mut JSContext,
     args: &[RawJSValue],
@@ -110,8 +110,8 @@ fn execute_node_command(
     execute_node_command_inner(node_id, &mut payload).map(|v| v.map(|v| unsafe { v.extract() }))
 }
 
-#[cfg(feature = "web")]
-#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg(web)]
+#[cfg_attr(web, wasm_bindgen)]
 pub fn execute_node_command(
     node_id: u32,
     mut payload: JSValue,
@@ -152,7 +152,7 @@ fn execute_node_command_inner(
     }
 }
 
-#[cfg(all(not(feature = "web"), feature = "js_runtime", feature = "quickjs"))]
+#[cfg(native)]
 fn execute_plugin_command(
     context: *mut JSContext,
     args: &[RawJSValue],
@@ -170,8 +170,8 @@ fn execute_plugin_command(
         .map(|v| v.map(|v| unsafe { v.extract() }))
 }
 
-#[cfg(feature = "web")]
-#[cfg_attr(feature = "web", wasm_bindgen)]
+#[cfg(web)]
+#[cfg_attr(web, wasm_bindgen)]
 pub fn execute_plugin_command(
     plugin_name: &str,
     mut payload: JSValue,
