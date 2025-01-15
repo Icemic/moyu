@@ -9,21 +9,10 @@ version = "0.7.0"
 
 [features]
 default = []
-desktop = [
-  "hai_core/desktop",
-  "hai_pal/desktop",
-  "hai_nodes/desktop",
-  "hai_macros/quickjs",
-  "hai_core/quickjs",
-]
-js_runtime = ["hai_core/js_runtime"]
-quickjs = ["hai_runtime", "hai_macros/quickjs", "hai_core/quickjs"]
-web = [
-  "hai_core/web",
-  "wasm-bindgen",
-  "wasm-bindgen-futures",
-  "web-sys",
-]
+desktop = []
+js_runtime = []
+quickjs = []
+web = []
 
 text = []
 video = []
@@ -32,31 +21,20 @@ video = []
 anyhow = "1.0"
 log = "0.4"
 
-# optional dependencies
-wasm-bindgen = {version = "0.2.83", default-features = false, optional = true}
-wasm-bindgen-futures = {version = "0.4.33", optional = true}
-web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"], optional = true}
+hai_core = {workspace = true}
+hai_macros = {workspace = true}
+hai_nodes = {workspace = true}
+hai_pal = {workspace = true}
 
-[dependencies.hai_macros]
-default-features = false
-path = "../macros"
-version = "0.7"
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+hai_core = {workspace = true, features = ["js_runtime", "quickjs"]}
+hai_macros = {workspace = true, features = ["quickjs"]}
+hai_runtime = {workspace = true}
 
-[dependencies.hai_pal]
-path = "../platform"
-version = "0.7"
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = {version = "0.2.83", default-features = false}
+wasm-bindgen-futures = "0.4.33"
+web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"]}
 
-[dependencies.hai_core]
-default-features = false
-features = ["js_runtime"]
-path = "../core"
-version = "0.7"
-
-[dependencies.hai_runtime]
-optional = true
-path = "../runtime"
-version = "0.7"
-
-[dependencies.hai_nodes]
-path = "../nodes"
-version = "0.7"
+[build-dependencies]
+cfg_aliases = {workspace = true}

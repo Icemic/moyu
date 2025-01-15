@@ -1,5 +1,5 @@
-#[cfg(not(feature = "web"))]
+#[cfg(native)]
 pub use std::time::*;
 
-#[cfg(feature = "web")]
+#[cfg(web)]
 pub use web_time::*;

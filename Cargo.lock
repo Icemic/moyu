@@ -599,6 +599,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd16c4719339c4530435d38e511904438d07cce7950afa3718a84ac36c10e89e"
 
 [[package]]
+name = "cfg_aliases"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
+
+[[package]]
 name = "chrono"
 version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1292,8 +1298,10 @@ dependencies = [
 name = "hai"
 version = "0.7.0"
 dependencies = [
+ "cfg_aliases 0.2.1",
  "hai_audio",
  "hai_core",
+ "hai_macros",
  "hai_nodes",
  "hai_ops",
  "hai_pal",
@@ -1301,8 +1309,6 @@ dependencies = [
  "spin_sleep_util",
  "tokio",
  "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
  "winit",
 ]
 
@@ -1326,6 +1332,7 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "bytemuck",
+ "cfg_aliases 0.2.1",
  "csscolorparser",
  "cursor-icon",
  "glam",
@@ -1334,10 +1341,8 @@ dependencies = [
  "hai_runtime",
  "image",
  "log",
- "once_cell",
  "serde",
  "serde-wasm-bindgen",
- "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -1362,6 +1367,7 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "bytemuck",
+ "cfg_aliases 0.2.1",
  "ffmpeg-rs",
  "glam",
  "hai_core",
@@ -1378,6 +1384,7 @@ name = "hai_ops"
 version = "0.7.0"
 dependencies = [
  "anyhow",
+ "cfg_aliases 0.2.1",
  "hai_core",
  "hai_macros",
  "hai_nodes",
@@ -1396,6 +1403,7 @@ dependencies = [
  "android-activity",
  "android_logger",
  "anyhow",
+ "cfg_aliases 0.2.1",
  "console_error_panic_hook",
  "console_log",
  "csscolorparser",
@@ -2052,7 +2060,7 @@ dependencies = [
  "arrayvec",
  "bit-set",
  "bitflags 2.6.0",
- "cfg_aliases",
+ "cfg_aliases 0.1.1",
  "codespan-reporting",
  "hexf-parse",
  "indexmap 2.2.6",
@@ -4092,7 +4100,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1d1c4ba43f80542cf63a0a6ed3134629ae73e8ab51e4b765a67f3aa062eb433"
 dependencies = [
  "arrayvec",
- "cfg_aliases",
+ "cfg_aliases 0.1.1",
  "document-features",
  "js-sys",
  "log",
@@ -4119,7 +4127,7 @@ dependencies = [
  "arrayvec",
  "bit-vec",
  "bitflags 2.6.0",
- "cfg_aliases",
+ "cfg_aliases 0.1.1",
  "document-features",
  "indexmap 2.2.6",
  "log",
@@ -4147,7 +4155,7 @@ dependencies = [
  "bit-set",
  "bitflags 2.6.0",
  "block",
- "cfg_aliases",
+ "cfg_aliases 0.1.1",
  "core-graphics-types",
  "d3d12",
  "glow",
@@ -4493,7 +4501,7 @@ dependencies = [
  "bitflags 2.6.0",
  "bytemuck",
  "calloop",
- "cfg_aliases",
+ "cfg_aliases 0.1.1",
  "core-foundation",
  "core-graphics",
  "cursor-icon",

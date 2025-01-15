@@ -13,6 +13,17 @@ members = [
 ]
 resolver = "2"
 
+[workspace.dependencies]
+cfg_aliases = "0.2.1"
+
+hai_audio = {path = "crates/audio"}
+hai_core = {path = "crates/core"}
+hai_macros = {path = "crates/macros"}
+hai_nodes = {path = "crates/nodes"}
+hai_ops = {path = "crates/ops"}
+hai_pal = {path = "crates/platform"}
+hai_runtime = {path = "crates/runtime"}
+
 [patch.crates-io]
 # huozi = {path = "../huozi-rs"}
 # quickjs-rusty = {path = "../quickjspp-rs"}

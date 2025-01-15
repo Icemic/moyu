@@ -122,7 +122,7 @@ pub struct Core {
     mvp_buffer: wgpu::Buffer,
     mvp_bind_group: wgpu::BindGroup,
     // std::time not implemented on wasm32 target
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     frames_in_duration: Arc<Mutex<(Instant, u32)>>,
     /// timer from program start
     instant: Instant,
@@ -262,7 +262,7 @@ impl Core {
             staging_belt,
             mvp_buffer,
             mvp_bind_group,
-            #[cfg(not(feature = "web"))]
+            #[cfg(native)]
             frames_in_duration: Arc::new(Mutex::new((Instant::now(), 0))),
             instant: Instant::now(),
             instant_last: ArcSwap::new(Arc::new(Instant::now())),
@@ -377,7 +377,7 @@ impl Core {
     pub fn resize_stage(&self, new_size: SurfaceSize) {
         let mut config = self.config.lock();
 
-        if cfg!(feature = "web") {
+        if cfg!(web) {
             // on web, we need to set physical size to logical size
             // wtf, not sure why this is needed, but it works.
             let (width, height) = new_size.logical_size();
@@ -652,7 +652,7 @@ impl Core {
     #[inline(always)]
     pub fn render(&self, window: &Window) -> Result<(), wgpu::SurfaceError> {
         // fps
-        #[cfg(not(feature = "web"))]
+        #[cfg(native)]
         if hai_pal::config::get_engine_config().show_fps {
             let (instant, frames) = &mut *self.frames_in_duration.lock();
             let duration = instant.elapsed().as_secs_f32();

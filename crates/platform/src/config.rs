@@ -63,10 +63,10 @@ impl Default for HaiConfig {
 }
 
 pub async fn setup() {
-    #[cfg(not(feature = "web"))]
+    #[cfg(native)]
     let mut entry = "./index.json".to_string();
 
-    #[cfg(feature = "web")]
+    #[cfg(web)]
     let mut entry = web_sys::window()
         .unwrap()
         .get("__hai_entry")
@@ -126,7 +126,7 @@ fn parse_entry_dir(entry_dir: &String) -> Url {
         return local_path.join(entry_dir).unwrap();
     }
 
-    #[cfg(all(not(feature = "web"), not(target_os = "android")))]
+    #[cfg(all(native, not(target_os = "android")))]
     if !entry_dir.contains("://") {
         let local_path = std::env::current_dir().unwrap();
         let local_path = local_path.join(entry_dir);
@@ -137,7 +137,7 @@ fn parse_entry_dir(entry_dir: &String) -> Url {
         }
     }
 
-    #[cfg(feature = "web")]
+    #[cfg(web)]
     if !entry_dir.contains("://") {
         let local_path = web_sys::window().unwrap().location().href().unwrap();
         return Url::parse(&local_path).unwrap().join(entry_dir).unwrap();
