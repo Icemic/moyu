@@ -7,11 +7,6 @@ name = "hai_pal"
 repository = "https://github.com/Icemic/hai"
 version = "0.7.0"
 
-[features]
-default = []
-desktop = []
-web = []
-
 [dependencies]
 anyhow = "1.0"
 csscolorparser = {version = "0.6", features = ["serde"]}
