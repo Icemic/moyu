@@ -279,7 +279,8 @@ impl Node for Text {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "subCommand")]
 pub enum TextCommmad {
-    SetText { text: String },
+    SetText { text: String, instant: Option<bool> },
+    FinishPrinting,
     GetCursorPos,
 }
 
@@ -288,10 +289,19 @@ impl Command for Text {
         let payload: TextCommmad = from_js(_payload)?;
         log::info!("Text received: {:?}", payload);
         match payload {
-            TextCommmad::SetText { text } => {
+            TextCommmad::SetText { text, instant } => {
                 self.text = text;
                 // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
                 self.print_start_time = Some(0.);
+                if let Some(instant) = instant {
+                    if instant {
+                        self.print_start_time = None;
+                    }
+                }
+                self.base_mut().pend_update();
+            }
+            TextCommmad::FinishPrinting => {
+                self.print_start_time = None;
                 self.base_mut().pend_update();
             }
             TextCommmad::GetCursorPos => {
