@@ -1,7 +1,9 @@
-import type * as PropTypes from 'prop-types';
 import type { ClassAttributes, ReactNode } from 'react';
-import type { HaiEvent } from './hai';
 import type { Node } from './node';
+import type { BubbleEvent } from './events/base';
+import type { MouseEvent } from './events/mouse';
+import type { TouchEvent } from './events/touch';
+import type { KeyboardEvent } from './events/keyboard';
 
 export type DetailedHaiProps<E extends HaiNodeAttributes> = ClassAttributes<Node> & E;
 
@@ -10,22 +12,22 @@ export type DetailedHaiProps<E extends HaiNodeAttributes> = ClassAttributes<Node
 //   ref: LegacyRef<T>;
 // }
 
-export type HaiEventHandler = (event: HaiEvent) => void;
+export type HaiEventHandler<T extends BubbleEvent> = (event: T) => void;
 
 export interface HaiListenerAttributes {
-  onClick?: HaiEventHandler;
-  onMouseEnter?: HaiEventHandler;
-  onMouseLeave?: HaiEventHandler;
-  onMouseDown?: HaiEventHandler;
-  onMouseUp?: HaiEventHandler;
-  onMouseMove?: HaiEventHandler;
-  onKeyDown?: HaiEventHandler;
-  onKeyUp?: HaiEventHandler;
-  onKeyPress?: HaiEventHandler;
-  onTouchStart?: HaiEventHandler;
-  onTouchMove?: HaiEventHandler;
-  onTouchEnd?: HaiEventHandler;
-  onTouchCancel?: HaiEventHandler;
+  onClick?: HaiEventHandler<MouseEvent>;
+  onMouseEnter?: HaiEventHandler<MouseEvent>;
+  onMouseLeave?: HaiEventHandler<MouseEvent>;
+  onMouseDown?: HaiEventHandler<MouseEvent>;
+  onMouseUp?: HaiEventHandler<MouseEvent>;
+  onMouseMove?: HaiEventHandler<MouseEvent>;
+  onKeyDown?: HaiEventHandler<KeyboardEvent>;
+  onKeyUp?: HaiEventHandler<KeyboardEvent>;
+  onKeyPress?: HaiEventHandler<KeyboardEvent>;
+  onTouchStart?: HaiEventHandler<TouchEvent>;
+  onTouchMove?: HaiEventHandler<TouchEvent>;
+  onTouchEnd?: HaiEventHandler<TouchEvent>;
+  onTouchCancel?: HaiEventHandler<TouchEvent>;
 }
 
 export interface HaiNodeAttributes extends HaiListenerAttributes {
