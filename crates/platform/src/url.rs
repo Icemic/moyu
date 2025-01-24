@@ -8,18 +8,8 @@ pub fn resolve_package_from(target: &str, base_dir: Url) -> Result<Url> {
 
     #[cfg(native)]
     if scheme == "file" {
-        // implicit adding `./` to target if it's a relative path
-        // this will disable resolve to node_modules
-        // TODO: add support for node_modules via `node:` prefix
-        let target =
-            if target.starts_with("./") || target.starts_with("../") || target.starts_with("/") {
-                target.to_string()
-            } else {
-                format!("./{}", target)
-            };
-
         let path = base_dir.join("./").unwrap().to_file_path().unwrap();
-        return Ok(Url::from_file_path(resolve_from(&target, path)?).unwrap());
+        return Ok(Url::from_file_path(resolve_from(target, path)?).unwrap());
     }
 
     if scheme == "https" || scheme == "http" {
