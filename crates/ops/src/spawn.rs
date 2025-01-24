@@ -46,9 +46,10 @@ pub fn spawn_runtime_with_core(
 
             crate::init(vm);
 
-            if let Err(err) = vm.prepare_entry() {
-                error!("{:?}", err);
-            };
+            if let Err(_) = vm.prepare_entry() {
+                error!("Fatal error, failed to run from entry.");
+                return;
+            }
 
             vm.block_on_ticking();
         })
