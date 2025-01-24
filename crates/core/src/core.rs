@@ -15,9 +15,11 @@ use winit::event_loop::{EventLoopProxy, EventLoopWindowTarget};
 use winit::window::{CursorIcon, Fullscreen, Window};
 
 use crate::base::*;
-use crate::utils::dispatch_event::{
-    dispatch_event, DeviceType, HaiEvent, HaiEventKind, PointerState, MOUSE_IDENTIFIER,
+use crate::events::{
+    AnimationFrameCallbackEvent, MouseEvent, MouseEventKind, TouchEvent, TouchEventKind,
 };
+use crate::state::{DeviceType, PointerLocation, PointerState, MOUSE_IDENTIFIER};
+use crate::utils::dispatch_event::dispatch_event;
 use crate::utils::hit_test::{get_local_logical_position, hit_test};
 use crate::utils::walk::walk_nodes_top_bottom;
 use crate::{nodes::Container, resource::ResourceManager, traits::*, user_event::UserEvent};
@@ -562,9 +564,10 @@ impl Core {
                                     // but in our asynchronous process, this would cause performance issues.
                                     // Therefore, we only send a message after rendering to let the JavaScript
                                     // environment align with v-sync.
-                                    dispatch_event(HaiEvent {
-                                        kind: HaiEventKind::AnimationFrameCallback,
-                                        ..Default::default()
+                                    // We convert u128 to u32 here, which is safe because the timestamp is an
+                                    // elapsed time (Can't you play a game for 136 years?).
+                                    dispatch_event(AnimationFrameCallbackEvent {
+                                        timestamp: self.instant.elapsed().as_millis() as u32,
                                     });
                                 }
                                 // Reconfigure the surface if lost
@@ -799,12 +802,11 @@ impl Core {
 
                 if let Some(last_hover_node) = &pointer_state.current_target {
                     let target_id = *last_hover_node.node.read().base().id();
-                    dispatch_event(HaiEvent {
-                        kind: HaiEventKind::MouseLeave,
+                    dispatch_event(MouseEvent {
+                        kind: MouseEventKind::MouseLeave,
                         target_id,
                         bubble_target_ids: last_hover_node.parent_ids.clone(),
-                        location: Some(pointer_state.location),
-                        identifier: None,
+                        location: pointer_state.location,
                     });
                 }
                 true
@@ -816,28 +818,26 @@ impl Core {
                     let target_id = *last_hover_node.node.read().base().id();
                     let bubble_target_ids = last_hover_node.parent_ids.clone();
 
-                    let location = Some(pointer_state.location);
+                    let location = pointer_state.location;
 
                     match state {
                         ElementState::Pressed => {
-                            dispatch_event(HaiEvent {
-                                kind: HaiEventKind::MouseDown,
+                            dispatch_event(MouseEvent {
+                                kind: MouseEventKind::MouseDown,
                                 target_id,
                                 bubble_target_ids,
                                 location,
-                                identifier: None,
                             });
                             if let winit::event::MouseButton::Left = button {
                                 pointer_state.down_id = Some(target_id);
                             }
                         }
                         ElementState::Released => {
-                            dispatch_event(HaiEvent {
-                                kind: HaiEventKind::MouseUp,
+                            dispatch_event(MouseEvent {
+                                kind: MouseEventKind::MouseUp,
                                 target_id,
                                 bubble_target_ids: bubble_target_ids.clone(),
                                 location,
-                                identifier: None,
                             });
 
                             let down_id = pointer_state.down_id.take();
@@ -845,21 +845,19 @@ impl Core {
                             if down_id == Some(target_id) {
                                 match button {
                                     winit::event::MouseButton::Left => {
-                                        dispatch_event(HaiEvent {
-                                            kind: HaiEventKind::Click,
+                                        dispatch_event(MouseEvent {
+                                            kind: MouseEventKind::Click,
                                             target_id,
                                             bubble_target_ids,
                                             location,
-                                            identifier: None,
                                         });
                                     }
                                     winit::event::MouseButton::Right => {
-                                        dispatch_event(HaiEvent {
-                                            kind: HaiEventKind::ContextMenu,
+                                        dispatch_event(MouseEvent {
+                                            kind: MouseEventKind::ContextMenu,
                                             target_id,
                                             bubble_target_ids,
                                             location,
-                                            identifier: None,
                                         });
                                     }
                                     winit::event::MouseButton::Back => {
@@ -905,12 +903,12 @@ impl Core {
                     let target_id = *last_hover_node.node.read().base().id();
                     let bubble_target_ids = last_hover_node.parent_ids.clone();
 
-                    let location = Some(pointer_state.location);
+                    let location = pointer_state.location;
 
                     match touch.phase {
                         TouchPhase::Started => {
-                            dispatch_event(HaiEvent {
-                                kind: HaiEventKind::TouchStart,
+                            dispatch_event(TouchEvent {
+                                kind: TouchEventKind::TouchStart,
                                 target_id,
                                 bubble_target_ids,
                                 location,
@@ -918,8 +916,8 @@ impl Core {
                             });
                         }
                         TouchPhase::Moved => {
-                            dispatch_event(HaiEvent {
-                                kind: HaiEventKind::TouchMove,
+                            dispatch_event(TouchEvent {
+                                kind: TouchEventKind::TouchMove,
                                 target_id,
                                 bubble_target_ids,
                                 location,
@@ -927,8 +925,8 @@ impl Core {
                             });
                         }
                         TouchPhase::Ended => {
-                            dispatch_event(HaiEvent {
-                                kind: HaiEventKind::TouchEnd,
+                            dispatch_event(TouchEvent {
+                                kind: TouchEventKind::TouchEnd,
                                 target_id,
                                 bubble_target_ids,
                                 location,
@@ -936,8 +934,8 @@ impl Core {
                             });
                         }
                         TouchPhase::Cancelled => {
-                            dispatch_event(HaiEvent {
-                                kind: HaiEventKind::TouchCancel,
+                            dispatch_event(TouchEvent {
+                                kind: TouchEventKind::TouchCancel,
                                 target_id,
                                 bubble_target_ids,
                                 location,
@@ -983,16 +981,16 @@ impl Core {
         let stage_logical_x = (global_logical_x - translate_x) / scale;
         let stage_logical_y = (global_logical_y - translate_y) / scale;
 
-        let locations = (
-            stage_logical_x.round() as u32,
-            stage_logical_y.round() as u32,
-            screen_logical_x.round() as u32,
-            screen_logical_y.round() as u32,
-            0.,
-            0.,
-        );
+        let location = PointerLocation {
+            client_x: stage_logical_x.round() as u32,
+            client_y: stage_logical_y.round() as u32,
+            screen_x: screen_logical_x.round() as u32,
+            screen_y: screen_logical_y.round() as u32,
+            layer_x: 0.,
+            layer_y: 0.,
+        };
 
-        pointer_state.location = locations;
+        pointer_state.location = location;
     }
 
     fn handle_pointer_hover(&self, identifier: i32, refresh_hover_node: bool) {
@@ -1020,31 +1018,30 @@ impl Core {
             // get node under pointer
             if let Some(node) = hit_test(
                 &self.root_node,
-                pointer_state.location.0 as f32,
-                pointer_state.location.1 as f32,
+                pointer_state.location.client_x as f32,
+                pointer_state.location.client_y as f32,
                 &upload_payload,
             ) {
                 let node_ref = node.node.read();
                 let (x, y) = get_local_logical_position(
                     &*node_ref,
-                    pointer_state.location.0 as f32,
-                    pointer_state.location.1 as f32,
+                    pointer_state.location.client_x as f32,
+                    pointer_state.location.client_y as f32,
                 );
 
-                pointer_state.location.4 = x;
-                pointer_state.location.5 = y;
+                pointer_state.location.layer_x = x;
+                pointer_state.location.layer_y = y;
 
                 drop(node_ref);
 
                 if identifier == MOUSE_IDENTIFIER {
                     let target_id = *node.node.read().base().id();
 
-                    dispatch_event(HaiEvent {
-                        kind: HaiEventKind::MouseMove,
+                    dispatch_event(MouseEvent {
+                        kind: MouseEventKind::MouseMove,
                         target_id,
                         bubble_target_ids: node.parent_ids.clone(),
-                        location: Some(pointer_state.location),
-                        identifier: None,
+                        location: pointer_state.location,
                     });
 
                     if let Some(last_hover_node) = last_hover_node {
@@ -1056,14 +1053,14 @@ impl Core {
                         let node_ref = last_hover_node.node.read();
                         let (x, y) = get_local_logical_position(
                             &*node_ref,
-                            pointer_state.location.0 as f32,
-                            pointer_state.location.1 as f32,
+                            pointer_state.location.client_x as f32,
+                            pointer_state.location.client_y as f32,
                         );
 
                         let mut location = pointer_state.location;
 
-                        location.4 = x;
-                        location.5 = y;
+                        location.layer_x = x;
+                        location.layer_y = y;
 
                         let target_id = *node_ref.base().id();
 
@@ -1071,22 +1068,20 @@ impl Core {
                         drop(node_ref);
 
                         // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
-                        dispatch_event(HaiEvent {
-                            kind: HaiEventKind::MouseLeave,
+                        dispatch_event(MouseEvent {
+                            kind: MouseEventKind::MouseLeave,
                             target_id,
                             bubble_target_ids: last_hover_node.parent_ids.clone(),
-                            location: Some(location),
-                            identifier: None,
+                            location,
                         });
                     }
 
                     // there is always a mouse enter event if current node is different from last focused node (may be None)
-                    dispatch_event(HaiEvent {
-                        kind: HaiEventKind::MouseEnter,
+                    dispatch_event(MouseEvent {
+                        kind: MouseEventKind::MouseEnter,
                         target_id,
                         bubble_target_ids: node.parent_ids.clone(),
-                        location: Some(pointer_state.location),
-                        identifier: None,
+                        location: pointer_state.location,
                     });
                 }
 
@@ -1106,12 +1101,12 @@ impl Core {
             let node_ref = last_hover_node.node.read();
             let (x, y) = get_local_logical_position(
                 &*node_ref,
-                pointer_state.location.0 as f32,
-                pointer_state.location.1 as f32,
+                pointer_state.location.client_x as f32,
+                pointer_state.location.client_y as f32,
             );
 
-            pointer_state.location.4 = x;
-            pointer_state.location.5 = y;
+            pointer_state.location.layer_x = x;
+            pointer_state.location.layer_y = y;
 
             if identifier == MOUSE_IDENTIFIER {
                 let target_id = *node_ref.base().id();
@@ -1119,12 +1114,11 @@ impl Core {
                 // drop node guard before dispatching event, since it may cause deadlock
                 drop(node_ref);
 
-                dispatch_event(HaiEvent {
-                    kind: HaiEventKind::MouseLeave,
+                dispatch_event(MouseEvent {
+                    kind: MouseEventKind::MouseLeave,
                     target_id,
                     bubble_target_ids: last_hover_node.parent_ids.clone(),
-                    location: Some(pointer_state.location),
-                    identifier: None,
+                    location: pointer_state.location,
                 });
 
                 self.set_cursor(HaiCursor::Visible(CursorIcon::Default));
