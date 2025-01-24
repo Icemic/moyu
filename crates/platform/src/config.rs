@@ -87,7 +87,7 @@ pub async fn setup() {
 
                 if let Some(_entry) = &config.entry {
                     if entry.as_str() != _entry.as_str() {
-                        println!("redirecting entry file to: {}", _entry);
+                        log::info!("redirecting entry file to: {}", _entry);
                         entry = _entry.clone();
                         continue;
                     }
@@ -99,8 +99,8 @@ pub async fn setup() {
                 break;
             }
             Err(err) => {
-                println!("error when loading config: {:?}", err);
-                println!("config file cannot be loaded, using default value.");
+                log::error!("error when loading config: {:?}", err);
+                log::error!("config file cannot be loaded, using default value.");
                 HAI_ENV.set(HaiConfig::default()).unwrap();
                 break;
             }
