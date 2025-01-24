@@ -28,7 +28,7 @@ hai_scenario = {path = "crates/scenario"}
 
 [patch.crates-io]
 # huozi = {path = "../huozi-rs"}
-# quickjs-rusty = {path = "../quickjspp-rs"}
+# quickjs-rusty = {path = "../quickjs-rusty"}
 # wasm-bindgen = {path = "../wasm-bindgen"}
 # wasm-bindgen-shared = {path = "../wasm-bindgen/crates/shared"}
 # wasm-bindgen-cli-support = {path = "../wasm-bindgen/crates/cli-support"}

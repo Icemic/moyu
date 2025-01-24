@@ -7,6 +7,7 @@ repository = "https://github.com/Icemic/hai"
 version = "0.7.0"
 
 [dependencies]
+anyhow = "1"
 log = "0.4"
 quickjs-rusty = "0.7.0"
 spin_sleep = "1.1"
