@@ -14,12 +14,17 @@ const globalEventListeners: Record<string, ((event: BubbleEvent) => void)[]> = {
 const globalRequestAnimationFrameListeners: FrameRequestCallback[] = [];
 
 const BUBBLE_EVENT_NAMES = ['mouseevent', 'touchevent', 'keyboardevent'];
+// not implemented yet
+const GLOBAL_EVENT_NAMES = ['fullscreenevent', 'focusevent', 'resizeevent'];
 
 globalThis.__hai_receive_event = (raw_event: HaiEvent) => {
   const { name, body } = raw_event;
 
   if (BUBBLE_EVENT_NAMES.includes(name)) {
     handleBubbleEvent(name, body as unknown as MouseEvent | TouchEvent);
+  } else if (GLOBAL_EVENT_NAMES.includes(name)) {
+    // handleGlobalEvent(name, body);
+    console.warn(`Event ${name} is not implemented yet`);
   } else {
     // handles non-dom events and return
     switch (name) {
@@ -43,10 +48,7 @@ globalThis.__hai_receive_event = (raw_event: HaiEvent) => {
 };
 
 function handleBubbleEvent(name: string, body: MouseEvent | TouchEvent) {
-  // handles dom events
-
   const event: MouseEvent | TouchEvent = createBubbleEvent(body, body.targetId, body.targetLabel ?? '');
-
   const node = STATE.nodeMap[body.targetId];
 
   if (!node) {
@@ -54,22 +56,6 @@ function handleBubbleEvent(name: string, body: MouseEvent | TouchEvent) {
     return;
   }
 
-  // let propagate = true;
-
-  // const event: HaiEvent = {
-  //   kind,
-  //   targetId,
-  //   currentTargetId: targetId,
-  //   targetLabel: node.label,
-  //   currentTargetLabel: node.label,
-  //   stopPropagation: () => {
-  //     propagate = false;
-  //   },
-  //   preventDefault: () => {
-  //     event.defaultPrevented = true;
-  //   },
-  //   defaultPrevented: false,
-  // };
   const { kind, bubbleTargetIds } = body;
 
   if (['mouseevent', 'keyboardevent'].includes(name)) {
