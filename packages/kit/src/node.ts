@@ -1,3 +1,4 @@
+import type { BubbleEvent } from './events/base';
 import * as hai from './hai';
 import { STATE } from './state';
 
@@ -6,7 +7,7 @@ export class Node {
   label?: string;
 
   props: Record<string, any> = {};
-  listeners: Record<string, (evt: hai.HaiEvent) => any> = {};
+  listeners: Record<string, (evt: BubbleEvent) => any> = {};
 
   static create(label: string, type: string, props: Record<string, any>) {
     const { children: _, ...rest } = props;
@@ -65,7 +66,7 @@ export class Node {
 /// filter props to props and listeners
 function filterProps(props: Record<string, any>) {
   const ret: Record<string, any> = {};
-  const listeners: Record<string, (evt: hai.HaiEvent) => any> = {};
+  const listeners: Record<string, (evt: BubbleEvent) => any> = {};
   for (const key in props) {
     // FIXME: it is not quite right to check if a key starts with 'on'
     if (key.startsWith('on')) {
