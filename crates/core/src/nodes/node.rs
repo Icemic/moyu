@@ -4,10 +4,11 @@ use log::warn;
 use std::sync::Arc;
 
 use crate::base::*;
+use crate::events::{NodeEvent, NodeEventKind};
 use crate::traits::Node;
 use crate::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use crate::utils::convert::{from_js, JSValue};
-use crate::utils::dispatch_event::{dispatch_event, HaiEvent, HaiEventKind};
+use crate::utils::dispatch_event::dispatch_event;
 
 pub static mut NODE_ID: u32 = 0;
 
@@ -523,11 +524,9 @@ pub struct NodeProps {
 
 impl Drop for NodeBase {
     fn drop(&mut self) {
-        dispatch_event(HaiEvent {
-            kind: HaiEventKind::NodeDestroyed,
+        dispatch_event(NodeEvent {
+            kind: NodeEventKind::Destory,
             target_id: self.id,
-            bubble_target_ids: vec![],
-            ..Default::default()
         });
     }
 }
