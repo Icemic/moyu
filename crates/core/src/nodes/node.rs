@@ -524,9 +524,11 @@ pub struct NodeProps {
 
 impl Drop for NodeBase {
     fn drop(&mut self) {
-        dispatch_event(NodeEvent {
+        dispatch_event(NodeEvent::<()> {
             kind: NodeEventKind::Destory,
             target_id: self.id,
+            custom_kind: None,
+            custom_body: None,
         });
     }
 }
