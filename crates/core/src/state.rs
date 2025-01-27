@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::utils::hit_test::HitTestTarget;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PointerLocation {
     pub client_x: u32,
     pub client_y: u32,
