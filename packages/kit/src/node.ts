@@ -7,7 +7,7 @@ export class Node {
   label?: string;
 
   props: Record<string, any> = {};
-  listeners: Record<string, (evt: BubbleEvent) => any> = {};
+  listeners: Record<string, (evt: BubbleEvent | Record<string, any>) => any> = {};
 
   static create(label: string, type: string, props: Record<string, any>) {
     const { children: _, ...rest } = props;

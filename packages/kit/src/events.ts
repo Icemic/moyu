@@ -32,6 +32,11 @@ globalThis.__hai_receive_event = (raw_event: HaiEvent) => {
         const { kind, targetId } = body as unknown as NodeEvent;
         if (kind === NodeEventKind.Destory) {
           delete STATE.nodeMap[targetId];
+        } else if (kind === NodeEventKind.Custom) {
+          const { customKind, customBody } = body as unknown as NodeEvent;
+          if (customKind && customBody) {
+            STATE.nodeMap[targetId]?.listeners?.[`on${customKind}`]?.(customBody);
+          }
         }
         return;
       }
