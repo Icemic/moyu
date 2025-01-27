@@ -29,7 +29,7 @@ hai_pal = {workspace = true}
 # optional for features
 ffmpeg-rs = {version = "5.2.1", optional = true}
 glam = {version = "0.28", features = ["bytemuck"], optional = true}
-huozi = {version = "0.7", optional = true}
+huozi = {version = "0.8", optional = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 hai_core = {workspace = true, features = ["js_runtime"]}
