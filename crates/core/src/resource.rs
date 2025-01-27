@@ -6,6 +6,7 @@ use std::{collections::HashMap, sync::Arc};
 use wgpu::{Device, Queue};
 
 use crate::nodes::{Texture, TextureStatus};
+use crate::utils::premultiply_alpha::premultiply_alpha;
 
 pub type RelativePath = String;
 pub type RendererName = String;
@@ -100,7 +101,10 @@ impl ResourceManager {
                 let dimensions = img.dimensions();
 
                 // TODO: map various color type to wgpu::TextureFormat
-                let rgba = img.into_rgba8();
+                let mut rgba = img.into_rgba8();
+
+                // perform premultiply alpha
+                premultiply_alpha(&mut rgba);
 
                 texture.set_status(TextureStatus::Uploading);
 
