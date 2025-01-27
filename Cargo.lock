@@ -1343,6 +1343,7 @@ dependencies = [
  "hai_runtime",
  "image",
  "log",
+ "rayon",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",
