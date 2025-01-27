@@ -2,8 +2,19 @@ import { type BubbleEvent, createBubbleEvent } from './events/base';
 import { type NodeEvent, NodeEventKind } from './events/node';
 import type { AnimationFrameCallbackEvent } from './events/raf';
 import type { MouseEvent, MouseEventKind } from './events/mouse';
-import { type TouchEvent, TouchEventKind } from './events/touch';
+import type { TouchEvent, TouchEventKind } from './events/touch';
 import { STATE } from './state';
+
+export type {
+  BubbleEvent,
+  NodeEvent,
+  NodeEventKind,
+  AnimationFrameCallbackEvent,
+  MouseEvent,
+  MouseEventKind,
+  TouchEvent,
+  TouchEventKind,
+};
 
 export interface HaiEvent<T extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
