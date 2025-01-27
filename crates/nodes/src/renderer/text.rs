@@ -13,10 +13,11 @@ use wgpu::Texture;
 use wgpu::{util::DeviceExt, *};
 
 use hai_core::base::MVPMatrix;
-use hai_core::traits::Renderer;
+use hai_core::traits::{BindEvent, Renderer};
 use hai_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use hai_core::utils::calculate::tint_to_vec4;
 
+use crate::events::TextEvent;
 use crate::nodes::{Text, TextPrintMode};
 
 /// the number of vertices in a sprite is always 4.
@@ -451,21 +452,24 @@ impl Renderer for TextRenderer {
         }
 
         // update vertices no matter if it is needed when it is printing
-        if let Some(print_start_time) = &mut node.print_start_time {
+        if let Some(mut print_start_time) = node.print_start_time {
             // Some(0.) means the print_start_time is not initialized
-            if print_start_time == &0. {
-                *print_start_time = payload.timestamp;
+            if print_start_time == 0. {
+                print_start_time = payload.timestamp;
+                node.print_start_time = Some(payload.timestamp);
+                node.send_event("Start", TextEvent::Start);
             }
 
-            let (index, fade_from_index, progress) = match node.print_mode {
+            let (index, fade_from_index, progress, total_progress) = match node.print_mode {
                 TextPrintMode::Instant => {
                     node.print_start_time = None;
-                    (node.glyph_vertices.len(), None, 1.0)
+                    (node.glyph_vertices.len(), None, 1.0, 1.0)
                 }
                 TextPrintMode::Typewriter => {
                     let total = node.glyph_vertices.len();
                     // current progress (in glyphs), it may be larger than the length of the text
-                    let mut progress = (payload.timestamp - *print_start_time) * node.print_speed;
+                    let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
+                    let total_progress = progress / total as f64;
                     let index;
                     // check if the text is fully printed
                     if progress >= total as f64 {
@@ -478,13 +482,19 @@ impl Renderer for TextRenderer {
                         progress %= 1.0;
                     }
 
-                    (index, Some(index.saturating_sub(1)), progress as f32)
+                    (
+                        index,
+                        Some(index.saturating_sub(1)),
+                        progress,
+                        total_progress,
+                    )
                 }
                 TextPrintMode::Printer => {
                     // max row + 1
                     let total = node.glyph_vertices.last().map(|g| g.row + 1).unwrap_or(0);
                     // current progress (in rows), it may be larger than the max row count of the text
-                    let mut progress = (payload.timestamp - *print_start_time) * node.print_speed;
+                    let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
+                    let total_progress = progress / total as f64;
                     let index;
                     let fade_from_index;
                     // check if the text is fully printed
@@ -507,9 +517,15 @@ impl Renderer for TextRenderer {
                         progress %= 1.0;
                     }
 
-                    (index, fade_from_index, progress as f32)
+                    (index, fade_from_index, progress, total_progress)
                 }
             };
+
+            node.send_event("Progress", TextEvent::Progress(total_progress));
+
+            if progress >= 1.0 {
+                node.send_event("Finish", TextEvent::Finish);
+            }
 
             self.update_vertices(
                 device,
@@ -519,7 +535,7 @@ impl Renderer for TextRenderer {
                 node,
                 index,
                 fade_from_index,
-                progress,
+                progress as f32,
             );
         } else if need_relayout {
             // re-render all when verti

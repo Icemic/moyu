@@ -5,9 +5,11 @@ use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
 use hai_core::nodes::NodeBase;
-use hai_core::traits::Command;
+use hai_core::traits::{BindEvent, Command};
 use hai_core::traits::{Focusable, Node, NodeBaseTrait};
 use hai_core::utils::convert::{from_js, to_js, JSValue};
+
+use crate::events::TextEvent;
 
 #[derive(Debug, Default, Node)]
 pub struct Text {
@@ -287,7 +289,6 @@ pub enum TextCommmad {
 impl Command for Text {
     fn execute(&mut self, _payload: &mut JSValue) -> anyhow::Result<Option<JSValue>> {
         let payload: TextCommmad = from_js(_payload)?;
-        log::info!("Text received: {:?}", payload);
         match payload {
             TextCommmad::SetText { text, instant } => {
                 self.text = text;
@@ -301,7 +302,9 @@ impl Command for Text {
                 self.base_mut().pend_update();
             }
             TextCommmad::FinishPrinting => {
-                self.print_start_time = None;
+                // Set to f64::MIN to make renderer feel it's finished.
+                // Cannot set to None which leads to lost of essential event sending.
+                self.print_start_time = Some(f64::MIN);
                 self.base_mut().pend_update();
             }
             TextCommmad::GetCursorPos => {
@@ -311,4 +314,8 @@ impl Command for Text {
 
         Ok(None)
     }
+}
+
+impl BindEvent for Text {
+    type Event = TextEvent;
 }
