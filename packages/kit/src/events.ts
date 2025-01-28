@@ -63,7 +63,15 @@ globalThis.__hai_receive_event = (raw_event: HaiEvent) => {
   }
 };
 
-function handleBubbleEvent(name: string, body: MouseEvent | TouchEvent) {
+function handleBubbleEvent(name: string, _body: MouseEvent | TouchEvent) {
+  let body: typeof _body;
+  // serde-wasm-bindgen will serialize body as a Map, we need to convert it to a plain object
+  // see more on the comment of `HaiEvent` in the Rust side
+  if (globalThis.document) {
+    body = Object.fromEntries(_body as unknown as Map<string, unknown>) as unknown as typeof _body;
+  } else {
+    body = _body;
+  }
   const event: MouseEvent | TouchEvent = createBubbleEvent(body, body.targetId, body.targetLabel ?? '');
   const node = STATE.nodeMap[body.targetId];
 
