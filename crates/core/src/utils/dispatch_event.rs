@@ -20,7 +20,7 @@ pub fn dispatch_event<T: Event>(event: T) {
 }
 
 #[cfg(web)]
-pub fn dispatch_event(event: HaiEvent) {
+pub fn dispatch_event<T: Event>(event: T) {
     use wasm_bindgen::JsCast;
     use web_sys::js_sys::Function;
 
@@ -28,6 +28,7 @@ pub fn dispatch_event(event: HaiEvent) {
     if let Some(__hai_receive_event) = window.get("__hai_receive_event") {
         if __hai_receive_event.is_function() {
             let __hai_receive_event = __hai_receive_event.unchecked_ref::<Function>();
+            let event = HaiEvent::from_event(event);
             let event = to_js(&event).unwrap();
             __hai_receive_event.call1(&window, &event).unwrap();
         }
