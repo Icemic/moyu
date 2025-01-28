@@ -26,6 +26,11 @@ use crate::traits::Event;
 #[serde(rename_all = "camelCase")]
 pub struct HaiEvent<'a, T: Event> {
     pub name: &'a str,
+    // `body` may be a Map instead of a Object after serialization to JS,
+    // which due to a known issue in serde-wasm-bindgen and serde.
+    // See https://github.com/RReverser/serde-wasm-bindgen/issues/9
+    //
+    // For compatibility, we have to destruct `body` in JS side to make it an Object.
     pub body: T,
 }
 
