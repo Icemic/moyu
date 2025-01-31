@@ -3,24 +3,12 @@ use serde::{Deserialize, Serialize};
 use crate::traits::Event;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub enum NodeEventKind {
-    Destory,
-    Custom,
+#[serde(tag = "kind", rename_all_fields = "camelCase")]
+pub enum NodeEvent {
+    Destory { target_id: u32 },
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeEvent<T>
-where
-    T: Serialize + Send + 'static,
-{
-    pub kind: NodeEventKind,
-    pub target_id: u32,
-    pub custom_kind: Option<String>,
-    pub custom_body: Option<T>,
-}
-
-impl<T: Serialize + Send + 'static> Event for NodeEvent<T> {
+impl Event for NodeEvent {
     fn name(&self) -> &'static str {
         "nodeevent"
     }
