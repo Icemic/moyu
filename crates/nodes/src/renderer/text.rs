@@ -13,8 +13,8 @@ use wgpu::Texture;
 use wgpu::{util::DeviceExt, *};
 
 use hai_core::base::MVPMatrix;
-use hai_core::traits::{BindEvent, Renderer};
 use hai_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use hai_core::traits::{NodeEventSource, Renderer};
 use hai_core::utils::calculate::tint_to_vec4;
 
 use crate::events::TextEvent;
