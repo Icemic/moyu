@@ -3,6 +3,7 @@ import { type NodeEvent, NodeEventKind } from './events/node';
 import type { AnimationFrameCallbackEvent } from './events/raf';
 import type { MouseEvent, MouseEventKind } from './events/mouse';
 import type { TouchEvent, TouchEventKind } from './events/touch';
+import type { CustomEvent } from './events/custom';
 import { STATE } from './state';
 
 export type {
@@ -21,7 +22,7 @@ export interface HaiEvent<T extends Record<string, unknown> = Record<string, unk
   body: T;
 }
 
-const globalEventListeners: Record<string, ((event: BubbleEvent) => void)[]> = {};
+const globalEventListeners: Record<string, ((event: any) => void)[]> = {};
 const globalRequestAnimationFrameListeners: FrameRequestCallback[] = [];
 
 const BUBBLE_EVENT_NAMES = ['mouseevent', 'touchevent', 'keyboardevent'];
@@ -39,15 +40,22 @@ globalThis.__hai_receive_event = (raw_event: HaiEvent) => {
   } else {
     // handles non-dom events and return
     switch (name) {
+      case 'customevent': {
+        const { name, body: _body, targetId } = body as unknown as CustomEvent;
+        // if targetId is 0, it is a global event (send to root node or send from plugin)
+        if (targetId === 0) {
+          for (const listener of globalEventListeners[name.toLowerCase()] ?? []) {
+            listener(_body);
+          }
+          return;
+        }
+        STATE.nodeMap[targetId]?.listeners?.[`on${name}`]?.(_body);
+        return;
+      }
       case 'nodeevent': {
         const { kind, targetId } = body as unknown as NodeEvent;
         if (kind === NodeEventKind.Destory) {
           delete STATE.nodeMap[targetId];
-        } else if (kind === NodeEventKind.Custom) {
-          const { customKind, customBody } = body as unknown as NodeEvent;
-          if (customKind && customBody) {
-            STATE.nodeMap[targetId]?.listeners?.[`on${customKind}`]?.(customBody);
-          }
         }
         return;
       }

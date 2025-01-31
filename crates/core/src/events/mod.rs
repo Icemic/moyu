@@ -1,3 +1,4 @@
+mod custom;
 mod focus;
 mod fullscreen;
 mod keyboard;
@@ -8,6 +9,7 @@ mod resize;
 mod touch;
 mod wheel;
 
+pub use custom::*;
 pub use focus::*;
 pub use fullscreen::*;
 pub use keyboard::*;
