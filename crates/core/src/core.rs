@@ -335,6 +335,12 @@ impl Core {
         &self.surface
     }
 
+    /// Get window of winit. This is useful when you need to do some low-level operations.
+    /// However, it may break the encapsulation of the framework, so use it with caution.
+    pub fn window(&self) -> &Arc<Window> {
+        &self.window
+    }
+
     /// reset surface
     pub fn refresh(&self) {
         let config = self.config.lock();
@@ -347,6 +353,25 @@ impl Core {
 
     pub fn set_dirty(&self, is_dirty: bool) {
         self.is_dirty.store(is_dirty, Ordering::Relaxed);
+    }
+
+    /// Move window to center of the screen. Only works on desktop platforms.
+    pub fn move_to_center(&self) {
+        #[cfg(desktop)]
+        {
+            let window = &self.window;
+            if let Some(monitor) = window.current_monitor() {
+                let monitor_size = monitor.size();
+                let window_size = window.outer_size();
+
+                window.set_outer_position(PhysicalPosition {
+                    x: monitor_size.width.saturating_sub(window_size.width) as f64 / 2.
+                        + monitor.position().x as f64,
+                    y: monitor_size.height.saturating_sub(window_size.height) as f64 / 2.
+                        + monitor.position().y as f64,
+                });
+            }
+        }
     }
 
     /// resize window, should be called in main thread
@@ -476,6 +501,10 @@ impl Core {
             WindowState::Idle => true,
             _ => false,
         }
+    }
+
+    pub fn get_window_state(&self) -> WindowState {
+        **self.window_state.load()
     }
 
     /// set window state, should be called in main thread
@@ -627,6 +656,7 @@ impl Core {
             Event::UserEvent(user_event) => match user_event {
                 &UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
                     self.resize_window(logical_width, logical_height, factor);
+                    self.move_to_center();
                 }
                 &UserEvent::WindowState(state) => {
                     self.set_window_state(state);
