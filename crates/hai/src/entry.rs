@@ -4,10 +4,8 @@ use hai_audio::AudioManager;
 use hai_core::core::set_core;
 use hai_core::surface::{create_wgpu_surface, create_window};
 use hai_core::user_event::UserEvent;
-use hai_core::winit::dpi::PhysicalPosition;
 use hai_core::winit::event::Event;
 use hai_core::winit::event_loop::EventLoop;
-use hai_core::winit::window::Window;
 use hai_core::{create_hai_core, setup};
 use hai_nodes::renderer::{SpriteRenderer, TextRenderer};
 use hai_pal::platform;
@@ -184,11 +182,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
 
                     _window.set_visible(true);
 
-                    // only for desktop platforms
-                    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-                    if !_window.is_maximized() && _window.fullscreen().is_none() {
-                        move_to_center(&_window);
-                    }
+                    _core.move_to_center();
 
                     window = Some(_window);
                     core = Some(_core);
@@ -206,20 +200,4 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
             }
         })
         .ok();
-}
-
-#[allow(dead_code)]
-#[inline]
-fn move_to_center(window: &Window) {
-    if let Some(monitor) = window.current_monitor() {
-        let monitor_size = monitor.size();
-        let window_size = window.outer_size();
-
-        window.set_outer_position(PhysicalPosition {
-            x: monitor_size.width.saturating_sub(window_size.width) as f64 / 2.
-                + monitor.position().x as f64,
-            y: monitor_size.height.saturating_sub(window_size.height) as f64 / 2.
-                + monitor.position().y as f64,
-        });
-    }
 }
