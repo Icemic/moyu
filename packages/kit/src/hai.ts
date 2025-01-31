@@ -20,38 +20,6 @@ declare global {
   var __hai_receive_event: (event: HaiEvent) => void;
 }
 
-export function loadPreset(name: string) {
-  hai.pushCommand('load_preset', [name]);
-}
-
-export function loadResources() {
-  hai.pushCommand('load_resources', []);
-}
-
-export function resizeWindow(logicalWidth: number, logicalHeight: number, factor?: number) {
-  hai.pushCommand('resize_window', [logicalWidth, logicalHeight, factor]);
-}
-
-export function setIdle() {
-  hai.pushCommand('set_idle', []);
-}
-
-export function setFullscreen() {
-  hai.pushCommand('set_fullscreen', []);
-}
-
-export function setMaximized() {
-  hai.pushCommand('set_maximized', []);
-}
-
-export function setMinimized() {
-  hai.pushCommand('set_minimized', []);
-}
-
-export function quit() {
-  hai.pushCommand('quit', []);
-}
-
 export function createInstance(nodeType: string, label: string | undefined, props: Record<string, any>) {
   let node_id = 0;
   const ret: number = hai.pushCommand('create_instance', [nodeType, label, props], (id: number) => {
