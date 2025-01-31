@@ -1,6 +1,5 @@
 mod node;
 pub mod spawn;
-mod system;
 
 use hai_core::utils::convert::JSValue;
 #[cfg(native)]
@@ -11,7 +10,7 @@ use hai_runtime::{
 #[cfg(web)]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use self::{node::*, system::*};
+use self::node::*;
 
 #[cfg(native)]
 pub fn init(vm: &QuickVM) {
@@ -74,12 +73,6 @@ fn receive_command(
     // info!("command_name: {}", command_name);
 
     match command_name {
-        "resize_window" => resize_window(context, command_args),
-        "set_idle" => set_idle(context, command_args),
-        "set_fullscreen" => set_fullscreen(context, command_args),
-        "set_maximized" => set_maximized(context, command_args),
-        "set_minimized" => set_minimized(context, command_args),
-        "quit" => quit(context, command_args),
         "create_instance" => create_instance(context, command_args),
         "destroy_instance" => destroy_instance(context, command_args),
         "add_child" => add_child(context, command_args),
