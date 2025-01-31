@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
 use hai_core::nodes::NodeBase;
-use hai_core::traits::{BindEvent, Command};
+use hai_core::traits::{Command, NodeEventSource};
 use hai_core::traits::{Focusable, Node, NodeBaseTrait};
 use hai_core::utils::convert::{from_js, to_js, JSValue};
 
@@ -316,6 +316,6 @@ impl Command for Text {
     }
 }
 
-impl BindEvent for Text {
+impl NodeEventSource for Text {
     type Event = TextEvent;
 }
