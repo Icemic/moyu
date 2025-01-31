@@ -4,7 +4,7 @@ use log::warn;
 use std::sync::Arc;
 
 use crate::base::*;
-use crate::events::{NodeEvent, NodeEventKind};
+use crate::events::NodeEvent;
 use crate::traits::Node;
 use crate::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use crate::utils::convert::{from_js, JSValue};
@@ -524,11 +524,6 @@ pub struct NodeProps {
 
 impl Drop for NodeBase {
     fn drop(&mut self) {
-        dispatch_event(NodeEvent::<()> {
-            kind: NodeEventKind::Destory,
-            target_id: self.id,
-            custom_kind: None,
-            custom_body: None,
-        });
+        dispatch_event(NodeEvent::Destory { target_id: self.id });
     }
 }
