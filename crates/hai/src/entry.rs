@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use hai_audio::AudioManager;
 use hai_core::core::set_core;
+use hai_core::plugins::SystemPlugin;
 use hai_core::surface::{create_wgpu_surface, create_window};
 use hai_core::user_event::UserEvent;
 use hai_core::winit::event::Event;
@@ -83,6 +84,11 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
                 log::error!("failed to create audio manager: {}", err);
             }
         }
+
+        let scenario = ScenarioPlugin::new();
+        let system = SystemPlugin::new(_core.clone());
+        _core.register_plugin("scenario", Arc::new(Mutex::new(scenario)));
+        _core.register_plugin("system", Arc::new(Mutex::new(system)));
 
         // #[cfg(feature = "video")]
         // core.register_renderer("video", Box::new(video_renderer));
@@ -172,7 +178,9 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
                     }
 
                     let scenario = ScenarioPlugin::new();
+                    let system = SystemPlugin::new(_core.clone());
                     _core.register_plugin("scenario", Arc::new(Mutex::new(scenario)));
+                    _core.register_plugin("system", Arc::new(Mutex::new(system)));
 
                     // #[cfg(feature = "video")]
                     // core.register_renderer("video", Box::new(video_renderer));
