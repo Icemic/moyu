@@ -14,7 +14,7 @@ use hai_pal::sync::Mutex;
 use hai_scenario::ScenarioPlugin;
 
 #[allow(dead_code)]
-pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
+pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id: &str) {
     // hold the global variable lifetime using VisibleHand
     let _async_runtime_handle = platform::setup();
 
@@ -49,7 +49,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>) {
 
     #[cfg(web)]
     {
-        let _window = create_window(&event_loop);
+        let _window = create_window(&event_loop, element_id);
 
         let (instance, surface, device, queue, config) = create_wgpu_surface(&_window).await;
 
