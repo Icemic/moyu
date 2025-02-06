@@ -35,7 +35,7 @@ const hostConfig: HostConfig<
   TimeoutHandle,
   NoTimeout
 > = {
-  isPrimaryRenderer: false,
+  isPrimaryRenderer: true,
   supportsHydration: false,
   supportsMutation: true,
   supportsPersistence: false,
@@ -245,6 +245,15 @@ export function createRoot(options?: RootOptions) {
       }),
     null,
   );
+
+  HaiRenderer.injectIntoDevTools({
+    bundleType: process.env.NODE_ENV === 'production' ? 0 : 1,
+    version: '0.1.0',
+    rendererPackageName: '@doufu-moe/kit',
+    findFiberByHostInstance: (instance: Instance | TextInstance) => {
+      return instance as any;
+    },
+  });
 
   return {
     render: (reactElement: ReactElement, callback?: (() => void) | null) => {
