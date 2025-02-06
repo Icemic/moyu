@@ -27,12 +27,14 @@ static FAKE_SCENARIO: LazyLock<Vec<&'static str>> = std::sync::LazyLock::new(|| 
 
 pub struct ScenarioPlugin {
     state: ScenarioState,
+    global_data: Option<String>,
 }
 
 impl ScenarioPlugin {
     pub fn new() -> Self {
         Self {
             state: ScenarioState::default(),
+            global_data: None,
         }
     }
 
@@ -61,9 +63,11 @@ impl Plugin for ScenarioPlugin {
 )]
 enum ScenarioCommmad {
     StartFromUri { uri: String },
-    LoadState { state: ScenarioState },
-    SaveState { state: ScenarioState },
+    // LoadState { state: ScenarioState },
+    // SaveState { state: ScenarioState },
     NextLine,
+    SaveGameData { data: String },
+    SaveGlobalData { data: String },
 }
 
 impl Command for ScenarioPlugin {
@@ -75,11 +79,17 @@ impl Command for ScenarioPlugin {
             ScenarioCommmad::StartFromUri { uri } => {
                 log::info!("start from uri: {}", uri);
             }
-            ScenarioCommmad::LoadState { state } => {
-                log::info!("load state: {:?}", state);
+            // ScenarioCommmad::LoadState { state } => {
+            //     log::info!("load state: {:?}", state);
+            // }
+            // ScenarioCommmad::SaveState { state } => {
+            //     log::info!("save state: {:?}", state);
+            // }
+            ScenarioCommmad::SaveGlobalData { data } => {
+                self.global_data = Some(data);
             }
-            ScenarioCommmad::SaveState { state } => {
-                log::info!("save state: {:?}", state);
+            ScenarioCommmad::SaveGameData { data } => {
+                self.state.extra_data = Some(data);
             }
             ScenarioCommmad::NextLine => {
                 return Ok(self.next_line().map(|v| to_js(&v).ok()).flatten());
