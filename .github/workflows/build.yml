@@ -2,22 +2,41 @@ name: Rust
 
 on:
   push:
-    branches: ['master']
+    branches:
+      - master
+      - feat/*
   pull_request:
-    branches: ['master']
+    branches:
+      - master
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-    runs-on: windows-latest
+    name: Build on ${{ matrix.os }} ${{ matrix.wasm && '(Webassembly)' || '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            wasm: false
+          - os: ubuntu-latest
+            wasm: true
+          - os: macOS-latest
+          - os: windows-latest
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
-      - name: Build Windows
+
+      - name: Build Binary
         run: cargo build --verbose
+        if: matrix.wasm == false
+
       - name: Build Web
         run: |
           rustup target add wasm32-unknown-unknown
           cargo build -p hai --lib --target wasm32-unknown-unknown
+        if: matrix.wasm == true
