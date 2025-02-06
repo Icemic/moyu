@@ -7,6 +7,7 @@
   </head>
 
   <body>
+    <div id="root"></div>
     <script type="module">
       const urlParams = new URLSearchParams(window.location.search);
       window.__hai_entry = urlParams.get('entry');
@@ -30,7 +31,7 @@
         };
 
         window.hai_start = () => {
-          hai.wasm_start();
+          hai.doufu_init('root');
         };
       });
     </script>
