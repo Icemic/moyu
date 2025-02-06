@@ -30,7 +30,7 @@ hai_runtime = {workspace = true}
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = {version = "0.2.83", default-features = false}
 wasm-bindgen-futures = "0.4.33"
-web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement"]}
+web-sys = {version = "0.3.56", features = ["Window", "Element", "Document", "HtmlElement", "HtmlCanvasElement", "CustomEvent"]}
 
 [build-dependencies]
 cfg_aliases = {workspace = true}
