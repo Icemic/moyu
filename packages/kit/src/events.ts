@@ -81,59 +81,63 @@ function handleBubbleEvent(name: string, _body: MouseEvent | TouchEvent) {
     body = _body;
   }
   const event: MouseEvent | TouchEvent = createBubbleEvent(body, body.targetId, body.targetLabel ?? '');
-  const node = STATE.nodeMap[body.targetId];
-
-  if (!node) {
-    console.error(`Node not found: ${body.targetId}`);
-    return;
-  }
 
   const { kind, bubbleTargetIds } = body;
 
-  if (['mouseevent', 'keyboardevent'].includes(name)) {
-    node?.listeners?.[`on${kind}`]?.(event);
-    while (event.bubbles && bubbleTargetIds.length) {
-      // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
-      event.currentTargetId = bubbleTargetIds.pop()!;
-      event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
-      STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${kind}`]?.(event);
+  // if targetId is 0, it is a global event (send to root node or send from plugin)
+  if (body.targetId !== 0) {
+    const node = STATE.nodeMap[body.targetId];
+
+    if (!node) {
+      console.error(`Node not found: ${body.targetId}`);
+      return;
     }
-  } else if (name === 'touchevent') {
-    const { identifier } = body as TouchEvent;
-    (event as TouchEvent).identifier = identifier;
-    node?.listeners?.[`on${kind}`]?.(event);
-    {
-      const _bubbleTargetIds = [...bubbleTargetIds];
-      while (event.bubbles && _bubbleTargetIds.length) {
+
+    if (['mouseevent', 'keyboardevent'].includes(name)) {
+      node?.listeners?.[`on${kind}`]?.(event);
+      while (event.bubbles && bubbleTargetIds.length) {
         // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
-        event.currentTargetId = _bubbleTargetIds.pop()!;
+        event.currentTargetId = bubbleTargetIds.pop()!;
         event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
         STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${kind}`]?.(event);
       }
-    }
-
-    // simulate mouse events as same as browsers
-    if (kind === 'TouchEnd' && !STATE.touchMoved[identifier] && !event.defaultPrevented) {
-      for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click'] as MouseEventKind[]) {
-        event.bubbles = true;
-        event.kind = eventKind;
-        node?.listeners?.[`on${eventKind}`]?.(event);
+    } else if (name === 'touchevent') {
+      const { identifier } = body as TouchEvent;
+      (event as TouchEvent).identifier = identifier;
+      node?.listeners?.[`on${kind}`]?.(event);
+      {
         const _bubbleTargetIds = [...bubbleTargetIds];
         while (event.bubbles && _bubbleTargetIds.length) {
           // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
           event.currentTargetId = _bubbleTargetIds.pop()!;
           event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
-          STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${eventKind}`]?.(event);
+          STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${kind}`]?.(event);
         }
       }
-    }
 
-    if (kind === 'TouchStart') {
-      STATE.touchMoved[identifier] = false;
-    } else if (kind === 'TouchMove') {
-      STATE.touchMoved[identifier] = true;
-    } else if (kind === 'TouchEnd' || kind === 'TouchCancel') {
-      delete STATE.touchMoved[identifier];
+      // simulate mouse events as same as browsers
+      if (kind === 'TouchEnd' && !STATE.touchMoved[identifier] && !event.defaultPrevented) {
+        for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click'] as MouseEventKind[]) {
+          event.bubbles = true;
+          event.kind = eventKind;
+          node?.listeners?.[`on${eventKind}`]?.(event);
+          const _bubbleTargetIds = [...bubbleTargetIds];
+          while (event.bubbles && _bubbleTargetIds.length) {
+            // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
+            event.currentTargetId = _bubbleTargetIds.pop()!;
+            event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
+            STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${eventKind}`]?.(event);
+          }
+        }
+      }
+
+      if (kind === 'TouchStart') {
+        STATE.touchMoved[identifier] = false;
+      } else if (kind === 'TouchMove') {
+        STATE.touchMoved[identifier] = true;
+      } else if (kind === 'TouchEnd' || kind === 'TouchCancel') {
+        delete STATE.touchMoved[identifier];
+      }
     }
   }
 

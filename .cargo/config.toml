@@ -8,12 +8,12 @@ linker = "clang"
 rustflags = ["-Clink-arg=-fuse-ld=lld"]
 
 [target.x86_64-apple-darwin]
-linker = "clang"
-rustflags = ["-Clink-arg=-fuse-ld=lld"]
+linker = "rust-lld"
+rustflags = []
 
 [target.aarch64-apple-darwin]
-linker = "clang"
-rustflags = ["-Clink-arg=-fuse-ld=lld"]
+linker = "rust-lld"
+rustflags = []
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"
