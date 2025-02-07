@@ -48,6 +48,10 @@ impl Core {
                 let mut handled = self.handle_pointer_events(window, event);
 
                 if !handled {
+                    handled = self.handle_keyboard_events(window, event);
+                }
+
+                if !handled {
                     match event {
                         WindowEvent::RedrawRequested => {
                             match self.render(window) {
