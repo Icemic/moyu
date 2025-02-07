@@ -1,6 +1,7 @@
 mod global;
 mod handle_events;
-mod input_events;
+mod keyboard_events;
+mod pointer_events;
 mod render;
 
 use arc_swap::ArcSwap;
@@ -15,6 +16,7 @@ use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, Size};
 use winit::event_loop::EventLoopProxy;
+use winit::keyboard::ModifiersState;
 use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
@@ -70,6 +72,7 @@ pub struct Core {
 
     pub(crate) window_state: ArcSwap<WindowState>,
     pub(crate) cursor_state: ArcSwap<HaiCursor>,
+    pub(crate) modifiers_state: ArcSwap<ModifiersState>,
 
     /// redraw mode, default is `Auto`
     pub(crate) redraw_mode: ArcSwap<HaiRedrawMode>,
@@ -207,6 +210,7 @@ impl Core {
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
             cursor_state: ArcSwap::new(Arc::new(HaiCursor::default())),
+            modifiers_state: ArcSwap::new(Arc::new(ModifiersState::empty())),
             redraw_mode: ArcSwap::new(Arc::new(HaiRedrawMode::Auto)),
             is_dirty: AtomicBool::new(true),
             is_paused: AtomicBool::new(false),

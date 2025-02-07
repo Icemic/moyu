@@ -31,6 +31,7 @@ pub struct KeyboardEvent {
     pub shift_key: bool,
     pub alt_key: bool,
     pub meta_key: bool,
+    pub is_composing: bool,
 }
 
 impl Event for KeyboardEvent {
