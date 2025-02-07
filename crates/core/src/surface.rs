@@ -15,7 +15,10 @@ pub fn create_eventloop() -> EventLoop<UserEvent> {
     event_loop
 }
 
-pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Window> {
+pub fn create_window(
+    event_loop: &EventLoopWindowTarget<UserEvent>,
+    #[cfg(web)] element_id: &str,
+) -> Arc<Window> {
     let env = get_engine_config();
     // create window
     let mut builder = WindowBuilder::new()
@@ -52,14 +55,14 @@ pub fn create_window(event_loop: &EventLoopWindowTarget<UserEvent>) -> Arc<Windo
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()
             .and_then(|win| win.document())
-            .and_then(|doc| doc.body())
-            .and_then(|body| {
-                body.append_child(&web_sys::Element::from(
+            .and_then(|document| document.get_element_by_id(element_id))
+            .and_then(|el| {
+                el.append_child(&web_sys::Element::from(
                     window.canvas().expect("canvas not found"),
                 ))
                 .ok()
             })
-            .expect("couldn't append canvas to document body");
+            .expect(format!("couldn't append canvas to {}", element_id).as_str());
     }
 
     Arc::new(window)

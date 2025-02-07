@@ -22,11 +22,19 @@ pub enum WindowState {
     Fullscreen,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AutorunMode {
+    All,
+    NativeOnly,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct HaiConfig {
     pub entry: Option<String>,
     pub entry_filename: String,
+    pub autorun: AutorunMode,
     pub font_file: String,
     pub window_title: String,
     pub window_state: WindowState,
@@ -47,6 +55,7 @@ impl Default for HaiConfig {
         Self {
             entry: None,
             entry_filename: "index.js".to_string(),
+            autorun: AutorunMode::All,
             font_file: "fonts/default.otf".to_string(),
             window_title: "Doufu".to_string(),
             window_state: WindowState::Idle,
@@ -81,6 +90,7 @@ pub async fn setup() {
                 let mut config = match serde_json::from_slice::<HaiConfig>(&content) {
                     Ok(content) => content,
                     Err(error) => {
+                        log::error!("error when parsing config: {:?}", error);
                         panic!("Failed to parse entry file: {}", error);
                     }
                 };

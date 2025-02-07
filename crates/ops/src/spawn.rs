@@ -62,7 +62,7 @@ pub fn spawn_runtime_with_core(
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(web)]
 pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
-    use hai_pal::config::{entry_dir, get_engine_config};
+    use hai_pal::config::{entry_dir, get_engine_config, AutorunMode};
     use log::debug;
 
     if let Some(spawn_callback) = spawn_callback {
@@ -76,22 +76,35 @@ pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntim
         debug!("Injecting entry script.");
         let window = web_sys::window().expect("Cannot get global `window` object.");
         let document = window.document().expect("No document found.");
-        let body = document.body().expect("No body found.");
 
-        let root_script = document
-            .create_element("script")
-            .expect("Cannot create script element.");
-        root_script
-            .set_attribute(
-                "src",
-                entry_dir()
-                    .join(&get_engine_config().entry_filename)
-                    .unwrap()
-                    .as_str(),
-            )
-            .unwrap();
-        root_script.set_attribute("type", "module").unwrap();
+        // Dispatch a custom event to notify that doufu is ready.
+        // This is useful for other scripts to know when doufu is ready or for users who want to
+        // run their game code manually.
+        let event = web_sys::CustomEvent::new("doufu-ready").unwrap();
+        if let Err(err) = document.dispatch_event(&event) {
+            log::error!("Failed to dispatch `doufu-ready` event: {:?}", err);
+        }
 
-        body.append_child(&root_script).unwrap();
+        let config = get_engine_config();
+
+        if config.autorun == AutorunMode::All {
+            let body = document.body().expect("No body found.");
+
+            let root_script = document
+                .create_element("script")
+                .expect("Cannot create script element.");
+            root_script
+                .set_attribute(
+                    "src",
+                    entry_dir()
+                        .join(&get_engine_config().entry_filename)
+                        .unwrap()
+                        .as_str(),
+                )
+                .unwrap();
+            root_script.set_attribute("type", "module").unwrap();
+
+            body.append_child(&root_script).unwrap();
+        }
     });
 }

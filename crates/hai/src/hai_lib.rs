@@ -25,10 +25,10 @@ async fn android_main(app: AndroidApp) {
 
 #[cfg(web)]
 #[cfg_attr(web, wasm_bindgen::prelude::wasm_bindgen)]
-pub async fn wasm_start() {
+pub async fn doufu_init(element_id: &str) {
     hai_pal::logger::setup();
     hai_pal::config::setup().await;
 
     let event_loop = hai_core::surface::create_eventloop();
-    entry::main_entry(event_loop).await;
+    entry::main_entry(event_loop, element_id).await;
 }
