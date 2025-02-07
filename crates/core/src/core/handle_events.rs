@@ -45,9 +45,9 @@ impl Core {
                 ref event,
                 window_id,
             } if window_id == window.id() => {
-                // makes State to have priority over main()
-                if !self.input(window, event) {
-                    // UPDATED!
+                let mut handled = self.handle_pointer_events(window, event);
+
+                if !handled {
                     match event {
                         WindowEvent::RedrawRequested => {
                             match self.render(window) {
