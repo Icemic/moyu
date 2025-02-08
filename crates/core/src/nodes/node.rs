@@ -1,5 +1,5 @@
 use csscolorparser::Color;
-use hai_pal::sync::RwLock;
+use doufu_pal::sync::RwLock;
 use log::warn;
 use std::sync::Arc;
 

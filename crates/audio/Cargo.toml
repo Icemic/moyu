@@ -3,8 +3,8 @@ authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "Audio plugin for Hai."
 edition = "2021"
 license = "MPL-2.0"
-name = "hai_audio"
-repository = "https://github.com/Icemic/hai"
+name = "doufu_audio"
+repository = "https://github.com/DeepSpaceMill/doufu"
 version = "0.7.0"
 
 [features]
@@ -21,11 +21,11 @@ serde = {version = "1.0", features = ["derive"]}
 [dev-dependencies]
 arc-swap = "1.6"
 
-[dependencies.hai_pal]
+[dependencies.doufu_pal]
 path = "../platform"
 version = "0.7"
 
-[dependencies.hai_core]
+[dependencies.doufu_core]
 default-features = false
 features = ["js_runtime"]
 path = "../core"

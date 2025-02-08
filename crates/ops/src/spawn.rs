@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use hai_core::core::Core;
+use doufu_core::core::Core;
 
 pub type SpawnRuntimeCallback =
     Box<dyn (FnOnce() -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>) + Send + Sync>;
@@ -13,8 +13,8 @@ pub type SpawnRuntimeCallback =
 pub fn spawn_runtime_with_core(
     _core: &Arc<Core>,
     spawn_callback: Option<SpawnRuntimeCallback>,
-) -> hai_pal::visible_hand::VisibleHand<Arc<hai_runtime::QuickVM>> {
-    use hai_runtime::{get_vm, setup_vm};
+) -> doufu_pal::visible_hand::VisibleHand<Arc<doufu_runtime::QuickVM>> {
+    use doufu_runtime::{get_vm, setup_vm};
     use log::error;
 
     let (sender, receiver) = std::sync::mpsc::channel();
@@ -26,7 +26,7 @@ pub fn spawn_runtime_with_core(
 
             sender.send(_vm_handle).unwrap();
 
-            let handle = hai_pal::task::get_runtime_handle();
+            let handle = doufu_pal::task::get_runtime_handle();
 
             if let Some(spawn_callback) = spawn_callback {
                 let async_callback = spawn_callback();
@@ -62,7 +62,7 @@ pub fn spawn_runtime_with_core(
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(web)]
 pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
-    use hai_pal::config::{entry_dir, get_engine_config, AutorunMode};
+    use doufu_pal::config::{entry_dir, get_engine_config, AutorunMode};
     use log::debug;
 
     if let Some(spawn_callback) = spawn_callback {

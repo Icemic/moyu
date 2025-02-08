@@ -1,7 +1,7 @@
 [workspace]
-default-members = ["crates/hai"]
+default-members = ["crates/doufu"]
 members = [
-  "crates/hai",
+  "crates/doufu",
   "crates/core",
   "crates/runtime",
   "crates/platform",
@@ -17,14 +17,14 @@ resolver = "2"
 [workspace.dependencies]
 cfg_aliases = "0.2.1"
 
-hai_audio = {path = "crates/audio"}
-hai_core = {path = "crates/core"}
-hai_macros = {path = "crates/macros"}
-hai_nodes = {path = "crates/nodes"}
-hai_ops = {path = "crates/ops"}
-hai_pal = {path = "crates/platform"}
-hai_runtime = {path = "crates/runtime"}
-hai_scenario = {path = "crates/scenario"}
+doufu_audio = {path = "crates/audio"}
+doufu_core = {path = "crates/core"}
+doufu_macros = {path = "crates/macros"}
+doufu_nodes = {path = "crates/nodes"}
+doufu_ops = {path = "crates/ops"}
+doufu_pal = {path = "crates/platform"}
+doufu_runtime = {path = "crates/runtime"}
+doufu_scenario = {path = "crates/scenario"}
 
 [patch.crates-io]
 # huozi = {path = "../huozi-rs"}

@@ -1,4 +1,4 @@
-use hai_core::traits::Event;
+use doufu_core::traits::Event;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

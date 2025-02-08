@@ -4,7 +4,7 @@ mod vm;
 
 use std::sync::Arc;
 
-use hai_pal::visible_hand::{InvisibleHand, VisibleHand};
+use doufu_pal::visible_hand::{InvisibleHand, VisibleHand};
 pub use vm::QuickVM;
 
 static mut JSVM: InvisibleHand<Arc<QuickVM>> = InvisibleHand::new();

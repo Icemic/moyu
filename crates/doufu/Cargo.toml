@@ -3,8 +3,8 @@ authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "An experimental game engine for building visual novels."
 edition = "2021"
 license = "MPL-2.0"
-name = "hai"
-repository = "https://github.com/Icemic/hai"
+name = "doufu"
+repository = "https://github.com/Icemic/doufu"
 version = "0.7.0"
 
 [package.metadata.release]
@@ -16,29 +16,29 @@ release = true
 [features]
 default = ["text"]
 
-text = ["hai_nodes/text", "hai_ops/text"]
-video = ["hai_nodes/video"]
+text = ["doufu_nodes/text", "doufu_ops/text"]
+video = ["doufu_nodes/video"]
 
 [[bin]]
-name = "hai"
+name = "doufu"
 path = "src/main.rs"
 
 [lib]
 crate_type = ["cdylib"]
-name = "hai_lib"
-path = "src/hai_lib.rs"
+name = "doufu"
+path = "src/lib.rs"
 
 [dependencies]
 log = "0.4"
 spin_sleep_util = "0.1.1"
 
-hai_audio = {workspace = true}
-hai_core = {workspace = true, features = ["js_runtime"]}
-hai_macros = {workspace = true}
-hai_nodes = {workspace = true}
-hai_ops = {workspace = true}
-hai_pal = {workspace = true}
-hai_scenario = {workspace = true}
+doufu_audio = {workspace = true}
+doufu_core = {workspace = true, features = ["js_runtime"]}
+doufu_macros = {workspace = true}
+doufu_nodes = {workspace = true}
+doufu_ops = {workspace = true}
+doufu_pal = {workspace = true}
+doufu_scenario = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = {version = "1", features = ["rt-multi-thread", "macros"]}

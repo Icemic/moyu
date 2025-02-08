@@ -1,13 +1,13 @@
 use arc_swap::ArcSwapOption;
-use hai_macros::Node;
+use doufu_macros::Node;
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
-use hai_core::nodes::{NodeBase, Texture};
-use hai_core::resource::TextureId;
-use hai_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
+use doufu_core::nodes::{NodeBase, Texture};
+use doufu_core::resource::TextureId;
+use doufu_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
 #[cfg(all(native, feature = "js_runtime"))]
-use hai_core::utils::convert::{from_js, JSValue};
+use doufu_core::utils::convert::{from_js, JSValue};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum YUVSpriteFormat {

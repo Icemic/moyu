@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
-use hai_audio::AudioManager;
-use hai_core::core::set_core;
-use hai_core::plugins::SystemPlugin;
-use hai_core::surface::{create_wgpu_surface, create_window};
-use hai_core::user_event::UserEvent;
-use hai_core::winit::event::Event;
-use hai_core::winit::event_loop::EventLoop;
-use hai_core::{create_hai_core, setup};
-use hai_nodes::renderer::{SpriteRenderer, TextRenderer};
-use hai_pal::platform;
-use hai_pal::sync::Mutex;
-use hai_scenario::ScenarioPlugin;
+use doufu_audio::AudioManager;
+use doufu_core::core::set_core;
+use doufu_core::plugins::SystemPlugin;
+use doufu_core::surface::{create_wgpu_surface, create_window};
+use doufu_core::user_event::UserEvent;
+use doufu_core::winit::event::Event;
+use doufu_core::winit::event_loop::EventLoop;
+use doufu_core::{create_doufu_core, setup};
+use doufu_nodes::renderer::{SpriteRenderer, TextRenderer};
+use doufu_pal::platform;
+use doufu_pal::sync::Mutex;
+use doufu_scenario::ScenarioPlugin;
 
 #[allow(dead_code)]
 pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id: &str) {
@@ -62,7 +62,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
         // #[cfg(feature = "video")]
         // let video_renderer = SpriteRenderer::new(&device, &config);
 
-        let _core = create_hai_core(
+        let _core = create_doufu_core(
             instance,
             surface,
             device,
@@ -94,14 +94,14 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
         // core.register_renderer("video", Box::new(video_renderer));
 
         _core_handle = Some(set_core(_core.clone()));
-        _jsvm_handle = Some(hai_ops::spawn::spawn_runtime_with_core(&_core, None));
+        _jsvm_handle = Some(doufu_ops::spawn::spawn_runtime_with_core(&_core, None));
 
         _window.set_visible(true);
 
         window = Some(_window);
         core = Some(_core);
 
-        // use hai_core::winit::platform::web::EventLoopExtWebSys;
+        // use doufu_core::winit::platform::web::EventLoopExtWebSys;
 
         event_loop
             .run(move |event, event_loop| {
@@ -110,8 +110,8 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
                     Event::Resumed => {
                         // workaround for Chrome since it doesn't apply the correct size
                         if let Some(ref window) = window {
-                            let _ = window.request_inner_size(hai_core::winit::dpi::Size::Logical(
-                                hai_pal::config::get_engine_config()
+                            let _ = window.request_inner_size(doufu_core::winit::dpi::Size::Logical(
+                                doufu_pal::config::get_engine_config()
                                     .surface_size
                                     .as_tuple()
                                     .into(),
@@ -143,7 +143,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
                     let _window = create_window(event_loop);
 
                     let (instance, surface, device, queue, config) =
-                        hai_pal::task::block_on_without_runtime(create_wgpu_surface(&_window));
+                        doufu_pal::task::block_on_without_runtime(create_wgpu_surface(&_window));
 
                     let sprite_renderer = SpriteRenderer::new(&device, &config);
                     let text_renderer = TextRenderer::new(&device, &config);
@@ -154,7 +154,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
                     // #[cfg(feature = "video")]
                     // let video_renderer = SpriteRenderer::new(&device, &config);
 
-                    let _core = create_hai_core(
+                    let _core = create_doufu_core(
                         instance,
                         surface,
                         device,
@@ -186,7 +186,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
                     // core.register_renderer("video", Box::new(video_renderer));
 
                     _core_handle = Some(set_core(_core.clone()));
-                    _jsvm_handle = Some(hai_ops::spawn::spawn_runtime_with_core(&_core, None));
+                    _jsvm_handle = Some(doufu_ops::spawn::spawn_runtime_with_core(&_core, None));
 
                     _window.set_visible(true);
 
