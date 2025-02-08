@@ -11,7 +11,7 @@ export enum KeyboardEventKind {
  *
  * [MDN Reference](https://developer.mozilla.org/docs/Web/API/KeyboardEvent)
  */
-interface KeyboardEvent extends BubbleEvent {
+export interface KeyboardEvent extends BubbleEvent {
   readonly kind: KeyboardEventKind;
   /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/KeyboardEvent/altKey) */
   readonly altKey: boolean;

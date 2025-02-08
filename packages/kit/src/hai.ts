@@ -17,7 +17,7 @@ declare global {
     hai: any;
   }
 
-  var __hai_receive_event: (event: HaiEvent) => void;
+  var __doufu_receive_event: (event: HaiEvent) => void;
 }
 
 export function createInstance(nodeType: string, label: string | undefined, props: Record<string, any>) {
