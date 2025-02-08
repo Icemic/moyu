@@ -1,5 +1,5 @@
-use hai_pal::{config::entry_dir, sync::RwLock};
-use hai_pal::{fs, task};
+use doufu_pal::{config::entry_dir, sync::RwLock};
+use doufu_pal::{fs, task};
 use image::GenericImageView;
 use log::debug;
 use std::{collections::HashMap, sync::Arc};

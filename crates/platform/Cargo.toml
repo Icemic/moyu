@@ -3,8 +3,8 @@ authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "Platform abstraction layer for Hai."
 edition = "2021"
 license = "MPL-2.0"
-name = "hai_pal"
-repository = "https://github.com/Icemic/hai"
+name = "doufu_pal"
+repository = "https://github.com/DeepSpaceMill/doufu"
 version = "0.7.0"
 
 [dependencies]

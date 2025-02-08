@@ -2,8 +2,8 @@
 description = "Javascript runtime for Hai based on QuickJS."
 edition = "2021"
 license = "MPL-2.0"
-name = "hai_runtime"
-repository = "https://github.com/Icemic/hai"
+name = "doufu_runtime"
+repository = "https://github.com/DeepSpaceMill/doufu"
 version = "0.7.0"
 
 [dependencies]
@@ -13,7 +13,7 @@ quickjs-rusty = "0.7.0"
 spin_sleep = "1.1"
 tokio = {version = "1", features = ["time", "sync"]}
 
-hai_pal = {version = "0.7", path = "../platform"}
+doufu_pal = {version = "0.7", path = "../platform"}
 
 [dev-dependencies]
 env_logger = {version = "0.11"}

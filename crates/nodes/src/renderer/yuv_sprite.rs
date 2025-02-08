@@ -3,13 +3,13 @@ use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
-use hai_core::base::*;
-use hai_core::nodes::Texture;
-use hai_core::resource::TextureId;
-use hai_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
-use hai_core::utils::calculate::calculate_rect_vertices;
-use hai_core::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
-use hai_core::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
+use doufu_core::base::*;
+use doufu_core::nodes::Texture;
+use doufu_core::resource::TextureId;
+use doufu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use doufu_core::utils::calculate::calculate_rect_vertices;
+use doufu_core::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+use doufu_core::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
 
 use crate::nodes::YUVSprite;
 

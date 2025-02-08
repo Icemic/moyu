@@ -1,9 +1,9 @@
 mod node;
 pub mod spawn;
 
-use hai_core::utils::convert::JSValue;
+use doufu_core::utils::convert::JSValue;
 #[cfg(native)]
-use hai_runtime::{
+use doufu_runtime::{
     quickjs_rusty::{JSContext, RawJSValue},
     QuickVM,
 };
@@ -28,22 +28,22 @@ pub fn init(vm: &QuickVM) {
         .unwrap();
 
     vm.context()
-        .set_global("__hai_pushCommand", receive_command)
+        .set_global("__doufu_pushCommand", receive_command)
         .unwrap();
     vm.context()
-        .set_global("__hai_executeNodeCommand", execute_node_command)
+        .set_global("__doufu_executeNodeCommand", execute_node_command)
         .unwrap();
     vm.context()
-        .set_global("__hai_executePluginCommand", execute_plugin_command)
+        .set_global("__doufu_executePluginCommand", execute_plugin_command)
         .unwrap();
 
     vm.context()
         .eval(
             "\
         globalThis.hai = {\
-            pushCommand: __hai_pushCommand,\
-            executeNodeCommand: __hai_executeNodeCommand,\
-            executePluginCommand: __hai_executePluginCommand,\
+            pushCommand: __doufu_pushCommand,\
+            executeNodeCommand: __doufu_executeNodeCommand,\
+            executePluginCommand: __doufu_executePluginCommand,\
         }",
             false,
         )
@@ -55,10 +55,10 @@ fn receive_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use hai_runtime::quickjs_rusty::OwnedJsArray;
+    use doufu_runtime::quickjs_rusty::OwnedJsArray;
 
-    use hai_core::utils::convert::from_js;
-    use hai_core::utils::convert::JSValue;
+    use doufu_core::utils::convert::from_js;
+    use doufu_core::utils::convert::JSValue;
 
     let command_name = JSValue::own(context, &args[0]);
     let command_name = from_js::<String>(&command_name)?;
@@ -92,8 +92,8 @@ fn execute_node_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use hai_core::utils::convert::from_js;
-    use hai_core::utils::convert::JSValue;
+    use doufu_core::utils::convert::from_js;
+    use doufu_core::utils::convert::JSValue;
 
     let node_id = JSValue::own(context, &args[0]);
     let node_id: u32 = from_js(&node_id)?;
@@ -118,7 +118,7 @@ fn execute_node_command_inner(
     payload: &mut JSValue,
 ) -> anyhow::Result<Option<JSValue>> {
     use anyhow::anyhow;
-    use hai_core::core::get_core;
+    use doufu_core::core::get_core;
 
     if payload.is_object() {
         let core = get_core();
@@ -150,8 +150,8 @@ fn execute_plugin_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use hai_core::utils::convert::from_js;
-    use hai_core::utils::convert::JSValue;
+    use doufu_core::utils::convert::from_js;
+    use doufu_core::utils::convert::JSValue;
 
     let plugin_name = JSValue::own(context, &args[0]);
     let plugin_name = from_js::<String>(&plugin_name)?;
@@ -178,7 +178,7 @@ fn execute_plugin_command_inner(
     payload: &mut JSValue,
 ) -> anyhow::Result<Option<JSValue>> {
     use anyhow::anyhow;
-    use hai_core::core::get_core;
+    use doufu_core::core::get_core;
 
     if payload.is_object() {
         let core = get_core();

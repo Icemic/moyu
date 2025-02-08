@@ -3,8 +3,8 @@ authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "Extra nodes and renderers for Hai."
 edition = "2021"
 license = "MPL-2.0"
-name = "hai_nodes"
-repository = "https://github.com/Icemic/hai"
+name = "doufu_nodes"
+repository = "https://github.com/DeepSpaceMill/doufu"
 version = "0.7.0"
 
 [features]
@@ -22,9 +22,9 @@ log = "0.4"
 serde = {version = "1.0", features = ["derive"]}
 wgpu = "22.0"
 
-hai_core = {workspace = true}
-hai_macros = {workspace = true}
-hai_pal = {workspace = true}
+doufu_core = {workspace = true}
+doufu_macros = {workspace = true}
+doufu_pal = {workspace = true}
 
 # optional for features
 ffmpeg-rs = {version = "5.2.1", optional = true}
@@ -32,7 +32,7 @@ glam = {version = "0.28", features = ["bytemuck"], optional = true}
 huozi = {version = "0.8", optional = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-hai_core = {workspace = true, features = ["js_runtime"]}
+doufu_core = {workspace = true, features = ["js_runtime"]}
 
 [build-dependencies]
 cfg_aliases = {workspace = true}

@@ -1,4 +1,4 @@
-use hai_pal::config::WindowState;
+use doufu_pal::config::WindowState;
 use log::{debug, error, info, warn};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
