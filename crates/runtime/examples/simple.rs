@@ -1,14 +1,14 @@
-use hai_runtime::{get_vm, setup_vm};
+use doufu_runtime::{get_vm, setup_vm};
 use log::error;
 
 #[tokio::main]
 async fn main() {
-    hai_pal::config::setup().await;
+    doufu_pal::config::setup().await;
     env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
         .init();
 
-    let async_runtime_handle = hai_pal::platform::setup();
+    let async_runtime_handle = doufu_pal::platform::setup();
 
     let vm_handle = setup_vm();
 

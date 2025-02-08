@@ -944,6 +944,162 @@ dependencies = [
 ]
 
 [[package]]
+name = "doufu"
+version = "0.7.0"
+dependencies = [
+ "cfg_aliases 0.2.1",
+ "doufu_audio",
+ "doufu_core",
+ "doufu_macros",
+ "doufu_nodes",
+ "doufu_ops",
+ "doufu_pal",
+ "doufu_scenario",
+ "log",
+ "spin_sleep_util",
+ "tokio",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "winit",
+]
+
+[[package]]
+name = "doufu_audio"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "doufu_core",
+ "doufu_pal",
+ "kira",
+ "log",
+ "serde",
+]
+
+[[package]]
+name = "doufu_core"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "bytemuck",
+ "cfg_aliases 0.2.1",
+ "csscolorparser",
+ "cursor-icon",
+ "doufu_macros",
+ "doufu_pal",
+ "doufu_runtime",
+ "glam",
+ "image",
+ "log",
+ "rayon",
+ "serde",
+ "serde-wasm-bindgen",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "doufu_macros"
+version = "0.7.0"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "doufu_nodes"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "bytemuck",
+ "cfg_aliases 0.2.1",
+ "doufu_core",
+ "doufu_macros",
+ "doufu_pal",
+ "ffmpeg-rs",
+ "glam",
+ "huozi",
+ "log",
+ "serde",
+ "wgpu",
+]
+
+[[package]]
+name = "doufu_ops"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "cfg_aliases 0.2.1",
+ "doufu_core",
+ "doufu_macros",
+ "doufu_nodes",
+ "doufu_pal",
+ "doufu_runtime",
+ "log",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "doufu_pal"
+version = "0.7.0"
+dependencies = [
+ "android-activity",
+ "android_logger",
+ "anyhow",
+ "cfg_aliases 0.2.1",
+ "console_error_panic_hook",
+ "console_log",
+ "csscolorparser",
+ "env_logger",
+ "log",
+ "node-resolve",
+ "once_cell",
+ "parking_lot",
+ "pollster",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time 1.1.0",
+]
+
+[[package]]
+name = "doufu_runtime"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "doufu_pal",
+ "env_logger",
+ "log",
+ "quickjs-rusty",
+ "spin_sleep",
+ "tokio",
+]
+
+[[package]]
+name = "doufu_scenario"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "doufu_core",
+ "doufu_pal",
+ "log",
+ "serde",
+]
+
+[[package]]
 name = "downcast-rs"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1292,162 +1448,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdf242682df893b86f33a73828fb09ca4b2d3bb6cc95249707fc684d27484b91"
 dependencies = [
  "bitflags 2.6.0",
-]
-
-[[package]]
-name = "hai"
-version = "0.7.0"
-dependencies = [
- "cfg_aliases 0.2.1",
- "hai_audio",
- "hai_core",
- "hai_macros",
- "hai_nodes",
- "hai_ops",
- "hai_pal",
- "hai_scenario",
- "log",
- "spin_sleep_util",
- "tokio",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "winit",
-]
-
-[[package]]
-name = "hai_audio"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "arc-swap",
- "hai_core",
- "hai_pal",
- "kira",
- "log",
- "serde",
-]
-
-[[package]]
-name = "hai_core"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "arc-swap",
- "bytemuck",
- "cfg_aliases 0.2.1",
- "csscolorparser",
- "cursor-icon",
- "glam",
- "hai_macros",
- "hai_pal",
- "hai_runtime",
- "image",
- "log",
- "rayon",
- "serde",
- "serde-wasm-bindgen",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu",
- "winit",
-]
-
-[[package]]
-name = "hai_macros"
-version = "0.7.0"
-dependencies = [
- "darling",
- "proc-macro2",
- "quote",
- "syn 2.0.87",
-]
-
-[[package]]
-name = "hai_nodes"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "arc-swap",
- "bytemuck",
- "cfg_aliases 0.2.1",
- "ffmpeg-rs",
- "glam",
- "hai_core",
- "hai_macros",
- "hai_pal",
- "huozi",
- "log",
- "serde",
- "wgpu",
-]
-
-[[package]]
-name = "hai_ops"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "cfg_aliases 0.2.1",
- "hai_core",
- "hai_macros",
- "hai_nodes",
- "hai_pal",
- "hai_runtime",
- "log",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "hai_pal"
-version = "0.7.0"
-dependencies = [
- "android-activity",
- "android_logger",
- "anyhow",
- "cfg_aliases 0.2.1",
- "console_error_panic_hook",
- "console_log",
- "csscolorparser",
- "env_logger",
- "log",
- "node-resolve",
- "once_cell",
- "parking_lot",
- "pollster",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "url",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time 1.1.0",
-]
-
-[[package]]
-name = "hai_runtime"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "env_logger",
- "hai_pal",
- "log",
- "quickjs-rusty",
- "spin_sleep",
- "tokio",
-]
-
-[[package]]
-name = "hai_scenario"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "hai_core",
- "hai_pal",
- "log",
- "serde",
 ]
 
 [[package]]

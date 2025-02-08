@@ -35,7 +35,7 @@ pub fn setup() {
 }
 
 /// create hai core instance
-pub fn create_hai_core(
+pub fn create_doufu_core(
     instance: Arc<Instance>,
     surface: Arc<Surface<'static>>,
     device: Arc<Device>,

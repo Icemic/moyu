@@ -3,8 +3,8 @@ mod state;
 use std::sync::LazyLock;
 
 use anyhow::Result;
-use hai_core::traits::{Command, Plugin};
-use hai_core::utils::convert::{from_js, to_js, JSValue};
+use doufu_core::traits::{Command, Plugin};
+use doufu_core::utils::convert::{from_js, to_js, JSValue};
 use serde::{Deserialize, Serialize};
 
 use crate::state::ScenarioState;

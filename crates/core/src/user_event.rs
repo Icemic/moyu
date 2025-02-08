@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use hai_pal::config::WindowState;
+use doufu_pal::config::WindowState;
 use winit::window::CursorIcon;
 
 #[allow(dead_code)]

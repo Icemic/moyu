@@ -1,4 +1,4 @@
-use hai_pal::sync::RwLock;
+use doufu_pal::sync::RwLock;
 use std::sync::Arc;
 
 use crate::traits::Node;
