@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use hai_pal::config::get_engine_config;
-use hai_pal::time::Instant;
+use doufu_pal::config::get_engine_config;
+use doufu_pal::time::Instant;
 use winit::window::Window;
 
 use crate::utils::walk::walk_nodes_top_bottom;
@@ -13,7 +13,7 @@ impl Core {
     pub fn render(&self, window: &Window) -> Result<(), wgpu::SurfaceError> {
         // fps
         #[cfg(native)]
-        if hai_pal::config::get_engine_config().show_fps {
+        if doufu_pal::config::get_engine_config().show_fps {
             let (instant, frames) = &mut *self.frames_in_duration.lock();
             let duration = instant.elapsed().as_secs_f32();
             if duration >= 1. {

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use hai_pal::visible_hand::{InvisibleHand, VisibleHand};
+use doufu_pal::visible_hand::{InvisibleHand, VisibleHand};
 
 use super::Core;
 

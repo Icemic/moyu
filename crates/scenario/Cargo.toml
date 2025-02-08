@@ -3,8 +3,8 @@ authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "Scenario plugin for Hai."
 edition = "2021"
 license = "MPL-2.0"
-name = "hai_scenario"
-repository = "https://github.com/Icemic/hai"
+name = "doufu_scenario"
+repository = "https://github.com/DeepSpaceMill/doufu"
 version = "0.7.0"
 
 [dependencies]
@@ -12,11 +12,11 @@ anyhow = "1.0"
 log = "0.4"
 serde = {version = "1.0", features = ["derive"]}
 
-[dependencies.hai_pal]
+[dependencies.doufu_pal]
 path = "../platform"
 version = "0.7"
 
-[dependencies.hai_core]
+[dependencies.doufu_core]
 default-features = false
 features = ["js_runtime"]
 path = "../core"

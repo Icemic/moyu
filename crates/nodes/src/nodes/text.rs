@@ -1,13 +1,13 @@
-use hai_macros::Node;
+use doufu_macros::Node;
 use huozi::glyph_vertices::GlyphVertices;
 use huozi::layout::{Color, LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle};
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
-use hai_core::nodes::NodeBase;
-use hai_core::traits::{Command, NodeEventSource};
-use hai_core::traits::{Focusable, Node, NodeBaseTrait};
-use hai_core::utils::convert::{from_js, to_js, JSValue};
+use doufu_core::nodes::NodeBase;
+use doufu_core::traits::{Command, NodeEventSource};
+use doufu_core::traits::{Focusable, Node, NodeBaseTrait};
+use doufu_core::utils::convert::{from_js, to_js, JSValue};
 
 use crate::events::TextEvent;
 

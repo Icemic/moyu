@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use glam::Vec3;
-use hai_pal::sync::RwLock;
+use doufu_pal::sync::RwLock;
 
 use crate::traits::{FocusablePayload, Node};
 

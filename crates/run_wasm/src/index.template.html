@@ -10,9 +10,9 @@
     <div id="root"></div>
     <script type="module">
       const urlParams = new URLSearchParams(window.location.search);
-      window.__hai_entry = urlParams.get('entry');
+      window.__doufu_entry = urlParams.get('entry');
 
-      import * as hai from './hai_lib.js';
+      import * as hai from './doufu_lib.js';
       window.addEventListener('load', async () => {
         await hai.default();
         window.hai = {
@@ -30,11 +30,11 @@
           },
         };
 
-        window.hai_start = () => {
+        window.doufu_start = () => {
           hai.doufu_init('root');
         };
       });
     </script>
-    <button onclick="window.hai_start()">Start</button>
+    <button onclick="window.doufu_start()">Start</button>
   </body>
 </html>

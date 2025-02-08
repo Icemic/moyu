@@ -5,9 +5,9 @@ mod pointer_events;
 mod render;
 
 use arc_swap::ArcSwap;
-use hai_pal::config::{get_engine_config, WindowState};
-use hai_pal::sync::{Mutex, RwLock};
-use hai_pal::time::Instant;
+use doufu_pal::config::{get_engine_config, WindowState};
+use doufu_pal::sync::{Mutex, RwLock};
+use doufu_pal::time::Instant;
 use log::{debug, error};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};

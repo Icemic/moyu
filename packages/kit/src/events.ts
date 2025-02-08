@@ -29,7 +29,7 @@ const BUBBLE_EVENT_NAMES = ['mouseevent', 'touchevent', 'keyboardevent'];
 // not implemented yet
 const GLOBAL_EVENT_NAMES = ['fullscreenevent', 'focusevent', 'resizeevent'];
 
-globalThis.__hai_receive_event = (raw_event: HaiEvent) => {
+globalThis.__doufu_receive_event = (raw_event: HaiEvent) => {
   const { name, body } = raw_event;
 
   if (BUBBLE_EVENT_NAMES.includes(name)) {

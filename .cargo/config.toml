@@ -31,7 +31,7 @@ debug = 1
 FFMPEG_DIR = {value = "3rdparty/ffmpeg", relative = true}
 
 [alias]
-run-wasm = "run --release --package run-wasm -- hai --lib --release"
-run-desktop = "run --package hai --features desktop"
+run-wasm = "run --release --package run-wasm -- doufu --lib --release"
+run-desktop = "run --package doufu --features desktop"
 # should have "sudo CARGO_PROFILE_RELEASE_DEBUG=true" before `cargo`
-run-flamegraph = "flamegraph --package hai --features desktop"
+run-flamegraph = "flamegraph --package doufu --features desktop"

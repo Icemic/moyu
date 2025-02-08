@@ -1,9 +1,9 @@
 use anyhow::Result;
 use log::info;
 
-use hai_pal::config::entry_dir;
-use hai_pal::url::{resolve_package_from, Url};
-use hai_pal::{fs, task};
+use doufu_pal::config::entry_dir;
+use doufu_pal::url::{resolve_package_from, Url};
+use doufu_pal::{fs, task};
 
 pub fn module_loader(module_name: &str, _: *mut std::ffi::c_void) -> Result<String> {
     let module_name = Url::parse(module_name)?;
