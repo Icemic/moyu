@@ -1,4 +1,6 @@
 use anyhow::Result;
+use doufu_macros::node;
+use doufu_pal::sync::{Mutex, RwLock};
 use ffmpeg_rs::decoder::Check;
 use ffmpeg_rs::ffi::{
     av_malloc, avformat_alloc_context, avformat_close_input, avformat_find_stream_info,
@@ -10,8 +12,6 @@ use ffmpeg_rs::media::Type;
 use ffmpeg_rs::software::scaling::{context::Context, flag::Flags};
 use ffmpeg_rs::util::frame::video::Video as FFmpegVideo;
 use ffmpeg_rs::Packet;
-use doufu_macros::node;
-use doufu_pal::sync::{Mutex, RwLock};
 use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
 use std::any::Any;

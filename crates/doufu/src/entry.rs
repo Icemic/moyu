@@ -110,12 +110,13 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
                     Event::Resumed => {
                         // workaround for Chrome since it doesn't apply the correct size
                         if let Some(ref window) = window {
-                            let _ = window.request_inner_size(doufu_core::winit::dpi::Size::Logical(
-                                doufu_pal::config::get_engine_config()
-                                    .surface_size
-                                    .as_tuple()
-                                    .into(),
-                            ));
+                            let _ =
+                                window.request_inner_size(doufu_core::winit::dpi::Size::Logical(
+                                    doufu_pal::config::get_engine_config()
+                                        .surface_size
+                                        .as_tuple()
+                                        .into(),
+                                ));
                         }
                     }
                     Event::Suspended => {

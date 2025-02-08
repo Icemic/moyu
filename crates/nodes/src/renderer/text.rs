@@ -1,9 +1,9 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use glam::Vec3;
 use doufu_pal::config::{entry_dir, get_engine_config};
 use doufu_pal::sync::Mutex;
+use glam::Vec3;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
 use huozi::Huozi;

@@ -7,7 +7,10 @@ async fn main() {
     doufu_pal::config::setup().await;
 
     #[cfg(debug_assertions)]
-    log::debug!("Environtment: {:#?}", doufu_pal::config::get_engine_config());
+    log::debug!(
+        "Environtment: {:#?}",
+        doufu_pal::config::get_engine_config()
+    );
 
     let event_loop = doufu_core::surface::create_eventloop();
 
