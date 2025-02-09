@@ -11,7 +11,7 @@ use url::Url;
 pub use self::backend::RenderingBackend;
 pub use self::present_mode::RenderingPresentMode;
 
-static doufu_ENV: OnceCell<HaiConfig> = OnceCell::new();
+static DOUFU_ENV: OnceCell<HaiConfig> = OnceCell::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -105,13 +105,13 @@ pub async fn setup() {
 
                 config.entry = Some(entry);
 
-                doufu_ENV.set(config).unwrap();
+                DOUFU_ENV.set(config).unwrap();
                 break;
             }
             Err(err) => {
                 log::error!("error when loading config: {:?}", err);
                 log::error!("config file cannot be loaded, using default value.");
-                doufu_ENV.set(HaiConfig::default()).unwrap();
+                DOUFU_ENV.set(HaiConfig::default()).unwrap();
                 break;
             }
         }
@@ -119,7 +119,7 @@ pub async fn setup() {
 }
 
 pub fn get_engine_config() -> &'static HaiConfig {
-    doufu_ENV.get().unwrap()
+    DOUFU_ENV.get().unwrap()
 }
 
 fn parse_entry_dir(entry_dir: &String) -> Url {
