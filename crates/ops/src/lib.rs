@@ -108,8 +108,9 @@ fn execute_node_command(
 pub fn execute_node_command(
     node_id: u32,
     mut payload: JSValue,
-) -> Result<Option<JSValue>, std::string::String> {
-    execute_node_command_inner(node_id, &mut payload).map_err(|e| e.to_string())
+) -> Result<JSValue, std::string::String> {
+    let ret = execute_node_command_inner(node_id, &mut payload).map_err(|e| e.to_string())?;
+    Ok(ret.unwrap_or(JSValue::undefined()))
 }
 
 #[inline]
@@ -168,8 +169,9 @@ fn execute_plugin_command(
 pub fn execute_plugin_command(
     plugin_name: &str,
     mut payload: JSValue,
-) -> Result<Option<JSValue>, std::string::String> {
-    execute_plugin_command_inner(plugin_name, &mut payload).map_err(|e| e.to_string())
+) -> Result<JSValue, std::string::String> {
+    let ret = execute_plugin_command_inner(plugin_name, &mut payload).map_err(|e| e.to_string())?;
+    Ok(ret.unwrap_or(JSValue::undefined()))
 }
 
 #[inline]

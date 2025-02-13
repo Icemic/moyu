@@ -29,11 +29,3 @@ doufu_scenario = {path = "crates/scenario"}
 [patch.crates-io]
 # huozi = {path = "../huozi-rs"}
 # quickjs-rusty = {path = "../quickjs-rusty"}
-# wasm-bindgen = {path = "../wasm-bindgen"}
-# wasm-bindgen-shared = {path = "../wasm-bindgen/crates/shared"}
-# wasm-bindgen-cli-support = {path = "../wasm-bindgen/crates/cli-support"}
-# wasm-bindgen-macro = {path = "../wasm-bindgen/crates/macro"}
-# wasm-bindgen-backend = {path = "../wasm-bindgen/crates/backend"}
-
-wasm-bindgen = {git = "https://github.com/Icemic/wasm-bindgen", branch = "option_jsvalue"}
-wasm-bindgen-cli-support = {git = "https://github.com/Icemic/wasm-bindgen", branch = "option_jsvalue"}
