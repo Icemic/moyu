@@ -44,10 +44,15 @@ impl ScenarioPlugin {
     }
 
     pub async fn init(&mut self) -> Result<()> {
-        let global_data = read_from_appdata("global_data.json").await?;
-        let global_data = serde_json::from_slice(&global_data)?;
+        let Some(global_data) = read_from_appdata("global_data.json").await? else {
+            log::info!("global data not found, use default");
+            return Ok(());
+        };
 
+        let global_data = serde_json::from_slice(&global_data)?;
         self.global_data = global_data;
+
+        log::info!("global data loaded");
 
         Ok(())
     }
@@ -98,9 +103,12 @@ impl ScenarioPlugin {
         let path = format!("saves/{}.json", name);
         let state = self.state.clone();
         let future = async move {
-            let data = read_from_appdata(&path).await?;
+            let Some(data) = read_from_appdata(&path).await? else {
+                log::info!("No save data found for {}", path);
+                return Ok(());
+            };
             *state.lock() = serde_json::from_slice(&data)?;
-            log::info!("load game data from file: {}", path);
+            log::info!("Loaded game data from file: {}", path);
             Ok::<(), anyhow::Error>(())
         };
 
