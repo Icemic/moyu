@@ -12,7 +12,7 @@
       const urlParams = new URLSearchParams(window.location.search);
       window.__doufu_entry = urlParams.get('entry');
 
-      import * as hai from './doufu.js';
+      import * as hai from './libdoufu.js';
       window.addEventListener('load', async () => {
         await hai.default();
         window.hai = {

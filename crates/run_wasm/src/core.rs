@@ -155,7 +155,7 @@ pub fn run_wasm() {
     } else {
         target_profile
     }
-    .join(format!("{}.wasm", &args.name));
+    .join(format!("lib{}.wasm", &args.name));
 
     let example_dest = project_root.join("target/wasm-examples").join(&args.name);
     std::fs::create_dir_all(&example_dest).unwrap();
