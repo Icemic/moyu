@@ -1,10 +1,13 @@
 mod state;
 
-use std::sync::LazyLock;
+use std::collections::HashMap;
+use std::sync::{Arc, LazyLock};
 
 use anyhow::Result;
 use doufu_core::traits::{Command, Plugin};
-use doufu_core::utils::convert::{from_js, to_js, JSValue};
+use doufu_core::utils::convert::{create_promise, from_js, to_js, JSValue};
+use doufu_pal::fs::{read_from_appdata, readdir_from_appdata, write_to_appdata};
+use doufu_pal::sync::Mutex;
 use serde::{Deserialize, Serialize};
 
 use crate::state::ScenarioState;
@@ -26,22 +29,76 @@ static FAKE_SCENARIO: LazyLock<Vec<&'static str>> = std::sync::LazyLock::new(|| 
 });
 
 pub struct ScenarioPlugin {
-    state: ScenarioState,
-    global_data: Option<String>,
+    state: Arc<Mutex<ScenarioState>>,
+    global_data: HashMap<String, serde_json::Value>,
 }
 
 impl ScenarioPlugin {
     pub fn new() -> Self {
         Self {
-            state: ScenarioState::default(),
-            global_data: None,
+            state: Arc::new(Mutex::new(ScenarioState::default())),
+            global_data: HashMap::new(),
         }
     }
 
+    pub async fn init(&mut self) -> Result<()> {
+        let global_data = read_from_appdata("global_data.json").await?;
+        let global_data = serde_json::from_slice(&global_data)?;
+
+        self.global_data = global_data;
+
+        Ok(())
+    }
+
     fn next_line(&mut self) -> Option<&'static str> {
-        let line = FAKE_SCENARIO.get(self.state.current_line);
-        self.state.current_line += 1;
+        let mut state = self.state.lock();
+        let line = FAKE_SCENARIO.get(state.current_line);
+        state.current_line += 1;
         line.copied()
+    }
+
+    fn save_global_data_to_file(&self) -> Result<JSValue> {
+        let data = serde_json::to_vec(&self.global_data)?;
+        let promise = create_promise(async move {
+            let ret = write_to_appdata("global_data.json", data).await;
+            log::info!("save global data to file: {:?}", ret);
+            ret
+        })?;
+        Ok(promise)
+    }
+
+    fn save_game_data_to_file(&self, name: &str) -> Result<JSValue> {
+        let data = serde_json::to_vec(&*self.state.lock())?;
+        let path = format!("saves/{}.json", name);
+        let promise = create_promise(async move {
+            let ret = write_to_appdata(&path, data).await;
+            log::info!("save game data to file: {:?}", path);
+            ret
+        })?;
+        Ok(promise)
+    }
+
+    fn get_save_data_list(&self) -> Result<JSValue> {
+        create_promise(readdir_from_appdata("saves"))
+    }
+
+    fn load_save_data_from_file(&mut self, name: &str) -> Result<JSValue> {
+        let path = format!("saves/{}.json", name);
+        let state = self.state.clone();
+        let future = async move {
+            let data = read_from_appdata(&path).await?;
+            *state.lock() = serde_json::from_slice(&data)?;
+            log::info!("load game data from file: {}", path);
+            Ok::<(), anyhow::Error>(())
+        };
+
+        let promise = create_promise(future).unwrap();
+
+        Ok(promise)
+    }
+
+    fn start_from_uri(&self, uri: &str) {
+        log::info!("Starting scenario from URI: {}", uri);
     }
 }
 
@@ -62,12 +119,21 @@ impl Plugin for ScenarioPlugin {
     tag = "subCommand"
 )]
 enum ScenarioCommmad {
-    StartFromUri { uri: String },
-    // LoadState { state: ScenarioState },
-    // SaveState { state: ScenarioState },
+    StartFromUri {
+        uri: String,
+    },
     NextLine,
-    SaveGameData { data: String },
-    SaveGlobalData { data: String },
+    SaveGameData {
+        name: String,
+        data: HashMap<String, serde_json::Value>,
+    },
+    SaveGlobalData {
+        data: HashMap<String, serde_json::Value>,
+    },
+    GetSaveDataList,
+    LoadSaveData {
+        name: String,
+    },
 }
 
 impl Command for ScenarioPlugin {
@@ -79,20 +145,24 @@ impl Command for ScenarioPlugin {
             ScenarioCommmad::StartFromUri { uri } => {
                 log::info!("start from uri: {}", uri);
             }
-            // ScenarioCommmad::LoadState { state } => {
-            //     log::info!("load state: {:?}", state);
-            // }
-            // ScenarioCommmad::SaveState { state } => {
-            //     log::info!("save state: {:?}", state);
-            // }
-            ScenarioCommmad::SaveGlobalData { data } => {
-                self.global_data = Some(data);
-            }
-            ScenarioCommmad::SaveGameData { data } => {
-                self.state.extra_data = Some(data);
-            }
             ScenarioCommmad::NextLine => {
                 return Ok(self.next_line().map(|v| to_js(&v).ok()).flatten());
+            }
+            ScenarioCommmad::SaveGlobalData { data } => {
+                self.global_data = data;
+                self.save_global_data_to_file()?;
+            }
+            ScenarioCommmad::SaveGameData { name, data } => {
+                self.state.lock().extra_data = data;
+                self.save_game_data_to_file(&name)?;
+            }
+            ScenarioCommmad::GetSaveDataList => {
+                let value = self.get_save_data_list()?;
+                return Ok(Some(value));
+            }
+            ScenarioCommmad::LoadSaveData { name } => {
+                let result = self.load_save_data_from_file(&name)?;
+                return Ok(Some(result));
             }
         }
 
