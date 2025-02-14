@@ -4,9 +4,7 @@ use anyhow::Result;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::FileSystemRemoveOptions;
 
-use crate::fs::get_path_in_appdata;
-
-use super::FileEntry;
+use super::{get_path_in_appdata, FileEntry};
 
 async fn get_dir_from_appdata(
     clean_path: Option<&std::path::Path>,
@@ -56,38 +54,59 @@ async fn get_dir_from_appdata(
 
 async fn get_file_from_appdata(
     clean_path: &PathBuf,
-    create: bool,
-) -> Result<web_sys::FileSystemFileHandle> {
+    create_parent: bool,
+    create_file: bool,
+) -> Result<Option<web_sys::FileSystemFileHandle>> {
     use wasm_bindgen_futures::wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
     use web_sys::{FileSystemFileHandle, FileSystemGetFileOptions};
 
-    let dir = get_dir_from_appdata(clean_path.parent(), create).await?;
+    let dir = get_dir_from_appdata(clean_path.parent(), create_parent).await?;
 
     let options = FileSystemGetFileOptions::new();
-    options.set_create(create);
+    options.set_create(create_file);
 
     let filename = clean_path.file_name().unwrap().to_string_lossy();
 
-    let file = JsFuture::from(dir.get_file_handle_with_options(&filename, &options))
-        .await
-        .map_err(|err| anyhow::anyhow!("Failed to get file handle: {:?}", err))?
-        .dyn_into::<FileSystemFileHandle>()
-        .map_err(|err| anyhow::anyhow!("Failed to cast to FileSystemFileHandle: {:?}", err))?;
+    let file = match JsFuture::from(dir.get_file_handle_with_options(&filename, &options)).await {
+        Ok(file) => file
+            .dyn_into::<FileSystemFileHandle>()
+            .map_err(|err| anyhow::anyhow!("Failed to cast to FileSystemFileHandle: {:?}", err))?,
+        Err(err) => {
+            let error = err
+                .dyn_into::<web_sys::DomException>()
+                .map(|e| e.name())
+                .unwrap_or_else(|_| "unknown".to_string());
 
-    Ok(file)
+            if error == "NotFoundError" {
+                return Ok(None);
+            } else {
+                return Err(anyhow::anyhow!(
+                    "Failed to get file from appdata: {}",
+                    error
+                ));
+            }
+        }
+    };
+
+    Ok(Some(file))
 }
 
 /// Read a file from the appdata directory.
 /// However, on Web there's no real filesystem, so it is simulated by
 /// [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system).
 /// For example, path `foo/bar` will be stored in the path `doufu/<app_name>/foo/bar`.
-pub async fn read_from_appdata(relative_path: &str) -> Result<Vec<u8>> {
+pub async fn read_from_appdata(relative_path: &str) -> Result<Option<Vec<u8>>> {
     use wasm_bindgen_futures::JsFuture;
     use web_sys::wasm_bindgen::JsCast;
     use web_sys::File;
 
-    let file = get_file_from_appdata(&get_path_in_appdata(relative_path)?, false).await?;
+    // create parent directory if it doesn't exist
+    let Some(file) =
+        get_file_from_appdata(&get_path_in_appdata(relative_path)?, true, false).await?
+    else {
+        return Ok(None);
+    };
 
     let file = JsFuture::from(file.get_file())
         .await
@@ -101,7 +120,7 @@ pub async fn read_from_appdata(relative_path: &str) -> Result<Vec<u8>> {
 
     let data = web_sys::js_sys::Uint8Array::new(&data);
 
-    Ok(data.to_vec())
+    Ok(Some(data.to_vec()))
 }
 
 /// Write a file to the appdata directory.
@@ -110,7 +129,13 @@ pub async fn write_to_appdata(relative_path: &str, data: Vec<u8>) -> Result<()> 
     use wasm_bindgen_futures::JsFuture;
     use web_sys::wasm_bindgen::JsCast;
 
-    let file = get_file_from_appdata(&get_path_in_appdata(relative_path)?, true).await?;
+    let Some(file) =
+        get_file_from_appdata(&get_path_in_appdata(relative_path)?, true, true).await?
+    else {
+        return Err(anyhow::anyhow!(
+            "Failed to get file handle, this should not happen"
+        ));
+    };
 
     let stream = JsFuture::from(file.create_writable())
         .await
@@ -144,7 +169,8 @@ pub async fn readdir_from_appdata(relative_path: &str) -> Result<Vec<FileEntry>>
 
     let path = get_path_in_appdata(relative_path)?;
 
-    let dir = get_dir_from_appdata(Some(&path), false).await?;
+    // create the directory if it doesn't exist
+    let dir = get_dir_from_appdata(Some(&path), true).await?;
 
     let mut arr = Vec::new();
     let entries = dir.values();
