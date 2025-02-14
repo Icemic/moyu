@@ -43,6 +43,7 @@ web-sys = {version = "0.3.77", features = [
   "FileSystemWritableFileStream",
   "FileSystemHandle",
   "FileSystemHandleKind",
+  "FileSystemRemoveOptions",
 ]}
 web-time = "1.1"
 
