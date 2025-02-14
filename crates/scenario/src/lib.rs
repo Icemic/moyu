@@ -6,7 +6,9 @@ use std::sync::{Arc, LazyLock};
 use anyhow::Result;
 use doufu_core::traits::{Command, Plugin};
 use doufu_core::utils::convert::{create_promise, from_js, to_js, JSValue};
-use doufu_pal::fs::{read_from_appdata, readdir_from_appdata, write_to_appdata};
+use doufu_pal::fs::{
+    read_from_appdata, readdir_from_appdata, remove_from_appdata, write_to_appdata,
+};
 use doufu_pal::sync::Mutex;
 use serde::{Deserialize, Serialize};
 
@@ -82,6 +84,16 @@ impl ScenarioPlugin {
         create_promise(readdir_from_appdata("saves"))
     }
 
+    fn remove_save_data(&self, name: &str) -> Result<JSValue> {
+        let path = format!("saves/{}.json", name);
+        let promise = create_promise(async move {
+            let ret = remove_from_appdata(&path).await;
+            log::info!("remove save data: {:?}", ret);
+            ret
+        })?;
+        Ok(promise)
+    }
+
     fn load_save_data_from_file(&mut self, name: &str) -> Result<JSValue> {
         let path = format!("saves/{}.json", name);
         let state = self.state.clone();
@@ -134,6 +146,9 @@ enum ScenarioCommmad {
     LoadSaveData {
         name: String,
     },
+    RemoveSaveData {
+        name: String,
+    },
 }
 
 impl Command for ScenarioPlugin {
@@ -162,6 +177,10 @@ impl Command for ScenarioPlugin {
             }
             ScenarioCommmad::LoadSaveData { name } => {
                 let result = self.load_save_data_from_file(&name)?;
+                return Ok(Some(result));
+            }
+            ScenarioCommmad::RemoveSaveData { name } => {
+                let result = self.remove_save_data(&name)?;
                 return Ok(Some(result));
             }
         }
