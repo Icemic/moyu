@@ -1114,6 +1114,7 @@ dependencies = [
  "doufu_pal",
  "log",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
