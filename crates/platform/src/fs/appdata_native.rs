@@ -61,3 +61,20 @@ pub async fn readdir_from_appdata(relative_path: &str) -> Result<Vec<FileEntry>>
 
     Ok(arr)
 }
+
+/// Remove a file or directory from the appdata directory.
+pub async fn remove_from_appdata(relative_path: &str) -> Result<()> {
+    let path = get_path_in_appdata(relative_path)?;
+
+    if path.is_dir() {
+        tokio::fs::remove_dir_all(&path)
+            .await
+            .map_err(|err| anyhow::anyhow!("Failed to remove {}: {}", path.display(), err))?;
+    } else {
+        tokio::fs::remove_file(&path)
+            .await
+            .map_err(|err| anyhow::anyhow!("Failed to remove {}: {}", path.display(), err))?;
+    }
+
+    Ok(())
+}

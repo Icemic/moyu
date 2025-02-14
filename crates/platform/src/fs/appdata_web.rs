@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::FileSystemRemoveOptions;
 
 use crate::fs::get_path_in_appdata;
 
@@ -199,4 +201,27 @@ pub async fn readdir_from_appdata(relative_path: &str) -> Result<Vec<FileEntry>>
     }
 
     Ok(arr)
+}
+
+/// Remove a file or directory from the appdata directory.
+pub async fn remove_from_appdata(relative_path: &str) -> Result<()> {
+    let path = get_path_in_appdata(relative_path)?;
+
+    let dir = get_dir_from_appdata(path.parent(), false).await?;
+
+    let options = FileSystemRemoveOptions::new();
+    options.set_recursive(true);
+
+    let filename = path.file_name().unwrap().to_string_lossy();
+
+    JsFuture::from(dir.remove_entry_with_options(&filename, &options))
+        .await
+        .map_err(|err| {
+            anyhow::anyhow!(
+                "Failed to remove entry from FileSystemDirectoryHandle: {:?}",
+                err
+            )
+        })?;
+
+    Ok(())
 }
