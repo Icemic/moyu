@@ -88,7 +88,10 @@ impl HaiConfig {
         }
 
         #[cfg(web)]
-        unimplemented!("appdata_dir is not supported in web platform.");
+        {
+            use std::str::FromStr;
+            return Some(PathBuf::from_str("doufu").unwrap().join(&self.app_name));
+        }
 
         #[cfg(android)]
         {

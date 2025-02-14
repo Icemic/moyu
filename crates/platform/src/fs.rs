@@ -1,8 +1,10 @@
 use std::io::Cursor;
 #[cfg(target_os = "android")]
 use std::io::Read;
+use std::path::PathBuf;
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 #[cfg(native)]
 use tokio::fs;
 use url::Url;
@@ -76,14 +78,7 @@ pub async fn open(url: &Url) -> Result<Cursor<Vec<u8>>> {
     Ok(Cursor::new(read(url).await?))
 }
 
-/// Read a file from the appdata directory.
-/// On Windows, the appdata directory is the `%APPDATA%/<app_name>` directory.
-/// On Linux, the appdata directory is the `~/.local/share/<app_name>` directory.
-/// On macOS, the appdata directory is the `~/Library/Application Support/<app_name>` directory.
-/// On Android, the appdata directory is the `/Android/data/<package_name>/files` directory.
-///
-#[cfg(native)]
-pub fn read_from_appdata(relative_path: &str) -> Result<Option<Vec<u8>>> {
+pub fn get_path_in_appdata(relative_path: &str) -> Result<PathBuf> {
     let appdata_dir = get_engine_config().appdata_dir().ok_or_else(|| {
         anyhow::anyhow!(
             "Failed to get appdata directory for app '{}'",
@@ -91,58 +86,138 @@ pub fn read_from_appdata(relative_path: &str) -> Result<Option<Vec<u8>>> {
         )
     })?;
 
-    let path = appdata_dir.join(relative_path);
+    let path = appdata_dir.join(path_clean::clean(relative_path));
 
-    match std::fs::read(&path) {
-        Ok(data) => Ok(Some(data)),
+    Ok(path)
+}
+
+/// Read a file from the appdata directory.
+/// On Windows, the appdata directory is the `%APPDATA%/<app_name>` directory.
+/// On Linux, the appdata directory is the `~/.local/share/<app_name>` directory.
+/// On macOS, the appdata directory is the `~/Library/Application Support/<app_name>` directory.
+/// On Android, the appdata directory is the `/Android/data/<package_name>/files` directory.
+///
+#[cfg(native)]
+pub async fn read_from_appdata(relative_path: &str) -> Result<Vec<u8>> {
+    let path = get_path_in_appdata(relative_path)?;
+
+    match tokio::fs::read(&path).await {
+        Ok(data) => Ok(data),
         Err(err) => Err(anyhow::anyhow!("Error reading from appdata: {:?}", err)),
     }
 }
 
-/// Read a file from the appdata directory.
-/// However, on Web there's no real filesystem, so it is simulated by
-/// [localStorage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage).
-/// For example, path `foo/bar` will be stored in the key `DOUFU_FS/<app_name>/foo/bar`.
-/// All data is stored as base64 encoded strings.
 #[cfg(web)]
-pub fn read_from_appdata(relative_path: &str) -> Result<Option<Vec<u8>>> {
-    use base64ct::{Base64Url, Encoding};
+async fn get_dir_from_appdata(
+    clean_path: Option<&std::path::Path>,
+    create: bool,
+) -> Result<web_sys::FileSystemDirectoryHandle> {
+    use std::path::Component;
 
-    let key = format!(
-        "DOUFU_FS/{}/{}",
-        get_engine_config().app_name,
-        relative_path
-    );
+    use wasm_bindgen_futures::wasm_bindgen::JsCast;
+    use wasm_bindgen_futures::JsFuture;
+    use web_sys::{FileSystemDirectoryHandle, FileSystemGetDirectoryOptions};
 
     let window = web_sys::window().ok_or_else(|| anyhow::anyhow!("Failed to get window object"))?;
-    let local_storage = window
-        .local_storage()
-        .map_err(|err| anyhow::anyhow!("Failed to get local storage: {:?}", err))?
-        .ok_or_else(|| anyhow::anyhow!("Failed to get local storage object"))?;
+    let navigator = window.navigator();
+    let opfs_root = JsFuture::from(navigator.storage().get_directory())
+        .await
+        .map_err(|err| anyhow::anyhow!("Failed to get storage directory: {:?}", err))?
+        .dyn_into::<web_sys::FileSystemDirectoryHandle>()
+        .map_err(|err| anyhow::anyhow!("Failed to cast to FileSystemDirectoryHandle: {:?}", err))?;
 
-    let data = local_storage
-        .get_item(&key)
-        .map_err(|err| anyhow::anyhow!("Failed to get item from local storage: {:?}", err))?
-        .map(|data| {
-            Base64Url::decode_vec(&data)
-                .map_err(|err| anyhow::anyhow!("Failed to decode base64: {:?}", err))
-        })
-        .transpose()?;
+    if let Some(clean_path) = clean_path {
+        let mut current_dir = opfs_root;
+        let options = FileSystemGetDirectoryOptions::new();
+        options.set_create(create);
 
-    Ok(data)
+        for component in clean_path.components() {
+            let Component::Normal(component) = component else {
+                return Err(anyhow::anyhow!("Invalid path component"));
+            };
+
+            let component = component.to_string_lossy();
+
+            current_dir =
+                JsFuture::from(current_dir.get_directory_handle_with_options(&component, &options))
+                    .await
+                    .map_err(|err| anyhow::anyhow!("Failed to get directory handle: {:?}", err))?
+                    .dyn_into::<FileSystemDirectoryHandle>()
+                    .map_err(|err| {
+                        anyhow::anyhow!("Failed to cast to FileSystemDirectoryHandle: {:?}", err)
+                    })?;
+        }
+
+        Ok(current_dir)
+    } else {
+        Ok(opfs_root)
+    }
+}
+
+#[cfg(web)]
+async fn get_file_from_appdata(
+    clean_path: &PathBuf,
+    create: bool,
+) -> Result<web_sys::FileSystemFileHandle> {
+    use wasm_bindgen_futures::wasm_bindgen::JsCast;
+    use wasm_bindgen_futures::JsFuture;
+    use web_sys::{FileSystemFileHandle, FileSystemGetFileOptions};
+
+    let dir = get_dir_from_appdata(clean_path.parent(), create).await?;
+
+    let options = FileSystemGetFileOptions::new();
+    options.set_create(create);
+
+    let filename = clean_path.file_name().unwrap().to_string_lossy();
+
+    let file = JsFuture::from(dir.get_file_handle_with_options(&filename, &options))
+        .await
+        .map_err(|err| anyhow::anyhow!("Failed to get file handle: {:?}", err))?
+        .dyn_into::<FileSystemFileHandle>()
+        .map_err(|err| anyhow::anyhow!("Failed to cast to FileSystemFileHandle: {:?}", err))?;
+
+    Ok(file)
+}
+
+/// Read a file from the appdata directory.
+/// However, on Web there's no real filesystem, so it is simulated by
+/// [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system).
+/// For example, path `foo/bar` will be stored in the path `doufu/<app_name>/foo/bar`.
+#[cfg(web)]
+pub async fn read_from_appdata(relative_path: &str) -> Result<Vec<u8>> {
+    use wasm_bindgen_futures::JsFuture;
+    use web_sys::wasm_bindgen::JsCast;
+    use web_sys::File;
+
+    let file = get_file_from_appdata(&get_path_in_appdata(relative_path)?, false).await?;
+
+    let file = JsFuture::from(file.get_file())
+        .await
+        .map_err(|err| anyhow::anyhow!("Failed to get file from FileSystemFileHandle: {:?}", err))?
+        .dyn_into::<File>()
+        .map_err(|err| anyhow::anyhow!("Failed to cast to File: {:?}", err))?;
+
+    let data = JsFuture::from(file.array_buffer())
+        .await
+        .map_err(|err| anyhow::anyhow!("Failed to get array buffer from File: {:?}", err))?;
+
+    let data = web_sys::js_sys::Uint8Array::new(&data);
+
+    Ok(data.to_vec())
 }
 
 /// Write a file to the appdata directory.
 /// See [`read_from_appdata`](crate::fs::read_from_appdata) for more information.
 #[cfg(native)]
-pub fn write_to_appdata(relative_path: &str, data: &[u8]) -> Result<()> {
+pub async fn write_to_appdata(relative_path: &str, data: Vec<u8>) -> Result<()> {
     let appdata_dir = get_engine_config()
         .appdata_dir()
         .ok_or_else(|| anyhow::anyhow!("Failed to get appdata directory"))?;
 
-    let path = appdata_dir.join(relative_path);
+    let path = appdata_dir.join(path_clean::clean(relative_path));
 
-    std::fs::write(&path, data)
+    tokio::fs::write(&path, &data)
+        .await
         .map_err(|err| anyhow::anyhow!("Failed to write appdata {}: {}", path.display(), err))?;
 
     Ok(())
@@ -151,26 +226,137 @@ pub fn write_to_appdata(relative_path: &str, data: &[u8]) -> Result<()> {
 /// Write a file to the appdata directory.
 /// See [`read_from_appdata`](crate::fs::read_from_appdata) for more information.
 #[cfg(web)]
-pub fn write_to_appdata(relative_path: &str, data: &[u8]) -> Result<()> {
-    use base64ct::{Base64Url, Encoding};
+pub async fn write_to_appdata(relative_path: &str, data: Vec<u8>) -> Result<()> {
+    use wasm_bindgen_futures::JsFuture;
+    use web_sys::wasm_bindgen::JsCast;
 
-    let key = format!(
-        "DOUFU_FS/{}/{}",
-        get_engine_config().app_name,
-        relative_path
-    );
+    let file = get_file_from_appdata(&get_path_in_appdata(relative_path)?, true).await?;
 
-    let window = web_sys::window().ok_or_else(|| anyhow::anyhow!("Failed to get window object"))?;
-    let local_storage = window
-        .local_storage()
-        .map_err(|err| anyhow::anyhow!("Failed to get local storage: {:?}", err))?
-        .ok_or_else(|| anyhow::anyhow!("Failed to get local storage object"))?;
+    let stream = JsFuture::from(file.create_writable())
+        .await
+        .map_err(|err| {
+            anyhow::anyhow!(
+                "Failed to create writable stream from FileSystemFileHandle: {:?}",
+                err
+            )
+        })?
+        .dyn_into::<web_sys::FileSystemWritableFileStream>()
+        .map_err(|err| {
+            anyhow::anyhow!("Failed to cast to FileSystemWritableFileStream: {:?}", err)
+        })?;
 
-    let data = Base64Url::encode_string(data);
+    let promise = stream
+        .write_with_u8_array(&data)
+        .map_err(|err| anyhow::anyhow!("Failed to write to stream: {:?}", err))?;
 
-    local_storage
-        .set_item(&key, &data)
-        .map_err(|err| anyhow::anyhow!("Failed to set item in local storage: {:?}", err))?;
+    JsFuture::from(promise)
+        .await
+        .map_err(|err| anyhow::anyhow!("Failed to write to stream: {:?}", err))?;
 
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileEntry {
+    pub name: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub last_modified: u64,
+}
+
+/// Read a directory from the appdata directory.
+#[cfg(native)]
+pub async fn readdir_from_appdata(relative_path: &str) -> Result<Vec<FileEntry>> {
+    let path = get_path_in_appdata(relative_path)?;
+
+    let mut entries = tokio::fs::read_dir(&path)
+        .await
+        .map_err(|err| anyhow::anyhow!("Failed to read directory {}: {}", path.display(), err))?;
+
+    let mut arr = Vec::new();
+    while let Some(entry) = entries.next_entry().await? {
+        let metadata = entry.metadata().await?;
+        let last_modified = metadata.modified()?;
+        let last_modified = last_modified
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)?
+            .as_millis() as u64;
+
+        arr.push(FileEntry {
+            name: entry.file_name().to_string_lossy().to_string(),
+            is_dir: metadata.is_dir(),
+            size: metadata.len(),
+            last_modified,
+        });
+    }
+
+    Ok(arr)
+}
+
+/// Read a directory from the appdata directory.
+#[cfg(web)]
+pub async fn readdir_from_appdata(relative_path: &str) -> Result<Vec<FileEntry>> {
+    use wasm_bindgen_futures::JsFuture;
+    use web_sys::wasm_bindgen::JsCast;
+    use web_sys::{FileSystemHandle, FileSystemHandleKind};
+
+    let path = get_path_in_appdata(relative_path)?;
+
+    let dir = get_dir_from_appdata(Some(&path), false).await?;
+
+    let mut arr = Vec::new();
+    let entries = dir.values();
+    loop {
+        let promise = entries
+            .next()
+            .map_err(|err| anyhow::anyhow!("Failed to get next entry: {:?}", err))?;
+
+        let item = JsFuture::from(promise)
+            .await
+            .map_err(|err| anyhow::anyhow!("Failed to get next entry: {:?}", err))?;
+
+        if item.is_undefined() {
+            break;
+        }
+
+        let item = item
+            .dyn_into::<FileSystemHandle>()
+            .map_err(|err| anyhow::anyhow!("Failed to cast to FileSystemHandle: {:?}", err))?;
+
+        let name = item.name();
+        let is_dir = item.kind() == FileSystemHandleKind::Directory;
+
+        if !is_dir {
+            let file = item
+                .dyn_into::<web_sys::FileSystemFileHandle>()
+                .map_err(|err| {
+                    anyhow::anyhow!("Failed to cast to FileSystemFileHandle: {:?}", err)
+                })?;
+            let file = JsFuture::from(file.get_file())
+                .await
+                .map_err(|err| {
+                    anyhow::anyhow!("Failed to get file from FileSystemFileHandle: {:?}", err)
+                })?
+                .dyn_into::<web_sys::File>()
+                .map_err(|err| anyhow::anyhow!("Failed to cast to File: {:?}", err))?;
+            let last_modified = file.last_modified() as u64;
+            let size = file.size() as u64;
+
+            arr.push(FileEntry {
+                name,
+                is_dir,
+                size,
+                last_modified,
+            });
+        } else {
+            arr.push(FileEntry {
+                name,
+                is_dir,
+                size: 0,
+                last_modified: 0,
+            });
+        }
+    }
+
+    Ok(arr)
 }
