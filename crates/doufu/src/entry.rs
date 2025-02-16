@@ -86,9 +86,14 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
         }
 
         let scenario = ScenarioPlugin::new();
+        let scenario = Arc::new(Mutex::new(scenario));
         let system = SystemPlugin::new(_core.clone());
-        _core.register_plugin("scenario", Arc::new(Mutex::new(scenario)));
+        _core.register_plugin("scenario", scenario.clone());
         _core.register_plugin("system", Arc::new(Mutex::new(system)));
+
+        if let Err(err) = scenario.lock().init().await {
+            log::error!("Failed to initialize scenario plugin: {}", err);
+        }
 
         // #[cfg(feature = "video")]
         // core.register_renderer("video", Box::new(video_renderer));
@@ -179,9 +184,16 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
                     }
 
                     let scenario = ScenarioPlugin::new();
+                    let scenario = Arc::new(Mutex::new(scenario));
                     let system = SystemPlugin::new(_core.clone());
-                    _core.register_plugin("scenario", Arc::new(Mutex::new(scenario)));
+                    _core.register_plugin("scenario", scenario.clone());
                     _core.register_plugin("system", Arc::new(Mutex::new(system)));
+
+                    doufu_pal::task::block_on_without_runtime(async {
+                        if let Err(err) = scenario.lock().init().await {
+                            log::error!("failed to init scenario plugin: {}", err);
+                        }
+                    });
 
                     // #[cfg(feature = "video")]
                     // core.register_renderer("video", Box::new(video_renderer));

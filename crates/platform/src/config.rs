@@ -2,6 +2,8 @@ mod backend;
 mod logical_size;
 mod present_mode;
 
+use std::path::PathBuf;
+
 use csscolorparser::Color;
 use logical_size::HaiLogicalSize;
 use once_cell::sync::OnceCell;
@@ -11,7 +13,7 @@ use url::Url;
 pub use self::backend::RenderingBackend;
 pub use self::present_mode::RenderingPresentMode;
 
-static doufu_ENV: OnceCell<HaiConfig> = OnceCell::new();
+static DOUFU_ENV: OnceCell<HaiConfig> = OnceCell::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -34,6 +36,7 @@ pub enum AutorunMode {
 pub struct HaiConfig {
     pub entry: Option<String>,
     pub entry_filename: String,
+    pub app_name: String,
     pub autorun: AutorunMode,
     pub font_file: String,
     pub window_title: String,
@@ -55,6 +58,7 @@ impl Default for HaiConfig {
         Self {
             entry: None,
             entry_filename: "index.js".to_string(),
+            app_name: "doufu".to_string(),
             autorun: AutorunMode::All,
             font_file: "fonts/default.otf".to_string(),
             window_title: "Doufu".to_string(),
@@ -68,6 +72,41 @@ impl Default for HaiConfig {
             background_color: Color::from_html("transparent").unwrap(),
             show_fps: false,
         }
+    }
+}
+
+impl HaiConfig {
+    pub fn appdata_dir(&self) -> Option<PathBuf> {
+        #[cfg(desktop)]
+        {
+            if let Some(mut appdata_dir) = dirs::data_dir() {
+                appdata_dir.push(&self.app_name);
+                // equals to `mkdir -p`
+                std::fs::create_dir_all(&appdata_dir).unwrap();
+                return Some(appdata_dir);
+            };
+        }
+
+        #[cfg(web)]
+        {
+            use std::str::FromStr;
+            return Some(PathBuf::from_str("doufu").unwrap().join(&self.app_name));
+        }
+
+        #[cfg(android)]
+        {
+            use crate::platform::get_android_app;
+            if let Some(external_data_path) = get_android_app().external_data_path() {
+                let appdata_dir = external_data_path.join("files");
+                std::fs::create_dir_all(&appdata_dir).unwrap();
+                return Some(appdata_dir);
+            }
+        }
+
+        #[cfg(ios)]
+        unimplemented!("appdata_dir is to be implemented in ios platform.");
+
+        None
     }
 }
 
@@ -105,13 +144,13 @@ pub async fn setup() {
 
                 config.entry = Some(entry);
 
-                doufu_ENV.set(config).unwrap();
+                DOUFU_ENV.set(config).unwrap();
                 break;
             }
             Err(err) => {
                 log::error!("error when loading config: {:?}", err);
                 log::error!("config file cannot be loaded, using default value.");
-                doufu_ENV.set(HaiConfig::default()).unwrap();
+                DOUFU_ENV.set(HaiConfig::default()).unwrap();
                 break;
             }
         }
@@ -119,7 +158,7 @@ pub async fn setup() {
 }
 
 pub fn get_engine_config() -> &'static HaiConfig {
-    doufu_ENV.get().unwrap()
+    DOUFU_ENV.get().unwrap()
 }
 
 fn parse_entry_dir(entry_dir: &String) -> Url {
