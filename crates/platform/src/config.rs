@@ -148,10 +148,8 @@ pub async fn setup() {
                 break;
             }
             Err(err) => {
-                log::error!("error when loading config: {:?}", err);
-                log::error!("config file cannot be loaded, using default value.");
-                DOUFU_ENV.set(HaiConfig::default()).unwrap();
-                break;
+                log::error!("Config file ({entry_dir}) cannot be loaded: {err:?}");
+                std::process::exit(-1);
             }
         }
     }
@@ -179,10 +177,10 @@ fn parse_entry_dir(entry_dir: &String) -> Url {
     if !entry_dir.contains("://") {
         let local_path = std::env::current_dir().unwrap();
         let local_path = local_path.join(entry_dir);
-        if local_path.is_file() {
-            return Url::from_file_path(&local_path).unwrap();
-        } else {
+        if local_path.is_dir() {
             return Url::from_directory_path(&local_path).unwrap();
+        } else {
+            return Url::from_file_path(&local_path).unwrap();
         }
     }
 
