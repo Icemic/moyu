@@ -11,7 +11,7 @@ release = false
 # This project is modified from https://github.com/rukai/cargo-run-wasm by Lucas Kent
 
 [dependencies.devserver_lib]
-default_features = false
+default-features = false
 version = "0.4.1"
 
 [dependencies.pico-args]
