@@ -24,7 +24,7 @@ name = "doufu"
 path = "src/main.rs"
 
 [lib]
-crate_type = ["cdylib"]
+crate-type = ["cdylib"]
 name = "libdoufu"
 path = "src/lib.rs"
 
