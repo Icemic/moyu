@@ -10,6 +10,6 @@ pub fn setup_android(app: &AndroidApp) -> VisibleHand<AndroidApp> {
     }
 }
 
-pub(crate) fn get_android_app<'a>() -> &'a AndroidApp {
+pub fn get_android_app<'a>() -> &'a AndroidApp {
     unsafe { ANDROID_APP.get() }
 }
