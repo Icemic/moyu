@@ -147,16 +147,17 @@ enum ScenarioCommmad {
         name: String,
         data: HashMap<String, serde_json::Value>,
     },
-    SaveGlobalData {
-        data: HashMap<String, serde_json::Value>,
-    },
-    GetSaveDataList,
     LoadSaveData {
         name: String,
     },
     RemoveSaveData {
         name: String,
     },
+    GetSaveDataList,
+    SaveGlobalData {
+        data: HashMap<String, serde_json::Value>,
+    },
+    GetGlobalData,
 }
 
 impl Command for ScenarioPlugin {
@@ -171,17 +172,9 @@ impl Command for ScenarioPlugin {
             ScenarioCommmad::NextLine => {
                 return Ok(self.next_line().map(|v| to_js(&v).ok()).flatten());
             }
-            ScenarioCommmad::SaveGlobalData { data } => {
-                self.global_data = data;
-                self.save_global_data_to_file()?;
-            }
             ScenarioCommmad::SaveGameData { name, data } => {
                 self.state.lock().extra_data = data;
                 self.save_game_data_to_file(&name)?;
-            }
-            ScenarioCommmad::GetSaveDataList => {
-                let value = self.get_save_data_list()?;
-                return Ok(Some(value));
             }
             ScenarioCommmad::LoadSaveData { name } => {
                 let result = self.load_save_data_from_file(&name)?;
@@ -190,6 +183,17 @@ impl Command for ScenarioPlugin {
             ScenarioCommmad::RemoveSaveData { name } => {
                 let result = self.remove_save_data(&name)?;
                 return Ok(Some(result));
+            }
+            ScenarioCommmad::GetSaveDataList => {
+                let value = self.get_save_data_list()?;
+                return Ok(Some(value));
+            }
+            ScenarioCommmad::SaveGlobalData { data } => {
+                self.global_data = data;
+                self.save_global_data_to_file()?;
+            }
+            ScenarioCommmad::GetGlobalData => {
+                return Ok(Some(to_js(&self.global_data)?));
             }
         }
 
