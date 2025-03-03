@@ -12,24 +12,15 @@ impl Core {
     #[inline(always)]
     pub fn render(&self, window: &Window) -> Result<(), wgpu::SurfaceError> {
         // fps
-        #[cfg(native)]
         if doufu_pal::config::get_engine_config().show_fps {
-            let (instant, frames) = &mut *self.frames_in_duration.lock();
-            let duration = instant.elapsed().as_secs_f32();
-            if duration >= 1. {
-                let fps = *frames as f32 / duration;
-
+            if self.fps_meter.tick() {
+                let fps = self.fps_meter.get_fps();
                 self.event_proxy
                     .send_event(crate::user_event::UserEvent::SetTitle(format!(
                         "fps: {:.1}",
                         fps
                     )))
                     .unwrap();
-
-                *frames = 1;
-                *instant = Instant::now();
-            } else {
-                *frames += 1;
             }
         }
 
