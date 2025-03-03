@@ -21,6 +21,7 @@ use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
 use crate::state::{PointerState, MOUSE_IDENTIFIER};
+use crate::utils::fps_meter::FpsMeter;
 use crate::{nodes::Container, resource::ResourceManager, traits::*, user_event::UserEvent};
 
 pub use self::global::*;
@@ -57,9 +58,7 @@ pub struct Core {
     staging_belt: Arc<Mutex<StagingBelt>>,
     mvp_buffer: wgpu::Buffer,
     mvp_bind_group: wgpu::BindGroup,
-    // std::time not implemented on wasm32 target
-    #[cfg(native)]
-    frames_in_duration: Arc<Mutex<(Instant, u32)>>,
+    fps_meter: FpsMeter,
     /// timer from program start
     instant: Instant,
     /// time elapsed since last frame, in microseconds
@@ -199,8 +198,7 @@ impl Core {
             staging_belt,
             mvp_buffer,
             mvp_bind_group,
-            #[cfg(native)]
-            frames_in_duration: Arc::new(Mutex::new((Instant::now(), 0))),
+            fps_meter: FpsMeter::default(),
             instant: Instant::now(),
             instant_last: ArcSwap::new(Arc::new(Instant::now())),
 
