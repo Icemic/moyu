@@ -39,11 +39,12 @@ doufu_macros = {workspace = true}
 doufu_nodes = {workspace = true}
 doufu_ops = {workspace = true}
 doufu_pal = {workspace = true}
-doufu_runtime = {workspace = true}
 doufu_scenario = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = {version = "1", features = ["rt-multi-thread", "macros"]}
+
+doufu_runtime = {workspace = true}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = {version = "0.2.83", default-features = false}
