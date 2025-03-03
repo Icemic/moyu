@@ -149,6 +149,10 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
         .run(move |event, event_loop| {
             match event {
                 Event::AboutToWait => {
+                    if let Some(vm) = doufu_runtime::try_get_vm() {
+                        vm.tick();
+                    }
+
                     loop_helper.tick();
                 }
                 Event::Resumed => {

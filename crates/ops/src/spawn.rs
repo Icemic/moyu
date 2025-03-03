@@ -17,45 +17,33 @@ pub fn spawn_runtime_with_core(
     use doufu_runtime::{get_vm, setup_vm};
     use log::error;
 
-    let (sender, receiver) = std::sync::mpsc::channel();
+    let vm_handle = setup_vm();
 
-    std::thread::Builder::new()
-        .name("quickjs".to_string())
-        .spawn(move || {
-            let _vm_handle = setup_vm();
+    let handle = doufu_pal::task::get_runtime_handle();
 
-            sender.send(_vm_handle).unwrap();
+    if let Some(spawn_callback) = spawn_callback {
+        let async_callback = spawn_callback();
+        handle.spawn(async_callback);
+    }
 
-            let handle = doufu_pal::task::get_runtime_handle();
+    let vm = get_vm();
 
-            if let Some(spawn_callback) = spawn_callback {
-                let async_callback = spawn_callback();
-                handle.spawn(async_callback);
-            }
+    // returns 'Could not convert value to string' error randomly
+    // not sure why but it's not a big deal (...I think), just ignore it.
+    if let Err(err) = vm
+        .context()
+        .eval("console.info('Hello %s!', 'World')", false)
+    {
+        error!("{:?}", err);
+    };
 
-            let vm = get_vm();
+    crate::init(vm);
 
-            // returns 'Could not convert value to string' error randomly
-            // not sure why but it's not a big deal (...I think), just ignore it.
-            if let Err(err) = vm
-                .context()
-                .eval("console.info('Hello %s!', 'World')", false)
-            {
-                error!("{:?}", err);
-            };
+    if let Err(err) = vm.prepare_entry() {
+        error!("Fatal error: failed to run from entry. {}", err.to_string());
+    }
 
-            crate::init(vm);
-
-            if let Err(err) = vm.prepare_entry() {
-                error!("Fatal error: failed to run from entry. {}", err.to_string());
-                return;
-            }
-
-            vm.block_on_ticking();
-        })
-        .ok();
-
-    receiver.recv().unwrap()
+    vm_handle
 }
 
 /// spawn a thread with javascript runtime and executes scripts

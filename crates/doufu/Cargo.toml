@@ -39,6 +39,7 @@ doufu_macros = {workspace = true}
 doufu_nodes = {workspace = true}
 doufu_ops = {workspace = true}
 doufu_pal = {workspace = true}
+doufu_runtime = {workspace = true}
 doufu_scenario = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

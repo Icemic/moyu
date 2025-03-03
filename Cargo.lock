@@ -980,6 +980,7 @@ dependencies = [
  "doufu_nodes",
  "doufu_ops",
  "doufu_pal",
+ "doufu_runtime",
  "doufu_scenario",
  "log",
  "spin_sleep_util",
