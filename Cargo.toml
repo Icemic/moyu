@@ -11,6 +11,7 @@ members = [
   "crates/ops",
   "crates/audio",
   "crates/scenario",
+  "crates/gamepad",
 ]
 resolver = "2"
 
@@ -19,6 +20,7 @@ cfg_aliases = "0.2.1"
 
 doufu_audio = {path = "crates/audio"}
 doufu_core = {path = "crates/core"}
+doufu_gamepad = {path = "crates/gamepad"}
 doufu_macros = {path = "crates/macros"}
 doufu_nodes = {path = "crates/nodes"}
 doufu_ops = {path = "crates/ops"}
