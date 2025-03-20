@@ -8,7 +8,9 @@ use doufu_core::user_event::UserEvent;
 use doufu_core::winit::event::Event;
 use doufu_core::winit::event_loop::EventLoop;
 use doufu_core::{create_doufu_core, setup};
+use doufu_gamepad::GamepadPlugin;
 use doufu_nodes::renderer::{SpriteRenderer, TextRenderer};
+use doufu_pal::config::get_engine_config;
 use doufu_pal::platform;
 use doufu_pal::sync::Mutex;
 use doufu_scenario::ScenarioPlugin;
@@ -91,6 +93,13 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
         _core.register_plugin("scenario", scenario.clone());
         _core.register_plugin("system", Arc::new(Mutex::new(system)));
 
+        #[cfg(any(desktop, web))]
+        if get_engine_config().enable_gamepads {
+            log::info!("enable gamepad plugin");
+            let gamepad = GamepadPlugin::new();
+            _core.register_plugin("gamepad", Arc::new(Mutex::new(gamepad)));
+        }
+
         if let Err(err) = scenario.lock().init().await {
             log::error!("Failed to initialize scenario plugin: {}", err);
         }
@@ -117,10 +126,7 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
                         if let Some(ref window) = window {
                             let _ =
                                 window.request_inner_size(doufu_core::winit::dpi::Size::Logical(
-                                    doufu_pal::config::get_engine_config()
-                                        .surface_size
-                                        .as_tuple()
-                                        .into(),
+                                    get_engine_config().surface_size.as_tuple().into(),
                                 ));
                         }
                     }
@@ -188,6 +194,13 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
                     let system = SystemPlugin::new(_core.clone());
                     _core.register_plugin("scenario", scenario.clone());
                     _core.register_plugin("system", Arc::new(Mutex::new(system)));
+
+                    #[cfg(any(desktop, web))]
+                    if get_engine_config().enable_gamepads {
+                        log::info!("enable gamepad plugin");
+                        let gamepad = GamepadPlugin::new();
+                        _core.register_plugin("gamepad", Arc::new(Mutex::new(gamepad)));
+                    }
 
                     doufu_pal::task::block_on_without_runtime(async {
                         if let Err(err) = scenario.lock().init().await {
