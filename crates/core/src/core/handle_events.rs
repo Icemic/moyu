@@ -23,6 +23,11 @@ impl Core {
     ) {
         match event {
             &Event::AboutToWait => {
+                // poll all plugins
+                for plugin in self.plugins.lock().values_mut() {
+                    plugin.lock().update(false);
+                }
+
                 // RedrawRequested will only trigger once, unless we manually
                 // request it.
                 let redraw_mode = self.redraw_mode.load();
@@ -54,6 +59,11 @@ impl Core {
                 if !handled {
                     match event {
                         WindowEvent::RedrawRequested => {
+                            // poll all plugins
+                            for plugin in self.plugins.lock().values_mut() {
+                                plugin.lock().update(true);
+                            }
+
                             match self.render(window) {
                                 Ok(_) => {
                                     // For real browsers, the callback should be executed before rendering,
