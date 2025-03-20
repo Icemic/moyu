@@ -51,6 +51,7 @@ pub struct HaiConfig {
     pub background_color: Color,
     #[serde(rename = "showFPS")]
     pub show_fps: bool,
+    pub enable_gamepads: bool,
 }
 
 impl Default for HaiConfig {
@@ -71,6 +72,7 @@ impl Default for HaiConfig {
             desired_maximum_frame_latency: 2,
             background_color: Color::from_html("transparent").unwrap(),
             show_fps: false,
+            enable_gamepads: false,
         }
     }
 }
