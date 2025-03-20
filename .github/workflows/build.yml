@@ -35,7 +35,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.wasm == false
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev
+          sudo apt-get install -y libasound2-dev pkg-config libudev-dev
 
       - name: Build Binary
         run: cargo build --verbose
