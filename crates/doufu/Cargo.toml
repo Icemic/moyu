@@ -34,6 +34,7 @@ spin_sleep_util = "0.1.1"
 
 doufu_audio = {workspace = true}
 doufu_core = {workspace = true, features = ["js_runtime"]}
+doufu_gamepad = {workspace = true}
 doufu_macros = {workspace = true}
 doufu_nodes = {workspace = true}
 doufu_ops = {workspace = true}
