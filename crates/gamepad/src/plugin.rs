@@ -119,7 +119,7 @@ impl Plugin for GamepadPlugin {
 
                     let w3c_button = get_w3c_button(button);
 
-                    if w3c_button > 255 {
+                    if w3c_button >= 255 {
                         log::warn!("invalid button: {:?}", button);
                         return;
                     }
@@ -163,12 +163,12 @@ impl Plugin for GamepadPlugin {
 
                     let w3c_axis = get_w3c_axis(axis);
 
-                    if w3c_axis > 255 {
+                    if w3c_axis >= 255 {
                         log::warn!("invalid axis: {:?}", axis);
                         return;
                     }
 
-                    gamepad.axes[axis as usize] = value;
+                    gamepad.axes[w3c_axis as usize] = value;
 
                     gamepad.timestamp = self.instant.elapsed().as_secs_f64() * 1000.;
 
