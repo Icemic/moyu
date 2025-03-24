@@ -9,7 +9,6 @@ use crate::utils::walk::walk_nodes_top_bottom;
 use super::{Core, RendererUpdatePayload};
 
 impl Core {
-    #[inline(always)]
     pub fn render(&self, window: &Window) -> Result<(), wgpu::SurfaceError> {
         // fps
         if doufu_pal::config::get_engine_config().show_fps {
