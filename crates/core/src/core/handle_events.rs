@@ -14,7 +14,6 @@ use crate::utils::dispatch_event::dispatch_event;
 use super::{Core, HaiRedrawMode};
 
 impl Core {
-    #[inline(always)]
     pub fn handle_events(
         &self,
         event: &Event<UserEvent>,

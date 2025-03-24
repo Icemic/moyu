@@ -65,7 +65,6 @@ macro_rules! get_pointer_state_mut {
 }
 
 impl Core {
-    #[inline(always)]
     pub fn handle_pointer_events(&self, window: &Window, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
