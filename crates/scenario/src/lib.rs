@@ -49,7 +49,14 @@ impl ScenarioPlugin {
             return Ok(());
         };
 
-        let global_data = serde_json::from_slice(&global_data)?;
+        let global_data = match serde_json::from_slice(&global_data) {
+            Ok(v) => v,
+            Err(err) => {
+                log::error!("Failed to parse global data: {}, use default", err);
+                return Ok(());
+            }
+        };
+
         self.global_data = global_data;
 
         log::info!("global data loaded");
