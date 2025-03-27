@@ -82,10 +82,14 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
 
     let _vm_handle = doufu_ops::spawn::spawn_runtime_with_core(&core, None);
 
+    #[cfg(web)]
+    core.init_graphics().await;
+
     event_loop
         .run(move |event, event_loop| {
             match event {
                 Event::Resumed => {
+                    #[cfg(native)]
                     core.init_graphics();
 
                     if let Some(graphics) = core.graphics() {

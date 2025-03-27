@@ -59,14 +59,13 @@ unsafe impl Send for Graphics {}
 unsafe impl Sync for Graphics {}
 
 impl Graphics {
-    pub fn init(
+    pub async fn init(
         window: &Arc<Window>,
         surface_size: &SurfaceSize,
         stage_size: &SurfaceSize,
         root_node: Arc<RwLock<dyn Node>>,
     ) -> Self {
-        let (instance, surface, device, queue, config) =
-            doufu_pal::task::block_on_without_runtime(create_wgpu_surface(window));
+        let (instance, surface, device, queue, config) = create_wgpu_surface(window).await;
 
         let renderers = Arc::new(Mutex::new(HashMap::default()));
         let after_render_handler = Arc::new(Mutex::new(None));
