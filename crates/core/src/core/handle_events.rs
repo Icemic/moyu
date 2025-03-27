@@ -1,5 +1,5 @@
 use doufu_pal::config::WindowState;
-use log::{debug, error, info};
+use log::{debug, info};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use winit::event::{Event, WindowEvent};
@@ -45,10 +45,11 @@ impl Core {
                                 plugin.lock().update(true);
                             }
 
+                            #[cfg(native)]
                             if let Some(handle) = self.graphics_thread.load().as_ref() {
                                 if handle.is_finished() {
                                     // detect graphics thread exit
-                                    error!("Graphics thread exited unexpectedly.");
+                                    log::error!("Graphics thread exited unexpectedly.");
                                     event_loop.exit();
                                 } else {
                                     // wake up graphics thread
@@ -65,9 +66,20 @@ impl Core {
                             dispatch_event(AnimationFrameCallbackEvent {
                                 timestamp: self.instant.elapsed().as_millis() as u32,
                             });
+
                             #[cfg(native)]
                             if let Some(vm) = doufu_runtime::try_get_vm() {
                                 vm.tick();
+                            }
+
+                            #[cfg(web)]
+                            if let Some(graphics) = self.graphics.load().as_ref() {
+                                if let Err(err) = graphics.render() {
+                                    log::error!(
+                                        "Error occurs on rendering, terminate graphics thread: {:?}",
+                                        err
+                                    );
+                                }
                             }
                         }
                         WindowEvent::CloseRequested => event_loop.exit(),

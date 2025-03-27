@@ -28,6 +28,7 @@ pub use self::global::*;
 pub struct Core {
     pub(crate) window: Arc<Window>,
     pub(crate) graphics: ArcSwapOption<Graphics>,
+    #[cfg(native)]
     pub(crate) graphics_thread: ArcSwapOption<std::thread::JoinHandle<()>>,
 
     pub(crate) event_proxy: Arc<EventLoopProxy<UserEvent>>,
@@ -111,6 +112,7 @@ impl Core {
         Self {
             window,
             graphics: ArcSwapOption::empty(),
+            #[cfg(native)]
             graphics_thread: ArcSwapOption::empty(),
 
             event_proxy,
@@ -233,21 +235,24 @@ impl Core {
         let graphics = Arc::new(graphics);
         self.graphics.store(Some(graphics.clone()));
 
-        let graphics_thread = std::thread::Builder::new()
-            .name("graphics".to_string())
-            .spawn(move || loop {
-                std::thread::park();
-                if let Err(err) = graphics.render() {
-                    log::error!(
-                        "Error occurs on rendering, terminate graphics thread: {:?}",
-                        err
-                    );
-                    break;
-                }
-            })
-            .expect("Failed to start graphics thread");
+        #[cfg(native)]
+        {
+            let graphics_thread = std::thread::Builder::new()
+                .name("graphics".to_string())
+                .spawn(move || loop {
+                    std::thread::park();
+                    if let Err(err) = graphics.render() {
+                        log::error!(
+                            "Error occurs on rendering, terminate graphics thread: {:?}",
+                            err
+                        );
+                        break;
+                    }
+                })
+                .expect("Failed to start graphics thread");
 
-        self.graphics_thread.store(Some(Arc::new(graphics_thread)));
+            self.graphics_thread.store(Some(Arc::new(graphics_thread)));
+        }
     }
 
     /// get whole node map
