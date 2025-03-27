@@ -11,9 +11,7 @@ pub mod user_event;
 pub mod utils;
 
 use std::sync::Arc;
-use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
-use winit::event_loop::EventLoopProxy;
-use winit::window::Window;
+use winit::event_loop::{EventLoop, EventLoopProxy};
 
 pub use winit;
 
@@ -35,23 +33,16 @@ pub fn setup() {
 }
 
 /// create hai core instance
-pub fn create_doufu_core(
-    instance: Arc<Instance>,
-    surface: Arc<Surface<'static>>,
-    device: Arc<Device>,
-    queue: Arc<Queue>,
-    config: SurfaceConfiguration,
-    window: &Arc<Window>,
+pub fn create_doufu_core<T>(
+    event_loop: &EventLoop<T>,
+    #[cfg(web)] element_id: &str,
     event_proxy: Arc<EventLoopProxy<UserEvent>>,
 ) -> Arc<Core> {
     // create multithread shared core
     let core = Core::new(
-        instance,
-        surface,
-        device,
-        queue,
-        window.clone(),
-        config,
+        event_loop,
+        #[cfg(web)]
+        element_id,
         event_proxy,
     );
 
