@@ -158,6 +158,10 @@ pub async fn write_to_appdata(relative_path: &str, data: Vec<u8>) -> Result<()> 
         .await
         .map_err(|err| anyhow::anyhow!("Failed to write to stream: {:?}", err))?;
 
+    JsFuture::from(stream.close())
+        .await
+        .map_err(|err| anyhow::anyhow!("Failed to write to stream: {:?}", err))?;
+
     Ok(())
 }
 
