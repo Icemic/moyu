@@ -210,15 +210,8 @@ impl Graphics {
         if doufu_pal::config::get_engine_config().show_fps {
             if self.fps_meter.tick() {
                 let fps = self.fps_meter.get_fps();
-                // self.window.set_title(&format!("fps: {:.1}", fps));
-                // self.event_proxy
-                //     .send_event(crate::user_event::UserEvent::SetTitle(format!(
-                //         "fps: {:.1}",
-                //         fps
-                //     )))
-                //     .unwrap();
-
-                log::info!("fps: {:.1}", fps);
+                self.window
+                    .set_title(&format!("fps(rendering): {:.1}", fps));
             }
         }
 

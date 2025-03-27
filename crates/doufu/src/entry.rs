@@ -4,7 +4,7 @@ use doufu_audio::AudioManager;
 use doufu_core::core::set_core;
 use doufu_core::plugins::SystemPlugin;
 use doufu_core::user_event::UserEvent;
-use doufu_core::winit::event::{Event, WindowEvent};
+use doufu_core::winit::event::Event;
 use doufu_core::winit::event_loop::EventLoop;
 use doufu_core::{create_doufu_core, setup};
 use doufu_gamepad::GamepadPlugin;
@@ -25,13 +25,13 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
     let event_proxy = event_loop.create_proxy();
     let event_proxy = Arc::new(event_proxy);
 
+    #[cfg(native)]
     let mut loop_helper = {
         // get max refresh rate of all monitors
         #[allow(unused_mut)]
         let mut refresh_rate_max = 60_000;
 
         // For web, there's no implementation for available_monitors
-        #[cfg(native)]
         for monitor in event_loop.available_monitors() {
             refresh_rate_max = refresh_rate_max.max(
                 monitor
@@ -125,8 +125,9 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
 
             core.handle_events(&event, core.window(), event_loop);
 
+            #[cfg(native)]
             if let Event::WindowEvent {
-                event: WindowEvent::RedrawRequested,
+                event: doufu_core::winit::event::WindowEvent::RedrawRequested,
                 ..
             } = &event
             {
