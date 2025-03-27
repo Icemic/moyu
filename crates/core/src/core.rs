@@ -224,35 +224,47 @@ impl Core {
         }
     }
 
-    pub fn init_graphics(&self) {
+    #[cfg(web)]
+    pub async fn init_graphics(&self) {
         let graphics = Graphics::init(
             &self.window,
             &self.surface_size.read(),
             &self.stage_size.read(),
             self.root_node.clone(),
-        );
+        )
+        .await;
+
+        let graphics = Arc::new(graphics);
+        self.graphics.store(Some(graphics.clone()));
+    }
+
+    #[cfg(native)]
+    pub fn init_graphics(&self) {
+        let graphics = doufu_pal::task::block_on_without_runtime(Graphics::init(
+            &self.window,
+            &self.surface_size.read(),
+            &self.stage_size.read(),
+            self.root_node.clone(),
+        ));
 
         let graphics = Arc::new(graphics);
         self.graphics.store(Some(graphics.clone()));
 
-        #[cfg(native)]
-        {
-            let graphics_thread = std::thread::Builder::new()
-                .name("graphics".to_string())
-                .spawn(move || loop {
-                    std::thread::park();
-                    if let Err(err) = graphics.render() {
-                        log::error!(
-                            "Error occurs on rendering, terminate graphics thread: {:?}",
-                            err
-                        );
-                        break;
-                    }
-                })
-                .expect("Failed to start graphics thread");
+        let graphics_thread = std::thread::Builder::new()
+            .name("graphics".to_string())
+            .spawn(move || loop {
+                std::thread::park();
+                if let Err(err) = graphics.render() {
+                    log::error!(
+                        "Error occurs on rendering, terminate graphics thread: {:?}",
+                        err
+                    );
+                    break;
+                }
+            })
+            .expect("Failed to start graphics thread");
 
-            self.graphics_thread.store(Some(Arc::new(graphics_thread)));
-        }
+        self.graphics_thread.store(Some(Arc::new(graphics_thread)));
     }
 
     /// get whole node map
