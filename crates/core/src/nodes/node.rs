@@ -442,7 +442,7 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn update(&mut self, parent: &Self, _: &SurfaceSize, force: bool) {
+    pub fn update(&mut self, parent: &Self, force: bool) {
         if force || self._update_id != self._current_update_id {
             let x = self.translate.x;
             let y = self.translate.y;

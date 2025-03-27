@@ -284,7 +284,6 @@ impl Core {
         let upload_payload = FocusablePayload {
             surface_size,
             stage_size,
-            resource_manager: self.resource_manager.clone(),
         };
 
         get_pointer_state_mut!(self, pointer_state, identifier);

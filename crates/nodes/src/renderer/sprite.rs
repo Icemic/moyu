@@ -176,7 +176,6 @@ impl Renderer for SpriteRenderer {
     ) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
         // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-        let scale_factor = payload.stage_size.scale_factor() as f32;
 
         let node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
 
@@ -209,8 +208,8 @@ impl Renderer for SpriteRenderer {
             let (tex_width, tex_height) = texture.size();
             let (tex_width, tex_height) = (tex_width as f32, tex_height as f32);
 
-            let width = (tex_width * scale_factor) / (VIEWPORT_WIDTH * scale_factor);
-            let height = (tex_height * scale_factor) / (VIEWPORT_HEIGHT * scale_factor);
+            let width = tex_width / VIEWPORT_WIDTH;
+            let height = tex_height / VIEWPORT_HEIGHT;
 
             if node.base_mut().pop_update_vertices() {
                 let vertices = match node.mode {

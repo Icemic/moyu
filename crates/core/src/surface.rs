@@ -15,8 +15,8 @@ pub fn create_eventloop() -> EventLoop<UserEvent> {
     event_loop
 }
 
-pub fn create_window(
-    event_loop: &EventLoopWindowTarget<UserEvent>,
+pub fn create_window<T>(
+    event_loop: &EventLoopWindowTarget<T>,
     #[cfg(web)] element_id: &str,
 ) -> Arc<Window> {
     let env = get_engine_config();
