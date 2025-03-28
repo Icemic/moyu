@@ -1,5 +1,5 @@
 use doufu_pal::config::WindowState;
-use log::{debug, info};
+use log::debug;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use winit::event::{Event, WindowEvent};
@@ -8,7 +8,6 @@ use winit::window::Window;
 
 use crate::core::SurfaceSize;
 use crate::events::AnimationFrameCallbackEvent;
-use crate::user_event::UserEvent;
 use crate::utils::dispatch_event::dispatch_event;
 
 use super::Core;
@@ -16,9 +15,9 @@ use super::Core;
 impl Core {
     pub fn handle_events(
         &self,
-        event: &Event<UserEvent>,
+        event: &Event<()>,
         window: &Window,
-        event_loop: &EventLoopWindowTarget<UserEvent>,
+        event_loop: &EventLoopWindowTarget<()>,
     ) {
         match event {
             &Event::AboutToWait => {
@@ -116,32 +115,11 @@ impl Core {
                     }
                 }
             }
-            Event::UserEvent(user_event) => match user_event {
-                &UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
-                    self.resize_window(logical_width, logical_height, factor);
-                    self.move_to_center();
-                }
-                &UserEvent::WindowState(state) => {
-                    self.set_window_state(state);
-                }
-                UserEvent::SetTitle(ref title) => {
-                    window.set_title(title);
-                }
-                &UserEvent::SetCursorIcon(icon) => {
-                    window.set_cursor_icon(icon);
-                }
-                &UserEvent::SetCursorVisible(visible) => {
-                    window.set_cursor_visible(visible);
-                }
-                UserEvent::Quit => {
-                    info!("Goodbye.");
-                    event_loop.exit();
-                }
-                UserEvent::Custom(_) => {
-                    // do nothing
-                }
-            },
             _ => {}
+        }
+
+        if self.about_to_quit.load(Ordering::Relaxed) {
+            event_loop.exit();
         }
     }
 }

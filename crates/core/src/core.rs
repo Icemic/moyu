@@ -11,17 +11,17 @@ use doufu_pal::time::Instant;
 use log::{debug, error};
 use render::Graphics;
 use std::collections::HashMap;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use winit::dpi::{LogicalSize, Size};
-use winit::event_loop::{EventLoop, EventLoopProxy};
+use winit::event_loop::EventLoop;
 use winit::keyboard::ModifiersState;
 use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
 use crate::state::{PointerState, MOUSE_IDENTIFIER};
 use crate::surface::create_window;
-use crate::{nodes::Container, traits::*, user_event::UserEvent};
+use crate::{nodes::Container, traits::*};
 
 pub use self::global::*;
 
@@ -30,8 +30,6 @@ pub struct Core {
     pub(crate) graphics: ArcSwapOption<Graphics>,
     #[cfg(native)]
     pub(crate) graphics_thread: ArcSwapOption<std::thread::JoinHandle<()>>,
-
-    pub(crate) event_proxy: Arc<EventLoopProxy<UserEvent>>,
 
     plugins: Arc<Mutex<HashMap<String, Arc<Mutex<dyn Plugin>>>>>,
 
@@ -49,6 +47,8 @@ pub struct Core {
 
     /// Pause the rendering process, default is `false`
     pub(crate) is_paused: AtomicBool,
+    /// Flag to indicate whether the application is about to quit.
+    pub(crate) about_to_quit: AtomicBool,
 
     /// Size of current surface, which means the size of the window on desktop platforms, the size of the canvas \
     /// on web platform, and the size of the screen on mobile platforms.
@@ -62,11 +62,7 @@ unsafe impl Send for Core {}
 unsafe impl Sync for Core {}
 
 impl Core {
-    pub fn new<T>(
-        event_loop: &EventLoop<T>,
-        #[cfg(web)] element_id: &str,
-        event_proxy: Arc<EventLoopProxy<UserEvent>>,
-    ) -> Self {
+    pub fn new<T>(event_loop: &EventLoop<T>, #[cfg(web)] element_id: &str) -> Self {
         let env = get_engine_config();
 
         let window = create_window(
@@ -115,8 +111,6 @@ impl Core {
             #[cfg(native)]
             graphics_thread: ArcSwapOption::empty(),
 
-            event_proxy,
-
             plugins: Arc::new(Mutex::new(HashMap::new())),
 
             instant: Instant::now(),
@@ -129,6 +123,7 @@ impl Core {
             cursor_state: ArcSwap::new(Arc::new(HaiCursor::default())),
             modifiers_state: ArcSwap::new(Arc::new(ModifiersState::empty())),
             is_paused: AtomicBool::new(false),
+            about_to_quit: AtomicBool::new(false),
 
             surface_size,
             stage_size,
@@ -281,13 +276,6 @@ impl Core {
         self.graphics.load().as_ref().cloned()
     }
 
-    /// dispatch user event
-    pub fn send_event(&self, event: UserEvent) {
-        if let Err(err) = self.event_proxy.send_event(event) {
-            error!("Failed to send event: {:?}", err);
-        }
-    }
-
     pub fn surface_size(&self) -> SurfaceSize {
         *self.surface_size.read()
     }
@@ -389,5 +377,10 @@ impl Core {
                 }
             }
         }
+    }
+
+    /// quit the application
+    pub fn quit(&self) {
+        self.about_to_quit.store(true, Ordering::Relaxed);
     }
 }

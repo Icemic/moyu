@@ -3,7 +3,6 @@ use std::sync::Arc;
 use doufu_audio::AudioManager;
 use doufu_core::core::set_core;
 use doufu_core::plugins::SystemPlugin;
-use doufu_core::user_event::UserEvent;
 use doufu_core::winit::event::Event;
 use doufu_core::winit::event_loop::EventLoop;
 use doufu_core::{create_doufu_core, setup};
@@ -15,15 +14,11 @@ use doufu_pal::sync::Mutex;
 use doufu_scenario::ScenarioPlugin;
 
 #[allow(dead_code)]
-pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id: &str) {
+pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str) {
     // hold the global variable lifetime using VisibleHand
     let _async_runtime_handle = platform::setup();
 
     setup();
-
-    // create event proxy which allow us to send window events from another thread
-    let event_proxy = event_loop.create_proxy();
-    let event_proxy = Arc::new(event_proxy);
 
     #[cfg(native)]
     let mut loop_helper = {
@@ -49,7 +44,6 @@ pub async fn main_entry(event_loop: EventLoop<UserEvent>, #[cfg(web)] element_id
         &event_loop,
         #[cfg(web)]
         element_id,
-        event_proxy.clone(),
     );
 
     match AudioManager::new() {
