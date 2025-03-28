@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use std::ffi::{c_int, c_void};
+use std::ffi::c_void;
 use std::ptr::null_mut;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -310,7 +310,7 @@ unsafe extern "C" fn host_promise_rejection_tracker(
     ctx: *mut JSContext,
     _promise: RawJSValue,
     reason: RawJSValue,
-    is_handled: c_int,
+    is_handled: bool,
     _opaque: *mut c_void,
 ) {
     let reason = OwnedJsValue::own(ctx, &reason);
