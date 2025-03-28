@@ -90,3 +90,14 @@ pub fn block_on<T: Future>(future: T) -> T::Output {
 pub fn block_on_without_runtime<T: Future>(future: T) -> T::Output {
     pollster::block_on(future)
 }
+
+/// Check if the current thread is the main thread. \
+/// In native mode, it checks if the current thread name is "main". \
+/// In web mode, it always returns true. Since web mode does not have a concept of threads (for now).
+pub fn is_main_thread() -> bool {
+    #[cfg(native)]
+    return std::thread::current().name() == Some("main");
+
+    #[cfg(web)]
+    return true;
+}
