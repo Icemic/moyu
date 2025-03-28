@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::Core;
 use crate::traits::{Command, Plugin};
-use crate::user_event::UserEvent;
 use crate::utils::convert::{from_js, to_js, JSValue};
 
 pub struct SystemPlugin {
@@ -61,11 +60,8 @@ impl Command for SystemPlugin {
                 height,
                 factor,
             } => {
-                // self.core.resize_window(width, height, factor);
-
-                // Still have to use UserEvent due to `.resize_stage` must be called outside a render pass
-                self.core
-                    .send_event(UserEvent::ResizeWindow(width, height, factor));
+                self.core.resize_window(width, height, factor);
+                self.core.move_to_center();
             }
             SystemCommmad::SetWindowState { state } => {
                 self.core.set_window_state(state);
@@ -90,7 +86,7 @@ impl Command for SystemPlugin {
                 return Ok(Some(to_js(&size)?));
             }
             SystemCommmad::Quit => {
-                self.core.send_event(UserEvent::Quit);
+                self.core.quit();
             }
         }
 
