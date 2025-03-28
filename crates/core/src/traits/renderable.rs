@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
-use crate::base::*;
 use crate::resource::ResourceManager;
 
 use super::Node;
@@ -29,8 +28,5 @@ where
 pub struct RendererUpdatePayload {
     /// time since app start, in seconds
     pub timestamp: f64,
-    pub delta: u32,
-    pub surface_size: SurfaceSize,
-    pub stage_size: SurfaceSize,
     pub resource_manager: Arc<ResourceManager>,
 }

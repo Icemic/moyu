@@ -7,7 +7,7 @@ use doufu_pal::{fs, task};
 
 pub fn module_loader(module_name: &str, _: *mut std::ffi::c_void) -> Result<String> {
     let module_name = Url::parse(module_name)?;
-    let code = match task::block_on(fs::read(&module_name)) {
+    let code = match task::block_on_without_runtime(fs::read(&module_name)) {
         Ok(v) => String::from_utf8(v)?,
         Err(err) => {
             return Err(anyhow::anyhow!(

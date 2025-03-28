@@ -7,16 +7,14 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopWindowTarget};
 use winit::window::WindowBuilder;
 use winit::{dpi::PhysicalSize, window::Window};
 
-use crate::user_event::UserEvent;
-
-pub fn create_eventloop() -> EventLoop<UserEvent> {
+pub fn create_eventloop() -> EventLoop<()> {
     // create main thread infinity loop
-    let event_loop: EventLoop<UserEvent> = EventLoopBuilder::with_user_event().build().unwrap();
+    let event_loop: EventLoop<()> = EventLoopBuilder::with_user_event().build().unwrap();
     event_loop
 }
 
-pub fn create_window(
-    event_loop: &EventLoopWindowTarget<UserEvent>,
+pub fn create_window<T>(
+    event_loop: &EventLoopWindowTarget<T>,
     #[cfg(web)] element_id: &str,
 ) -> Arc<Window> {
     let env = get_engine_config();
