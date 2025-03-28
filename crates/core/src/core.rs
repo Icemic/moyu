@@ -4,65 +4,37 @@ mod keyboard_events;
 mod pointer_events;
 mod render;
 
-use arc_swap::ArcSwap;
+use arc_swap::{ArcSwap, ArcSwapOption};
 use doufu_pal::config::{get_engine_config, WindowState};
 use doufu_pal::sync::{Mutex, RwLock};
 use doufu_pal::time::Instant;
 use log::{debug, error};
+use render::Graphics;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use wgpu::util::{DeviceExt, StagingBelt};
-use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::{LogicalSize, Size};
-use winit::event_loop::EventLoopProxy;
+use winit::event_loop::EventLoop;
 use winit::keyboard::ModifiersState;
 use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
 use crate::state::{PointerState, MOUSE_IDENTIFIER};
-use crate::utils::fps_meter::FpsMeter;
-use crate::{nodes::Container, resource::ResourceManager, traits::*, user_event::UserEvent};
+use crate::surface::create_window;
+use crate::{nodes::Container, traits::*};
 
 pub use self::global::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HaiRedrawMode {
-    /// redraws every frame
-    Auto,
-    /// only redraws when `Core::is_dirty` is `true, then
-    /// set `Core::is_dirty` to `false` after re-drawing.
-    Dirty,
-}
-
-pub type AfterRenderHandler = Box<
-    dyn Fn(
-            &Device,
-            &Queue,
-            &mut wgpu::CommandEncoder,
-            &wgpu::SurfaceTexture,
-            &wgpu::TextureView,
-            &mut wgpu::util::StagingBelt,
-        ) + Send
-        + Sync,
->;
-
 pub struct Core {
-    pub(crate) config: Arc<Mutex<SurfaceConfiguration>>,
-    pub(crate) event_proxy: Arc<EventLoopProxy<UserEvent>>,
-    pub(crate) resource_manager: Arc<ResourceManager>,
-    pub(crate) renderers: Arc<Mutex<HashMap<String, Box<dyn Renderer>>>>,
+    pub(crate) window: Arc<Window>,
+    pub(crate) graphics: ArcSwapOption<Graphics>,
+    #[cfg(native)]
+    pub(crate) graphics_thread: ArcSwapOption<std::thread::JoinHandle<()>>,
 
     plugins: Arc<Mutex<HashMap<String, Arc<Mutex<dyn Plugin>>>>>,
 
-    staging_belt: Arc<Mutex<StagingBelt>>,
-    mvp_buffer: wgpu::Buffer,
-    mvp_bind_group: wgpu::BindGroup,
-    fps_meter: FpsMeter,
     /// timer from program start
-    instant: Instant,
-    /// time elapsed since last frame, in microseconds
-    instant_last: ArcSwap<Instant>,
+    pub instant: Instant,
 
     pub(crate) root_node: Arc<RwLock<dyn Node>>,
     pub(crate) node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
@@ -73,54 +45,31 @@ pub struct Core {
     pub(crate) cursor_state: ArcSwap<HaiCursor>,
     pub(crate) modifiers_state: ArcSwap<ModifiersState>,
 
-    /// redraw mode, default is `Auto`
-    pub(crate) redraw_mode: ArcSwap<HaiRedrawMode>,
-    /// if `true`, the screen will be refreshed in next frame,
-    /// by default it will be `true` to render every frame.
-    pub(crate) is_dirty: AtomicBool,
     /// Pause the rendering process, default is `false`
     pub(crate) is_paused: AtomicBool,
+    /// Flag to indicate whether the application is about to quit.
+    pub(crate) about_to_quit: AtomicBool,
 
-    // render interrupt handler
-    pub(crate) after_render_handler: Arc<Mutex<Option<AfterRenderHandler>>>,
-
-    // To avoid memory leak, we must put these at bottom to make sure [Device] is dropped last.
-    // see: https://github.com/gfx-rs/wgpu/issues/5529
-    pub(crate) queue: Arc<Queue>,
-    // To avoid STATUS_ACCESS_VIOLATION on quit, [Surface] must not be the last one to drop, wth...
-    // see: https://github.com/gfx-rs/wgpu/issues/5637
-    pub(crate) surface: Arc<Surface<'static>>,
-    pub(crate) device: Arc<Device>,
     /// Size of current surface, which means the size of the window on desktop platforms, the size of the canvas \
     /// on web platform, and the size of the screen on mobile platforms.
     pub(crate) surface_size: Arc<RwLock<SurfaceSize>>,
     /// Size of stage, which is the content size set by user. Cannot be changed once set.
     pub(crate) stage_size: Arc<RwLock<SurfaceSize>>,
     pub(crate) stage_transform: Arc<RwLock<(f32, f32, f32)>>,
-    pub(crate) window: Arc<Window>,
-    pub(crate) instance: Arc<Instance>,
-}
-
-impl Drop for Core {
-    fn drop(&mut self) {
-        self.queue.submit(vec![]);
-    }
 }
 
 unsafe impl Send for Core {}
 unsafe impl Sync for Core {}
 
 impl Core {
-    pub fn new(
-        instance: Arc<Instance>,
-        surface: Arc<Surface<'static>>,
-        device: Arc<Device>,
-        queue: Arc<Queue>,
-        window: Arc<Window>,
-        config: SurfaceConfiguration,
-        event_proxy: Arc<EventLoopProxy<UserEvent>>,
-    ) -> Self {
+    pub fn new<T>(event_loop: &EventLoop<T>, #[cfg(web)] element_id: &str) -> Self {
         let env = get_engine_config();
+
+        let window = create_window(
+            event_loop,
+            #[cfg(web)]
+            element_id,
+        );
 
         // store surface and stage size
         let size = window.inner_size();
@@ -134,13 +83,16 @@ impl Core {
         );
         // use current monitor scale factor
         stage_size.set_scale_factor(scale_factor);
-
         let (scale, translate_x, translate_y) = get_scale_and_translate(
             env.stage_size.width() as f32,
             env.stage_size.height() as f32,
             size.width as f32,
             size.height as f32,
         );
+
+        let surface_size = Arc::new(RwLock::new(surface_size));
+        let stage_size = Arc::new(RwLock::new(stage_size));
+        let stage_transform = Arc::new(RwLock::new((scale, translate_x, translate_y)));
 
         // create root node
         let root_node = Container::new("Root Node".to_string());
@@ -153,54 +105,15 @@ impl Core {
         // add mouse pointer which is always there
         pointer_map.insert(MOUSE_IDENTIFIER, PointerState::default());
 
-        let resource_manager = ResourceManager::new(device.clone(), queue.clone());
-        let renderers = HashMap::default();
-
-        let staging_belt = Arc::new(Mutex::new(StagingBelt::new(0)));
-
-        let surface_logical_size = surface_size.logical_size_f32();
-        let stage_logical_size = stage_size.logical_size_f32();
-
-        let mvp_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("MVP Buffer"),
-            contents: bytemuck::bytes_of(&MVPMatrix::from_logical_size(
-                stage_logical_size,
-                surface_logical_size,
-            )),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let mvp_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("MVP Matrix Bind Group"),
-            layout: &MVPMatrix::bind_group_layout(&device),
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: mvp_buffer.as_entire_binding(),
-            }],
-        });
-
         Self {
-            instance,
-            surface_size: Arc::new(RwLock::new(stage_size)),
-            stage_size: Arc::new(RwLock::new(stage_size)),
-            stage_transform: Arc::new(RwLock::new((scale, translate_x, translate_y))),
-            surface,
-            device,
-            queue,
             window,
-            config: Arc::new(Mutex::new(config)),
-            event_proxy,
-            resource_manager: Arc::new(resource_manager),
-            renderers: Arc::new(Mutex::new(renderers)),
+            graphics: ArcSwapOption::empty(),
+            #[cfg(native)]
+            graphics_thread: ArcSwapOption::empty(),
 
             plugins: Arc::new(Mutex::new(HashMap::new())),
 
-            staging_belt,
-            mvp_buffer,
-            mvp_bind_group,
-            fps_meter: FpsMeter::default(),
             instant: Instant::now(),
-            instant_last: ArcSwap::new(Arc::new(Instant::now())),
 
             root_node,
             node_map: Arc::new(RwLock::new(node_map)),
@@ -209,26 +122,13 @@ impl Core {
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
             cursor_state: ArcSwap::new(Arc::new(HaiCursor::default())),
             modifiers_state: ArcSwap::new(Arc::new(ModifiersState::empty())),
-            redraw_mode: ArcSwap::new(Arc::new(HaiRedrawMode::Auto)),
-            is_dirty: AtomicBool::new(true),
             is_paused: AtomicBool::new(false),
+            about_to_quit: AtomicBool::new(false),
 
-            after_render_handler: Arc::new(Mutex::new(None)),
+            surface_size,
+            stage_size,
+            stage_transform,
         }
-    }
-
-    pub fn register_renderer(&self, name: &str, renderer: Box<dyn Renderer>) {
-        let mut renderers = self.renderers.lock();
-        if renderers.contains_key(name) {
-            error!("There's already a renderer named '{}'.", name);
-            return;
-        }
-        renderers.insert(name.to_owned(), renderer);
-    }
-
-    pub fn register_after_render_handler(&self, handler: AfterRenderHandler) {
-        let mut after_render_handler = self.after_render_handler.lock();
-        *after_render_handler = Some(handler);
     }
 
     pub fn register_plugin(&self, name: &str, plugin: Arc<Mutex<dyn Plugin>>) {
@@ -245,48 +145,10 @@ impl Core {
         plugins.get(name).cloned()
     }
 
-    /// Get instance of wgpu. This is useful when you need to do some low-level operations.
-    /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn instance(&self) -> &Arc<Instance> {
-        &self.instance
-    }
-
-    /// Get device of wgpu. This is useful when you need to do some low-level operations.
-    /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn device(&self) -> &Arc<Device> {
-        &self.device
-    }
-
-    /// Get queue of wgpu. This is useful when you need to do some low-level operations.
-    /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn queue(&self) -> &Arc<Queue> {
-        &self.queue
-    }
-
-    /// Get surface of wgpu. This is useful when you need to do some low-level operations.
-    /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn surface(&self) -> &Arc<Surface<'static>> {
-        &self.surface
-    }
-
     /// Get window of winit. This is useful when you need to do some low-level operations.
     /// However, it may break the encapsulation of the framework, so use it with caution.
     pub fn window(&self) -> &Arc<Window> {
         &self.window
-    }
-
-    /// reset surface
-    pub fn refresh(&self) {
-        let config = self.config.lock();
-        self.surface.configure(&self.device, &config);
-    }
-
-    pub fn set_redraw_mode(&self, mode: HaiRedrawMode) {
-        self.redraw_mode.store(Arc::new(mode));
-    }
-
-    pub fn set_dirty(&self, is_dirty: bool) {
-        self.is_dirty.store(is_dirty, Ordering::Relaxed);
     }
 
     /// Move window to center of the screen. Only works on desktop platforms.
@@ -336,32 +198,9 @@ impl Core {
 
     // reconfigure the surface everytime the window's size changes
     pub fn resize_stage(&self, new_size: SurfaceSize) {
-        let mut config = self.config.lock();
-
-        if cfg!(web) {
-            // on web, we need to set physical size to logical size
-            // wtf, not sure why this is needed, but it works.
-            let (width, height) = new_size.logical_size();
-            config.width = width.round() as u32;
-            config.height = height.round() as u32;
-        } else {
-            let (width, height) = new_size.physical_size();
-            config.width = width;
-            config.height = height;
-        }
-
         *(self.surface_size.write()) = new_size;
 
         let stage_size = self.stage_size.read().logical_size_f32();
-
-        self.queue.write_buffer(
-            &self.mvp_buffer,
-            0,
-            bytemuck::bytes_of(&MVPMatrix::from_logical_size(
-                stage_size,
-                new_size.logical_size_f32(),
-            )),
-        );
 
         let (scale, translate_x, translate_y) = get_scale_and_translate(
             stage_size.0,
@@ -372,11 +211,55 @@ impl Core {
 
         *(self.stage_transform.write()) = (scale, translate_x, translate_y);
 
-        // Finish all queue commands before reconfigure.
-        // This is essential on DirectX 12 backend to avoid unexpected error.
-        self.instance.poll_all(true);
-        // apply new size
-        self.surface.configure(&self.device, &config);
+        if let Some(graphics) = self.graphics.load().as_ref() {
+            graphics.reconfigure_surface(new_size, self.stage_size());
+            log::info!("Surface reconfigured with new size: {:?}", new_size);
+        } else {
+            log::warn!("No graphics instance found, skipping surface reconfiguration.");
+        }
+    }
+
+    #[cfg(web)]
+    pub async fn init_graphics(&self) {
+        let graphics = Graphics::init(
+            &self.window,
+            &self.surface_size.read(),
+            &self.stage_size.read(),
+            self.root_node.clone(),
+        )
+        .await;
+
+        let graphics = Arc::new(graphics);
+        self.graphics.store(Some(graphics.clone()));
+    }
+
+    #[cfg(native)]
+    pub fn init_graphics(&self) {
+        let graphics = doufu_pal::task::block_on_without_runtime(Graphics::init(
+            &self.window,
+            &self.surface_size.read(),
+            &self.stage_size.read(),
+            self.root_node.clone(),
+        ));
+
+        let graphics = Arc::new(graphics);
+        self.graphics.store(Some(graphics.clone()));
+
+        let graphics_thread = std::thread::Builder::new()
+            .name("graphics".to_string())
+            .spawn(move || loop {
+                std::thread::park();
+                if let Err(err) = graphics.render() {
+                    log::error!(
+                        "Error occurs on rendering, terminate graphics thread: {:?}",
+                        err
+                    );
+                    break;
+                }
+            })
+            .expect("Failed to start graphics thread");
+
+        self.graphics_thread.store(Some(Arc::new(graphics_thread)));
     }
 
     /// get whole node map
@@ -389,15 +272,12 @@ impl Core {
         &self.root_node
     }
 
-    pub fn resource_manager(&self) -> &Arc<ResourceManager> {
-        &self.resource_manager
+    pub fn graphics(&self) -> Option<Arc<Graphics>> {
+        self.graphics.load().as_ref().cloned()
     }
 
-    /// dispatch user event
-    pub fn send_event(&self, event: UserEvent) {
-        if let Err(err) = self.event_proxy.send_event(event) {
-            error!("Failed to send event: {:?}", err);
-        }
+    pub fn surface_size(&self) -> SurfaceSize {
+        *self.surface_size.read()
     }
 
     /// get current surface size
@@ -480,11 +360,6 @@ impl Core {
         self.window_state.store(Arc::new(WindowState::Fullscreen));
     }
 
-    /// force clear render queue in case of unexpected error (for example, memory leak).
-    pub fn clear_queue(&self) {
-        self.queue.submit(vec![]);
-    }
-
     #[inline]
     fn set_cursor(&self, cursor: HaiCursor) {
         let prev_cursor = self.cursor_state.swap(Arc::new(cursor.clone()));
@@ -502,5 +377,10 @@ impl Core {
                 }
             }
         }
+    }
+
+    /// quit the application
+    pub fn quit(&self) {
+        self.about_to_quit.store(true, Ordering::Relaxed);
     }
 }

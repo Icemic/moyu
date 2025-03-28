@@ -25,8 +25,20 @@ const bunnyMark = new BunnyMark(bunnies, {
 
 bunnyMark.addBunny(8000);
 
+let frame_count = 0;
+let last_fps_time = 0;
+
 const loop: FrameRequestCallback = (now) => {
   bunnyMark.update();
+
+  frame_count++;
+
+  if (now - last_fps_time > 1000) {
+    console.log('fps(script):', frame_count);
+    frame_count = 0;
+    last_fps_time = now;
+  }
+
   requestAnimationFrame(loop);
 };
 

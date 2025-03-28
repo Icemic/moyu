@@ -1,5 +1,5 @@
 use doufu_pal::config::WindowState;
-use log::{debug, error, info, warn};
+use log::debug;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use winit::event::{Event, WindowEvent};
@@ -8,41 +8,22 @@ use winit::window::Window;
 
 use crate::core::SurfaceSize;
 use crate::events::AnimationFrameCallbackEvent;
-use crate::user_event::UserEvent;
 use crate::utils::dispatch_event::dispatch_event;
 
-use super::{Core, HaiRedrawMode};
+use super::Core;
 
 impl Core {
     pub fn handle_events(
         &self,
-        event: &Event<UserEvent>,
+        event: &Event<()>,
         window: &Window,
-        event_loop: &EventLoopWindowTarget<UserEvent>,
+        event_loop: &EventLoopWindowTarget<()>,
     ) {
         match event {
             &Event::AboutToWait => {
                 // poll all plugins
                 for plugin in self.plugins.lock().values_mut() {
                     plugin.lock().update(false);
-                }
-
-                // RedrawRequested will only trigger once, unless we manually
-                // request it.
-                let redraw_mode = self.redraw_mode.load();
-                match **redraw_mode {
-                    HaiRedrawMode::Auto => {
-                        if !self.is_paused.load(Ordering::Relaxed) {
-                            window.request_redraw();
-                        }
-                    }
-                    HaiRedrawMode::Dirty => {
-                        // skip rendering if not dirty
-                        if self.is_dirty.load(Ordering::Relaxed) {
-                            self.set_dirty(false);
-                            window.request_redraw();
-                        }
-                    }
                 }
             }
             &Event::WindowEvent {
@@ -63,35 +44,40 @@ impl Core {
                                 plugin.lock().update(true);
                             }
 
-                            match self.render(window) {
-                                Ok(_) => {
-                                    // For real browsers, the callback should be executed before rendering,
-                                    // but in our asynchronous process, this would cause performance issues.
-                                    // Therefore, we only send a message after rendering to let the JavaScript
-                                    // environment align with v-sync.
-                                    // We convert u128 to u32 here, which is safe because the timestamp is an
-                                    // elapsed time (Can't you play a game for 136 years?).
-                                    dispatch_event(AnimationFrameCallbackEvent {
-                                        timestamp: self.instant.elapsed().as_millis() as u32,
-                                    });
-                                }
-                                // Reconfigure the surface if lost
-                                Err(wgpu::SurfaceError::Lost) => {
-                                    warn!("surface lost, reconfigure.");
-                                    self.refresh();
-                                }
-                                // The system is out of memory, we should probably quit
-                                Err(wgpu::SurfaceError::OutOfMemory) => {
-                                    error!("surface out of memory, quit.");
+                            #[cfg(native)]
+                            if let Some(handle) = self.graphics_thread.load().as_ref() {
+                                if handle.is_finished() {
+                                    // detect graphics thread exit
+                                    log::error!("Graphics thread exited unexpectedly.");
                                     event_loop.exit();
+                                } else {
+                                    // wake up graphics thread
+                                    handle.thread().unpark();
                                 }
-                                Err(wgpu::SurfaceError::Outdated) => {
-                                    // ignore
-                                    warn!("surface outdated, ignored.");
-                                }
-                                // All other errors (Outdated, Timeout) should be resolved by the next frame
-                                Err(e) => {
-                                    error!("surface error: {:?}", e);
+                            } else {
+                                // keep the loop running until the graphics thread is created
+                                window.request_redraw();
+                                return;
+                            }
+
+                            // We convert u128 to u32 here, which is safe because the timestamp is an
+                            // elapsed time (Can't you play a game for 136 years?).
+                            dispatch_event(AnimationFrameCallbackEvent {
+                                timestamp: self.instant.elapsed().as_millis() as u32,
+                            });
+
+                            #[cfg(native)]
+                            if let Some(vm) = doufu_runtime::try_get_vm() {
+                                vm.tick();
+                            }
+
+                            #[cfg(web)]
+                            if let Some(graphics) = self.graphics.load().as_ref() {
+                                if let Err(err) = graphics.render() {
+                                    log::error!(
+                                        "Error occurs on rendering, terminate graphics thread: {:?}",
+                                        err
+                                    );
                                 }
                             }
                         }
@@ -129,32 +115,11 @@ impl Core {
                     }
                 }
             }
-            Event::UserEvent(user_event) => match user_event {
-                &UserEvent::ResizeWindow(logical_width, logical_height, factor) => {
-                    self.resize_window(logical_width, logical_height, factor);
-                    self.move_to_center();
-                }
-                &UserEvent::WindowState(state) => {
-                    self.set_window_state(state);
-                }
-                UserEvent::SetTitle(ref title) => {
-                    window.set_title(title);
-                }
-                &UserEvent::SetCursorIcon(icon) => {
-                    window.set_cursor_icon(icon);
-                }
-                &UserEvent::SetCursorVisible(visible) => {
-                    window.set_cursor_visible(visible);
-                }
-                UserEvent::Quit => {
-                    info!("Goodbye.");
-                    event_loop.exit();
-                }
-                UserEvent::Custom(_) => {
-                    // do nothing
-                }
-            },
             _ => {}
+        }
+
+        if self.about_to_quit.load(Ordering::Relaxed) {
+            event_loop.exit();
         }
     }
 }

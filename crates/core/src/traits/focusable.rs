@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use crate::base::SurfaceSize;
-use crate::resource::ResourceManager;
 
 use super::Node;
 
@@ -25,5 +22,4 @@ pub trait Focusable: Node {
 pub struct FocusablePayload {
     pub surface_size: SurfaceSize,
     pub stage_size: SurfaceSize,
-    pub resource_manager: Arc<ResourceManager>,
 }

@@ -7,8 +7,7 @@ use std::time::Instant;
 
 use doufu_pal::config::get_engine_config;
 use quickjs_rusty::{
-    Arguments, Context, ExecutionError, JSContext, JsFunction, OwnedJsPromise, OwnedJsValue,
-    RawJSValue,
+    Arguments, Context, ExecutionError, JSContext, JsFunction, OwnedJsValue, RawJSValue,
 };
 use std::sync::Mutex;
 use tokio::sync::oneshot::{Receiver, Sender};
@@ -167,12 +166,6 @@ impl QuickVM {
     /// This function must be called in the same thread where the vm is created.
     #[inline]
     pub fn context(&self) -> &Context {
-        debug_assert_eq!(
-            std::thread::current().name(),
-            Some("quickjs"),
-            "Detected called from wrong thread."
-        );
-
         &self.context
     }
 
@@ -216,83 +209,89 @@ impl QuickVM {
     /// Tick the VM, executing all pending timers
     pub fn block_on_ticking(&self) {
         loop {
-            {
-                if self.to_be_closed {
-                    break;
-                }
+            if self.tick() {
+                break;
             }
-
-            // like microtasks in js, execute all async tasks until the queue is empty
-            loop {
-                let mut async_tasks = self.async_tasks.lock().unwrap();
-                if let Some(task) = async_tasks.pop_front() {
-                    drop(async_tasks);
-                    task(self);
-                } else {
-                    break;
-                }
-            }
-
-            // handle all pending calls
-            let mut call_tasks = self.call_tasks.lock().unwrap();
-            while let Some((name, args, sender)) = call_tasks.pop_front() {
-                let _result = self.context().call_function(&name, args);
-                sender.send(()).unwrap();
-            }
-
-            // drop the lock before executing the tasks to avoid deadlocks
-            drop(call_tasks);
-
-            self.context().execute_pending_job().unwrap();
-
-            // filter out all tasks that are ready to be executed
-            let timer_tasks = self.timer_tasks.lock().unwrap();
-            let mut tasks_to_execute = timer_tasks
-                .iter()
-                .filter_map(|task| {
-                    let matched = task.duration_until <= self.instant.elapsed().as_millis() as u32;
-
-                    if matched {
-                        Some(task.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>();
-
-            // drop the lock before executing the tasks to avoid deadlocks
-            drop(timer_tasks);
-
-            // execute the tasks
-            for task in tasks_to_execute.drain(..) {
-                task.callback.call(vec![]).unwrap();
-
-                // remove the task from the list
-                let mut timer_tasks = self.timer_tasks.lock().unwrap();
-                if let Some(index) = timer_tasks
-                    .iter()
-                    .position(|value| value.timer_id == task.timer_id)
-                {
-                    timer_tasks.remove(index);
-                }
-
-                // if the task is an interval, add it to the list again
-                if task.kind == TimerTaskKind::Interval {
-                    let duration_until =
-                        task.duration as u32 + self.instant.elapsed().as_millis() as u32;
-
-                    timer_tasks.push(Rc::new(TimerTask {
-                        kind: TimerTaskKind::Interval,
-                        timer_id: task.timer_id,
-                        duration: task.duration,
-                        duration_until,
-                        callback: task.callback.clone(),
-                    }));
-                }
-            }
-
-            spin_sleep::sleep(std::time::Duration::from_millis(1));
+            std::thread::sleep(std::time::Duration::from_millis(1));
         }
+    }
+
+    /// Tick the VM, executing all pending timers
+    pub fn tick(&self) -> bool {
+        if self.to_be_closed {
+            return true;
+        }
+
+        // like microtasks in js, execute all async tasks until the queue is empty
+        loop {
+            let mut async_tasks = self.async_tasks.lock().unwrap();
+            if let Some(task) = async_tasks.pop_front() {
+                drop(async_tasks);
+                task(self);
+            } else {
+                break;
+            }
+        }
+
+        // handle all pending calls
+        let mut call_tasks = self.call_tasks.lock().unwrap();
+        while let Some((name, args, sender)) = call_tasks.pop_front() {
+            let _result = self.context().call_function(&name, args);
+            sender.send(()).unwrap();
+        }
+
+        // drop the lock before executing the tasks to avoid deadlocks
+        drop(call_tasks);
+
+        self.context().execute_pending_job().unwrap();
+
+        // filter out all tasks that are ready to be executed
+        let timer_tasks = self.timer_tasks.lock().unwrap();
+        let mut tasks_to_execute = timer_tasks
+            .iter()
+            .filter_map(|task| {
+                let matched = task.duration_until <= self.instant.elapsed().as_millis() as u32;
+
+                if matched {
+                    Some(task.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        // drop the lock before executing the tasks to avoid deadlocks
+        drop(timer_tasks);
+
+        // execute the tasks
+        for task in tasks_to_execute.drain(..) {
+            task.callback.call(vec![]).unwrap();
+
+            // remove the task from the list
+            let mut timer_tasks = self.timer_tasks.lock().unwrap();
+            if let Some(index) = timer_tasks
+                .iter()
+                .position(|value| value.timer_id == task.timer_id)
+            {
+                timer_tasks.remove(index);
+            }
+
+            // if the task is an interval, add it to the list again
+            if task.kind == TimerTaskKind::Interval {
+                let duration_until =
+                    task.duration as u32 + self.instant.elapsed().as_millis() as u32;
+
+                timer_tasks.push(Rc::new(TimerTask {
+                    kind: TimerTaskKind::Interval,
+                    timer_id: task.timer_id,
+                    duration: task.duration,
+                    duration_until,
+                    callback: task.callback.clone(),
+                }));
+            }
+        }
+
+        false
     }
 }
 
