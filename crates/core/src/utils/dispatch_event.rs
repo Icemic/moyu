@@ -6,17 +6,15 @@ use crate::utils::convert::to_js;
 pub fn dispatch_event<T: Event>(event: T) {
     use doufu_runtime::try_get_vm;
 
-    doufu_pal::task::get_runtime_handle().spawn(async move {
-        if let Some(vm) = try_get_vm() {
-            vm.with_context(move |vm| {
-                let event = HaiEvent::from_event(event);
-                let event = to_js(&event).unwrap();
-                if let Err(err) = vm.call_function_direct("__doufu_receive_event", vec![event]) {
-                    log::error!("failed to dispatch event: {:?}", err);
-                }
-            })
-        }
-    });
+    if let Some(vm) = try_get_vm() {
+        vm.with_context(move |vm| {
+            let event = HaiEvent::from_event(event);
+            let event = to_js(&event).unwrap();
+            if let Err(err) = vm.call_function_direct("__doufu_receive_event", vec![event]) {
+                log::error!("failed to dispatch event: {:?}", err);
+            }
+        });
+    }
 }
 
 #[cfg(web)]
