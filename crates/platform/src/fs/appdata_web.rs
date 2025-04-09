@@ -95,7 +95,7 @@ async fn get_file_from_appdata(
 /// Read a file from the appdata directory.
 /// However, on Web there's no real filesystem, so it is simulated by
 /// [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system).
-/// For example, path `foo/bar` will be stored in the path `doufu/<app_name>/foo/bar`.
+/// For example, path `foo/bar` will be stored in the path `moyu/<app_name>/foo/bar`.
 pub async fn read_from_appdata(relative_path: &str) -> Result<Option<Vec<u8>>> {
     use wasm_bindgen_futures::JsFuture;
     use web_sys::wasm_bindgen::JsCast;

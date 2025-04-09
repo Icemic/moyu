@@ -1,10 +1,10 @@
 [package]
 authors = ["Icemic <bingfeng.web@gmail.com>"]
-description = "Scenario plugin for Hai."
+description = "Scenario plugin for Moyu."
 edition = "2021"
 license = "MPL-2.0"
-name = "doufu_scenario"
-repository = "https://github.com/DeepSpaceMill/doufu"
+name = "moyu_scenario"
+repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.7.0"
 
 [dependencies]
@@ -13,11 +13,11 @@ log = "0.4"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 
-[dependencies.doufu_pal]
+[dependencies.moyu_pal]
 path = "../platform"
 version = "0.7"
 
-[dependencies.doufu_core]
+[dependencies.moyu_core]
 default-features = false
 features = ["js_runtime"]
 path = "../core"

@@ -12,11 +12,11 @@ use kira::StartTime;
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
-use doufu_core::traits::Command;
-use doufu_core::traits::Plugin;
-use doufu_core::utils::convert::{create_promise, from_js, JSValue};
-use doufu_pal::config::entry_dir;
-use doufu_pal::sync::Mutex;
+use moyu_core::traits::Command;
+use moyu_core::traits::Plugin;
+use moyu_core::utils::convert::{create_promise, from_js, JSValue};
+use moyu_pal::config::entry_dir;
+use moyu_pal::sync::Mutex;
 
 use crate::audio::{Audio, AudioLoadingState};
 
@@ -96,7 +96,7 @@ impl AudioManager {
 
         return async move {
             audio.lock().loading_state = AudioLoadingState::Loading;
-            let file = match doufu_pal::fs::open(&asset_full_path).await {
+            let file = match moyu_pal::fs::open(&asset_full_path).await {
                 Ok(file) => file,
                 Err(e) => {
                     log::error!("Failed to open file: {}", e);

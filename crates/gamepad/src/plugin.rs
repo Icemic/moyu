@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::u16;
 
 use anyhow::Result;
-use doufu_core::traits::{Command, Plugin, PluginEventSource};
-use doufu_core::utils::convert::{from_js, to_js, JSValue};
-use doufu_pal::time::Instant;
+use moyu_core::traits::{Command, Plugin, PluginEventSource};
+use moyu_core::utils::convert::{from_js, to_js, JSValue};
+use moyu_pal::time::Instant;
 use gilrs::ff::{BaseEffect, BaseEffectType, EffectBuilder, Repeat, Replay, Ticks};
 use gilrs::{Event, Gilrs};
 use serde::{Deserialize, Serialize};

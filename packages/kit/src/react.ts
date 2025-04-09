@@ -3,11 +3,11 @@ import type { ReactElement } from 'react';
 import Reconciler from 'react-reconciler';
 import type { HostConfig } from 'react-reconciler';
 import { DefaultEventPriority } from 'react-reconciler/constants';
-import type { DetailedHaiProps, HaiNodeAttributes } from './declaration';
+import type { DetailedMoyuProps, MoyuNodeAttributes } from './declaration';
 import { Node } from './node';
 
 type Type = string;
-type Props = DetailedHaiProps<HaiNodeAttributes>;
+type Props = DetailedMoyuProps<MoyuNodeAttributes>;
 type Container = Node;
 type Instance = Node;
 type TextInstance = never;
@@ -220,7 +220,7 @@ const hostConfig: HostConfig<
   },
 };
 
-export const HaiRenderer = Reconciler(hostConfig);
+export const MoyuRenderer = Reconciler(hostConfig);
 
 export interface RootOptions {
   /**
@@ -232,13 +232,13 @@ export interface RootOptions {
 
 export function createRoot(options?: RootOptions) {
   const rootNode = Node.rootNode();
-  const rootElement = HaiRenderer.createContainer(
+  const rootElement = MoyuRenderer.createContainer(
     rootNode,
     0,
     null,
     false,
     false,
-    options?.identifierPrefix ?? 'hai',
+    options?.identifierPrefix ?? 'moyu',
     options?.onRecoverableError ??
       ((err) => {
         console.error('unrecoverable error: ', err);
@@ -246,10 +246,10 @@ export function createRoot(options?: RootOptions) {
     null,
   );
 
-  HaiRenderer.injectIntoDevTools({
+  MoyuRenderer.injectIntoDevTools({
     bundleType: process.env.NODE_ENV === 'production' ? 0 : 1,
     version: '0.1.0',
-    rendererPackageName: '@doufu-moe/kit',
+    rendererPackageName: '@moyu-moe/kit',
     findFiberByHostInstance: (instance: Instance | TextInstance) => {
       return instance as any;
     },
@@ -258,7 +258,7 @@ export function createRoot(options?: RootOptions) {
   return {
     render: (reactElement: ReactElement, callback?: (() => void) | null) => {
       // update the root Container
-      return HaiRenderer.updateContainer(reactElement, rootElement, null, callback);
+      return MoyuRenderer.updateContainer(reactElement, rootElement, null, callback);
     },
   };
 }

@@ -1,15 +1,15 @@
 [package]
 authors = ["Icemic <bingfeng.web@gmail.com>"]
-description = "Core implementation of Hai game engine, and general 2D rendering library using WebGPU as well."
+description = "Core implementation of Moyu game engine, and general 2D rendering library using WebGPU as well."
 edition = "2021"
 license = "MPL-2.0"
-name = "doufu_core"
-repository = "https://github.com/DeepSpaceMill/doufu"
+name = "moyu_core"
+repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.7.0"
 
 [features]
 default = []
-js_runtime = ["doufu_runtime"]
+js_runtime = ["moyu_runtime"]
 
 [dependencies]
 anyhow = "1.0"
@@ -32,11 +32,11 @@ serde = {version = "1.0", features = ["derive"]}
 wgpu = "22.0"
 winit = {version = "0.29", features = ["serde"]}
 
-doufu_macros = {workspace = true}
-doufu_pal = {workspace = true}
+moyu_macros = {workspace = true}
+moyu_pal = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-doufu_runtime = {workspace = true, optional = true}
+moyu_runtime = {workspace = true, optional = true}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 serde-wasm-bindgen = "0.6.5"

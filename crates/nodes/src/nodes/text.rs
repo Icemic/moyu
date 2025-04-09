@@ -1,13 +1,13 @@
-use doufu_macros::Node;
+use moyu_macros::Node;
 use huozi::glyph_vertices::GlyphVertices;
 use huozi::layout::{Color, LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle};
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
-use doufu_core::nodes::NodeBase;
-use doufu_core::traits::{Command, NodeEventSource};
-use doufu_core::traits::{Focusable, Node, NodeBaseTrait};
-use doufu_core::utils::convert::{from_js, to_js, JSValue};
+use moyu_core::nodes::NodeBase;
+use moyu_core::traits::{Command, NodeEventSource};
+use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
+use moyu_core::utils::convert::{from_js, to_js, JSValue};
 
 use crate::events::TextEvent;
 

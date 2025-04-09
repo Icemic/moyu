@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy)]
-pub struct HaiLogicalSize(u32, u32);
+pub struct MoyuLogicalSize(u32, u32);
 
-impl HaiLogicalSize {
+impl MoyuLogicalSize {
     pub fn width(&self) -> u32 {
         self.0
     }
@@ -17,7 +17,7 @@ impl HaiLogicalSize {
     }
 }
 
-impl std::str::FromStr for HaiLogicalSize {
+impl std::str::FromStr for MoyuLogicalSize {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -30,17 +30,17 @@ impl std::str::FromStr for HaiLogicalSize {
             .next()
             .map(|s| s.parse())
             .ok_or(anyhow::anyhow!("expected format: <width>x<height>"))??;
-        Ok(HaiLogicalSize(x, y))
+        Ok(MoyuLogicalSize(x, y))
     }
 }
 
-impl std::fmt::Display for HaiLogicalSize {
+impl std::fmt::Display for MoyuLogicalSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}x{}", self.0, self.1)
     }
 }
 
-impl Serialize for HaiLogicalSize {
+impl Serialize for MoyuLogicalSize {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::ser::Serializer,
@@ -49,8 +49,8 @@ impl Serialize for HaiLogicalSize {
     }
 }
 
-impl<'de> Deserialize<'de> for HaiLogicalSize {
-    fn deserialize<D>(deserializer: D) -> Result<HaiLogicalSize, D::Error>
+impl<'de> Deserialize<'de> for MoyuLogicalSize {
+    fn deserialize<D>(deserializer: D) -> Result<MoyuLogicalSize, D::Error>
     where
         D: serde::de::Deserializer<'de>,
     {

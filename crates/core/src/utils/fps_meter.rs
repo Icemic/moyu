@@ -1,4 +1,4 @@
-use doufu_pal::time::Instant;
+use moyu_pal::time::Instant;
 use std::cell::Cell;
 
 /// A high-performance, lock-free FPS meter

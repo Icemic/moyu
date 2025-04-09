@@ -3,16 +3,16 @@ mod entry;
 #[cfg(native)]
 #[tokio::main]
 async fn main() {
-    doufu_pal::logger::setup();
-    doufu_pal::config::setup().await;
+    moyu_pal::logger::setup();
+    moyu_pal::config::setup().await;
 
     #[cfg(debug_assertions)]
     log::debug!(
         "Environtment: {:#?}",
-        doufu_pal::config::get_engine_config()
+        moyu_pal::config::get_engine_config()
     );
 
-    let event_loop = doufu_core::surface::create_eventloop();
+    let event_loop = moyu_core::surface::create_eventloop();
 
     entry::main_entry(event_loop).await;
 }

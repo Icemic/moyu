@@ -1,10 +1,10 @@
 [package]
 authors = ["Icemic <bingfeng.web@gmail.com>"]
-description = "Gamepad plugin for Hai."
+description = "Gamepad plugin for Moyu."
 edition = "2021"
 license = "MPL-2.0"
-name = "doufu_gamepad"
-repository = "https://github.com/DeepSpaceMill/doufu"
+name = "moyu_gamepad"
+repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.7.0"
 
 [dependencies]
@@ -16,11 +16,11 @@ serde_json = "1.0"
 [target.'cfg(any(windows, target_os = "linux", target_os = "macos", target_arch = "wasm32"))'.dependencies]
 gilrs = "0.11"
 
-[dependencies.doufu_pal]
+[dependencies.moyu_pal]
 path = "../platform"
 version = "0.7"
 
-[dependencies.doufu_core]
+[dependencies.moyu_core]
 default-features = false
 features = ["js_runtime"]
 path = "../core"

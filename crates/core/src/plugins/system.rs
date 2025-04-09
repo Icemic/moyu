@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use doufu_pal::config::WindowState;
+use moyu_pal::config::WindowState;
 use serde::{Deserialize, Serialize};
 
 use crate::core::Core;

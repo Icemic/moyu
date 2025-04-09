@@ -1,5 +1,5 @@
 import type { BubbleEvent } from './events/base';
-import * as hai from './hai';
+import * as moyu from './moyu';
 import { STATE } from './state';
 
 export class Node {
@@ -18,7 +18,7 @@ export class Node {
     node.props = restProps;
     node.listeners = listeners;
 
-    node.nodeId = hai.createInstance(type, label, restProps);
+    node.nodeId = moyu.createInstance(type, label, restProps);
     STATE.nodeMap[node.nodeId] = node;
     return node;
   }
@@ -31,15 +31,15 @@ export class Node {
   }
 
   addChild(child: Node) {
-    hai.addChild(this.nodeId, child.nodeId);
+    moyu.addChild(this.nodeId, child.nodeId);
   }
 
   insertChild(index: number, child: Node) {
-    hai.insertChild(this.nodeId, 0, child.nodeId);
+    moyu.insertChild(this.nodeId, 0, child.nodeId);
   }
 
   insertChildBefore(beforeChild: Node, child: Node) {
-    hai.insertChildBefore(this.nodeId, beforeChild.nodeId, child.nodeId);
+    moyu.insertChildBefore(this.nodeId, beforeChild.nodeId, child.nodeId);
   }
 
   // removeChildAt(index: number): Node | undefined {
@@ -47,19 +47,19 @@ export class Node {
   // }
 
   removeChild(child: Node) {
-    hai.removeChild(this.nodeId, child.nodeId);
-    hai.destroyInstance(child.nodeId);
+    moyu.removeChild(this.nodeId, child.nodeId);
+    moyu.destroyInstance(child.nodeId);
   }
 
   updateProps(props: Record<string, any>) {
     const [restProps, listeners] = filterProps(props);
     Object.assign(this.props, restProps);
     Object.assign(this.listeners, listeners);
-    hai.updateProps(this.nodeId, restProps);
+    moyu.updateProps(this.nodeId, restProps);
   }
 
-  executeCommand(payload: hai.HaiCommandPayload) {
-    return hai.executeNodeCommand(this.nodeId, payload);
+  executeCommand(payload: moyu.MoyuCommandPayload) {
+    return moyu.executeNodeCommand(this.nodeId, payload);
   }
 }
 
