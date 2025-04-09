@@ -249,7 +249,7 @@ export function createRoot(options?: RootOptions) {
   MoyuRenderer.injectIntoDevTools({
     bundleType: process.env.NODE_ENV === 'production' ? 0 : 1,
     version: '0.1.0',
-    rendererPackageName: '@moyu-moe/kit',
+    rendererPackageName: '@momoyu-ink/kit',
     findFiberByHostInstance: (instance: Instance | TextInstance) => {
       return instance as any;
     },
