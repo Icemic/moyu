@@ -17,7 +17,7 @@ declare global {
     moyu: any;
   }
 
-  var __doufu_receive_event: (event: MoyuEvent) => void;
+  var __moyu_receive_event: (event: MoyuEvent) => void;
 }
 
 export function createInstance(nodeType: string, label: string | undefined, props: Record<string, any>) {
