@@ -4,8 +4,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspace @moyu-moe/kit dev",
-    "build": "yarn workspace @moyu-moe/kit build"
+    "dev": "yarn workspace @momoyu-ink/kit dev",
+    "build": "yarn workspace @momoyu-ink/kit build"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4"
