@@ -5,7 +5,7 @@ mod present_mode;
 use std::path::PathBuf;
 
 use csscolorparser::Color;
-use logical_size::HaiLogicalSize;
+use logical_size::MoyuLogicalSize;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -13,7 +13,7 @@ use url::Url;
 pub use self::backend::RenderingBackend;
 pub use self::present_mode::RenderingPresentMode;
 
-static DOUFU_ENV: OnceCell<HaiConfig> = OnceCell::new();
+static moyu_ENV: OnceCell<MoyuConfig> = OnceCell::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -33,7 +33,7 @@ pub enum AutorunMode {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
-pub struct HaiConfig {
+pub struct MoyuConfig {
     pub entry: Option<String>,
     pub entry_filename: String,
     pub app_name: String,
@@ -42,8 +42,8 @@ pub struct HaiConfig {
     pub window_title: String,
     pub window_state: WindowState,
     pub window_resizable: bool,
-    pub surface_size: HaiLogicalSize,
-    pub stage_size: HaiLogicalSize,
+    pub surface_size: MoyuLogicalSize,
+    pub stage_size: MoyuLogicalSize,
     pub present_mode: RenderingPresentMode,
     pub backend: RenderingBackend,
     /// see https://docs.rs/wgpu/latest/wgpu/type.SurfaceConfiguration.html#structfield.desired_maximum_frame_latency
@@ -54,15 +54,15 @@ pub struct HaiConfig {
     pub enable_gamepads: bool,
 }
 
-impl Default for HaiConfig {
+impl Default for MoyuConfig {
     fn default() -> Self {
         Self {
             entry: None,
             entry_filename: "index.js".to_string(),
-            app_name: "doufu".to_string(),
+            app_name: "moyu".to_string(),
             autorun: AutorunMode::All,
             font_file: "fonts/default.otf".to_string(),
-            window_title: "Doufu".to_string(),
+            window_title: "moyu".to_string(),
             window_state: WindowState::Idle,
             window_resizable: false,
             surface_size: "1280x720".parse().unwrap(),
@@ -77,7 +77,7 @@ impl Default for HaiConfig {
     }
 }
 
-impl HaiConfig {
+impl MoyuConfig {
     pub fn appdata_dir(&self) -> Option<PathBuf> {
         #[cfg(desktop)]
         {
@@ -92,7 +92,7 @@ impl HaiConfig {
         #[cfg(web)]
         {
             use std::str::FromStr;
-            return Some(PathBuf::from_str("doufu").unwrap().join(&self.app_name));
+            return Some(PathBuf::from_str("moyu").unwrap().join(&self.app_name));
         }
 
         #[cfg(android)]
@@ -119,7 +119,7 @@ pub async fn setup() {
     #[cfg(web)]
     let mut entry = web_sys::window()
         .unwrap()
-        .get("__doufu_entry")
+        .get("__moyu_entry")
         .map(|v| v.as_string().unwrap())
         .unwrap_or("./index.json".to_string());
 
@@ -128,7 +128,7 @@ pub async fn setup() {
         log::info!("loading entry file: {}", entry_dir);
         match crate::fs::read(&entry_dir).await {
             Ok(content) => {
-                let mut config = match serde_json::from_slice::<HaiConfig>(&content) {
+                let mut config = match serde_json::from_slice::<MoyuConfig>(&content) {
                     Ok(content) => content,
                     Err(error) => {
                         log::error!("error when parsing config: {:?}", error);
@@ -146,7 +146,7 @@ pub async fn setup() {
 
                 config.entry = Some(entry);
 
-                DOUFU_ENV.set(config).unwrap();
+                moyu_ENV.set(config).unwrap();
                 break;
             }
             Err(err) => {
@@ -157,8 +157,8 @@ pub async fn setup() {
     }
 }
 
-pub fn get_engine_config() -> &'static HaiConfig {
-    DOUFU_ENV.get().unwrap()
+pub fn get_engine_config() -> &'static MoyuConfig {
+    moyu_ENV.get().unwrap()
 }
 
 fn parse_entry_dir(entry_dir: &String) -> Url {

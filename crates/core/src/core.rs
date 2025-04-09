@@ -5,9 +5,9 @@ mod pointer_events;
 mod render;
 
 use arc_swap::{ArcSwap, ArcSwapOption};
-use doufu_pal::config::{get_engine_config, WindowState};
-use doufu_pal::sync::{Mutex, RwLock};
-use doufu_pal::time::Instant;
+use moyu_pal::config::{get_engine_config, WindowState};
+use moyu_pal::sync::{Mutex, RwLock};
+use moyu_pal::time::Instant;
 use log::{debug, error};
 use render::Graphics;
 use std::collections::HashMap;
@@ -42,7 +42,7 @@ pub struct Core {
     pub(crate) pointer_map: Arc<RwLock<HashMap<i32, PointerState>>>,
 
     pub(crate) window_state: ArcSwap<WindowState>,
-    pub(crate) cursor_state: ArcSwap<HaiCursor>,
+    pub(crate) cursor_state: ArcSwap<MoyuCursor>,
     pub(crate) modifiers_state: ArcSwap<ModifiersState>,
 
     /// Pause the rendering process, default is `false`
@@ -120,7 +120,7 @@ impl Core {
             pointer_map: Arc::new(RwLock::new(pointer_map)),
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
-            cursor_state: ArcSwap::new(Arc::new(HaiCursor::default())),
+            cursor_state: ArcSwap::new(Arc::new(MoyuCursor::default())),
             modifiers_state: ArcSwap::new(Arc::new(ModifiersState::empty())),
             is_paused: AtomicBool::new(false),
             about_to_quit: AtomicBool::new(false),
@@ -235,7 +235,7 @@ impl Core {
 
     #[cfg(native)]
     pub fn init_graphics(&self) {
-        let graphics = doufu_pal::task::block_on_without_runtime(Graphics::init(
+        let graphics = moyu_pal::task::block_on_without_runtime(Graphics::init(
             &self.window,
             &self.surface_size.read(),
             &self.stage_size.read(),
@@ -361,17 +361,17 @@ impl Core {
     }
 
     #[inline]
-    fn set_cursor(&self, cursor: HaiCursor) {
+    fn set_cursor(&self, cursor: MoyuCursor) {
         let prev_cursor = self.cursor_state.swap(Arc::new(cursor.clone()));
 
         if *prev_cursor != cursor {
             match cursor {
-                HaiCursor::Visible(cursor) => {
+                MoyuCursor::Visible(cursor) => {
                     self.window.set_cursor_icon(cursor);
                     self.window.set_cursor_visible(true);
                     debug!("set cursor to {}", cursor.name());
                 }
-                HaiCursor::Hidden => {
+                MoyuCursor::Hidden => {
                     self.window.set_cursor_visible(false);
                     debug!("set cursor to hidden");
                 }

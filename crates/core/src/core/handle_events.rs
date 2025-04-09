@@ -1,4 +1,4 @@
-use doufu_pal::config::WindowState;
+use moyu_pal::config::WindowState;
 use log::debug;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -67,7 +67,7 @@ impl Core {
                             });
 
                             #[cfg(native)]
-                            if let Some(vm) = doufu_runtime::try_get_vm() {
+                            if let Some(vm) = moyu_runtime::try_get_vm() {
                                 vm.tick();
                             }
 

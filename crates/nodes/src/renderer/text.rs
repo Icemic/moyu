@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use doufu_pal::config::{entry_dir, get_engine_config};
-use doufu_pal::sync::Mutex;
+use moyu_pal::config::{entry_dir, get_engine_config};
+use moyu_pal::sync::Mutex;
 use glam::Vec3;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
@@ -12,10 +12,10 @@ use wgpu::util::StagingBelt;
 use wgpu::Texture;
 use wgpu::{util::DeviceExt, *};
 
-use doufu_core::base::MVPMatrix;
-use doufu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
-use doufu_core::traits::{NodeEventSource, Renderer};
-use doufu_core::utils::calculate::tint_to_vec4;
+use moyu_core::base::MVPMatrix;
+use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use moyu_core::traits::{NodeEventSource, Renderer};
+use moyu_core::utils::calculate::tint_to_vec4;
 
 use crate::events::TextEvent;
 use crate::nodes::{Text, TextPrintMode};
@@ -184,7 +184,7 @@ impl TextRenderer {
 
     pub fn init_huozi_from_env(&self) {
         let huozi = self.huozi.clone();
-        doufu_pal::task::spawn(async move {
+        moyu_pal::task::spawn(async move {
             let font_file = &get_engine_config().font_file;
             let asset_full_path = entry_dir()
                 .join("assets/")
@@ -194,7 +194,7 @@ impl TextRenderer {
 
             info!("Loading font file: {}", asset_full_path);
 
-            let font_data = match doufu_pal::fs::read(&asset_full_path).await {
+            let font_data = match moyu_pal::fs::read(&asset_full_path).await {
                 Ok(data) => data,
                 Err(e) => {
                     error!(

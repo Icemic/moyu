@@ -26,7 +26,7 @@ use crate::traits::Event;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HaiEvent<'a, T: Event> {
+pub struct MoyuEvent<'a, T: Event> {
     pub name: &'a str,
     // `body` may be a Map instead of a Object after serialization to JS,
     // which due to a known issue in serde-wasm-bindgen and serde.
@@ -36,7 +36,7 @@ pub struct HaiEvent<'a, T: Event> {
     pub body: T,
 }
 
-impl<'a, T: Event> HaiEvent<'a, T> {
+impl<'a, T: Event> MoyuEvent<'a, T> {
     pub fn from_event(body: T) -> Self {
         Self {
             name: body.name(),

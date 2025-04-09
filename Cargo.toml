@@ -1,7 +1,7 @@
 [workspace]
-default-members = ["crates/doufu"]
+default-members = ["crates/moyu"]
 members = [
-  "crates/doufu",
+  "crates/moyu",
   "crates/core",
   "crates/runtime",
   "crates/platform",
@@ -18,15 +18,15 @@ resolver = "2"
 [workspace.dependencies]
 cfg_aliases = "0.2.1"
 
-doufu_audio = {path = "crates/audio"}
-doufu_core = {path = "crates/core"}
-doufu_gamepad = {path = "crates/gamepad"}
-doufu_macros = {path = "crates/macros"}
-doufu_nodes = {path = "crates/nodes"}
-doufu_ops = {path = "crates/ops"}
-doufu_pal = {path = "crates/platform"}
-doufu_runtime = {path = "crates/runtime"}
-doufu_scenario = {path = "crates/scenario"}
+moyu_audio = {path = "crates/audio"}
+moyu_core = {path = "crates/core"}
+moyu_gamepad = {path = "crates/gamepad"}
+moyu_macros = {path = "crates/macros"}
+moyu_nodes = {path = "crates/nodes"}
+moyu_ops = {path = "crates/ops"}
+moyu_pal = {path = "crates/platform"}
+moyu_runtime = {path = "crates/runtime"}
+moyu_scenario = {path = "crates/scenario"}
 
 [patch.crates-io]
 # huozi = {path = "../huozi-rs"}

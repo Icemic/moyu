@@ -44,5 +44,5 @@ jobs:
       - name: Build Web
         run: |
           rustup target add wasm32-unknown-unknown
-          cargo build -p doufu --lib --target wasm32-unknown-unknown
+          cargo build -p moyu --lib --target wasm32-unknown-unknown
         if: matrix.wasm == true

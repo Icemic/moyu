@@ -103,27 +103,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@doufu-moe/kit@workspace:packages/kit":
-  version: 0.0.0-use.local
-  resolution: "@doufu-moe/kit@workspace:packages/kit"
-  dependencies:
-    "@react-spring/animated": "npm:^9.7.3"
-    "@react-spring/core": "npm:^9.7.3"
-    "@react-spring/rafz": "npm:^9.7.3"
-    "@react-spring/shared": "npm:^9.7.3"
-    "@rspack/cli": "npm:^1.1.1"
-    "@rspack/core": "npm:^1.1.1"
-    "@types/node": "npm:>=22"
-    "@types/react": "npm:^18.2.0"
-    "@types/react-reconciler": "npm:^0.28.8"
-    react: "npm:^18.2.0"
-    react-reconciler: "npm:^0.29.2"
-    typescript: "npm:^5.6.3"
-  peerDependencies:
-    react: ^18.2.0
-  languageName: unknown
-  linkType: soft
-
 "@isaacs/cliui@npm:^8.0.2":
   version: 8.0.2
   resolution: "@isaacs/cliui@npm:8.0.2"
@@ -212,6 +191,27 @@ __metadata:
   checksum: 10c0/6a2423efe16a63d7059face6af07d282efc1cfa04a16397d1b354c5eb8541ffa314d32d4da8f7863e0b14f92b0f67270f313c2797e13f63f635bc94988115abf
   languageName: node
   linkType: hard
+
+"@moyu-moe/kit@workspace:packages/kit":
+  version: 0.0.0-use.local
+  resolution: "@moyu-moe/kit@workspace:packages/kit"
+  dependencies:
+    "@react-spring/animated": "npm:^9.7.3"
+    "@react-spring/core": "npm:^9.7.3"
+    "@react-spring/rafz": "npm:^9.7.3"
+    "@react-spring/shared": "npm:^9.7.3"
+    "@rspack/cli": "npm:^1.1.1"
+    "@rspack/core": "npm:^1.1.1"
+    "@types/node": "npm:>=22"
+    "@types/react": "npm:^18.2.0"
+    "@types/react-reconciler": "npm:^0.28.8"
+    react: "npm:^18.2.0"
+    react-reconciler: "npm:^0.29.2"
+    typescript: "npm:^5.6.3"
+  peerDependencies:
+    react: ^18.2.0
+  languageName: unknown
+  linkType: soft
 
 "@npmcli/agent@npm:^2.0.0":
   version: 2.2.2
