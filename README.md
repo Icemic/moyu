@@ -1,4 +1,4 @@
-# 豆腐 - 跨平台视觉小说引擎
+# 末语 - 跨平台视觉小说引擎
 
 [![MPL-2.0 License](https://img.shields.io/badge/license-MPL%202.0-blue.svg)](https://opensource.org/licenses/MPL-2.0)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](https://github.com/Icemic/moyu/pulls)
