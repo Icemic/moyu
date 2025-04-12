@@ -250,6 +250,7 @@ export function createRoot(options?: RootOptions) {
     bundleType: process.env.NODE_ENV === 'production' ? 0 : 1,
     version: '0.1.0',
     rendererPackageName: '@momoyu-ink/kit',
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
     findFiberByHostInstance: (instance: Instance | TextInstance) => {
       return instance as any;
     },

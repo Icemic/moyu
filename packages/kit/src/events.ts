@@ -2,7 +2,7 @@ import { type BubbleEvent, createBubbleEvent } from './events/base';
 import { type NodeEvent, NodeEventKind } from './events/node';
 import type { AnimationFrameCallbackEvent } from './events/raf';
 import type { MouseEvent, MouseEventKind } from './events/mouse';
-import type { TouchEvent, TouchEventKind } from './events/touch';
+import { TouchEvent, TouchEventKind } from './events/touch';
 import type { CustomEvent } from './events/custom';
 import { STATE } from './state';
 
@@ -116,7 +116,7 @@ function handleBubbleEvent(name: string, _body: MouseEvent | TouchEvent) {
       }
 
       // simulate mouse events as same as browsers
-      if (kind === 'TouchEnd' && !STATE.touchMoved[identifier] && !event.defaultPrevented) {
+      if (kind === TouchEventKind.TouchEnd && !STATE.touchMoved[identifier] && !event.defaultPrevented) {
         for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click'] as MouseEventKind[]) {
           event.bubbles = true;
           event.kind = eventKind;
@@ -131,11 +131,11 @@ function handleBubbleEvent(name: string, _body: MouseEvent | TouchEvent) {
         }
       }
 
-      if (kind === 'TouchStart') {
+      if (kind === TouchEventKind.TouchStart) {
         STATE.touchMoved[identifier] = false;
-      } else if (kind === 'TouchMove') {
+      } else if (kind === TouchEventKind.TouchMove) {
         STATE.touchMoved[identifier] = true;
-      } else if (kind === 'TouchEnd' || kind === 'TouchCancel') {
+      } else if (kind === TouchEventKind.TouchEnd || kind === TouchEventKind.TouchCancel) {
         delete STATE.touchMoved[identifier];
       }
     }
@@ -155,7 +155,7 @@ if (!globalThis.document) {
   };
 
   globalThis.cancelAnimationFrame = (handle: number) => {
-    delete globalRequestAnimationFrameListeners[handle];
+    globalRequestAnimationFrameListeners.splice(handle, 1);
   };
 }
 

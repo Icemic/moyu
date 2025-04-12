@@ -3,13 +3,13 @@ import * as moyu from './moyu';
 import { STATE } from './state';
 
 export class Node {
-  nodeId!: number;
-  label?: string;
+  public nodeId!: number;
+  public label?: string;
 
-  props: Record<string, any> = {};
-  listeners: Record<string, (evt?: BubbleEvent | Record<string, any>) => any> = {};
+  public props: Record<string, any> = {};
+  public listeners: Record<string, (evt?: BubbleEvent | Record<string, any>) => any> = {};
 
-  static create(label: string, type: string, props: Record<string, any>) {
+  public static create(label: string, type: string, props: Record<string, any>) {
     const { children: _, ...rest } = props;
     const node = new Node();
     node.label = label;
@@ -23,22 +23,22 @@ export class Node {
     return node;
   }
 
-  static rootNode() {
+  public static rootNode() {
     const node = new Node();
     node.label = 'rootNode';
     node.nodeId = 0;
     return node;
   }
 
-  addChild(child: Node) {
+  public addChild(child: Node) {
     moyu.addChild(this.nodeId, child.nodeId);
   }
 
-  insertChild(index: number, child: Node) {
+  public insertChild(index: number, child: Node) {
     moyu.insertChild(this.nodeId, 0, child.nodeId);
   }
 
-  insertChildBefore(beforeChild: Node, child: Node) {
+  public insertChildBefore(beforeChild: Node, child: Node) {
     moyu.insertChildBefore(this.nodeId, beforeChild.nodeId, child.nodeId);
   }
 
@@ -46,19 +46,19 @@ export class Node {
   //   return this.children.splice(index, 1)[0];
   // }
 
-  removeChild(child: Node) {
+  public removeChild(child: Node) {
     moyu.removeChild(this.nodeId, child.nodeId);
     moyu.destroyInstance(child.nodeId);
   }
 
-  updateProps(props: Record<string, any>) {
+  public updateProps(props: Record<string, any>) {
     const [restProps, listeners] = filterProps(props);
     Object.assign(this.props, restProps);
     Object.assign(this.listeners, listeners);
     moyu.updateProps(this.nodeId, restProps);
   }
 
-  executeCommand(payload: moyu.MoyuCommandPayload) {
+  public executeCommand(payload: moyu.MoyuCommandPayload) {
     return moyu.executeNodeCommand(this.nodeId, payload);
   }
 }

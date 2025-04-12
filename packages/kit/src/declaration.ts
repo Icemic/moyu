@@ -148,6 +148,7 @@ export interface MoyuTextAttribute extends MoyuNodeAttributes {
   shadowWidth?: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-namespace
 export declare namespace JSX {
   interface IntrinsicElements {
     container: DetailedMoyuProps<MoyuContainerAttributes>;
