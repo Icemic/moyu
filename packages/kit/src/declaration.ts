@@ -5,32 +5,32 @@ import type { MouseEvent } from './events/mouse';
 import type { TouchEvent } from './events/touch';
 import type { KeyboardEvent } from './events/keyboard';
 
-export type DetailedHaiProps<E extends HaiNodeAttributes> = ClassAttributes<Node> & E;
+export type DetailedMoyuProps<E extends MoyuNodeAttributes> = ClassAttributes<Node> & E;
 
 // interface DOMElement<P extends HTMLAttributes<T> | SVGAttributes<T>, T extends Element>
 //   extends ReactElement<P, string> {
 //   ref: LegacyRef<T>;
 // }
 
-export type HaiEventHandler<T extends BubbleEvent> = (event: T) => void;
+export type MoyuEventHandler<T extends BubbleEvent> = (event: T) => void;
 
-export interface HaiListenerAttributes {
-  onClick?: HaiEventHandler<MouseEvent>;
-  onMouseEnter?: HaiEventHandler<MouseEvent>;
-  onMouseLeave?: HaiEventHandler<MouseEvent>;
-  onMouseDown?: HaiEventHandler<MouseEvent>;
-  onMouseUp?: HaiEventHandler<MouseEvent>;
-  onMouseMove?: HaiEventHandler<MouseEvent>;
-  onKeyDown?: HaiEventHandler<KeyboardEvent>;
-  onKeyUp?: HaiEventHandler<KeyboardEvent>;
-  onKeyPress?: HaiEventHandler<KeyboardEvent>;
-  onTouchStart?: HaiEventHandler<TouchEvent>;
-  onTouchMove?: HaiEventHandler<TouchEvent>;
-  onTouchEnd?: HaiEventHandler<TouchEvent>;
-  onTouchCancel?: HaiEventHandler<TouchEvent>;
+export interface MoyuListenerAttributes {
+  onClick?: MoyuEventHandler<MouseEvent>;
+  onMouseEnter?: MoyuEventHandler<MouseEvent>;
+  onMouseLeave?: MoyuEventHandler<MouseEvent>;
+  onMouseDown?: MoyuEventHandler<MouseEvent>;
+  onMouseUp?: MoyuEventHandler<MouseEvent>;
+  onMouseMove?: MoyuEventHandler<MouseEvent>;
+  onKeyDown?: MoyuEventHandler<KeyboardEvent>;
+  onKeyUp?: MoyuEventHandler<KeyboardEvent>;
+  onKeyPress?: MoyuEventHandler<KeyboardEvent>;
+  onTouchStart?: MoyuEventHandler<TouchEvent>;
+  onTouchMove?: MoyuEventHandler<TouchEvent>;
+  onTouchEnd?: MoyuEventHandler<TouchEvent>;
+  onTouchCancel?: MoyuEventHandler<TouchEvent>;
 }
 
-export interface HaiNodeAttributes extends HaiListenerAttributes {
+export interface MoyuNodeAttributes extends MoyuListenerAttributes {
   label?: string;
   x?: number;
   y?: number;
@@ -53,8 +53,8 @@ export interface HaiNodeAttributes extends HaiListenerAttributes {
   cursor?: Cursor;
 }
 
-export type HaiContainerAttributes = HaiNodeAttributes;
-export interface HaiSpriteAttribute extends HaiNodeAttributes {
+export type MoyuContainerAttributes = MoyuNodeAttributes;
+export interface MoyuSpriteAttribute extends MoyuNodeAttributes {
   src?: string;
   area?: [number, number, number, number];
   mode?: 'normal' | 'nineslice';
@@ -64,11 +64,11 @@ export interface HaiSpriteAttribute extends HaiNodeAttributes {
   targetHeight?: number;
 }
 
-export interface HaiYUVSpriteAttribute extends HaiNodeAttributes {
+export interface MoyuYUVSpriteAttribute extends MoyuNodeAttributes {
   area?: [number, number, number, number];
 }
 
-export interface HaiVideoAttribute extends HaiSpriteAttribute {
+export interface MoyuVideoAttribute extends MoyuSpriteAttribute {
   src: string;
   area?: [number, number, number, number];
   autoplay?: boolean;
@@ -113,7 +113,7 @@ export type Cursor =
   | 'zoom-in'
   | 'zoom-out';
 
-export interface HaiTextAttribute extends HaiNodeAttributes {
+export interface MoyuTextAttribute extends MoyuNodeAttributes {
   text?: string;
   printMode?: 'instant' | 'typewriter' | 'printer';
   printSpeed?: number;
@@ -150,10 +150,10 @@ export interface HaiTextAttribute extends HaiNodeAttributes {
 
 export declare namespace JSX {
   interface IntrinsicElements {
-    container: DetailedHaiProps<HaiContainerAttributes>;
-    sprite: DetailedHaiProps<HaiSpriteAttribute>;
-    yuvsprite: DetailedHaiProps<HaiYUVSpriteAttribute>;
-    video: DetailedHaiProps<HaiVideoAttribute>;
-    text: DetailedHaiProps<HaiTextAttribute>;
+    container: DetailedMoyuProps<MoyuContainerAttributes>;
+    sprite: DetailedMoyuProps<MoyuSpriteAttribute>;
+    yuvsprite: DetailedMoyuProps<MoyuYUVSpriteAttribute>;
+    video: DetailedMoyuProps<MoyuVideoAttribute>;
+    text: DetailedMoyuProps<MoyuTextAttribute>;
   }
 }

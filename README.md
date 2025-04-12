@@ -1,11 +1,11 @@
-# 豆腐 - 跨平台视觉小说引擎
+# 末语 - 跨平台视觉小说引擎
 
 [![MPL-2.0 License](https://img.shields.io/badge/license-MPL%202.0-blue.svg)](https://opensource.org/licenses/MPL-2.0)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](https://github.com/Icemic/doufu/pulls)
-[![Rust CI](https://github.com/Icemic/doufu/actions/workflows/build.yml/badge.svg)](https://github.com/Icemic/doufu/actions)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)](https://github.com/Icemic/moyu/pulls)
+[![Rust CI](https://github.com/Icemic/moyu/actions/workflows/build.yml/badge.svg)](https://github.com/Icemic/moyu/actions)
 
 [![Discord](https://img.shields.io/discord/1260706796646170765?label=Discord)](https://discord.gg/wmTekCNarG)
-[![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue)](https://t.me/doufumoe)
+[![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue)](https://t.me/moyumoe)
 [![QQ群](https://img.shields.io/badge/QQ%E7%BE%A4-293602841-blue)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=dcB58s03NbyIENYYtp0IHa8aTcUzlBF4&authKey=cgKWlgzqOhczlLbJbGo%2F1wLiUzH%2FMXNSTxz%2BNhDjMufuw0egSin7eqZKoRD7vF4l&noverify=0&group_code=293602841)
 
 **用 React 写视觉小说 | 渐进式跨平台引擎 | MPL-2.0**
@@ -36,7 +36,7 @@
 ### 安装 CLI
 
 ```bash
-cargo install doufu-cli
+cargo install moyu-cli
 ```
 
 ### 创建新项目
@@ -55,7 +55,7 @@ cargo install doufu-cli
 yarn build -w
 
 # 启动引擎
-doufu run
+moyu run
 ```
 
 #### Web

@@ -1,4 +1,4 @@
-use doufu_pal::config::{get_engine_config, RenderingBackend};
+use moyu_pal::config::{get_engine_config, RenderingBackend};
 use log::{info, warn};
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
@@ -28,13 +28,13 @@ pub fn create_window<T>(
         .with_min_inner_size(PhysicalSize::new(400, 300));
 
     match env.window_state {
-        doufu_pal::config::WindowState::Maximized => {
+        moyu_pal::config::WindowState::Maximized => {
             builder = builder.with_maximized(true);
         }
-        doufu_pal::config::WindowState::Minimized => {
+        moyu_pal::config::WindowState::Minimized => {
             warn!("You should not start with a minimized window.");
         }
-        doufu_pal::config::WindowState::Fullscreen => {
+        moyu_pal::config::WindowState::Fullscreen => {
             builder = builder.with_fullscreen(Some(winit::window::Fullscreen::Borderless(
                 event_loop.primary_monitor(),
             )));
@@ -176,7 +176,7 @@ async fn create_surface_inner(
 
     #[cfg(native)]
     let present_mode = match get_engine_config().present_mode {
-        doufu_pal::config::RenderingPresentMode::Recommended => {
+        moyu_pal::config::RenderingPresentMode::Recommended => {
             if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
                 wgpu::PresentMode::Mailbox
             } else if caps.present_modes.contains(&wgpu::PresentMode::FifoRelaxed) {
@@ -185,8 +185,8 @@ async fn create_surface_inner(
                 wgpu::PresentMode::Fifo
             }
         }
-        doufu_pal::config::RenderingPresentMode::AutoVsync => wgpu::PresentMode::AutoVsync,
-        doufu_pal::config::RenderingPresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
+        moyu_pal::config::RenderingPresentMode::AutoVsync => wgpu::PresentMode::AutoVsync,
+        moyu_pal::config::RenderingPresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
     };
 
     #[cfg(web)]

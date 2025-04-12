@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
-use doufu_audio::AudioManager;
-use doufu_core::core::set_core;
-use doufu_core::plugins::SystemPlugin;
-use doufu_core::winit::event::Event;
-use doufu_core::winit::event_loop::EventLoop;
-use doufu_core::{create_doufu_core, setup};
-use doufu_gamepad::GamepadPlugin;
-use doufu_nodes::renderer::{SpriteRenderer, TextRenderer};
-use doufu_pal::config::get_engine_config;
-use doufu_pal::platform;
-use doufu_pal::sync::Mutex;
-use doufu_scenario::ScenarioPlugin;
+use moyu_audio::AudioManager;
+use moyu_core::core::set_core;
+use moyu_core::plugins::SystemPlugin;
+use moyu_core::winit::event::Event;
+use moyu_core::winit::event_loop::EventLoop;
+use moyu_core::{create_moyu_core, setup};
+use moyu_gamepad::GamepadPlugin;
+use moyu_nodes::renderer::{SpriteRenderer, TextRenderer};
+use moyu_pal::config::get_engine_config;
+use moyu_pal::platform;
+use moyu_pal::sync::Mutex;
+use moyu_scenario::ScenarioPlugin;
 
 #[allow(dead_code)]
 pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str) {
@@ -40,7 +40,7 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
         spin_sleep_util::interval(std::time::Duration::from_secs(1) / (refresh_rate_max / 1000))
     };
 
-    let core = create_doufu_core(
+    let core = create_moyu_core(
         &event_loop,
         #[cfg(web)]
         element_id,
@@ -74,7 +74,7 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
 
     let _core_handle = set_core(core.clone());
 
-    let _vm_handle = doufu_ops::spawn::spawn_runtime_with_core(&core, None);
+    let _vm_handle = moyu_ops::spawn::spawn_runtime_with_core(&core, None);
 
     #[cfg(web)]
     core.init_graphics().await;
@@ -103,8 +103,8 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
                     #[cfg(web)]
                     let _ =
                         core.window()
-                            .request_inner_size(doufu_core::winit::dpi::Size::Logical(
-                                doufu_pal::config::get_engine_config()
+                            .request_inner_size(moyu_core::winit::dpi::Size::Logical(
+                                moyu_pal::config::get_engine_config()
                                     .surface_size
                                     .as_tuple()
                                     .into(),
@@ -125,7 +125,7 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
 
             #[cfg(native)]
             if let Event::WindowEvent {
-                event: doufu_core::winit::event::WindowEvent::RedrawRequested,
+                event: moyu_core::winit::event::WindowEvent::RedrawRequested,
                 ..
             } = &event
             {

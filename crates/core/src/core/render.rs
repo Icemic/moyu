@@ -1,6 +1,6 @@
-use doufu_pal::config::get_engine_config;
-use doufu_pal::sync::{Mutex, RwLock};
-use doufu_pal::time::Instant;
+use moyu_pal::config::get_engine_config;
+use moyu_pal::sync::{Mutex, RwLock};
+use moyu_pal::time::Instant;
 use log::error;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -206,7 +206,7 @@ impl Graphics {
         // resource_manager: &Arc<ResourceManager>,
     ) -> Result<(), wgpu::SurfaceError> {
         // fps
-        if doufu_pal::config::get_engine_config().show_fps {
+        if moyu_pal::config::get_engine_config().show_fps {
             if self.fps_meter.tick() {
                 let fps = self.fps_meter.get_fps();
                 self.window

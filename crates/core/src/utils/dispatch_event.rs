@@ -1,16 +1,16 @@
-use crate::events::HaiEvent;
+use crate::events::MoyuEvent;
 use crate::traits::Event;
 use crate::utils::convert::to_js;
 
 #[cfg(all(native, feature = "js_runtime"))]
 pub fn dispatch_event<T: Event>(event: T) {
-    use doufu_runtime::try_get_vm;
+    use moyu_runtime::try_get_vm;
 
     if let Some(vm) = try_get_vm() {
         vm.with_context(move |vm| {
-            let event = HaiEvent::from_event(event);
+            let event = MoyuEvent::from_event(event);
             let event = to_js(&event).unwrap();
-            if let Err(err) = vm.call_function_direct("__doufu_receive_event", vec![event]) {
+            if let Err(err) = vm.call_function_direct("__moyu_receive_event", vec![event]) {
                 log::error!("failed to dispatch event: {:?}", err);
             }
         });
@@ -23,12 +23,12 @@ pub fn dispatch_event<T: Event>(event: T) {
     use web_sys::js_sys::Function;
 
     let window = web_sys::window().unwrap();
-    if let Some(__doufu_receive_event) = window.get("__doufu_receive_event") {
-        if __doufu_receive_event.is_function() {
-            let __doufu_receive_event = __doufu_receive_event.unchecked_ref::<Function>();
-            let event = HaiEvent::from_event(event);
+    if let Some(__moyu_receive_event) = window.get("__moyu_receive_event") {
+        if __moyu_receive_event.is_function() {
+            let __moyu_receive_event = __moyu_receive_event.unchecked_ref::<Function>();
+            let event = MoyuEvent::from_event(event);
             let event = to_js(&event).unwrap();
-            __doufu_receive_event.call1(&window, &event).unwrap();
+            __moyu_receive_event.call1(&window, &event).unwrap();
         }
     };
 }

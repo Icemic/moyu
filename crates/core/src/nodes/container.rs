@@ -1,4 +1,4 @@
-use doufu_macros::Node;
+use moyu_macros::Node;
 
 use crate::traits::{Node, NodeBaseTrait};
 

@@ -3,15 +3,15 @@ use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
-use doufu_core::base::*;
+use moyu_core::base::*;
 #[cfg(feature = "video")]
-use doufu_core::nodes::Video;
-use doufu_core::nodes::{Texture, TextureStatus};
-use doufu_core::resource::TextureId;
-use doufu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
-use doufu_core::utils::calculate::calculate_rect_vertices;
-use doufu_core::utils::constants::{NINESLICE_INDICES, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
-use doufu_core::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
+use moyu_core::nodes::Video;
+use moyu_core::nodes::{Texture, TextureStatus};
+use moyu_core::resource::TextureId;
+use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use moyu_core::utils::calculate::calculate_rect_vertices;
+use moyu_core::utils::constants::{NINESLICE_INDICES, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+use moyu_core::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
 
 use crate::nodes::{Sprite, SpriteMode};
 

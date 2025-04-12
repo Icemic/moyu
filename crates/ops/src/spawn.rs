@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use doufu_core::core::Core;
+use moyu_core::core::Core;
 
 pub type SpawnRuntimeCallback =
     Box<dyn (FnOnce() -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>) + Send + Sync>;
@@ -13,13 +13,13 @@ pub type SpawnRuntimeCallback =
 pub fn spawn_runtime_with_core(
     _core: &Arc<Core>,
     spawn_callback: Option<SpawnRuntimeCallback>,
-) -> doufu_pal::visible_hand::VisibleHand<Arc<doufu_runtime::QuickVM>> {
-    use doufu_runtime::{get_vm, setup_vm};
+) -> moyu_pal::visible_hand::VisibleHand<Arc<moyu_runtime::QuickVM>> {
+    use moyu_runtime::{get_vm, setup_vm};
     use log::error;
 
     let vm_handle = setup_vm();
 
-    let handle = doufu_pal::task::get_runtime_handle();
+    let handle = moyu_pal::task::get_runtime_handle();
 
     if let Some(spawn_callback) = spawn_callback {
         let async_callback = spawn_callback();
@@ -50,7 +50,7 @@ pub fn spawn_runtime_with_core(
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(web)]
 pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
-    use doufu_pal::config::{entry_dir, get_engine_config, AutorunMode};
+    use moyu_pal::config::{entry_dir, get_engine_config, AutorunMode};
     use log::debug;
 
     if let Some(spawn_callback) = spawn_callback {
@@ -65,12 +65,12 @@ pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntim
         let window = web_sys::window().expect("Cannot get global `window` object.");
         let document = window.document().expect("No document found.");
 
-        // Dispatch a custom event to notify that doufu is ready.
-        // This is useful for other scripts to know when doufu is ready or for users who want to
+        // Dispatch a custom event to notify that moyu is ready.
+        // This is useful for other scripts to know when moyu is ready or for users who want to
         // run their game code manually.
-        let event = web_sys::CustomEvent::new("doufu-ready").unwrap();
+        let event = web_sys::CustomEvent::new("moyu-ready").unwrap();
         if let Err(err) = document.dispatch_event(&event) {
-            log::error!("Failed to dispatch `doufu-ready` event: {:?}", err);
+            log::error!("Failed to dispatch `moyu-ready` event: {:?}", err);
         }
 
         let config = get_engine_config();

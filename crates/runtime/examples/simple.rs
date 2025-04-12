@@ -1,14 +1,14 @@
-use doufu_runtime::{get_vm, setup_vm};
+use moyu_runtime::{get_vm, setup_vm};
 use log::error;
 
 #[tokio::main]
 async fn main() {
-    doufu_pal::config::setup().await;
+    moyu_pal::config::setup().await;
     env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
         .init();
 
-    let async_runtime_handle = doufu_pal::platform::setup();
+    let async_runtime_handle = moyu_pal::platform::setup();
 
     let vm_handle = setup_vm();
 

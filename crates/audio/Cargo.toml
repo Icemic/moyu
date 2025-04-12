@@ -1,10 +1,10 @@
 [package]
 authors = ["Icemic <bingfeng.web@gmail.com>"]
-description = "Audio plugin for Hai."
+description = "Audio plugin for Moyu."
 edition = "2021"
 license = "MPL-2.0"
-name = "doufu_audio"
-repository = "https://github.com/DeepSpaceMill/doufu"
+name = "moyu_audio"
+repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.7.0"
 
 [features]
@@ -21,11 +21,11 @@ serde = {version = "1.0", features = ["derive"]}
 [dev-dependencies]
 arc-swap = "1.6"
 
-[dependencies.doufu_pal]
+[dependencies.moyu_pal]
 path = "../platform"
 version = "0.7"
 
-[dependencies.doufu_core]
+[dependencies.moyu_core]
 default-features = false
 features = ["js_runtime"]
 path = "../core"

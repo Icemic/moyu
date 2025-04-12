@@ -1,4 +1,4 @@
-use doufu_core::traits::Event;
+use moyu_core::traits::Event;
 use serde::Serialize;
 
 use crate::{Gamepad, GamepadButton};

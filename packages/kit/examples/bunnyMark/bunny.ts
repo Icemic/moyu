@@ -1,4 +1,4 @@
-import { hai } from '../..';
+import { moyu } from '../..';
 
 export interface Bounds {
   left: number;
@@ -80,7 +80,7 @@ export default class Bunny {
       this.position.y = this.bounds.top;
     }
 
-    hai.updateProps(this.id, {
+    moyu.updateProps(this.id, {
       x: this.position.x,
       y: this.position.y,
     });
@@ -91,6 +91,6 @@ export default class Bunny {
    * @method destroy
    */
   destroy() {
-    hai.removeChild(0, this.id);
+    moyu.removeChild(0, this.id);
   }
 }

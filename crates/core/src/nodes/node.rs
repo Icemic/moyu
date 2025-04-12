@@ -1,5 +1,5 @@
 use csscolorparser::Color;
-use doufu_pal::sync::RwLock;
+use moyu_pal::sync::RwLock;
 use log::warn;
 use std::sync::Arc;
 
@@ -45,7 +45,7 @@ pub struct NodeBase {
     /// if this node will response to user input, will affect itself and all children
     interactive: bool,
     /// cursor style
-    cursor: HaiCursor,
+    cursor: MoyuCursor,
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
@@ -80,7 +80,7 @@ impl NodeBase {
             opacity: 1.0,
             global_opacity: 1.0,
             interactive: true,
-            cursor: HaiCursor::default(),
+            cursor: MoyuCursor::default(),
 
             _update_id: 0,
             _current_update_id: 0,
@@ -179,7 +179,7 @@ impl NodeBase {
         self.interactive
     }
     #[inline]
-    pub fn cursor(&self) -> &HaiCursor {
+    pub fn cursor(&self) -> &MoyuCursor {
         &self.cursor
     }
 
@@ -284,7 +284,7 @@ impl NodeBase {
         self.interactive = interactive;
     }
     #[inline]
-    pub fn set_cursor(&mut self, cursor: HaiCursor) {
+    pub fn set_cursor(&mut self, cursor: MoyuCursor) {
         self.cursor = cursor;
     }
 
@@ -519,7 +519,7 @@ pub struct NodeProps {
     pub tint: Option<Color>,
     pub opacity: Option<f32>,
     pub interactive: Option<bool>,
-    pub cursor: Option<HaiCursor>,
+    pub cursor: Option<MoyuCursor>,
 }
 
 impl Drop for NodeBase {

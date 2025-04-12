@@ -1,5 +1,5 @@
 {
-  "$schema": "https://gist.githubusercontent.com/Icemic/55a8cd86b02c0c310f51833e88f7d083/raw/doufu-config.schema.json",
+  "$schema": "https://gist.githubusercontent.com/Icemic/55a8cd86b02c0c310f51833e88f7d083/raw/moyu-config.schema.json",
   "surfaceSize": "1280x720",
   "stageSize": "1280x720",
   "windowTitle": "BunnyMark",

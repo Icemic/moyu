@@ -17,7 +17,7 @@ export type {
   TouchEventKind,
 };
 
-export interface HaiEvent<T extends Record<string, unknown> = Record<string, unknown>> {
+export interface MoyuEvent<T extends Record<string, unknown> = Record<string, unknown>> {
   name: string;
   body: T;
 }
@@ -29,7 +29,7 @@ const BUBBLE_EVENT_NAMES = ['mouseevent', 'touchevent', 'keyboardevent'];
 // not implemented yet
 const GLOBAL_EVENT_NAMES = ['fullscreenevent', 'focusevent', 'resizeevent'];
 
-globalThis.__doufu_receive_event = (raw_event: HaiEvent) => {
+globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
   const { name, body } = raw_event;
 
   if (BUBBLE_EVENT_NAMES.includes(name)) {
@@ -74,7 +74,7 @@ globalThis.__doufu_receive_event = (raw_event: HaiEvent) => {
 function handleBubbleEvent(name: string, _body: MouseEvent | TouchEvent) {
   let body: typeof _body;
   // serde-wasm-bindgen will serialize body as a Map, we need to convert it to a plain object
-  // see more on the comment of `HaiEvent` in the Rust side
+  // see more on the comment of `MoyuEvent` in the Rust side
   if (globalThis.document) {
     body = Object.fromEntries(_body as unknown as Map<string, unknown>) as unknown as typeof _body;
   } else {

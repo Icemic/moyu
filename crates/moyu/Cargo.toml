@@ -3,8 +3,8 @@ authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "An experimental game engine for building visual novels."
 edition = "2021"
 license = "MPL-2.0"
-name = "doufu"
-repository = "https://github.com/Icemic/doufu"
+name = "moyu"
+repository = "https://github.com/Icemic/moyu"
 version = "0.7.0"
 
 [package.metadata.release]
@@ -16,35 +16,35 @@ release = true
 [features]
 default = ["text"]
 
-text = ["doufu_nodes/text", "doufu_ops/text"]
-video = ["doufu_nodes/video"]
+text = ["moyu_nodes/text", "moyu_ops/text"]
+video = ["moyu_nodes/video"]
 
 [[bin]]
-name = "doufu"
+name = "moyu"
 path = "src/main.rs"
 
 [lib]
 crate-type = ["cdylib"]
-name = "libdoufu"
+name = "libmoyu"
 path = "src/lib.rs"
 
 [dependencies]
 log = "0.4"
 spin_sleep_util = "0.1.1"
 
-doufu_audio = {workspace = true}
-doufu_core = {workspace = true, features = ["js_runtime"]}
-doufu_gamepad = {workspace = true}
-doufu_macros = {workspace = true}
-doufu_nodes = {workspace = true}
-doufu_ops = {workspace = true}
-doufu_pal = {workspace = true}
-doufu_scenario = {workspace = true}
+moyu_audio = {workspace = true}
+moyu_core = {workspace = true, features = ["js_runtime"]}
+moyu_gamepad = {workspace = true}
+moyu_macros = {workspace = true}
+moyu_nodes = {workspace = true}
+moyu_ops = {workspace = true}
+moyu_pal = {workspace = true}
+moyu_scenario = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = {version = "1", features = ["rt-multi-thread", "macros"]}
 
-doufu_runtime = {workspace = true}
+moyu_runtime = {workspace = true}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = {version = "0.2.83", default-features = false}

@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
 use anyhow::Result;
-use doufu_core::traits::{Command, Plugin};
-use doufu_core::utils::convert::{create_promise, from_js, to_js, JSValue};
-use doufu_pal::fs::{
+use moyu_core::traits::{Command, Plugin};
+use moyu_core::utils::convert::{create_promise, from_js, to_js, JSValue};
+use moyu_pal::fs::{
     read_from_appdata, readdir_from_appdata, remove_from_appdata, write_to_appdata,
 };
-use doufu_pal::sync::Mutex;
+use moyu_pal::sync::Mutex;
 use serde::{Deserialize, Serialize};
 
 use crate::state::ScenarioState;

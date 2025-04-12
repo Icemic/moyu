@@ -1,9 +1,9 @@
 mod node;
 pub mod spawn;
 
-use doufu_core::utils::convert::JSValue;
+use moyu_core::utils::convert::JSValue;
 #[cfg(native)]
-use doufu_runtime::{
+use moyu_runtime::{
     quickjs_rusty::{JSContext, RawJSValue},
     QuickVM,
 };
@@ -28,22 +28,22 @@ pub fn init(vm: &QuickVM) {
         .unwrap();
 
     vm.context()
-        .set_global("__doufu_pushCommand", receive_command)
+        .set_global("__moyu_pushCommand", receive_command)
         .unwrap();
     vm.context()
-        .set_global("__doufu_executeNodeCommand", execute_node_command)
+        .set_global("__moyu_executeNodeCommand", execute_node_command)
         .unwrap();
     vm.context()
-        .set_global("__doufu_executePluginCommand", execute_plugin_command)
+        .set_global("__moyu_executePluginCommand", execute_plugin_command)
         .unwrap();
 
     vm.context()
         .eval(
             "\
-        globalThis.hai = {\
-            pushCommand: __doufu_pushCommand,\
-            executeNodeCommand: __doufu_executeNodeCommand,\
-            executePluginCommand: __doufu_executePluginCommand,\
+        globalThis.moyu = {\
+            pushCommand: __moyu_pushCommand,\
+            executeNodeCommand: __moyu_executeNodeCommand,\
+            executePluginCommand: __moyu_executePluginCommand,\
         }",
             false,
         )
@@ -55,10 +55,10 @@ fn receive_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use doufu_runtime::quickjs_rusty::OwnedJsArray;
+    use moyu_runtime::quickjs_rusty::OwnedJsArray;
 
-    use doufu_core::utils::convert::from_js;
-    use doufu_core::utils::convert::JSValue;
+    use moyu_core::utils::convert::from_js;
+    use moyu_core::utils::convert::JSValue;
 
     let command_name = JSValue::own(context, &args[0]);
     let command_name = from_js::<String>(&command_name)?;
@@ -92,8 +92,8 @@ fn execute_node_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use doufu_core::utils::convert::from_js;
-    use doufu_core::utils::convert::JSValue;
+    use moyu_core::utils::convert::from_js;
+    use moyu_core::utils::convert::JSValue;
 
     let node_id = JSValue::own(context, &args[0]);
     let node_id: u32 = from_js(&node_id)?;
@@ -119,7 +119,7 @@ fn execute_node_command_inner(
     payload: &mut JSValue,
 ) -> anyhow::Result<Option<JSValue>> {
     use anyhow::anyhow;
-    use doufu_core::core::get_core;
+    use moyu_core::core::get_core;
 
     if payload.is_object() {
         let core = get_core();
@@ -151,8 +151,8 @@ fn execute_plugin_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use doufu_core::utils::convert::from_js;
-    use doufu_core::utils::convert::JSValue;
+    use moyu_core::utils::convert::from_js;
+    use moyu_core::utils::convert::JSValue;
 
     let plugin_name = JSValue::own(context, &args[0]);
     let plugin_name = from_js::<String>(&plugin_name)?;
@@ -180,7 +180,7 @@ fn execute_plugin_command_inner(
     payload: &mut JSValue,
 ) -> anyhow::Result<Option<JSValue>> {
     use anyhow::anyhow;
-    use doufu_core::core::get_core;
+    use moyu_core::core::get_core;
 
     if payload.is_object() {
         let core = get_core();
