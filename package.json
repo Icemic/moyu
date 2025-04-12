@@ -4,11 +4,20 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "yarn workspace @momoyu-ink/kit dev",
-    "build": "yarn workspace @momoyu-ink/kit build"
+    "dev": "yarn workspaces foreach -Aip run dev",
+    "build": "yarn workspaces foreach -At run build"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4"
+    "@ainou/code-style": "0.1.1",
+    "@eslint/js": "^9.2.0",
+    "@types/node": "20",
+    "eslint": "^9.2.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.0.1"
+  },
+  "resolutions": {
+    "globals": "14.0.0"
   },
   "packageManager": "yarn@4.3.1"
 }
