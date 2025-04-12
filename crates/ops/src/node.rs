@@ -6,22 +6,22 @@ use log::{debug, warn};
 #[cfg(web)]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use doufu_core::core::get_core;
-use doufu_core::nodes::Container;
-use doufu_core::traits::{Node, NodeBaseTrait};
-use doufu_core::utils::convert::JSValue;
+use moyu_core::core::get_core;
+use moyu_core::nodes::Container;
+use moyu_core::traits::{Node, NodeBaseTrait};
+use moyu_core::utils::convert::JSValue;
 #[cfg(native)]
-use doufu_core::utils::convert::{from_js, to_js};
+use moyu_core::utils::convert::{from_js, to_js};
 #[cfg(native)]
-use doufu_macros::doufu_bindgen;
-use doufu_nodes::nodes::Sprite;
+use moyu_macros::moyu_bindgen;
+use moyu_nodes::nodes::Sprite;
 #[cfg(feature = "text")]
-use doufu_nodes::nodes::Text;
+use moyu_nodes::nodes::Text;
 #[cfg(feature = "video")]
-use doufu_nodes::nodes::Video;
-use doufu_pal::sync::{RwLock, RwLockReadGuard};
+use moyu_nodes::nodes::Video;
+use moyu_pal::sync::{RwLock, RwLockReadGuard};
 #[cfg(native)]
-use doufu_runtime::quickjs_rusty::{JSContext, RawJSValue};
+use moyu_runtime::quickjs_rusty::{JSContext, RawJSValue};
 
 #[inline]
 pub(super) fn get_node<'a>(
@@ -38,7 +38,7 @@ pub(super) fn get_node<'a>(
 }
 
 #[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, doufu_bindgen)]
+#[cfg_attr(native, moyu_bindgen)]
 pub fn create_instance(
     node_type: std::string::String,
     label: Option<std::string::String>,
@@ -95,7 +95,7 @@ pub fn create_instance(
  * Otherwise, the node who has more reference count will not be destroyed and rema
  */
 #[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, doufu_bindgen)]
+#[cfg_attr(native, moyu_bindgen)]
 pub fn destroy_instance(node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
     let mut node_map = core.node_map().write();
@@ -135,7 +135,7 @@ fn destroy_instance_recursive(
 }
 
 #[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, doufu_bindgen)]
+#[cfg_attr(native, moyu_bindgen)]
 pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map().read();
@@ -152,7 +152,7 @@ pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::St
 }
 
 #[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, doufu_bindgen)]
+#[cfg_attr(native, moyu_bindgen)]
 pub fn insert_child(
     node_id: u32,
     index: usize,
@@ -173,7 +173,7 @@ pub fn insert_child(
 }
 
 #[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, doufu_bindgen)]
+#[cfg_attr(native, moyu_bindgen)]
 pub fn insert_child_before(
     node_id: u32,
     before_node_id: u32,
@@ -196,7 +196,7 @@ pub fn insert_child_before(
 }
 
 #[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, doufu_bindgen)]
+#[cfg_attr(native, moyu_bindgen)]
 pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map().read();
@@ -213,7 +213,7 @@ pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string:
 }
 
 #[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, doufu_bindgen)]
+#[cfg_attr(native, moyu_bindgen)]
 pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map().read();
@@ -228,7 +228,7 @@ pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::St
 }
 
 #[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, doufu_bindgen)]
+#[cfg_attr(native, moyu_bindgen)]
 pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> {
     let node_map = {
         let core = get_core();
@@ -245,7 +245,7 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
 }
 
 // #[cfg_attr(web, wasm_bindgen)]
-// #[cfg_attr(native, doufu_bindgen)]
+// #[cfg_attr(native, moyu_bindgen)]
 // pub fn get_translate(node_id: u32) -> Result<[f64; 2], std::string::String> {
 //     let core = get_core();
 // //     let node_map = core.node_map().read();
@@ -259,7 +259,7 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
 // }
 
 #[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, doufu_bindgen)]
+#[cfg_attr(native, moyu_bindgen)]
 pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map().read();

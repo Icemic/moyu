@@ -969,181 +969,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "doufu"
-version = "0.7.0"
-dependencies = [
- "cfg_aliases 0.2.1",
- "doufu_audio",
- "doufu_core",
- "doufu_gamepad",
- "doufu_macros",
- "doufu_nodes",
- "doufu_ops",
- "doufu_pal",
- "doufu_runtime",
- "doufu_scenario",
- "log",
- "spin_sleep_util",
- "tokio",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "winit",
-]
-
-[[package]]
-name = "doufu_audio"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "arc-swap",
- "doufu_core",
- "doufu_pal",
- "kira",
- "log",
- "serde",
-]
-
-[[package]]
-name = "doufu_core"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "arc-swap",
- "bytemuck",
- "cfg_aliases 0.2.1",
- "csscolorparser",
- "cursor-icon",
- "doufu_macros",
- "doufu_pal",
- "doufu_runtime",
- "glam",
- "image",
- "log",
- "rayon",
- "serde",
- "serde-wasm-bindgen",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu",
- "winit",
-]
-
-[[package]]
-name = "doufu_gamepad"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "cfg_aliases 0.2.1",
- "doufu_core",
- "doufu_pal",
- "gilrs",
- "log",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "doufu_macros"
-version = "0.7.0"
-dependencies = [
- "darling",
- "proc-macro2",
- "quote",
- "syn 2.0.87",
-]
-
-[[package]]
-name = "doufu_nodes"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "arc-swap",
- "bytemuck",
- "cfg_aliases 0.2.1",
- "doufu_core",
- "doufu_macros",
- "doufu_pal",
- "ffmpeg-rs",
- "glam",
- "huozi",
- "log",
- "serde",
- "wgpu",
-]
-
-[[package]]
-name = "doufu_ops"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "cfg_aliases 0.2.1",
- "doufu_core",
- "doufu_macros",
- "doufu_nodes",
- "doufu_pal",
- "doufu_runtime",
- "log",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "doufu_pal"
-version = "0.7.0"
-dependencies = [
- "android-activity",
- "android_logger",
- "anyhow",
- "cfg_aliases 0.2.1",
- "console_error_panic_hook",
- "console_log",
- "csscolorparser",
- "dirs",
- "env_logger",
- "log",
- "node-resolve",
- "once_cell",
- "parking_lot",
- "path-clean",
- "pollster",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "url",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time 1.1.0",
-]
-
-[[package]]
-name = "doufu_runtime"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "doufu_pal",
- "env_logger",
- "log",
- "quickjs-rusty",
- "spin_sleep",
- "tokio",
-]
-
-[[package]]
-name = "doufu_scenario"
-version = "0.7.0"
-dependencies = [
- "anyhow",
- "doufu_core",
- "doufu_pal",
- "log",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "downcast-rs"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2189,6 +2014,181 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "moyu"
+version = "0.7.0"
+dependencies = [
+ "cfg_aliases 0.2.1",
+ "log",
+ "moyu_audio",
+ "moyu_core",
+ "moyu_gamepad",
+ "moyu_macros",
+ "moyu_nodes",
+ "moyu_ops",
+ "moyu_pal",
+ "moyu_runtime",
+ "moyu_scenario",
+ "spin_sleep_util",
+ "tokio",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "winit",
+]
+
+[[package]]
+name = "moyu_audio"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "kira",
+ "log",
+ "moyu_core",
+ "moyu_pal",
+ "serde",
+]
+
+[[package]]
+name = "moyu_core"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "bytemuck",
+ "cfg_aliases 0.2.1",
+ "csscolorparser",
+ "cursor-icon",
+ "glam",
+ "image",
+ "log",
+ "moyu_macros",
+ "moyu_pal",
+ "moyu_runtime",
+ "rayon",
+ "serde",
+ "serde-wasm-bindgen",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "moyu_gamepad"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "cfg_aliases 0.2.1",
+ "gilrs",
+ "log",
+ "moyu_core",
+ "moyu_pal",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "moyu_macros"
+version = "0.7.0"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
+name = "moyu_nodes"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "bytemuck",
+ "cfg_aliases 0.2.1",
+ "ffmpeg-rs",
+ "glam",
+ "huozi",
+ "log",
+ "moyu_core",
+ "moyu_macros",
+ "moyu_pal",
+ "serde",
+ "wgpu",
+]
+
+[[package]]
+name = "moyu_ops"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "cfg_aliases 0.2.1",
+ "log",
+ "moyu_core",
+ "moyu_macros",
+ "moyu_nodes",
+ "moyu_pal",
+ "moyu_runtime",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "moyu_pal"
+version = "0.7.0"
+dependencies = [
+ "android-activity",
+ "android_logger",
+ "anyhow",
+ "cfg_aliases 0.2.1",
+ "console_error_panic_hook",
+ "console_log",
+ "csscolorparser",
+ "dirs",
+ "env_logger",
+ "log",
+ "node-resolve",
+ "once_cell",
+ "parking_lot",
+ "path-clean",
+ "pollster",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time 1.1.0",
+]
+
+[[package]]
+name = "moyu_runtime"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "env_logger",
+ "log",
+ "moyu_pal",
+ "quickjs-rusty",
+ "spin_sleep",
+ "tokio",
+]
+
+[[package]]
+name = "moyu_scenario"
+version = "0.7.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "moyu_core",
+ "moyu_pal",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

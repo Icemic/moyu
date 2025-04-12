@@ -4,7 +4,7 @@ pub type JSValue = wasm_bindgen::JsValue;
 pub type OwnedJsPromise = web_sys::js_sys::Promise;
 
 #[cfg(all(native, feature = "js_runtime"))]
-use doufu_runtime::quickjs_rusty::{OwnedJsPromise, OwnedJsValue};
+use moyu_runtime::quickjs_rusty::{OwnedJsPromise, OwnedJsValue};
 
 #[cfg(all(native, feature = "js_runtime"))]
 pub type JSValue = OwnedJsValue;
@@ -12,7 +12,7 @@ pub type JSValue = OwnedJsValue;
 #[cfg(all(native, feature = "js_runtime"))]
 pub fn from_js<T: serde::de::DeserializeOwned>(value: &JSValue) -> anyhow::Result<T> {
     use anyhow::format_err;
-    pub use doufu_runtime::quickjs_rusty::serde::from_js;
+    pub use moyu_runtime::quickjs_rusty::serde::from_js;
 
     match from_js(value.context(), value) {
         Ok(v) => Ok(v),
@@ -30,8 +30,8 @@ pub fn from_js<'a, T: serde::de::DeserializeOwned>(value: &mut JSValue) -> anyho
 #[cfg(all(native, feature = "js_runtime"))]
 pub fn to_js<T: serde::Serialize>(value: &T) -> anyhow::Result<OwnedJsValue> {
     use anyhow::format_err;
-    use doufu_runtime::get_vm;
-    pub use doufu_runtime::quickjs_rusty::serde::to_js;
+    use moyu_runtime::get_vm;
+    pub use moyu_runtime::quickjs_rusty::serde::to_js;
 
     // since `to_js` is always called in quickjs thread, it's safe to get context directly.
     let context = unsafe { get_vm().context().context_raw() };
@@ -56,8 +56,8 @@ where
     F: core::future::Future<Output = Result<V, anyhow::Error>> + Send + 'static,
     V: serde::Serialize + Send + 'static,
 {
-    use doufu_pal::task::get_runtime_handle;
-    use doufu_runtime::get_vm;
+    use moyu_pal::task::get_runtime_handle;
+    use moyu_runtime::get_vm;
 
     let vm = get_vm();
     let (promise, resolve, reject) =

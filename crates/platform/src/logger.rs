@@ -1,7 +1,7 @@
 #[cfg(debug_assertions)]
-const LOG_FILTER: &str = "info,doufu=debug,doufu_*=debug,wgpu=error";
+const LOG_FILTER: &str = "info,moyu=debug,moyu_*=debug,wgpu=error";
 #[cfg(not(debug_assertions))]
-const LOG_FILTER: &str = "warn,doufu=info,doufu_*=info,wgpu=error";
+const LOG_FILTER: &str = "warn,moyu=info,moyu_*=info,wgpu=error";
 
 #[cfg(all(native, not(target_os = "android")))]
 pub fn setup() {

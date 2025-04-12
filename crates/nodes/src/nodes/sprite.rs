@@ -1,13 +1,13 @@
 use arc_swap::ArcSwapOption;
-use doufu_macros::Node;
+use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use wgpu::Buffer;
 
-use doufu_core::nodes::NodeBase;
-use doufu_core::resource::TextureId;
-use doufu_core::traits::{Focusable, Node, NodeBaseTrait};
-use doufu_core::utils::convert::{from_js, JSValue};
+use moyu_core::nodes::NodeBase;
+use moyu_core::resource::TextureId;
+use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
+use moyu_core::utils::convert::{from_js, JSValue};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

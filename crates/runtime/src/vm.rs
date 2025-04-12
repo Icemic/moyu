@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
-use doufu_pal::config::get_engine_config;
+use moyu_pal::config::get_engine_config;
 use quickjs_rusty::{
     Arguments, Context, ExecutionError, JSContext, JsFunction, OwnedJsValue, RawJSValue,
 };

@@ -10,31 +10,31 @@
     <div id="root"></div>
     <script type="module">
       const urlParams = new URLSearchParams(window.location.search);
-      window.__doufu_entry = urlParams.get('entry');
+      window.__moyu_entry = urlParams.get('entry');
 
-      import * as hai from './libdoufu.js';
+      import * as moyu from './libmoyu.js';
       window.addEventListener('load', async () => {
-        await hai.default();
-        window.hai = {
+        await moyu.default();
+        window.moyu = {
           pushCommand(name, args) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            return hai[name](...args);
+            return moyu[name](...args);
           },
           executeNodeCommand(...args) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            return hai.execute_node_command(...args);
+            return moyu.execute_node_command(...args);
           },
           executePluginCommand(...args) {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            return hai.execute_plugin_command(...args);
+            return moyu.execute_plugin_command(...args);
           },
         };
 
-        window.doufu_start = () => {
-          hai.doufu_init('root');
+        window.moyu_start = () => {
+          moyu.moyu_init('root');
         };
       });
     </script>
-    <button onclick="window.doufu_start()">Start</button>
+    <button onclick="window.moyu_start()">Start</button>
   </body>
 </html>

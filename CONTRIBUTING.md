@@ -1,6 +1,6 @@
 # 贡献指南
 
-欢迎参与豆腐引擎的开发！本指南将帮助您了解如何有效贡献代码、报告问题或提出改进建议。如果你对本项目还不熟悉，可以先阅读[项目文档](https://doufu.moe/docs/)。
+欢迎参与豆腐引擎的开发！本指南将帮助您了解如何有效贡献代码、报告问题或提出改进建议。如果你对本项目还不熟悉，可以先阅读[项目文档](https://moyu.moe/docs/)。
 
 ## 与社区互动
 
@@ -9,7 +9,7 @@
 - Discord 或 Telegram 群聊：
   - 与其他开发者交流、寻求帮助或分享项目进展。
   - 共同讨论项目的未来发展和功能需求。
-  - 相关链接请查看 [Readme](./README.md) 或 [项目主页](https://doufu.moe/)。
+  - 相关链接请查看 [Readme](./README.md) 或 [项目主页](https://moyu.moe/)。
 - GitHub Issue：
   - 更严肃的讨论和问题解决。
   - 报告问题或提出改进建议。
@@ -36,7 +36,7 @@
 
 ### 贡献流程
 
-1. 在 [Issue 列表](https://github.com/Icemic/doufu/issues) 中查找或创建相关议题
+1. 在 [Issue 列表](https://github.com/Icemic/moyu/issues) 中查找或创建相关议题
 2. Fork 仓库并创建特性分支（分支命名示例：`feat/audio-xxx` 或 `fix/some-problem`）
 3. 提交符合规范的代码变更
 4. 创建 Pull Request 并关联相关 Issue

@@ -1,5 +1,5 @@
 import Bunny, { type Bounds } from './bunny';
-import { hai } from '../..';
+import { moyu } from '../..';
 
 export default class BunnyMark {
   count = 0;
@@ -16,7 +16,7 @@ export default class BunnyMark {
     for (let i = 0; i < num; i++) {
       const texture = this.textures[this.count % this.textures.length];
 
-      const id = hai.createInstance('sprite', '', {
+      const id = moyu.createInstance('sprite', '', {
         src: texture,
         pivot: [0.5, 1.0],
         anchor: [0.5, 1.0],
@@ -26,7 +26,7 @@ export default class BunnyMark {
       bunny.position.x = this.count % 2 === 0 ? this.bounds.left : this.bounds.right;
       this.bunnies.push(bunny);
 
-      hai.addChild(0, id);
+      moyu.addChild(0, id);
 
       this.count++;
     }

@@ -16,7 +16,7 @@ pub use winit;
 
 use crate::core::Core;
 
-/// setup hai core
+/// setup moyu core
 pub fn setup() {
     #[cfg(feature = "video")]
     {
@@ -30,8 +30,8 @@ pub fn setup() {
     }
 }
 
-/// create hai core instance
-pub fn create_doufu_core<T>(event_loop: &EventLoop<T>, #[cfg(web)] element_id: &str) -> Arc<Core> {
+/// create moyu core instance
+pub fn create_moyu_core<T>(event_loop: &EventLoop<T>, #[cfg(web)] element_id: &str) -> Arc<Core> {
     // create multithread shared core
     let core = Core::new(
         event_loop,

@@ -397,7 +397,7 @@ impl Core {
                     location: pointer_state.location,
                 });
 
-                self.set_cursor(HaiCursor::Visible(CursorIcon::Default));
+                self.set_cursor(MoyuCursor::Visible(CursorIcon::Default));
             }
         }
     }

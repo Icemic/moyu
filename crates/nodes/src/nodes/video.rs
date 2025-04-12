@@ -1,6 +1,6 @@
 use anyhow::Result;
-use doufu_macros::node;
-use doufu_pal::sync::{Mutex, RwLock};
+use moyu_macros::node;
+use moyu_pal::sync::{Mutex, RwLock};
 use ffmpeg_rs::decoder::Check;
 use ffmpeg_rs::ffi::{
     av_malloc, avformat_alloc_context, avformat_close_input, avformat_find_stream_info,

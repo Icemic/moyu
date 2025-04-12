@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 
 #[cfg(feature = "js_runtime")]
 #[proc_macro_attribute]
-pub fn doufu_bindgen(args: TokenStream, func_body: TokenStream) -> TokenStream {
+pub fn moyu_bindgen(args: TokenStream, func_body: TokenStream) -> TokenStream {
     bindgen::entry(args, func_body)
 }
 
