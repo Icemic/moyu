@@ -17,6 +17,7 @@ declare global {
     moyu: any;
   }
 
+  // eslint-disable-next-line no-var
   var __moyu_receive_event: (event: MoyuEvent) => void;
 }
 
