@@ -3,6 +3,6 @@
   "surfaceSize": "1280x720",
   "stageSize": "1280x720",
   "windowTitle": "BunnyMark",
-  "entryFilename": "../bunnymark.js",
+  "entryFilename": "index.js",
   "showFPS": true
 }

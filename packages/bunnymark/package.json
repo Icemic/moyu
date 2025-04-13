@@ -1,0 +1,28 @@
+{
+  "name": "@momoyu-ink/bunnymark",
+  "version": "0.1.0",
+  "description": "A bunny mark benchmark for Moyu engine.",
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "rspack dev",
+    "prepack": "tsc --outDir ./dist",
+    "build": "tsc --outDir ./dist",
+    "watch": "tsc --outDir ./dist -w"
+  },
+  "author": "Icemic <bingfeng.web@gmail.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@momoyu-ink/kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@rspack/cli": "^1.1.1",
+    "@rspack/core": "^1.1.1",
+    "@types/node": ">=22",
+    "typescript": "^5.6.3"
+  }
+}

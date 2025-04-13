@@ -6,7 +6,7 @@
   "module": "src/lib.ts",
   "types": "dist/lib.d.ts",
   "scripts": {
-    "dev": "rspack dev",
+    "dev": "tsc --outDir ./dist -w",
     "prepack": "tsc --outDir ./dist",
     "build": "tsc --outDir ./dist",
     "watch": "tsc --outDir ./dist -w"
@@ -27,8 +27,6 @@
     "react": "^18.2.0"
   },
   "devDependencies": {
-    "@rspack/cli": "^1.1.1",
-    "@rspack/core": "^1.1.1",
     "@types/node": ">=22",
     "@types/react": "^18.2.0",
     "@types/react-reconciler": "^0.28.8",

@@ -429,7 +429,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@momoyu-ink/kit@workspace:packages/kit":
+"@momoyu-ink/bunnymark@workspace:packages/bunnymark":
+  version: 0.0.0-use.local
+  resolution: "@momoyu-ink/bunnymark@workspace:packages/bunnymark"
+  dependencies:
+    "@momoyu-ink/kit": "workspace:*"
+    "@rspack/cli": "npm:^1.1.1"
+    "@rspack/core": "npm:^1.1.1"
+    "@types/node": "npm:>=22"
+    typescript: "npm:^5.6.3"
+  peerDependencies:
+    react: ^18.2.0
+  languageName: unknown
+  linkType: soft
+
+"@momoyu-ink/kit@workspace:*, @momoyu-ink/kit@workspace:packages/kit":
   version: 0.0.0-use.local
   resolution: "@momoyu-ink/kit@workspace:packages/kit"
   dependencies:
