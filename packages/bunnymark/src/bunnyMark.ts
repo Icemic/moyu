@@ -1,18 +1,18 @@
 import Bunny, { type Bounds } from './bunny';
-import { moyu } from '../..';
+import { moyu } from '@momoyu-ink/kit';
 
 export default class BunnyMark {
-  count = 0;
-  bunnies: Bunny[] = [];
-  textures: string[] = [];
-  bounds: Bounds;
-  lastTime = Date.now();
-  constructor(textures: string[], bounds: Bounds) {
+  public count = 0;
+  public bunnies: Bunny[] = [];
+  public textures: string[] = [];
+  public bounds: Bounds;
+  public lastTime = Date.now();
+  public constructor(textures: string[], bounds: Bounds) {
     this.textures = textures;
     this.bounds = bounds;
   }
 
-  addBunny(num: number) {
+  public addBunny(num: number) {
     for (let i = 0; i < num; i++) {
       const texture = this.textures[this.count % this.textures.length];
 
@@ -32,7 +32,7 @@ export default class BunnyMark {
     }
   }
 
-  update() {
+  public update() {
     const time = Date.now();
     const deltaFrame = ((time - this.lastTime) / 1000) * 60;
     for (const bunny of this.bunnies) {

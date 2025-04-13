@@ -1,4 +1,4 @@
-import { moyu } from '../..';
+import { moyu } from '@momoyu-ink/kit';
 
 export interface Bounds {
   left: number;
@@ -8,21 +8,21 @@ export interface Bounds {
 }
 
 export default class Bunny {
-  id: number;
-  gravity: number;
-  speedX: number;
-  speedY: number;
-  position = {
+  public id: number;
+  public gravity: number;
+  public speedX: number;
+  public speedY: number;
+  public position = {
     x: 0,
     y: 0,
   };
-  bounds: Bounds = {
+  public bounds: Bounds = {
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
   };
-  constructor(id: number, bounds: Bounds) {
+  public constructor(id: number, bounds: Bounds) {
     this.id = id;
     /**
      * The amount of gravity
@@ -56,7 +56,7 @@ export default class Bunny {
    * Update the position of the bunny
    * @method update
    */
-  update(deltaFrame: number) {
+  public update(deltaFrame: number) {
     this.position.x += this.speedX * deltaFrame;
     this.position.y += this.speedY * deltaFrame;
     this.speedY += this.gravity * deltaFrame;
@@ -90,7 +90,7 @@ export default class Bunny {
    * Don't use after this.
    * @method destroy
    */
-  destroy() {
+  public destroy() {
     moyu.removeChild(0, this.id);
   }
 }

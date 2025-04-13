@@ -7,7 +7,7 @@ const isDev = process.env.NODE_ENV === 'development';
 module.exports = {
   context: __dirname,
   entry: {
-    bunnymark: './examples/bunnyMark/index.ts',
+    index: './src/index.ts',
   },
   resolve: {
     symlinks: false,
@@ -54,7 +54,7 @@ module.exports = {
     webSocketServer: false,
     static: {
       publicPath: '/',
-      directory: './examples',
+      directory: './',
     },
     headers: {
       'Access-Control-Allow-Origin': '*',
