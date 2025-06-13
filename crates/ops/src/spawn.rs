@@ -2,6 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use anyhow::Result;
 use moyu_core::core::Core;
 
 pub type SpawnRuntimeCallback =
@@ -13,9 +14,8 @@ pub type SpawnRuntimeCallback =
 pub fn spawn_runtime_with_core(
     _core: &Arc<Core>,
     spawn_callback: Option<SpawnRuntimeCallback>,
-) -> moyu_pal::visible_hand::VisibleHand<Arc<moyu_runtime::QuickVM>> {
+) -> Result<moyu_pal::visible_hand::VisibleHand<Arc<moyu_runtime::QuickVM>>> {
     use moyu_runtime::{get_vm, setup_vm};
-    use log::error;
 
     let vm_handle = setup_vm();
 
@@ -28,30 +28,27 @@ pub fn spawn_runtime_with_core(
 
     let vm = get_vm();
 
-    // returns 'Could not convert value to string' error randomly
-    // not sure why but it's not a big deal (...I think), just ignore it.
-    if let Err(err) = vm
-        .context()
-        .eval("console.info('Hello %s!', 'World')", false)
-    {
-        error!("{:?}", err);
-    };
-
     crate::init(vm);
 
     if let Err(err) = vm.prepare_entry() {
-        error!("Fatal error: failed to run from entry. {}", err.to_string());
+        return Err(anyhow::anyhow!(
+            "Fatal error: failed to run from entry. {}",
+            err.to_string()
+        ));
     }
 
-    vm_handle
+    Ok(vm_handle)
 }
 
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(web)]
-pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntimeCallback>) {
-    use moyu_pal::config::{entry_dir, get_engine_config, AutorunMode};
+pub fn spawn_runtime_with_core(
+    _: &Arc<Core>,
+    spawn_callback: Option<SpawnRuntimeCallback>,
+) -> Result<()> {
     use log::debug;
+    use moyu_pal::config::{entry_dir, get_engine_config, AutorunMode};
 
     if let Some(spawn_callback) = spawn_callback {
         let async_callback = spawn_callback();
@@ -95,4 +92,6 @@ pub fn spawn_runtime_with_core(_: &Arc<Core>, spawn_callback: Option<SpawnRuntim
             body.append_child(&root_script).unwrap();
         }
     });
+
+    Ok(())
 }
