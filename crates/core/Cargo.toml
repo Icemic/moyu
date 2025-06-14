@@ -20,7 +20,6 @@ cursor-icon = {version = "1", features = ["serde"]}
 glam = {version = "0.28", features = ["bytemuck"]}
 image = {version = "0.25", default-features = false, features = [
   "rayon",
-  "avif",
   "bmp",
   "jpeg",
   "png",
