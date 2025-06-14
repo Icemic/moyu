@@ -106,7 +106,9 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
                     }
 
                     // show splash screen
-                    moyu_pal::task::spawn(crate::splash::show_splash_screen(core.clone()));
+                    if !get_engine_config().skip_splash {
+                        moyu_pal::task::spawn(crate::splash::show_splash_screen(core.clone()));
+                    }
 
                     // workaround for Chrome since it doesn't apply the correct size
                     #[cfg(web)]
