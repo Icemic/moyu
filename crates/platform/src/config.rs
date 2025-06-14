@@ -13,7 +13,7 @@ use url::Url;
 pub use self::backend::RenderingBackend;
 pub use self::present_mode::RenderingPresentMode;
 
-static moyu_ENV: OnceCell<MoyuConfig> = OnceCell::new();
+static MOYU_ENV: OnceCell<MoyuConfig> = OnceCell::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -148,7 +148,7 @@ pub async fn setup() {
 
                 config.entry = Some(entry);
 
-                moyu_ENV.set(config).unwrap();
+                MOYU_ENV.set(config).unwrap();
                 break;
             }
             Err(err) => {
@@ -160,7 +160,7 @@ pub async fn setup() {
 }
 
 pub fn get_engine_config() -> &'static MoyuConfig {
-    moyu_ENV.get().unwrap()
+    MOYU_ENV.get().unwrap()
 }
 
 fn parse_entry_dir(entry_dir: &String) -> Url {
