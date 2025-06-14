@@ -1,7 +1,7 @@
-use moyu_pal::{config::entry_dir, sync::RwLock};
-use moyu_pal::{fs, task};
 use image::GenericImageView;
 use log::debug;
+use moyu_pal::{config::entry_dir, sync::RwLock};
+use moyu_pal::{fs, task};
 use std::{collections::HashMap, sync::Arc};
 use wgpu::{Device, Queue};
 
@@ -15,6 +15,8 @@ pub type RendererName = String;
 pub enum TextureId {
     // asset relative path
     Path(RelativePath),
+    // raw data, used for in-memory images
+    Data(Vec<u8>),
     // custom identical string
     Custom(String),
 }
@@ -54,6 +56,21 @@ impl ResourceManager {
 
         match &**texture_id {
             TextureId::Path(_) => self.add_load_task(texture_id.clone()),
+            TextureId::Data(data) => {
+                let texture = Arc::new(Texture::new());
+                self.texture_map
+                    .write()
+                    .insert(texture_id.clone(), texture.clone());
+                let device = self.device.clone();
+                let queue = self.queue.clone();
+
+                if let Err(err) = load_image_to_texture(&texture, &device, &queue, data, None) {
+                    log::error!("failed to load texture from raw image data: {}", err);
+                    texture.set_status(TextureStatus::Error);
+                }
+
+                texture
+            }
             TextureId::Custom(_) => {
                 let texture = Arc::new(Texture::new());
                 self.texture_map
@@ -96,64 +113,13 @@ impl ResourceManager {
                     }
                 };
 
-                let img = image::load_from_memory(&bytes)?;
-
-                let dimensions = img.dimensions();
-
-                // TODO: map various color type to wgpu::TextureFormat
-                let mut rgba = img.into_rgba8();
-
-                // perform premultiply alpha
-                premultiply_alpha(&mut rgba);
-
-                texture.set_status(TextureStatus::Uploading);
-
-                let size = wgpu::Extent3d {
-                    width: dimensions.0,
-                    height: dimensions.1,
-                    depth_or_array_layers: 1,
-                };
-
-                let texture_gpu = device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some(asset_relative_path.as_str()),
-                    size,
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::Rgba8Unorm,
-                    view_formats: &[],
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                });
-
-                queue.write_texture(
-                    wgpu::ImageCopyTexture {
-                        aspect: wgpu::TextureAspect::All,
-                        texture: &texture_gpu,
-                        mip_level: 0,
-                        origin: wgpu::Origin3d::ZERO,
-                    },
-                    &rgba,
-                    wgpu::ImageDataLayout {
-                        offset: 0,
-                        bytes_per_row: Some(4 * dimensions.0),
-                        rows_per_image: Some(dimensions.1),
-                    },
-                    size,
-                );
-
-                let view = texture_gpu.create_view(&wgpu::TextureViewDescriptor::default());
-                let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                    address_mode_u: wgpu::AddressMode::ClampToEdge,
-                    address_mode_v: wgpu::AddressMode::ClampToEdge,
-                    address_mode_w: wgpu::AddressMode::ClampToEdge,
-                    mag_filter: wgpu::FilterMode::Linear,
-                    min_filter: wgpu::FilterMode::Linear,
-                    mipmap_filter: wgpu::FilterMode::Linear,
-                    ..Default::default()
-                });
-
-                texture.set_texture(texture_gpu, view, sampler);
-                texture.set_status(TextureStatus::Ready);
+                load_image_to_texture(
+                    &texture,
+                    &device,
+                    &queue,
+                    &bytes,
+                    Some(&asset_relative_path),
+                )?;
 
                 debug!("texture '{}' loaded", asset_relative_path);
 
@@ -167,4 +133,73 @@ impl ResourceManager {
             unreachable!();
         }
     }
+}
+
+fn load_image_to_texture(
+    texture: &Arc<Texture>,
+    device: &Device,
+    queue: &Queue,
+    bytes: &[u8],
+    label: Option<&str>,
+) -> anyhow::Result<()> {
+    let img = image::load_from_memory(&bytes)?;
+
+    let dimensions = img.dimensions();
+
+    // TODO: map various color type to wgpu::TextureFormat
+    let mut rgba = img.into_rgba8();
+
+    // perform premultiply alpha
+    premultiply_alpha(&mut rgba);
+
+    texture.set_status(TextureStatus::Uploading);
+
+    let size = wgpu::Extent3d {
+        width: dimensions.0,
+        height: dimensions.1,
+        depth_or_array_layers: 1,
+    };
+
+    let texture_gpu = device.create_texture(&wgpu::TextureDescriptor {
+        label,
+        size,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        view_formats: &[],
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+    });
+
+    queue.write_texture(
+        wgpu::ImageCopyTexture {
+            aspect: wgpu::TextureAspect::All,
+            texture: &texture_gpu,
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+        },
+        &rgba,
+        wgpu::ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(4 * dimensions.0),
+            rows_per_image: Some(dimensions.1),
+        },
+        size,
+    );
+
+    let view = texture_gpu.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        address_mode_u: wgpu::AddressMode::ClampToEdge,
+        address_mode_v: wgpu::AddressMode::ClampToEdge,
+        address_mode_w: wgpu::AddressMode::ClampToEdge,
+        mag_filter: wgpu::FilterMode::Linear,
+        min_filter: wgpu::FilterMode::Linear,
+        mipmap_filter: wgpu::FilterMode::Linear,
+        ..Default::default()
+    });
+
+    texture.set_texture(texture_gpu, view, sampler);
+    texture.set_status(TextureStatus::Ready);
+
+    Ok(())
 }
