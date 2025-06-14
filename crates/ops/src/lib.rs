@@ -1,4 +1,4 @@
-mod node;
+pub mod node;
 pub mod spawn;
 
 use moyu_core::utils::convert::JSValue;
