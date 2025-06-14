@@ -105,16 +105,19 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
                         graphics.register_renderer("text", Box::new(text_renderer));
                     }
 
+                    // show splash screen
+                    moyu_pal::task::spawn(crate::splash::show_splash_screen(core.clone()));
+
                     // workaround for Chrome since it doesn't apply the correct size
                     #[cfg(web)]
-                    let _ =
-                        core.window()
-                            .request_inner_size(moyu_core::winit::dpi::Size::Logical(
-                                moyu_pal::config::get_engine_config()
-                                    .surface_size
-                                    .as_tuple()
-                                    .into(),
-                            ));
+                    let _ = core
+                        .window()
+                        .request_inner_size(moyu_core::winit::dpi::Size::Logical(
+                            moyu_pal::config::get_engine_config()
+                                .surface_size
+                                .as_tuple()
+                                .into(),
+                        ));
 
                     core.window().set_visible(true);
 

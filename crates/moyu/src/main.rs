@@ -1,4 +1,5 @@
 mod entry;
+mod splash;
 
 #[cfg(native)]
 #[tokio::main]
