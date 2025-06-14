@@ -52,6 +52,7 @@ pub struct MoyuConfig {
     #[serde(rename = "showFPS")]
     pub show_fps: bool,
     pub enable_gamepads: bool,
+    pub skip_splash: bool,
 }
 
 impl Default for MoyuConfig {
@@ -73,6 +74,7 @@ impl Default for MoyuConfig {
             background_color: Color::from_html("transparent").unwrap(),
             show_fps: false,
             enable_gamepads: false,
+            skip_splash: false,
         }
     }
 }
