@@ -33,36 +33,52 @@ pub async fn read(url: &Url) -> Result<Vec<u8>> {
     };
 
     if url.scheme() == "http" || url.scheme() == "https" {
-        let client = reqwest::Client::new();
-        let code = client
-            .get(url.clone())
-            .header("accept", "*/*")
-            .header("accept-encoding", "gzip, deflate")
-            .header(
-                "accept-language",
-                "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6",
-            )
-            .header("cache-control", "no-cache")
-            .header("dnt", "1")
-            .header("pragma", "no-cache")
-            .header("upgrade-insecure-requests", "1")
-            .header(
-                "sec-ch-ua",
-                "\" Not;A Brand\";v=\"99\", \"Google Chrome\";v=\"97\", \"Chromium\";v=\"97\"",
-            )
-            .header(
-                "user-agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) \
-                        Chrome/97.0.4692.71 Safari/537.36",
-            )
-            .send()
-            .await?
-            .error_for_status()?
-            .bytes()
-            .await?;
+        let mut request = ehttp::Request::get(url);
+        let headers = &mut request.headers;
+        headers.insert("accept", "*/*");
+        headers.insert("accept-encoding", "gzip, deflate");
+        headers.insert(
+            "accept-language",
+            "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6",
+        );
+        headers.insert("cache-control", "no-cache");
+        headers.insert("dnt", "1");
+        headers.insert("pragma", "no-cache");
+        headers.insert("upgrade-insecure-requests", "1");
+        headers.insert(
+            "sec-ch-ua",
+            "\" Not;A Brand\";v=\"99\", \"Google Chrome\";v=\"97\", \"Chromium\";v=\"97\"",
+        );
+        headers.insert(
+            "user-agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) \
+                    Chrome/97.0.4692.71 Safari/537.36",
+        );
 
-        return Ok(code.to_vec());
-    };
+        let data = match ehttp::fetch_async(request).await {
+            Ok(res) => {
+                if res.ok {
+                    res.bytes
+                } else {
+                    return Err(anyhow::anyhow!(
+                        "Failed to fetch url ({}): {} {}",
+                        url,
+                        res.status,
+                        res.status_text
+                    ));
+                }
+            }
+            Err(err) => {
+                return Err(anyhow::anyhow!(
+                    "Failed to fetch url ({}): {}",
+                    url,
+                    err.to_string()
+                ));
+            }
+        };
 
-    Err(anyhow::format_err!("Unsupported scheme '{}'", url.scheme()))
+        Ok(data)
+    } else {
+        Err(anyhow::format_err!("Unsupported scheme '{}'", url.scheme()))
+    }
 }
