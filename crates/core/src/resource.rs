@@ -105,10 +105,11 @@ impl ResourceManager {
                 let bytes = match fs::read(&asset_full_path).await {
                     Ok(v) => v,
                     Err(err) => {
+                        log::error!("Failed to read '{}': {}", asset_relative_path, err);
                         return Err(anyhow::format_err!(
-                            "failed to read '{}': {}",
+                            "Failed to read '{}': {}",
                             asset_relative_path,
-                            err.to_string()
+                            err
                         ));
                     }
                 };
