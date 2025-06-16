@@ -21,7 +21,7 @@ use moyu_pal::sync::Mutex;
 use crate::audio::{Audio, AudioLoadingState};
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct AudioSettings {
     pub delay_time: Option<f64>,
     pub start_position: f64,
@@ -76,7 +76,7 @@ impl AudioManager {
 
     pub fn remove_audio(&mut self, name: &str) {
         if let Some(audio) = self.audios.remove(name) {
-            audio.lock().stop_and_release().unwrap();
+            audio.lock().stop().unwrap();
         } else {
             warn!("Audio {} not found", name);
         }
@@ -135,23 +135,14 @@ impl AudioManager {
                 ..Default::default()
             });
 
-            let handle = match manager.lock().play(sound_data) {
-                Ok(handle) => handle,
-                Err(e) => {
-                    log::error!("Failed to play sound: {}", e);
-                    audio.lock().loading_state = AudioLoadingState::Failed;
-                    return Err(e.into());
-                }
-            };
-
             let mut audio = audio.lock();
-
-            audio.sound = Some(handle);
+            audio.sound = Some(sound_data);
             audio.loading_state = AudioLoadingState::Loaded;
 
             // audio will play automatically by default, so if auto_play is false, stop it
-            if !settings.auto_play {
-                audio.stop().unwrap();
+            if settings.auto_play {
+                let mut manager = manager.lock();
+                audio.play(&mut manager).unwrap();
             }
 
             Ok(())
@@ -248,7 +239,11 @@ impl Command for AudioManager {
             }
             AudioCommmad::Play { name } => {
                 let audio = self.get_audio(&name).unwrap();
-                audio.lock().play()?;
+                let mut audio = audio.lock();
+                // ignore the error if audio is not playing or not loaded
+                let _ = audio.stop();
+                let mut manager = self.manager.lock();
+                audio.play(&mut manager)?;
             }
             AudioCommmad::Stop { name } => {
                 let audio = self.get_audio(&name).unwrap();
