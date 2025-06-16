@@ -1,8 +1,6 @@
 use anyhow::{anyhow, Result};
-use kira::manager::AudioManager;
 use kira::sound::static_sound::{StaticSoundData, StaticSoundHandle};
-use kira::tween::Tween;
-use kira::Volume;
+use kira::*;
 
 pub struct Audio {
     pub(crate) sound: Option<StaticSoundData>,
@@ -85,7 +83,10 @@ impl Audio {
 
     pub fn set_volume(&mut self, volume: f64) -> Result<()> {
         self.handle().map(|handle| {
-            handle.set_volume(Volume::Amplitude(volume), Tween::default());
+            handle.set_volume(
+                Decibels::interpolate(Decibels::SILENCE, Decibels::IDENTITY, volume),
+                Tween::default(),
+            );
         })
     }
 
@@ -115,7 +116,7 @@ impl Audio {
 
     pub fn set_panning(&mut self, panning: f64) -> Result<()> {
         self.handle().map(|handle| {
-            handle.set_panning(panning, Tween::default());
+            handle.set_panning(Panning::from(panning as f32), Tween::default());
         })
     }
 }

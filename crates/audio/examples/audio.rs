@@ -1,9 +1,6 @@
 use anyhow::Result;
-use kira::{
-    manager::{backend::DefaultBackend, AudioManager, AudioManagerSettings},
-    sound::static_sound::StaticSoundData,
-    tween::Tween,
-};
+use kira::sound::static_sound::StaticSoundData;
+use kira::*;
 
 fn main() {
     play().unwrap();

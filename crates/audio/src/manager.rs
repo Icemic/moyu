@@ -4,11 +4,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
-use kira::manager::backend::DefaultBackend;
-use kira::manager::AudioManagerSettings;
 use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
 use kira::sound::{EndPosition, PlaybackPosition, Region};
-use kira::StartTime;
+use kira::{AudioManagerSettings, Decibels, DefaultBackend, Panning, StartTime, Tweenable};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
@@ -20,16 +18,26 @@ use moyu_pal::sync::Mutex;
 
 use crate::audio::{Audio, AudioLoadingState};
 
+/// Settings for audio playback, including delay, start position, volume, etc.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AudioSettings {
+    /// Optional delay time in seconds before the audio starts playing.
     pub delay_time: Option<f64>,
+    /// The position in seconds where the audio should start playing.
     pub start_position: f64,
+    /// Whether the sound should be played in reverse.
     pub reverse: bool,
+    /// Loop region defined by a start and end time in seconds. `-1` for end means loop to the end of the audio.
     pub loop_region: Option<(f64, f64)>,
+    /// Volume of the audio, ranges from 0.0 (silence) to 1.0 (normal volume),
+    /// values greater than 1.0 can be used for amplification.
     pub volume: f64,
+    /// Playback rate of the audio, where 1.0 is normal speed.
     pub playback_rate: f64,
+    /// Panning value from -1.0 (left) to 1.0 (right), with 0.0 being center.
     pub panning: f64,
+    /// Whether the audio should start playing automatically after loading.
     pub auto_play: bool,
 }
 
@@ -42,21 +50,20 @@ impl Default for AudioSettings {
             loop_region: None,
             volume: 1.0,
             playback_rate: 1.0,
-            panning: 0.5,
+            panning: 0.0,
             auto_play: false,
         }
     }
 }
 
 pub struct AudioManager {
-    manager: Arc<Mutex<kira::manager::AudioManager<DefaultBackend>>>,
+    manager: Arc<Mutex<kira::AudioManager<DefaultBackend>>>,
     audios: HashMap<String, Arc<Mutex<Audio>>>,
 }
 
 impl AudioManager {
     pub fn new() -> Result<Self> {
-        let manager =
-            kira::manager::AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())?;
+        let manager = kira::AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())?;
         let manager = Arc::new(Mutex::new(manager));
 
         Ok(Self {
@@ -129,9 +136,14 @@ impl AudioManager {
                         EndPosition::Custom(PlaybackPosition::Seconds(end))
                     },
                 }),
-                volume: settings.volume.into(),
+                volume: Decibels::interpolate(
+                    Decibels::SILENCE,
+                    Decibels::IDENTITY,
+                    settings.volume,
+                )
+                .into(),
                 playback_rate: settings.playback_rate.into(),
-                panning: settings.panning.into(),
+                panning: Panning::from(settings.panning as f32).into(),
                 ..Default::default()
             });
 
