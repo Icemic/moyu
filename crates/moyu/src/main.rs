@@ -1,3 +1,8 @@
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
+
 mod entry;
 mod splash;
 
@@ -8,10 +13,7 @@ async fn main() {
     moyu_pal::config::setup().await;
 
     #[cfg(debug_assertions)]
-    log::debug!(
-        "Environtment: {:#?}",
-        moyu_pal::config::get_engine_config()
-    );
+    log::debug!("Environtment: {:#?}", moyu_pal::config::get_engine_config());
 
     let event_loop = moyu_core::surface::create_eventloop();
 
