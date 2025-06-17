@@ -6,7 +6,7 @@ use crate::utils::convert::JSValue;
 use super::Command;
 use super::Focusable;
 
-pub trait Node: NodeBaseTrait + Debug {
+pub trait Node: NodeBaseTrait + Debug + Send + Sync {
     /// node type identifier
     fn node_type(&self) -> &'static str;
 
