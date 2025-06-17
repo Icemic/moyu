@@ -51,6 +51,9 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
         if let Some(mut node) = node.try_write() {
             node.base_mut().set_opacity(opacity);
         }
+
+        // wait for next frame
+        moyu_pal::time::sleep(std::time::Duration::from_millis(7)).await;
     }
 
     // remove splash screen
