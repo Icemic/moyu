@@ -74,7 +74,7 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
 
     let _core_handle = set_core(core.clone());
 
-    let _vm_handle = match moyu_ops::spawn::spawn_runtime_with_core(&core, None) {
+    let _vm_handle = match moyu_ops::spawn::spawn_runtime_with_core(&core) {
         Ok(v) => v,
         Err(err) => {
             log::error!("{}", err);
