@@ -13,18 +13,10 @@ pub type SpawnRuntimeCallback =
 #[cfg(native)]
 pub fn spawn_runtime_with_core(
     _core: &Arc<Core>,
-    spawn_callback: Option<SpawnRuntimeCallback>,
 ) -> Result<moyu_pal::visible_hand::VisibleHand<Arc<moyu_runtime::QuickVM>>> {
     use moyu_runtime::{get_vm, setup_vm};
 
     let vm_handle = setup_vm();
-
-    let handle = moyu_pal::task::get_runtime_handle();
-
-    if let Some(spawn_callback) = spawn_callback {
-        let async_callback = spawn_callback();
-        handle.spawn(async_callback);
-    }
 
     let vm = get_vm();
 
@@ -43,19 +35,9 @@ pub fn spawn_runtime_with_core(
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(web)]
-pub fn spawn_runtime_with_core(
-    _: &Arc<Core>,
-    spawn_callback: Option<SpawnRuntimeCallback>,
-) -> Result<()> {
+pub fn spawn_runtime_with_core(_: &Arc<Core>) -> Result<()> {
     use log::debug;
     use moyu_pal::config::{entry_dir, get_engine_config, AutorunMode};
-
-    if let Some(spawn_callback) = spawn_callback {
-        let async_callback = spawn_callback();
-        wasm_bindgen_futures::spawn_local(async move {
-            async_callback.await;
-        });
-    }
 
     wasm_bindgen_futures::spawn_local(async move {
         debug!("Injecting entry script.");
