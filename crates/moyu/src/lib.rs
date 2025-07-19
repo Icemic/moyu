@@ -1,4 +1,6 @@
 mod entry;
+#[cfg(feature = "mimalloc")]
+mod mimalloc;
 mod splash;
 
 #[cfg(target_os = "android")]

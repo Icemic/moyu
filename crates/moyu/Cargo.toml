@@ -14,7 +14,9 @@ release = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["text"]
+default = ["mimalloc", "text"]
+
+mimalloc = ["dep:mimalloc"]
 
 text = ["moyu_nodes/text", "moyu_ops/text"]
 video = ["moyu_nodes/video"]
@@ -31,6 +33,8 @@ path = "src/lib.rs"
 [dependencies]
 log = "0.4"
 spin_sleep_util = "0.1.1"
+
+mimalloc = {version = "0.1.47", optional = true}
 
 moyu_audio = {workspace = true}
 moyu_core = {workspace = true, features = ["js_runtime"]}
