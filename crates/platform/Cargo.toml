@@ -23,6 +23,7 @@ url = "2.2"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.11"
 log-panics = "2"
+native-dialog = {version = "0.9.0", features = ["windows_dpi_awareness", "windows_visual_styles"]}
 node-resolve = "2.2"
 parking_lot = {version = "0.12", features = ["hardware-lock-elision"]}
 tokio = {version = "1", features = ["full"]}
