@@ -438,8 +438,6 @@ __metadata:
     "@rspack/core": "npm:^1.1.1"
     "@types/node": "npm:>=22"
     typescript: "npm:^5.6.3"
-  peerDependencies:
-    react: ^18.2.0
   languageName: unknown
   linkType: soft
 
@@ -451,8 +449,6 @@ __metadata:
     "@react-spring/core": "npm:^9.7.3"
     "@react-spring/rafz": "npm:^9.7.3"
     "@react-spring/shared": "npm:^9.7.3"
-    "@rspack/cli": "npm:^1.1.1"
-    "@rspack/core": "npm:^1.1.1"
     "@types/node": "npm:>=22"
     "@types/react": "npm:^18.2.0"
     "@types/react-reconciler": "npm:^0.28.8"
