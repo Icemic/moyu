@@ -314,9 +314,12 @@ unsafe extern "C" fn host_promise_rejection_tracker(
     _opaque: *mut c_void,
 ) {
     let reason = OwnedJsValue::own(ctx, &reason);
-    log::error!(
-        "Promise rejection: {:?}, handled: {}",
-        reason.js_to_string(),
-        is_handled
-    );
+    if !is_handled {
+        log::error!(
+            "Promise rejection: {}",
+            reason
+                .js_to_string()
+                .unwrap_or("Unknown reason".to_string())
+        );
+    }
 }
