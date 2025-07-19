@@ -1,5 +1,5 @@
 mod entry;
-#[cfg(feature = "mimalloc")]
+#[cfg(native)]
 mod mimalloc;
 mod splash;
 
