@@ -10,6 +10,8 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::platform::show_fatal_error_and_exit;
+
 pub use self::backend::RenderingBackend;
 pub use self::present_mode::RenderingPresentMode;
 
@@ -153,7 +155,9 @@ pub async fn setup() {
             }
             Err(err) => {
                 log::error!("Config file ({entry_dir}) cannot be loaded: {err:?}");
-                std::process::exit(-1);
+                show_fatal_error_and_exit(&format!(
+                    "Failed to load configuration: {err:?}\nPlease check your configuration file."
+                ));
             }
         }
     }

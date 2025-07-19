@@ -78,7 +78,7 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
         Ok(v) => v,
         Err(err) => {
             log::error!("{}", err);
-            std::process::exit(-1);
+            platform::show_fatal_error_and_exit(err.to_string().as_str());
         }
     };
 

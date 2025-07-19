@@ -23,3 +23,23 @@ mod android;
 
 #[cfg(target_os = "android")]
 pub use android::*;
+
+pub fn show_fatal_error_and_exit(message: &str) -> ! {
+    #[cfg(desktop)]
+    {
+        use native_dialog::{DialogBuilder, MessageLevel};
+        let _ = DialogBuilder::message()
+            .set_title("Fatal Error")
+            .set_text(message)
+            .set_level(MessageLevel::Error)
+            .alert()
+            .show();
+    }
+
+    #[cfg(any(mobile, web))]
+    {
+        log::error!("Fatal Error: {}", message);
+    }
+
+    std::process::exit(1);
+}
