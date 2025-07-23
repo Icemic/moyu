@@ -32,6 +32,7 @@ tokio = {version = "1", features = ["full"]}
 console_error_panic_hook = "0.1"
 console_log = {version = "1.0", features = ["color"]}
 parking_lot = "0.12"
+tokio = {version = "1", features = ["sync"]}
 wasm-bindgen-futures = "0.4"
 wasmtimer = "0.4"
 web-sys = {version = "0.3.77", features = [
