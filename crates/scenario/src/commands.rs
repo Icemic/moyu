@@ -24,8 +24,12 @@ enum ScenarioCommand {
     HasStory { name: String },
     /// Get the list of all scenarios
     GetStoryList,
-
-    /// Start a scenario from a URI
+    /// Start a scenario by name
+    StartStory {
+        /// The name of the story to start
+        name: String,
+    },
+    /// Parse the next line of the current story
     NextLine,
     SetVariable {
         name: String,
@@ -98,6 +102,11 @@ impl Command for ScenarioPlugin {
             ScenarioCommand::GetStoryList => {
                 log::info!("get story list");
                 return self.get_story_list().map(Some);
+            }
+            ScenarioCommand::StartStory { name } => {
+                log::info!("start story: {}", name);
+                self.runtime.lock().start(&name)?;
+                return Ok(None);
             }
             ScenarioCommand::NextLine => {
                 let result = self.next_line()?;
