@@ -1,7 +1,7 @@
 use moyu_core::traits::Event;
 use serde::Serialize;
 
-use crate::executor::ExecutionResult;
+use crate::types::ExecutionResult;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", untagged)]

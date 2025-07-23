@@ -1,9 +1,8 @@
 use moyu_pal::sync::mpsc::Sender;
-use serde::Deserialize;
-use serde::Serialize;
 use sixu::format::*;
 use sixu::runtime::*;
-use strum::AsRefStr;
+
+use crate::types::ExecutionResult;
 
 /// Executor that implements the runtime execution logic for ScenarioPlugin
 pub struct ScenarioExecutor {
@@ -68,12 +67,4 @@ impl RuntimeExecutor for ScenarioExecutor {
     fn finished(&mut self, _ctx: &mut RuntimeContext) {
         let _ = self.sender.send(ExecutionResult::Finished);
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, AsRefStr)]
-pub enum ExecutionResult {
-    CommandLine(CommandLine),
-    ExtraSystemCall(SystemCallLine),
-    Text(Option<String>, Option<String>),
-    Finished,
 }
