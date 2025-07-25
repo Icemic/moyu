@@ -154,12 +154,14 @@ impl Command for ScenarioPlugin {
                 return Ok(Some(to_js(&game_vars)?));
             }
             ScenarioCommand::SetPermanentVariable { name, value } => {
-                let mut runtime = self.runtime.lock();
-                runtime
-                    .context_mut()
-                    .global_variables_mut()
-                    .as_object_mut()?
-                    .insert(name, value.into());
+                {
+                    let mut runtime = self.runtime.lock();
+                    runtime
+                        .context_mut()
+                        .global_variables_mut()
+                        .as_object_mut()?
+                        .insert(name, value.into());
+                }
                 return self.save_global_data_to_file().map(Some);
             }
             ScenarioCommand::GetPermanentVariable { name } => {
@@ -168,17 +170,19 @@ impl Command for ScenarioPlugin {
                 return Ok(Some(to_js(&value)?));
             }
             ScenarioCommand::SetPermanentVariables { variables } => {
-                let mut runtime = self.runtime.lock();
-                let ctx = runtime.context_mut();
+                {
+                    let mut runtime = self.runtime.lock();
+                    let ctx = runtime.context_mut();
 
-                let variables = variables
-                    .into_iter()
-                    .map(|(k, v)| (k, v.into()))
-                    .collect::<HashMap<String, Literal>>();
+                    let variables = variables
+                        .into_iter()
+                        .map(|(k, v)| (k, v.into()))
+                        .collect::<HashMap<String, Literal>>();
 
-                ctx.global_variables_mut()
-                    .as_object_mut()?
-                    .extend(variables);
+                    ctx.global_variables_mut()
+                        .as_object_mut()?
+                        .extend(variables);
+                }
                 return self.save_global_data_to_file().map(Some);
             }
             ScenarioCommand::GetPermanentVariables => {
@@ -187,12 +191,14 @@ impl Command for ScenarioPlugin {
                 return Ok(Some(to_js(&global_vars)?));
             }
             ScenarioCommand::ClearPermanentVariables => {
-                let mut runtime = self.runtime.lock();
-                runtime
-                    .context_mut()
-                    .global_variables_mut()
-                    .as_object_mut()?
-                    .clear();
+                {
+                    let mut runtime = self.runtime.lock();
+                    runtime
+                        .context_mut()
+                        .global_variables_mut()
+                        .as_object_mut()?
+                        .clear();
+                }
                 return self.save_global_data_to_file().map(Some);
             }
             ScenarioCommand::SaveGame { name } => {
