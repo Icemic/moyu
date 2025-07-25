@@ -1,13 +1,20 @@
 use serde::{Deserialize, Serialize};
 use sixu::format::{CommandLine, SystemCallLine};
 use sixu::runtime::ExecutionState;
-use strum::AsRefStr;
 
-#[derive(Debug, Clone, Serialize, Deserialize, AsRefStr)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(
+    rename_all = "lowercase",
+    rename_all_fields = "camelCase",
+    tag = "type"
+)]
 pub enum ExecutionResult {
     CommandLine(CommandLine),
     ExtraSystemCall(SystemCallLine),
-    Text(Option<String>, Option<String>),
+    Text {
+        leading: Option<String>,
+        text: Option<String>,
+    },
     Finished,
 }
 

@@ -45,10 +45,10 @@ impl RuntimeExecutor for ScenarioExecutor {
         text: Option<&str>,
     ) -> sixu::error::Result<()> {
         self.sender
-            .try_send(ExecutionResult::Text(
-                leading.map(|s| s.to_string()),
-                text.map(|s| s.to_string()),
-            ))
+            .try_send(ExecutionResult::Text {
+                leading: leading.map(|s| s.to_string()),
+                text: text.map(|s| s.to_string()),
+            })
             .map_err(anyhow::Error::from)?;
         Ok(())
     }
