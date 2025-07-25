@@ -17,11 +17,18 @@ use crate::ScenarioPlugin;
 )]
 enum ScenarioCommand {
     /// Start a scenario from a URI
-    AddStory { name: String, path: String },
+    AddStory {
+        name: String,
+        path: String,
+    },
     /// Remove a scenario by name
-    RemoveStory { name: String },
+    RemoveStory {
+        name: String,
+    },
     /// Check if a scenario exists by name
-    HasStory { name: String },
+    HasStory {
+        name: String,
+    },
     /// Get the list of all scenarios
     GetStoryList,
     /// Start a scenario by name
@@ -29,6 +36,7 @@ enum ScenarioCommand {
         /// The name of the story to start
         name: String,
     },
+    TerminateStory,
     /// Parse the next line of the current story
     NextLine,
     SetVariable {
@@ -36,7 +44,9 @@ enum ScenarioCommand {
         value: serde_json::Value,
     },
     /// Get a variable from current game session
-    GetVariable { name: String },
+    GetVariable {
+        name: String,
+    },
     /// Set multiple variables to current game session
     SetVariables {
         variables: HashMap<String, serde_json::Value>,
@@ -50,7 +60,9 @@ enum ScenarioCommand {
         value: serde_json::Value,
     },
     /// Get a permanent variable that will be saved across game sessions
-    GetPermanentVariable { name: String },
+    GetPermanentVariable {
+        name: String,
+    },
     /// Set multiple permanent variables that will be saved across game sessions
     SetPermanentVariables {
         variables: HashMap<String, serde_json::Value>,
@@ -61,7 +73,9 @@ enum ScenarioCommand {
     ClearPermanentVariables,
 
     /// save the current game session to disk
-    SaveGame { name: String },
+    SaveGame {
+        name: String,
+    },
     /// load a saved game session from disk
     LoadGame {
         name: String,
@@ -72,7 +86,9 @@ enum ScenarioCommand {
     /// reset the current game session to initial state
     ResetGame,
     /// remove a saved game session from disk
-    RemoveGame { name: String },
+    RemoveGame {
+        name: String,
+    },
 
     /// get the list of saved game sessions
     GetGameList {
@@ -108,10 +124,15 @@ impl Command for ScenarioPlugin {
                 self.runtime.lock().start(&name)?;
                 return Ok(None);
             }
+            ScenarioCommand::TerminateStory => {
+                log::info!("terminate story");
+                self.runtime.lock().terminate()?;
+                return Ok(None);
+            }
             ScenarioCommand::NextLine => {
                 let result = self.next_line()?;
                 self.send_event(
-                    &result.as_ref().to_lowercase(),
+                    "scenarionextline",
                     ScenarioEvent::ExecutionResult(result.clone()),
                 );
                 return Ok(Some(to_js(&result)?));
