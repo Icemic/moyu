@@ -10,7 +10,7 @@ version = "0.7.0"
 [features]
 default = []
 
-text = ["dep:huozi", "dep:glam"]
+text = ["dep:huozi", "dep:glam", "dep:csscolorparser"]
 video = ["dep:ffmpeg-rs"]
 yuv_sprite = []
 
@@ -18,6 +18,7 @@ yuv_sprite = []
 anyhow = "1.0"
 arc-swap = "1.6"
 bytemuck = {version = "1.13", features = ["derive"]}
+csscolorparser = {version = "0.7", features = ["serde"], optional = true}
 log = "0.4"
 serde = {version = "1.0", features = ["derive"]}
 wgpu = "22.0"
@@ -29,7 +30,7 @@ moyu_pal = {workspace = true}
 # optional for features
 ffmpeg-rs = {version = "5.2.1", optional = true}
 glam = {version = "0.30", features = ["bytemuck"], optional = true}
-huozi = {version = "0.8", optional = true}
+huozi = {version = "0.10", optional = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 moyu_core = {workspace = true, features = ["js_runtime"]}
