@@ -1,6 +1,7 @@
-use moyu_macros::Node;
+use csscolorparser::Color;
 use huozi::glyph_vertices::GlyphVertices;
-use huozi::layout::{Color, LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle};
+use huozi::layout::{LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle};
+use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
 
