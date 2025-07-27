@@ -31,3 +31,6 @@ moyu_scenario = {path = "crates/scenario"}
 [patch.crates-io]
 # huozi = {path = "../huozi-rs"}
 # quickjs-rusty = {path = "../quickjs-rusty"}
+# sixu = {path = "../sixu/sixu"}
+
+sixu = {git = "https://github.com/Icemic/sixu", branch = "master"}
