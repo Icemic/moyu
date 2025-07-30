@@ -55,7 +55,11 @@ export class Node {
     const [restProps, listeners] = filterProps(props);
     Object.assign(this.props, restProps);
     Object.assign(this.listeners, listeners);
-    moyu.updateProps(this.nodeId, restProps);
+
+    // skip empty props
+    if (Object.keys(restProps).length > 0) {
+      moyu.updateProps(this.nodeId, restProps);
+    }
   }
 
   public executeCommand(payload: moyu.MoyuCommandPayload) {
