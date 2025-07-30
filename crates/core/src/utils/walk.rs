@@ -20,7 +20,7 @@ where
 
         let child = child.read();
 
-        if !child.base().children().is_empty() {
+        if !child.base().children().is_empty() && child.base().visible() {
             let should_end = walk_nodes_top_bottom(&*child, func);
             if should_end {
                 return true;
