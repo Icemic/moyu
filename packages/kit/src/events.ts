@@ -3,6 +3,7 @@ import { type NodeEvent, NodeEventKind } from './events/node';
 import type { AnimationFrameCallbackEvent } from './events/raf';
 import type { MouseEvent, MouseEventKind } from './events/mouse';
 import { TouchEvent, TouchEventKind } from './events/touch';
+import { KeyboardEvent, KeyboardEventKind } from './events/keyboard';
 import type { CustomEvent } from './events/custom';
 import { STATE } from './state';
 
@@ -15,6 +16,8 @@ export type {
   MouseEventKind,
   TouchEvent,
   TouchEventKind,
+  KeyboardEvent,
+  KeyboardEventKind,
 };
 
 export interface MoyuEvent<T extends Record<string, unknown> = Record<string, unknown>> {
