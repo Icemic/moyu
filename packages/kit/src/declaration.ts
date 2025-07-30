@@ -146,6 +146,10 @@ export interface MoyuTextAttribute extends MoyuNodeAttributes {
   shadowOffsetY?: number;
   shadowBlur?: number;
   shadowWidth?: number;
+
+  onStart?: () => void;
+  onFinish?: () => void;
+  onProgress?: (progress: number) => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
