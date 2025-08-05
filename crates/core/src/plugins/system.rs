@@ -1,20 +1,36 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use arc_swap::ArcSwapOption;
 use moyu_pal::config::WindowState;
 use serde::{Deserialize, Serialize};
 
 use crate::core::Core;
 use crate::traits::{Command, Plugin};
-use crate::utils::convert::{from_js, to_js, JSValue};
+use crate::utils::convert::{create_promise, from_js, to_js, JSValue};
+
+/// Represents a snapshot of the window's content.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Snapshot {
+    /// The width of the snapshot in pixels.
+    pub width: u32,
+    /// The height of the snapshot in pixels.
+    pub height: u32,
+    /// The raw pixel data of the snapshot in RGBA format.
+    pub data: Vec<u8>,
+}
 
 pub struct SystemPlugin {
     core: Arc<Core>,
+    snapshot: Arc<ArcSwapOption<Snapshot>>,
 }
 
 impl SystemPlugin {
     pub fn new(core: Arc<Core>) -> Self {
-        Self { core }
+        Self {
+            core,
+            snapshot: Arc::new(ArcSwapOption::from(None)),
+        }
     }
 }
 
@@ -48,6 +64,7 @@ pub enum SystemCommmad {
     GetWindowState,
     GetWindowInnerPosition,
     GetWindowInnerSize,
+    TakeSnapshot,
     Quit,
 }
 
@@ -84,6 +101,34 @@ impl Command for SystemPlugin {
                 let size = self.core.window().inner_size();
                 let size: winit::dpi::LogicalSize<u32> = size.to_logical(scale_factor);
                 return Ok(Some(to_js(&size)?));
+            }
+            SystemCommmad::TakeSnapshot => {
+                if let Some(graphics) = self.core.graphics() {
+                    graphics.request_snapshot();
+
+                    // Create an async function that will poll for the snapshot
+                    let graphics_clone = graphics.clone();
+                    let snapshot_store = self.snapshot.clone();
+                    let fut = async move {
+                        // Poll until the snapshot is ready
+                        loop {
+                            if let Some((data, width, height)) = graphics_clone.try_get_snapshot() {
+                                let snapshot = Snapshot {
+                                    width,
+                                    height,
+                                    data,
+                                };
+                                snapshot_store.store(Some(Arc::new(snapshot)));
+                                return Ok(());
+                            }
+                            // Small delay to avoid busy waiting
+                            moyu_pal::time::sleep(std::time::Duration::from_millis(10)).await;
+                        }
+                    };
+
+                    let promise = create_promise(fut)?;
+                    return Ok(Some(promise));
+                }
             }
             SystemCommmad::Quit => {
                 self.core.quit();
