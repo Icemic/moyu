@@ -5,20 +5,10 @@ use arc_swap::ArcSwapOption;
 use moyu_pal::config::WindowState;
 use serde::{Deserialize, Serialize};
 
+use crate::base::Snapshot;
 use crate::core::Core;
 use crate::traits::{Command, Plugin};
 use crate::utils::convert::{create_promise, from_js, to_js, JSValue};
-
-/// Represents a snapshot of the window's content.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Snapshot {
-    /// The width of the snapshot in pixels.
-    pub width: u32,
-    /// The height of the snapshot in pixels.
-    pub height: u32,
-    /// The raw pixel data of the snapshot in RGBA format.
-    pub data: Vec<u8>,
-}
 
 pub struct SystemPlugin {
     core: Arc<Core>,
@@ -31,6 +21,10 @@ impl SystemPlugin {
             core,
             snapshot: Arc::new(ArcSwapOption::from(None)),
         }
+    }
+
+    pub fn snapshot(&self) -> Arc<ArcSwapOption<Snapshot>> {
+        self.snapshot.clone()
     }
 }
 
@@ -112,12 +106,16 @@ impl Command for SystemPlugin {
                     let fut = async move {
                         // Poll until the snapshot is ready
                         loop {
-                            if let Some((data, width, height)) = graphics_clone.try_get_snapshot() {
+                            if let Some((data, width, height, format)) =
+                                graphics_clone.try_get_snapshot()
+                            {
                                 let snapshot = Snapshot {
                                     width,
                                     height,
                                     data,
+                                    format: format.into(),
                                 };
+
                                 snapshot_store.store(Some(Arc::new(snapshot)));
                                 return Ok(());
                             }
