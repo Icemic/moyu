@@ -172,7 +172,7 @@ impl Graphics {
     }
 
     /// Check if there's a screenshot ready and return it
-    pub fn try_get_snapshot(&self) -> Option<(Vec<u8>, u32, u32)> {
+    pub fn try_get_snapshot(&self) -> Option<(Vec<u8>, u32, u32, wgpu::TextureFormat)> {
         let mut snapshot_buffer = self.snapshot_buffer.lock();
         if let Some((buffer, width, height)) = snapshot_buffer.take() {
             let buffer_slice = buffer.slice(..);
@@ -189,7 +189,7 @@ impl Graphics {
                 let rgba_data = data.to_vec();
                 drop(data);
                 buffer.unmap();
-                return Some((rgba_data, width, height));
+                return Some((rgba_data, width, height, self.config.lock().format));
             } else {
                 // Put the buffer back if mapping didn't complete
                 *snapshot_buffer = Some((buffer, width, height));
