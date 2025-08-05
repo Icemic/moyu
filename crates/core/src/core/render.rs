@@ -1,7 +1,7 @@
+use log::error;
 use moyu_pal::config::get_engine_config;
 use moyu_pal::sync::{Mutex, RwLock};
 use moyu_pal::time::Instant;
-use log::error;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -53,6 +53,10 @@ pub struct Graphics {
     /// Since [Graphics] can be created multiple times, this timer will be reset every time.
     instant: Instant,
     need_reconfigure: AtomicBool,
+    /// Flag to request a screenshot on the next render
+    snapshot_requested: AtomicBool,
+    /// Buffer to store screenshot data
+    snapshot_buffer: Arc<Mutex<Option<(wgpu::Buffer, u32, u32)>>>,
 }
 
 unsafe impl Send for Graphics {}
@@ -115,6 +119,8 @@ impl Graphics {
             fps_meter,
             instant,
             need_reconfigure: AtomicBool::new(false),
+            snapshot_requested: AtomicBool::new(false),
+            snapshot_buffer: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -158,6 +164,38 @@ impl Graphics {
 
     pub fn config(&self) -> &Arc<Mutex<SurfaceConfiguration>> {
         &self.config
+    }
+
+    /// Request a screenshot to be taken on the next render
+    pub fn request_snapshot(&self) {
+        self.snapshot_requested.store(true, Ordering::Relaxed);
+    }
+
+    /// Check if there's a screenshot ready and return it
+    pub fn try_get_snapshot(&self) -> Option<(Vec<u8>, u32, u32)> {
+        let mut snapshot_buffer = self.snapshot_buffer.lock();
+        if let Some((buffer, width, height)) = snapshot_buffer.take() {
+            let buffer_slice = buffer.slice(..);
+            // Try to map the buffer asynchronously
+            let (tx, rx) = std::sync::mpsc::channel();
+            buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+                let _ = tx.send(result);
+            });
+            self.device.poll(wgpu::Maintain::Wait);
+
+            // Check if mapping completed
+            if let Ok(Ok(())) = rx.try_recv() {
+                let data = buffer_slice.get_mapped_range();
+                let rgba_data = data.to_vec();
+                drop(data);
+                buffer.unmap();
+                return Some((rgba_data, width, height));
+            } else {
+                // Put the buffer back if mapping didn't complete
+                *snapshot_buffer = Some((buffer, width, height));
+            }
+        }
+        None
     }
 
     /// reset surface
@@ -338,6 +376,50 @@ impl Graphics {
         }
 
         staging_belt.finish();
+
+        // Handle screenshot request
+        if self.snapshot_requested.swap(false, Ordering::Relaxed) {
+            let config = self.config.lock();
+            let width = config.width;
+            let height = config.height;
+            drop(config);
+
+            // Create a buffer to copy the texture data to
+            let buffer_size = (width * height * 4) as u64; // RGBA
+            let snapshot_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Screenshot Buffer"),
+                size: buffer_size,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+
+            // Copy the texture to the buffer
+            encoder.copy_texture_to_buffer(
+                wgpu::ImageCopyTexture {
+                    texture: &output.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::ImageCopyBuffer {
+                    buffer: &snapshot_buffer,
+                    layout: wgpu::ImageDataLayout {
+                        offset: 0,
+                        bytes_per_row: Some(4 * width),
+                        rows_per_image: Some(height),
+                    },
+                },
+                wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+            );
+
+            // Store the buffer for later retrieval
+            let mut snapshot_buffer_guard = self.snapshot_buffer.lock();
+            *snapshot_buffer_guard = Some((snapshot_buffer, width, height));
+        }
 
         // TODO: in winit, it is an empty function now, keep an eye on it.
         self.window.pre_present_notify();
