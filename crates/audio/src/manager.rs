@@ -235,7 +235,7 @@ pub enum AudioCommmad {
 impl Command for AudioManager {
     fn execute(&mut self, payload: &mut JSValue) -> Result<Option<JSValue>> {
         let payload: AudioCommmad = from_js(payload)?;
-        log::info!("audio manager received: {:?}", payload);
+        log::debug!("audio manager received: {:?}", payload);
 
         match payload {
             AudioCommmad::Load {
