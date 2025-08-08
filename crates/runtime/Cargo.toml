@@ -10,6 +10,7 @@ version = "0.7.0"
 anyhow = "1"
 log = "0.4"
 quickjs-rusty = "0.9.1"
+serde = "1"
 spin_sleep = "1.1"
 tokio = {version = "1", features = ["time", "sync"]}
 
