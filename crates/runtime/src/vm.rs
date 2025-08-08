@@ -1,13 +1,16 @@
-use std::collections::VecDeque;
+use std::cell::Cell;
+use std::collections::{HashMap, VecDeque};
 use std::ffi::c_void;
 use std::ptr::null_mut;
 use std::rc::Rc;
+use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use std::time::Instant;
 
 use moyu_pal::config::get_engine_config;
 use quickjs_rusty::{
-    Arguments, Context, ExecutionError, JSContext, JsFunction, OwnedJsValue, RawJSValue,
+    Arguments, Context, ExecutionError, JSContext, JsFunction, OwnedJsPromise, OwnedJsValue,
+    RawJSValue,
 };
 use std::sync::Mutex;
 use tokio::sync::oneshot::{Receiver, Sender};
@@ -16,6 +19,25 @@ use crate::console::log_handler;
 use crate::module::{module_loader, module_normalize};
 
 static mut TIMER_ID: i32 = 0;
+static PROMISE_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
+
+thread_local! {
+    static IS_VM_THREAD: Cell<bool> = Cell::new(false);
+}
+
+/// Promise resolution task
+#[derive(Debug)]
+pub enum PromiseTask {
+    Resolve { id: u64, value: OwnedJsValue },
+    Reject { id: u64, error: String },
+}
+
+/// Promise Resolvers registry entry
+#[derive(Debug)]
+pub struct PromiseResolvers {
+    resolve: JsFunction,
+    reject: JsFunction,
+}
 
 pub struct QuickVM {
     context: Context,
@@ -24,6 +46,10 @@ pub struct QuickVM {
     instant: Instant,
     call_tasks: Arc<Mutex<VecDeque<(String, Vec<OwnedJsValue>, Sender<()>)>>>,
     async_tasks: Arc<Mutex<VecDeque<Box<dyn FnOnce(&Self)>>>>,
+    /// Promise resolvers registry - only accessed in QuickJS thread
+    promise_resolvers: Arc<Mutex<HashMap<u64, PromiseResolvers>>>,
+    /// Promise resolution task queue
+    promise_tasks: Arc<Mutex<VecDeque<PromiseTask>>>,
     to_be_closed: bool,
 }
 
@@ -53,6 +79,9 @@ impl Default for QuickVM {
 
 impl QuickVM {
     pub fn new() -> Self {
+        // Mark current thread as VM thread
+        IS_VM_THREAD.with(|flag| flag.set(true));
+
         let context = Context::builder()
             .console(log_handler)
             .build()
@@ -157,6 +186,8 @@ impl QuickVM {
             instant,
             call_tasks: Arc::new(Mutex::new(VecDeque::new())),
             async_tasks: Arc::new(Mutex::new(VecDeque::new())),
+            promise_resolvers: Arc::new(Mutex::new(HashMap::new())),
+            promise_tasks: Arc::new(Mutex::new(VecDeque::new())),
             to_be_closed: false,
         }
     }
@@ -170,8 +201,14 @@ impl QuickVM {
     }
 
     /// Execute a function in the context of the vm and in quickjs thread.
-    pub fn with_context(&self, f: impl FnOnce(&Self) + 'static) {
+    pub fn on_vm_thread(&self, f: impl FnOnce(&Self) + 'static) {
         self.async_tasks.lock().unwrap().push_back(Box::new(f));
+    }
+
+    /// Check if in VM thread
+    #[inline(always)]
+    pub fn is_vm_thread(&self) -> bool {
+        IS_VM_THREAD.with(|flag| flag.get())
     }
 
     ///
@@ -194,6 +231,135 @@ impl QuickVM {
             .push_back((name.to_string(), args, sender));
 
         receiver
+    }
+
+    /// Generate new Promise ID
+    fn generate_promise_id() -> u64 {
+        use std::sync::atomic::Ordering;
+        PROMISE_ID_COUNTER.fetch_add(1, Ordering::SeqCst)
+    }
+
+    /// Register Promise resolvers (only called in QuickJS thread)
+    fn register_promise_resolvers(&self, id: u64, resolve: JsFunction, reject: JsFunction) {
+        let resolvers = PromiseResolvers { resolve, reject };
+        self.promise_resolvers.lock().unwrap().insert(id, resolvers);
+    }
+
+    /// Safely reject Promise from async tasks
+    fn reject_promise(&self, id: u64, error: String) {
+        let task = PromiseTask::Reject { id, error };
+        self.promise_tasks.lock().unwrap().push_back(task);
+    }
+
+    /// Resolve Promise with an already created JS value (called in QuickJS thread)
+    fn resolve_promise_with_value(&self, id: u64, js_value: OwnedJsValue) {
+        let task = PromiseTask::Resolve {
+            id,
+            value: js_value,
+        };
+        self.promise_tasks.lock().unwrap().push_back(task);
+    }
+
+    /// Create Promise with automatic thread mode selection
+    /// VM thread: immediate synchronous creation (zero overhead)
+    /// Cross-thread: queued creation via on_vm_thread (thread-safe)
+    pub fn create_promise<F, V>(&self, future: F) -> anyhow::Result<OwnedJsValue>
+    where
+        F: core::future::Future<Output = Result<V, anyhow::Error>> + Send + 'static,
+        V: serde::Serialize + Send + 'static,
+    {
+        let promise_id = Self::generate_promise_id();
+
+        let promise = if self.is_vm_thread() {
+            let (promise, resolve, reject) = OwnedJsPromise::with_resolvers(self.context())?;
+            self.register_promise_resolvers(promise_id, resolve, reject);
+            promise.into_value()
+        } else {
+            let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+
+            self.on_vm_thread(move |vm_ref| {
+                match OwnedJsPromise::with_resolvers(vm_ref.context()) {
+                    Ok((promise, resolve, reject)) => {
+                        vm_ref.register_promise_resolvers(promise_id, resolve, reject);
+                        let _ = sender.send(Ok(promise.into_value()));
+                    }
+                    Err(e) => {
+                        let _ = sender.send(Err(e));
+                    }
+                }
+            });
+
+            receiver
+                .recv()
+                .map_err(|_| anyhow::anyhow!("Failed to receive Promise from VM thread"))?
+                .map_err(|e| anyhow::anyhow!("Failed to create Promise: {:?}", e))?
+        };
+
+        moyu_pal::task::get_runtime_handle().spawn(async move {
+            match future.await {
+                Ok(value) => {
+                    let vm = crate::get_vm();
+                    vm.on_vm_thread(move |vm_ref| {
+                        // Use serde to properly serialize the value in QuickJS thread
+                        match quickjs_rusty::serde::to_js(
+                            unsafe { vm_ref.context().context_raw() },
+                            &value,
+                        ) {
+                            Ok(js_value) => {
+                                vm_ref.resolve_promise_with_value(promise_id, js_value);
+                            }
+                            Err(e) => {
+                                vm_ref.reject_promise(
+                                    promise_id,
+                                    format!("Serialization error: {:?}", e),
+                                );
+                            }
+                        }
+                    });
+                }
+                Err(err) => {
+                    crate::get_vm().reject_promise(promise_id, err.to_string());
+                }
+            }
+        });
+
+        Ok(promise)
+    }
+
+    /// Process all pending Promise tasks (only called in QuickJS thread)
+    fn process_promise_tasks(&self) {
+        let mut promise_tasks = self.promise_tasks.lock().unwrap();
+        let mut promise_resolvers = self.promise_resolvers.lock().unwrap();
+
+        while let Some(task) = promise_tasks.pop_front() {
+            match task {
+                PromiseTask::Resolve { id, value } => {
+                    if let Some(resolvers) = promise_resolvers.remove(&id) {
+                        // Use the already created JS value directly
+                        if let Err(e) = resolvers.resolve.call(vec![value]) {
+                            log::error!("Failed to resolve promise {}: {:?}", id, e);
+                        }
+                    }
+                }
+                PromiseTask::Reject { id, error } => {
+                    if let Some(resolvers) = promise_resolvers.remove(&id) {
+                        match self.context().eval(
+                            &format!("new Error('{}')", error.replace("'", "\\'")),
+                            false,
+                        ) {
+                            Ok(error_val) => {
+                                if let Err(e) = resolvers.reject.call(vec![error_val]) {
+                                    log::error!("Failed to reject promise {}: {:?}", id, e);
+                                }
+                            }
+                            Err(e) => {
+                                log::error!("Failed to create error for promise {}: {:?}", id, e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub fn prepare_entry(&self) -> Result<(), ExecutionError> {
@@ -242,6 +408,9 @@ impl QuickVM {
 
         // drop the lock before executing the tasks to avoid deadlocks
         drop(call_tasks);
+
+        // Process Promise tasks
+        self.process_promise_tasks();
 
         self.context().execute_pending_job().unwrap();
 
@@ -303,6 +472,8 @@ impl Drop for QuickVM {
         self.timer_tasks.lock().unwrap().clear();
         self.call_tasks.lock().unwrap().clear();
         self.async_tasks.lock().unwrap().clear();
+        self.promise_resolvers.lock().unwrap().clear();
+        self.promise_tasks.lock().unwrap().clear();
     }
 }
 
