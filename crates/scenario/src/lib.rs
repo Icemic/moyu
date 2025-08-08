@@ -202,8 +202,8 @@ impl ScenarioPlugin {
         Ok(promise)
     }
 
-    fn get_save_data_list(&self, _pattern_str: Option<String>) -> Result<JSValue> {
-        create_promise(readdir_from_appdata("saves"))
+    fn get_save_data_list(&self, pattern: Option<String>) -> Result<JSValue> {
+        create_promise(readdir_from_appdata("saves", pattern))
     }
 
     /// Execute the next step in the scenario
