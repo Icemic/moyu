@@ -4,7 +4,7 @@ pub type JSValue = wasm_bindgen::JsValue;
 pub type OwnedJsPromise = web_sys::js_sys::Promise;
 
 #[cfg(all(native, feature = "js_runtime"))]
-use moyu_runtime::quickjs_rusty::{OwnedJsPromise, OwnedJsValue};
+use moyu_runtime::quickjs_rusty::OwnedJsValue;
 
 #[cfg(all(native, feature = "js_runtime"))]
 pub type JSValue = OwnedJsValue;
@@ -56,29 +56,11 @@ where
     F: core::future::Future<Output = Result<V, anyhow::Error>> + Send + 'static,
     V: serde::Serialize + Send + 'static,
 {
-    use moyu_pal::task::get_runtime_handle;
     use moyu_runtime::get_vm;
 
     let vm = get_vm();
-    let (promise, resolve, reject) =
-        OwnedJsPromise::with_resolvers(vm.context()).expect("Failed to create promise");
 
-    get_runtime_handle().spawn(async move {
-        match future.await {
-            Ok(value) => vm.with_context(move |_| {
-                resolve
-                    .call(vec![to_js(&value).unwrap()])
-                    .expect("Failed to resolve promise");
-            }),
-            Err(err) => vm.with_context(move |_| {
-                reject
-                    .call(vec![to_js(&err.to_string()).unwrap()])
-                    .expect("Failed to reject promise");
-            }),
-        }
-    });
-
-    Ok(promise.into_value())
+    vm.create_promise(future)
 }
 
 #[cfg(web)]
