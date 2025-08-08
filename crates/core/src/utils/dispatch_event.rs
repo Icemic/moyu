@@ -7,13 +7,22 @@ pub fn dispatch_event<T: Event>(event: T) {
     use moyu_runtime::try_get_vm;
 
     if let Some(vm) = try_get_vm() {
-        vm.with_context(move |vm| {
-            let event = MoyuEvent::from_event(event);
-            let event = to_js(&event).unwrap();
-            if let Err(err) = vm.call_function_direct("__moyu_receive_event", vec![event]) {
+        let event = MoyuEvent::from_event(event);
+
+        let dispatch = move |vm: &moyu_runtime::QuickVM| {
+            let js_event = to_js(&event).unwrap();
+            if let Err(err) = vm.call_function_direct("__moyu_receive_event", vec![js_event]) {
                 log::error!("failed to dispatch event: {}", err);
             }
-        });
+        };
+
+        if vm.is_vm_thread() {
+            dispatch(vm);
+        } else {
+            vm.on_vm_thread(move |vm| {
+                dispatch(vm);
+            });
+        }
     }
 }
 
