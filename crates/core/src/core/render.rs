@@ -281,9 +281,8 @@ impl Graphics {
                 std::process::exit(1);
             }
             Err(wgpu::SurfaceError::Outdated) => {
-                log::warn!("surface outdated, reconfigure.");
                 self.refresh();
-                return Err(wgpu::SurfaceError::Outdated);
+                return Ok(());
             }
             Err(wgpu::SurfaceError::Timeout) => {
                 log::warn!("surface timeout, ignored.");
