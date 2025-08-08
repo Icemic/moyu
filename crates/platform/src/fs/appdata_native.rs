@@ -54,7 +54,10 @@ pub async fn write_to_appdata(relative_path: &str, data: Vec<u8>) -> Result<()> 
 }
 
 /// Read a directory from the appdata directory.
-pub async fn readdir_from_appdata(relative_path: &str) -> Result<Vec<FileEntry>> {
+pub async fn readdir_from_appdata(
+    relative_path: &str,
+    pattern: Option<String>,
+) -> Result<Vec<FileEntry>> {
     let path = get_path_in_appdata(relative_path)?;
 
     // create the directory if it doesn't exist
@@ -74,8 +77,16 @@ pub async fn readdir_from_appdata(relative_path: &str) -> Result<Vec<FileEntry>>
             .duration_since(std::time::SystemTime::UNIX_EPOCH)?
             .as_millis() as u64;
 
+        let name = entry.file_name().to_string_lossy().to_string();
+
+        if let Some(pattern) = pattern.as_ref() {
+            if !fast_glob::glob_match(pattern, &name) {
+                continue; // Skip entries that do not match the pattern
+            }
+        }
+
         arr.push(FileEntry {
-            name: entry.file_name().to_string_lossy().to_string(),
+            name,
             is_dir: metadata.is_dir(),
             size: metadata.len(),
             last_modified,

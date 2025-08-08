@@ -166,7 +166,10 @@ pub async fn write_to_appdata(relative_path: &str, data: Vec<u8>) -> Result<()> 
 }
 
 /// Read a directory from the appdata directory.
-pub async fn readdir_from_appdata(relative_path: &str) -> Result<Vec<FileEntry>> {
+pub async fn readdir_from_appdata(
+    relative_path: &str,
+    pattern: Option<String>,
+) -> Result<Vec<FileEntry>> {
     use wasm_bindgen_futures::JsFuture;
     use web_sys::wasm_bindgen::JsCast;
     use web_sys::{FileSystemHandle, FileSystemHandleKind};
@@ -196,6 +199,13 @@ pub async fn readdir_from_appdata(relative_path: &str) -> Result<Vec<FileEntry>>
             .map_err(|err| anyhow::anyhow!("Failed to cast to FileSystemHandle: {:?}", err))?;
 
         let name = item.name();
+
+        if let Some(pattern) = pattern.as_ref() {
+            if !fast_glob::glob_match(pattern, &name) {
+                continue; // Skip entries that do not match the pattern
+            }
+        }
+
         let is_dir = item.kind() == FileSystemHandleKind::Directory;
 
         if !is_dir {
