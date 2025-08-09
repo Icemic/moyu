@@ -203,13 +203,26 @@ impl ScenarioPlugin {
     }
 
     fn get_save_data_list(&self, pattern: Option<String>) -> Result<JSValue> {
-        create_promise(readdir_from_appdata(
-            "saves",
-            pattern.map(|mut p| {
-                p.push_str(".json");
-                p
-            }),
-        ))
+        create_promise(async move {
+            let mut list = readdir_from_appdata(
+                "saves",
+                pattern.map(|mut p| {
+                    p.push_str(".json");
+                    p
+                }),
+            )
+            .await?;
+
+            list.iter_mut().for_each(|entry| {
+                entry.name = entry
+                    .name
+                    .strip_suffix(".json")
+                    .unwrap_or_default()
+                    .to_string();
+            });
+
+            Ok(list)
+        })
     }
 
     /// Execute the next step in the scenario
