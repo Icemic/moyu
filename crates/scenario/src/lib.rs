@@ -3,11 +3,17 @@ mod events;
 mod executor;
 mod types;
 
+use std::io::{Cursor, Write};
 use std::sync::Arc;
 
 use anyhow::Result;
+use moyu_core::base::ImageFormat;
+use moyu_core::core::get_core;
+use moyu_core::plugins::SystemPlugin;
+use moyu_core::traits::PluginBaseTrait;
 use moyu_core::traits::{Command, Plugin, PluginEventSource};
 use moyu_core::utils::convert::{create_promise, to_js, JSValue};
+use moyu_macros::Plugin;
 use moyu_pal::config::entry_dir;
 use moyu_pal::fs::{
     read_from_appdata, readdir_from_appdata, remove_from_appdata, write_to_appdata,
@@ -16,11 +22,16 @@ use moyu_pal::sync::mpsc::error::TryRecvError;
 use moyu_pal::sync::mpsc::Receiver;
 use moyu_pal::sync::Mutex;
 use sixu::runtime::Runtime;
+use zip::write::SimpleFileOptions;
 
 use crate::events::ScenarioEvent;
 use crate::executor::ScenarioExecutor;
 use crate::types::{ExecutionResult, GameData};
 
+const METADATA_VERSION: u32 = 1;
+const ZIP_COMMENT: &str = "MOYU\0";
+
+#[derive(Plugin)]
 pub struct ScenarioPlugin {
     /// The runtime that handles scenario execution
     runtime: Arc<Mutex<Runtime<ScenarioExecutor>>>,
@@ -147,14 +158,23 @@ impl ScenarioPlugin {
     }
 
     fn load_save_data_from_file(&mut self, name: &str) -> Result<JSValue> {
-        let path = format!("saves/{}.json", name);
+        let path = format!("saves/{}.sav", name);
         let runtime = self.runtime.clone();
         let future = async move {
             let Some(data) = read_from_appdata(&path).await? else {
                 log::info!("No save data found for {}", path);
                 return Ok(());
             };
-            let data: GameData = serde_json::from_slice(&data)?;
+
+            let mut zip = zip::ZipArchive::new(Cursor::new(data))?;
+
+            if zip.comment() != ZIP_COMMENT.as_bytes() {
+                log::warn!("Invalid ZIP comment, this may not be a valid MOYU save file");
+            }
+
+            let game_data = zip.by_name("game_data.json")?;
+
+            let data: GameData = serde_json::from_reader(game_data)?;
 
             // Update the runtime's context
             {
@@ -174,18 +194,68 @@ impl ScenarioPlugin {
     }
 
     fn save_game_data_to_file(&self, name: &str) -> Result<JSValue> {
-        let runtime = self.runtime.lock();
-        let stack = runtime.context().stack().clone();
-        let game_vars = runtime.context().archive_variables();
+        let zip_data = Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(zip_data);
 
-        let data = serde_json::to_vec_pretty(&GameData {
-            stack,
-            variables: game_vars.clone().into(),
-        })?;
+        let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Zstd);
 
-        let path = format!("saves/{}.json", name);
+        {
+            let runtime = self.runtime.lock();
+            let stack = runtime.context().stack().clone();
+            let game_vars = runtime.context().archive_variables();
+
+            let game_data = serde_json::to_vec_pretty(&GameData {
+                stack,
+                variables: game_vars.clone().into(),
+            })?;
+
+            zip.start_file("game_data.json", options)?;
+            zip.write_all(&game_data)?;
+        }
+
+        {
+            let Some(system) = get_core().get_plugin("system") else {
+                return Err(anyhow::anyhow!("System plugin is needed"));
+            };
+
+            let system = system.lock();
+            let Some(system_ref): Option<&SystemPlugin> = system.as_any().downcast_ref() else {
+                return Err(anyhow::anyhow!("Failed to downcast to SystemPlugin"));
+            };
+
+            if let Some(snapshot) = system_ref.snapshot().load().clone() {
+                drop(system);
+                let image_data = snapshot.save_to_buffer(ImageFormat::WebP)?;
+                zip.start_file("snapshot.webp", options)?;
+                zip.write_all(&image_data)?;
+            } else {
+                log::warn!("No snapshot found, skipping");
+            }
+        }
+
+        {
+            let timestamp = moyu_pal::time::SystemTime::now()
+                .duration_since(moyu_pal::time::SystemTime::UNIX_EPOCH)
+                .expect("System time is before UNIX epoch")
+                .as_millis();
+
+            let metadata = serde_json::json!({
+                "edition": METADATA_VERSION,
+                "saveByVersion": env!("CARGO_PKG_VERSION"),
+                "timestamp": timestamp,
+            });
+            zip.start_file("metadata.json", options)?;
+            zip.write_all(&serde_json::to_vec(&metadata)?)?;
+        }
+
+        // set identifier to detect if this is a MOYU save file
+        zip.set_comment(ZIP_COMMENT);
+
+        let zip_data = zip.finish()?.into_inner();
+
+        let path = format!("saves/{}.sav", name);
         let promise = create_promise(async move {
-            let ret = write_to_appdata(&path, data).await;
+            let ret = write_to_appdata(&path, zip_data).await;
             log::info!("save game data to file: {:?}", path);
             ret
         })?;
@@ -193,7 +263,7 @@ impl ScenarioPlugin {
     }
 
     fn remove_save_data(&self, name: &str) -> Result<JSValue> {
-        let path = format!("saves/{}.json", name);
+        let path = format!("saves/{}.sav", name);
         let promise = create_promise(async move {
             let ret = remove_from_appdata(&path).await;
             log::info!("remove save data: {:?}", ret);
@@ -207,7 +277,7 @@ impl ScenarioPlugin {
             let mut list = readdir_from_appdata(
                 "saves",
                 pattern.map(|mut p| {
-                    p.push_str(".json");
+                    p.push_str(".sav");
                     p
                 }),
             )
@@ -216,7 +286,7 @@ impl ScenarioPlugin {
             list.iter_mut().for_each(|entry| {
                 entry.name = entry
                     .name
-                    .strip_suffix(".json")
+                    .strip_suffix(".sav")
                     .unwrap_or_default()
                     .to_string();
             });
