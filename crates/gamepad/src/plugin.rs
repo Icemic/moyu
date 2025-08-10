@@ -2,17 +2,20 @@ use std::collections::HashMap;
 use std::u16;
 
 use anyhow::Result;
-use moyu_core::traits::{Command, Plugin, PluginEventSource};
-use moyu_core::utils::convert::{from_js, to_js, JSValue};
-use moyu_pal::time::Instant;
 use gilrs::ff::{BaseEffect, BaseEffectType, EffectBuilder, Repeat, Replay, Ticks};
 use gilrs::{Event, Gilrs};
+use moyu_core::traits::PluginBaseTrait;
+use moyu_core::traits::{Command, Plugin, PluginEventSource};
+use moyu_core::utils::convert::{from_js, to_js, JSValue};
+use moyu_macros::Plugin;
+use moyu_pal::time::Instant;
 use serde::{Deserialize, Serialize};
 
 use crate::events::GamepadEvent;
 use crate::gamepad::{Gamepad, GamepadHapticActuator};
 use crate::utils::{get_w3c_axis, get_w3c_button};
 
+#[derive(Plugin)]
 pub struct GamepadPlugin {
     gilrs: Gilrs,
     gamepads: HashMap<u32, Gamepad>,

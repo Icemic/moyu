@@ -1,7 +1,15 @@
+use std::any::Any;
+
 use super::Command;
 
+/// Base trait that provides any casting functionality for plugins
+pub trait PluginBaseTrait: Any {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
 /// A Plugin means an extra function module that different from a [Node](super::Node).
-pub trait Plugin: Send + Sync {
+pub trait Plugin: PluginBaseTrait + Send + Sync {
     /// plugin type identifier
     fn plugin_name(&self) -> &'static str;
 
