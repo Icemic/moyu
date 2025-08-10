@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+// re-export to use in other modules
+pub use image::ImageFormat;
+
 /// Represents the format of the snapshot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,7 +56,7 @@ impl Snapshot {
         }
     }
 
-    pub fn save_to_buffer(&self, format: image::ImageFormat) -> std::io::Result<Vec<u8>> {
+    pub fn save_to_buffer(&self, format: ImageFormat) -> std::io::Result<Vec<u8>> {
         // RGBA16F format is not supported for saving as image
         if matches!(self.format, SnapshotFormat::Rgba16f) {
             return Err(std::io::Error::new(
