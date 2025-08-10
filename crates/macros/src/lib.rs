@@ -85,3 +85,42 @@ pub fn derive_node_attr(item: TokenStream) -> TokenStream {
 
     gen.into()
 }
+
+/// Automatically implement the `PluginBaseTrait` trait for the struct.
+/// Input:
+/// ```ignore
+/// #[derive(Plugin)]
+/// pub struct SystemPlugin {
+///     // fields...
+/// }
+/// ```
+/// Output:
+/// ```ignore
+/// impl PluginBaseTrait for SystemPlugin {
+///     fn as_any(&self) -> &dyn Any {
+///         self
+///     }
+///     fn as_any_mut(&mut self) -> &mut dyn Any {
+///         self
+///     }
+/// }
+/// ```
+#[proc_macro_derive(Plugin)]
+pub fn derive_plugin_attr(item: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(item as DeriveInput);
+    let name = &ast.ident;
+
+    let gen = quote! {
+        impl PluginBaseTrait for #name {
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+                self
+            }
+        }
+    };
+
+    gen.into()
+}

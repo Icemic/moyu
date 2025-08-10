@@ -18,6 +18,8 @@ kira = "0.10"
 log = "0.4"
 serde = {version = "1.0", features = ["derive"]}
 
+moyu_macros = {workspace = true}
+
 [dev-dependencies]
 arc-swap = "1.6"
 

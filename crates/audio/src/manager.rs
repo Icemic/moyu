@@ -12,7 +12,9 @@ use serde::{Deserialize, Serialize};
 
 use moyu_core::traits::Command;
 use moyu_core::traits::Plugin;
+use moyu_core::traits::PluginBaseTrait;
 use moyu_core::utils::convert::{create_promise, from_js, JSValue};
+use moyu_macros::Plugin;
 use moyu_pal::config::entry_dir;
 use moyu_pal::sync::Mutex;
 
@@ -56,6 +58,7 @@ impl Default for AudioSettings {
     }
 }
 
+#[derive(Plugin)]
 pub struct AudioManager {
     manager: Arc<Mutex<kira::AudioManager<DefaultBackend>>>,
     audios: HashMap<String, Arc<Mutex<Audio>>>,
@@ -83,7 +86,7 @@ impl AudioManager {
 
     pub fn remove_audio(&mut self, name: &str) {
         if let Some(audio) = self.audios.remove(name) {
-           if let Err(err) = audio.lock().stop() {
+            if let Err(err) = audio.lock().stop() {
                 warn!("Failed to stop audio {}: {}", name, err);
             }
         } else {

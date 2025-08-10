@@ -2,14 +2,17 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use arc_swap::ArcSwapOption;
+use moyu_macros::Plugin;
 use moyu_pal::config::WindowState;
 use serde::{Deserialize, Serialize};
 
 use crate::base::Snapshot;
 use crate::core::Core;
+use crate::traits::PluginBaseTrait;
 use crate::traits::{Command, Plugin};
 use crate::utils::convert::{create_promise, from_js, to_js, JSValue};
 
+#[derive(Plugin)]
 pub struct SystemPlugin {
     core: Arc<Core>,
     snapshot: Arc<ArcSwapOption<Snapshot>>,
