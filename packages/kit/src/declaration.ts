@@ -1,9 +1,14 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 import type { ClassAttributes, ReactNode } from 'react';
 import type { Node } from './node';
 import type { BubbleEvent } from './events/base';
 import type { MouseEvent } from './events/mouse';
 import type { TouchEvent } from './events/touch';
 import type { KeyboardEvent } from './events/keyboard';
+
+export type Tuple2 = [number, number] | readonly [number, number];
+export type Tuple3 = [number, number, number] | readonly [number, number, number];
+export type Tuple4 = [number, number, number, number] | readonly [number, number, number, number];
 
 export type DetailedMoyuProps<E extends MoyuNodeAttributes> = ClassAttributes<Node> & E;
 
@@ -35,9 +40,9 @@ export interface MoyuNodeAttributes extends MoyuListenerAttributes {
   x?: number;
   y?: number;
   // the anchor for node, values range from 0.0 to 1.0.
-  anchor?: [number, number];
+  anchor?: Tuple2;
   // the pivot on ratation, values in pixels.
-  pivot?: [number, number];
+  pivot?: Tuple2;
   scale?: number;
   scaleX?: number;
   scaleY?: number;
@@ -56,21 +61,21 @@ export interface MoyuNodeAttributes extends MoyuListenerAttributes {
 export type MoyuContainerAttributes = MoyuNodeAttributes;
 export interface MoyuSpriteAttribute extends MoyuNodeAttributes {
   src?: string;
-  area?: [number, number, number, number];
+  area?: Tuple4;
   mode?: 'normal' | 'nineslice';
-  bounds?: [number, number, number, number];
+  bounds?: Tuple4;
   nineSliceMode?: 'stretch' | 'repeat' | 'mirror' | 'blank';
   targetWidth?: number;
   targetHeight?: number;
 }
 
 export interface MoyuYUVSpriteAttribute extends MoyuNodeAttributes {
-  area?: [number, number, number, number];
+  area?: Tuple4;
 }
 
 export interface MoyuVideoAttribute extends MoyuSpriteAttribute {
   src: string;
-  area?: [number, number, number, number];
+  area?: Tuple4;
   autoplay?: boolean;
 }
 
@@ -154,6 +159,21 @@ export interface MoyuTextAttribute extends MoyuNodeAttributes {
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export declare namespace JSX {
+  type ElementType = string | React.JSXElementConstructor<any>;
+  interface Element extends React.ReactElement<any, any> {}
+  interface ElementClass extends React.Component<any> {
+    render(): React.ReactNode;
+  }
+  interface ElementAttributesProperty {
+    props: {};
+  }
+  interface ElementChildrenAttribute {
+    children: {};
+  }
+
+  interface IntrinsicAttributes extends React.Attributes {}
+  interface IntrinsicClassAttributes<T> extends React.ClassAttributes<T> {}
+
   interface IntrinsicElements {
     container: DetailedMoyuProps<MoyuContainerAttributes>;
     sprite: DetailedMoyuProps<MoyuSpriteAttribute>;
