@@ -6,16 +6,27 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
     use moyu_nodes::nodes::*;
     use moyu_pal::sync::RwLock;
 
-    let n = Sprite::new("splash".to_string());
-    let node = Arc::new(RwLock::new(n));
+    let node_bg = {
+        let n = Sprite::new("splash-bg".to_string());
+        let texture_id = Arc::new(TextureId::Data(
+            include_bytes!("../static/white.png").to_vec(),
+        ));
+        n.next_texture_id.store(Some(texture_id));
+        Arc::new(RwLock::new(n))
+    };
+
+    let node = {
+        let n = Sprite::new("splash".to_string());
+        let texture_id = Arc::new(TextureId::Data(
+            include_bytes!("../static/logo.png").to_vec(),
+        ));
+        n.next_texture_id.store(Some(texture_id));
+        Arc::new(RwLock::new(n))
+    };
 
     // create sprite and load texture
     {
         let mut node = node.write();
-        let texture_id = Arc::new(TextureId::Data(
-            include_bytes!("../static/logo.png").to_vec(),
-        ));
-        node.next_texture_id.store(Some(texture_id));
 
         // logo size is 3840x2400 (16:10), scale as cover the whole screen
         let (width, height) = core.stage_size().logical_size_f32();
@@ -34,6 +45,7 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
     // add to root node
     {
         let mut root = core.root_node().write();
+        root.base_mut().add_child(node_bg.clone());
         root.base_mut().add_child(node.clone());
     }
 
@@ -60,6 +72,7 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
     {
         let mut root = core.root_node().write();
         root.base_mut().remove_child(node);
+        root.base_mut().remove_child(node_bg);
     }
 }
 
