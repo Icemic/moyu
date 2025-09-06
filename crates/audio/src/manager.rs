@@ -99,14 +99,15 @@ impl AudioManager {
         name: &str,
         src: &str,
         settings: AudioSettings,
-    ) -> impl Future<Output = Result<()>> + 'static {
+    ) -> Result<impl Future<Output = Result<()>> + 'static> {
         debug!("audio will load from {}", src);
 
-        let audio = self.get_audio(name).unwrap();
+        self.create_audio(&name);
+        let audio = self.get_audio(name)?;
         let manager = self.manager.clone();
-        let asset_full_path = entry_dir().join("assets/").unwrap().join(src).unwrap();
+        let asset_full_path = entry_dir().join("assets/")?.join(src)?;
 
-        return async move {
+        return Ok(async move {
             audio.lock().loading_state = AudioLoadingState::Loading;
             let file = match moyu_pal::fs::open(&asset_full_path).await {
                 Ok(file) => file,
@@ -159,15 +160,18 @@ impl AudioManager {
             // audio will play automatically by default, so if auto_play is false, stop it
             if settings.auto_play {
                 let mut manager = manager.lock();
-                audio.play(&mut manager).unwrap();
+                audio.play(&mut manager)?;
             }
 
             Ok(())
-        };
+        });
     }
 
-    pub fn get_audio(&self, name: &str) -> Option<Arc<Mutex<Audio>>> {
-        self.audios.get(name).cloned()
+    pub fn get_audio(&self, name: &str) -> Result<Arc<Mutex<Audio>>> {
+        self.audios
+            .get(name)
+            .cloned()
+            .ok_or(anyhow::anyhow!("Audio {} not found", name))
     }
 }
 
@@ -246,8 +250,7 @@ impl Command for AudioManager {
                 src,
                 settings,
             } => {
-                self.create_audio(&name);
-                let fut = self.load_audio(&name, &src, settings.unwrap_or_default());
+                let fut = self.load_audio(&name, &src, settings.unwrap_or_default())?;
                 let promise = create_promise(fut)?;
                 return Ok(Some(promise));
             }
@@ -255,7 +258,7 @@ impl Command for AudioManager {
                 self.remove_audio(&name);
             }
             AudioCommmad::Play { name } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 let mut audio = audio.lock();
                 // ignore the error if audio is not playing or not loaded
                 let _ = audio.stop();
@@ -263,39 +266,39 @@ impl Command for AudioManager {
                 audio.play(&mut manager)?;
             }
             AudioCommmad::Stop { name } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 audio.lock().stop()?;
             }
             AudioCommmad::Pause { name } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 audio.lock().pause()?;
             }
             AudioCommmad::Resume { name } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 audio.lock().resume()?;
             }
             AudioCommmad::SetVolume { name, volume } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 audio.lock().set_volume(volume)?;
             }
             AudioCommmad::SeekBy { name, time } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 audio.lock().seek_by(time)?;
             }
             AudioCommmad::SeekTo { name, time } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 audio.lock().seek_to(time)?;
             }
             AudioCommmad::SetPlaybackRate { name, rate } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 audio.lock().set_playback_rate(rate)?;
             }
             AudioCommmad::SetLoopRegion { name, start, end } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 audio.lock().set_loop_region(start, end)?;
             }
             AudioCommmad::SetPanning { name, panning } => {
-                let audio = self.get_audio(&name).unwrap();
+                let audio = self.get_audio(&name)?;
                 audio.lock().set_panning(panning)?;
             }
         }
