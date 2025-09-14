@@ -1,5 +1,4 @@
 mod commands;
-mod events;
 mod executor;
 mod types;
 
@@ -24,9 +23,8 @@ use moyu_pal::sync::Mutex;
 use sixu::runtime::Runtime;
 use zip::write::SimpleFileOptions;
 
-use crate::events::ScenarioEvent;
 use crate::executor::ScenarioExecutor;
-use crate::types::{ExecutionResult, GameData};
+use crate::types::{GameData, ScenarioEvent};
 
 const METADATA_VERSION: u32 = 1;
 const ZIP_COMMENT: &str = "MOYU\0";
@@ -36,7 +34,7 @@ pub struct ScenarioPlugin {
     /// The runtime that handles scenario execution
     runtime: Arc<Mutex<Runtime<ScenarioExecutor>>>,
     /// Receive channel for execution results
-    pub receiver: Receiver<ExecutionResult>,
+    pub receiver: Receiver<ScenarioEvent>,
 }
 
 impl ScenarioPlugin {
@@ -296,7 +294,7 @@ impl ScenarioPlugin {
     }
 
     /// Execute the next step in the scenario
-    pub fn next_line(&mut self) -> Result<ExecutionResult> {
+    pub fn next_line(&mut self) -> Result<ScenarioEvent> {
         let mut runtime = self.runtime.lock();
         loop {
             runtime.next()?;

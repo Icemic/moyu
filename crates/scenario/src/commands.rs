@@ -6,7 +6,6 @@ use moyu_core::utils::convert::{from_js, to_js, JSValue};
 use serde::{Deserialize, Serialize};
 use sixu::format::Literal;
 
-use crate::events::ScenarioEvent;
 use crate::ScenarioPlugin;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -131,7 +130,7 @@ impl Command for ScenarioPlugin {
             }
             ScenarioCommand::NextLine => {
                 let result = self.next_line()?;
-                self.send_event(ScenarioEvent::ExecutionResult(result.clone()));
+                self.send_event(result.clone());
                 return Ok(Some(to_js(&result)?));
             }
 
