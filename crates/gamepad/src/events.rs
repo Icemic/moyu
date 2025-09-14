@@ -16,6 +16,14 @@ pub enum GamepadEvent {
         gamepad: Gamepad,
         button: GamepadButton,
     },
+    ButtonDown {
+        gamepad: Gamepad,
+        button: GamepadButton,
+    },
+    ButtonUp {
+        gamepad: Gamepad,
+        button: GamepadButton,
+    },
     AxisChanged {
         gamepad: Gamepad,
         axis: u32,
@@ -25,6 +33,13 @@ pub enum GamepadEvent {
 
 impl Event for GamepadEvent {
     fn name(&self) -> &'static str {
-        "gamepad"
+        match self {
+            GamepadEvent::Connected { .. } => "gamepadconnected",
+            GamepadEvent::Disconnected { .. } => "gamepaddisconnected",
+            GamepadEvent::ButtonChanged { .. } => "gamepadbuttonchanged",
+            GamepadEvent::ButtonDown { .. } => "gamepadbuttondown",
+            GamepadEvent::ButtonUp { .. } => "gamepadbuttonup",
+            GamepadEvent::AxisChanged { .. } => "gamepadaxischanged",
+        }
     }
 }
