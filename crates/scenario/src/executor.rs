@@ -2,15 +2,15 @@ use moyu_pal::sync::mpsc::Sender;
 use sixu::format::*;
 use sixu::runtime::*;
 
-use crate::types::ExecutionResult;
+use crate::types::ScenarioEvent;
 
 /// Executor that implements the runtime execution logic for ScenarioPlugin
 pub struct ScenarioExecutor {
-    sender: Sender<ExecutionResult>,
+    sender: Sender<ScenarioEvent>,
 }
 
 impl ScenarioExecutor {
-    pub fn new(sender: Sender<ExecutionResult>) -> Self {
+    pub fn new(sender: Sender<ScenarioEvent>) -> Self {
         Self { sender }
     }
 }
@@ -22,7 +22,7 @@ impl RuntimeExecutor for ScenarioExecutor {
         command_line: &CommandLine,
     ) -> sixu::error::Result<()> {
         self.sender
-            .try_send(ExecutionResult::CommandLine(command_line.clone()))
+            .try_send(ScenarioEvent::CommandLine(command_line.clone()))
             .map_err(anyhow::Error::from)?;
         Ok(())
     }
@@ -33,7 +33,7 @@ impl RuntimeExecutor for ScenarioExecutor {
         systemcall_line: &SystemCallLine,
     ) -> sixu::error::Result<()> {
         self.sender
-            .try_send(ExecutionResult::ExtraSystemCall(systemcall_line.clone()))
+            .try_send(ScenarioEvent::ExtraSystemCall(systemcall_line.clone()))
             .map_err(anyhow::Error::from)?;
         Ok(())
     }
@@ -45,7 +45,7 @@ impl RuntimeExecutor for ScenarioExecutor {
         text: Option<&str>,
     ) -> sixu::error::Result<()> {
         self.sender
-            .try_send(ExecutionResult::Text {
+            .try_send(ScenarioEvent::Text {
                 leading: leading.map(|s| s.to_string()),
                 text: text.map(|s| s.to_string()),
             })
@@ -65,6 +65,6 @@ impl RuntimeExecutor for ScenarioExecutor {
     }
 
     fn finished(&mut self, _ctx: &mut RuntimeContext) {
-        let _ = self.sender.send(ExecutionResult::Finished);
+        let _ = self.sender.send(ScenarioEvent::Finished);
     }
 }
