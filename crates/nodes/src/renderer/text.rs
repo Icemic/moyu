@@ -1,13 +1,13 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use moyu_pal::config::{entry_dir, get_engine_config};
-use moyu_pal::sync::Mutex;
 use glam::Vec3;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
 use huozi::Huozi;
 use log::{error, info};
+use moyu_pal::config::{entry_dir, get_engine_config};
+use moyu_pal::sync::Mutex;
 use wgpu::util::StagingBelt;
 use wgpu::Texture;
 use wgpu::{util::DeviceExt, *};
@@ -457,7 +457,7 @@ impl Renderer for TextRenderer {
             if print_start_time == 0. {
                 print_start_time = payload.timestamp;
                 node.print_start_time = Some(payload.timestamp);
-                node.send_event("Start", TextEvent::Start);
+                node.send_event(TextEvent::Start);
             }
 
             let (index, fade_from_index, progress, total_progress) = match node.print_mode {
@@ -521,10 +521,10 @@ impl Renderer for TextRenderer {
                 }
             };
 
-            node.send_event("Progress", TextEvent::Progress(total_progress));
+            node.send_event(TextEvent::Progress(total_progress));
 
             if progress >= 1.0 {
-                node.send_event("Finish", TextEvent::Finish);
+                node.send_event(TextEvent::Finish);
             }
 
             self.update_vertices(

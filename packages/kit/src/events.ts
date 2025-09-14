@@ -52,7 +52,7 @@ globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
           }
           return;
         }
-        STATE.nodeMap[targetId]?.listeners?.[`on${name}`]?.(_body);
+        STATE.nodeMap[targetId]?.listeners?.[`on${name.charAt(0).toUpperCase() + name.slice(1)}`]?.(_body);
         return;
       }
       case 'nodeevent': {
