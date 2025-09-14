@@ -11,6 +11,10 @@ pub enum TextEvent {
 
 impl Event for TextEvent {
     fn name(&self) -> &'static str {
-        "textevent"
+        match self {
+            TextEvent::Start => "start",
+            TextEvent::Progress(_) => "progress",
+            TextEvent::Finish => "finish",
+        }
     }
 }

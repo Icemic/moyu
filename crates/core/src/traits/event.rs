@@ -11,11 +11,11 @@ pub trait Event: Serialize + Send + 'static {
 
 pub trait NodeEventSource: Node {
     type Event: Event;
-    fn send_event(&self, key: &str, event: Self::Event) {
+    fn send_event(&self, event: Self::Event) {
         #[cfg(any(all(native, feature = "js_runtime"), web))]
         crate::utils::dispatch_event::dispatch_event(CustomEvent {
             target_id: *self.base().id(),
-            name: key.to_string(),
+            name: event.name().to_string(),
             body: Some(event),
         });
     }
