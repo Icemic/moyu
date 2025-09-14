@@ -141,21 +141,12 @@ impl Plugin for GamepadPlugin {
 
                     if last_pressed.contains(&w3c_button) {
                         last_pressed.retain(|&x| x != w3c_button);
-                        self.send_event(
-                            "gamepadbuttondown",
-                            GamepadEvent::ButtonChanged { gamepad, button },
-                        );
+                        self.send_event(GamepadEvent::ButtonChanged { gamepad, button });
                     } else if last_released.contains(&w3c_button) {
                         last_released.retain(|&x| x != w3c_button);
-                        self.send_event(
-                            "gamepadbuttonup",
-                            GamepadEvent::ButtonChanged { gamepad, button },
-                        );
+                        self.send_event(GamepadEvent::ButtonChanged { gamepad, button });
                     } else {
-                        self.send_event(
-                            "gamepadbuttonchanged",
-                            GamepadEvent::ButtonChanged { gamepad, button },
-                        );
+                        self.send_event(GamepadEvent::ButtonChanged { gamepad, button });
                     }
                 }
                 gilrs::EventType::AxisChanged(axis, value, ..) => {
@@ -177,14 +168,11 @@ impl Plugin for GamepadPlugin {
 
                     let gamepad = gamepad.clone();
 
-                    self.send_event(
-                        "gamepadaxischanged",
-                        GamepadEvent::AxisChanged {
-                            gamepad,
-                            axis: w3c_axis,
-                            value,
-                        },
-                    );
+                    self.send_event(GamepadEvent::AxisChanged {
+                        gamepad,
+                        axis: w3c_axis,
+                        value,
+                    });
                 }
                 gilrs::EventType::Connected => {
                     let mut gamepad = Gamepad::default();
@@ -202,16 +190,13 @@ impl Plugin for GamepadPlugin {
                     if let Some(old_gamepad) = self.gamepads.insert(index, gamepad.clone()) {
                         log::warn!("gamepad already exists: {:?}", old_gamepad);
                     };
-                    self.send_event("gamepadconnected", GamepadEvent::Connected { gamepad });
+                    self.send_event(GamepadEvent::Connected { gamepad });
                 }
                 gilrs::EventType::Disconnected => {
                     let gamepad = self.gamepads.remove(&index);
                     if let Some(gamepad) = gamepad {
                         log::info!("gamepad disconnected: {:?}", gamepad);
-                        self.send_event(
-                            "gamepaddisconnected",
-                            GamepadEvent::Disconnected { gamepad },
-                        );
+                        self.send_event(GamepadEvent::Disconnected { gamepad });
                     } else {
                         log::warn!("gamepad not found: {:?}", index);
                     }

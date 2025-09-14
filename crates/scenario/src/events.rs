@@ -11,6 +11,8 @@ pub enum ScenarioEvent {
 
 impl Event for ScenarioEvent {
     fn name(&self) -> &'static str {
-        "scenario"
+        match self {
+            ScenarioEvent::ExecutionResult(_) => "scenarionextline",
+        }
     }
 }

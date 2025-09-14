@@ -131,10 +131,7 @@ impl Command for ScenarioPlugin {
             }
             ScenarioCommand::NextLine => {
                 let result = self.next_line()?;
-                self.send_event(
-                    "scenarionextline",
-                    ScenarioEvent::ExecutionResult(result.clone()),
-                );
+                self.send_event(ScenarioEvent::ExecutionResult(result.clone()));
                 return Ok(Some(to_js(&result)?));
             }
 
