@@ -8,10 +8,10 @@ repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.7.0"
 
 [dependencies]
-anyhow = "1.0"
-log = "0.4"
-serde = {version = "1.0", features = ["derive"]}
-serde_json = "1.0"
+anyhow = {workspace = true}
+log = {workspace = true}
+serde = {workspace = true}
+serde_json = {workspace = true}
 
 moyu_macros = {workspace = true}
 

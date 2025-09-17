@@ -13,15 +13,16 @@ desktop = []
 web = []
 
 [dependencies]
-anyhow = "1.0"
 kira = "0.10"
-log = "0.4"
-serde = {version = "1.0", features = ["derive"]}
+
+anyhow = {workspace = true}
+log = {workspace = true}
+serde = {workspace = true}
 
 moyu_macros = {workspace = true}
 
 [dev-dependencies]
-arc-swap = "1.6"
+arc-swap = {workspace = true}
 
 [dependencies.moyu_pal]
 path = "../platform"

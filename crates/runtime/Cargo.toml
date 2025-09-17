@@ -7,15 +7,15 @@ repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.7.0"
 
 [dependencies]
-anyhow = "1"
-log = "0.4"
 quickjs-rusty = "0.9.1"
-serde = "1"
-spin_sleep = "1.1"
-tokio = {version = "1", features = ["time", "sync"]}
 
-moyu_pal = {version = "0.7", path = "../platform"}
+anyhow = {workspace = true}
+log = {workspace = true}
+serde = {workspace = true}
+tokio = {workspace = true, features = ["time", "sync"]}
+
+moyu_pal = {workspace = true}
 
 [dev-dependencies]
 env_logger = {version = "0.11"}
-tokio = {version = "1", features = ["full"]}
+tokio = {workspace = true, features = ["full"]}

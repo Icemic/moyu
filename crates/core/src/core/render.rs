@@ -317,10 +317,10 @@ impl Graphics {
 
             let color = &get_engine_config().background_color;
             let color = wgpu::Color {
-                r: color.r,
-                g: color.g,
-                b: color.b,
-                a: color.a,
+                r: color.r as f64,
+                g: color.g as f64,
+                b: color.b as f64,
+                a: color.a as f64,
             };
 
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
