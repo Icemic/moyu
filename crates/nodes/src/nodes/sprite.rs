@@ -5,9 +5,9 @@ use std::sync::Arc;
 use wgpu::Buffer;
 
 use moyu_core::nodes::NodeBase;
-use moyu_core::resource::TextureId;
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{from_js, JSValue};
+use moyu_resource::types::TextureId;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

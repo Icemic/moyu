@@ -1,0 +1,15 @@
+[package]
+edition = "2024"
+name = "moyu_resource"
+version = "0.1.0"
+
+[dependencies]
+rayon = "1.10"
+
+anyhow = {workspace = true}
+arc-swap = {workspace = true}
+image = {workspace = true}
+log = {workspace = true}
+wgpu = {workspace = true}
+
+moyu_pal = {workspace = true}

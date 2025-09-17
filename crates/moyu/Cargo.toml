@@ -40,6 +40,7 @@ moyu_macros = {workspace = true}
 moyu_nodes = {workspace = true}
 moyu_ops = {workspace = true}
 moyu_pal = {workspace = true}
+moyu_resource = {workspace = true}
 moyu_scenario = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

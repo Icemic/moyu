@@ -1994,6 +1994,7 @@ dependencies = [
  "moyu_nodes",
  "moyu_ops",
  "moyu_pal",
+ "moyu_resource",
  "moyu_runtime",
  "moyu_scenario",
  "spin_sleep_util",
@@ -2032,8 +2033,8 @@ dependencies = [
  "log",
  "moyu_macros",
  "moyu_pal",
+ "moyu_resource",
  "moyu_runtime",
- "rayon",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",
@@ -2084,6 +2085,7 @@ dependencies = [
  "moyu_core",
  "moyu_macros",
  "moyu_pal",
+ "moyu_resource",
  "serde",
  "wgpu",
 ]
@@ -2136,6 +2138,19 @@ dependencies = [
  "wasmtimer",
  "web-sys",
  "windows 0.61.3",
+]
+
+[[package]]
+name = "moyu_resource"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "image",
+ "log",
+ "moyu_pal",
+ "rayon",
+ "wgpu",
 ]
 
 [[package]]

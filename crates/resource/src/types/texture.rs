@@ -1,6 +1,16 @@
 use arc_swap::{ArcSwap, ArcSwapOption};
 use std::sync::Arc;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TextureId {
+    // asset relative path
+    Path(String),
+    // raw data, used for in-memory images
+    Data(Vec<u8>),
+    // custom identical string
+    Custom(String),
+}
+
 #[derive(Debug)]
 pub struct Texture {
     pub status: ArcSwap<TextureStatus>,

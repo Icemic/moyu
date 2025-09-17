@@ -2,6 +2,7 @@ use log::error;
 use moyu_pal::config::get_engine_config;
 use moyu_pal::sync::{Mutex, RwLock};
 use moyu_pal::time::Instant;
+use moyu_resource::ResourceManager;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -11,9 +12,9 @@ use winit::window::Window;
 
 use crate::base::*;
 use crate::surface::create_wgpu_surface;
+use crate::traits::*;
 use crate::utils::fps_meter::FpsMeter;
 use crate::utils::walk::walk_nodes_top_bottom;
-use crate::{resource::ResourceManager, traits::*};
 
 pub type AfterRenderHandler = Box<
     dyn Fn(

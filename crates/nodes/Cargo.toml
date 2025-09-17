@@ -25,6 +25,7 @@ wgpu = {workspace = true}
 moyu_core = {workspace = true}
 moyu_macros = {workspace = true}
 moyu_pal = {workspace = true}
+moyu_resource = {workspace = true}
 
 # optional for features
 ffmpeg-rs = {version = "5.2.1", optional = true}

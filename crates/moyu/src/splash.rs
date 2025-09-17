@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
-    use moyu_core::resource::TextureId;
     use moyu_core::traits::NodeBaseTrait;
     use moyu_nodes::nodes::*;
     use moyu_pal::sync::RwLock;
+    use moyu_resource::types::TextureId;
 
     let node_bg = {
         let n = Sprite::new("splash-bg".to_string());
