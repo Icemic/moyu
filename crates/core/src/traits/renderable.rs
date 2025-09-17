@@ -1,7 +1,7 @@
 use std::sync::Arc;
-use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
-use crate::resource::ResourceManager;
+use moyu_resource::ResourceManager;
+use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
 use super::Node;
 

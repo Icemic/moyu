@@ -13,14 +13,13 @@ js_runtime = ["moyu_runtime"]
 
 [dependencies]
 cursor-icon = {version = "1", features = ["serde"]}
-image = {version = "0.25", default-features = false, features = ["rayon", "bmp", "jpeg", "png", "webp"]}
-rayon = "1.10"
 
 anyhow = {workspace = true}
 arc-swap = {workspace = true}
 bytemuck = {workspace = true}
 csscolorparser = {workspace = true}
 glam = {workspace = true}
+image = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
 wgpu = {workspace = true}
@@ -28,6 +27,7 @@ winit = {workspace = true, features = ["serde"]}
 
 moyu_macros = {workspace = true}
 moyu_pal = {workspace = true}
+moyu_resource = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 moyu_runtime = {workspace = true, optional = true}

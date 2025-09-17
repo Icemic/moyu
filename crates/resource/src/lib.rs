@@ -1,3 +1,6 @@
+pub mod types;
+mod utils;
+
 use image::GenericImageView;
 use log::debug;
 use moyu_pal::{config::entry_dir, sync::RwLock};
@@ -5,21 +8,8 @@ use moyu_pal::{fs, task};
 use std::{collections::HashMap, sync::Arc};
 use wgpu::{Device, Queue};
 
-use crate::nodes::{Texture, TextureStatus};
-use crate::utils::premultiply_alpha::premultiply_alpha;
-
-pub type RelativePath = String;
-pub type RendererName = String;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TextureId {
-    // asset relative path
-    Path(RelativePath),
-    // raw data, used for in-memory images
-    Data(Vec<u8>),
-    // custom identical string
-    Custom(String),
-}
+use crate::types::{Texture, TextureId, TextureStatus};
+use crate::utils::premultiply_alpha;
 
 #[derive(Debug)]
 pub struct ResourceManager {

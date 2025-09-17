@@ -3,7 +3,6 @@ pub mod core;
 pub mod events;
 pub mod nodes;
 pub mod plugins;
-pub mod resource;
 pub mod state;
 pub mod surface;
 pub mod traits;

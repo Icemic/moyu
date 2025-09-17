@@ -3,6 +3,7 @@ default-members = ["crates/moyu"]
 members = [
   "crates/moyu",
   "crates/core",
+  "crates/resource",
   "crates/runtime",
   "crates/platform",
   "crates/macros",
@@ -22,6 +23,7 @@ bytemuck = {version = "1.13", features = ["derive"]}
 cfg_aliases = "0.2.1"
 csscolorparser = {version = "0.7", features = ["serde"]}
 glam = {version = "0.30", features = ["bytemuck"]}
+image = {version = "0.25", default-features = false, features = ["rayon", "bmp", "jpeg", "png", "webp"]}
 log = "0.4"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
@@ -39,6 +41,7 @@ moyu_macros = {path = "crates/macros"}
 moyu_nodes = {path = "crates/nodes"}
 moyu_ops = {path = "crates/ops"}
 moyu_pal = {path = "crates/platform"}
+moyu_resource = {path = "crates/resource"}
 moyu_runtime = {path = "crates/runtime"}
 moyu_scenario = {path = "crates/scenario"}
 
