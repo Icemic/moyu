@@ -1,16 +1,29 @@
-use moyu_pal::config::{get_engine_config, RenderingBackend};
 use log::{info, warn};
+use moyu_pal::config::{get_engine_config, RenderingBackend};
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::Size;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopWindowTarget};
+#[cfg(android)]
+use winit::platform::android::activity::AndroidApp;
 use winit::window::WindowBuilder;
 use winit::{dpi::PhysicalSize, window::Window};
 
-pub fn create_eventloop() -> EventLoop<()> {
+pub fn create_eventloop(#[cfg(android)] app: AndroidApp) -> EventLoop<()> {
     // create main thread infinity loop
-    let event_loop: EventLoop<()> = EventLoopBuilder::with_user_event().build().unwrap();
-    event_loop
+    #[cfg(not(android))]
+    {
+        EventLoopBuilder::with_user_event().build().unwrap()
+    }
+
+    #[cfg(android)]
+    {
+        use winit::platform::android::EventLoopBuilderExtAndroid;
+        EventLoopBuilder::with_user_event()
+            .with_android_app(app)
+            .build()
+            .unwrap()
+    }
 }
 
 pub fn create_window<T>(

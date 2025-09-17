@@ -6,6 +6,7 @@ use moyu_core::plugins::SystemPlugin;
 use moyu_core::winit::event::Event;
 use moyu_core::winit::event_loop::EventLoop;
 use moyu_core::{create_moyu_core, setup};
+#[cfg(any(desktop, web))]
 use moyu_gamepad::GamepadPlugin;
 use moyu_nodes::renderer::{SpriteRenderer, TextRenderer};
 use moyu_pal::config::get_engine_config;
