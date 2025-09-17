@@ -28,7 +28,7 @@ log = "0.4"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 tokio = {version = "1"}
-wasm-bindgen = {version = "0.2.83", default-features = false}
+wasm-bindgen = {version = "0.2", default-features = false}
 wasm-bindgen-futures = "0.4"
 web-sys = {version = "0.3.56"}
 wgpu = {version = "22.0", features = ["fragile-send-sync-non-atomic-wasm", "webgl"]}
