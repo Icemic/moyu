@@ -46,7 +46,7 @@ moyu_scenario = {workspace = true}
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 mimalloc = "0.1.47"
 
-tokio = {workspace = true, features = ["rt-multi-thread", "macros"]}
+tokio = {workspace = true, features = ["rt-multi-thread", "macros", "parking_lot"]}
 
 moyu_runtime = {workspace = true}
 
