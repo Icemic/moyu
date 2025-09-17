@@ -11,18 +11,10 @@ use winit::platform::android::activity::AndroidApp;
 #[no_mangle]
 #[tokio::main]
 async fn android_main(app: AndroidApp) {
-    use winit::platform::android::EventLoopBuilderExtAndroid;
-
-    use moyu_core::user_event::UserEvent;
-    use moyu_core::winit::event_loop::EventLoop;
-
     moyu_pal::logger::setup();
     moyu_pal::config::setup().await;
 
-    let event_loop: EventLoop<UserEvent> = winit::event_loop::EventLoopBuilder::with_user_event()
-        .with_android_app(app)
-        .build()
-        .unwrap();
+    let event_loop = moyu_core::surface::create_eventloop(app);
     entry::main_entry(event_loop).await;
 }
 

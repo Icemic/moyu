@@ -8,7 +8,7 @@ mod entry;
 mod mimalloc;
 mod splash;
 
-#[cfg(native)]
+#[cfg(desktop)]
 #[tokio::main]
 async fn main() {
     moyu_pal::logger::setup();
@@ -22,7 +22,7 @@ async fn main() {
     entry::main_entry(event_loop).await;
 }
 
-#[cfg(web)]
+#[cfg(any(android, web))]
 fn main() {
     // Adds this function only to avoid the warning of "`main` function not found"
 }
