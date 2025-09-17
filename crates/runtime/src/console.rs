@@ -4,12 +4,12 @@ use quickjs_rusty::OwnedJsValue;
 pub fn log_handler(level: Level, args: Vec<OwnedJsValue>) {
     let formatted_string = format_string(args);
     match level {
-        Level::Debug => log::debug!("{}", formatted_string),
-        Level::Info => log::info!("{}", formatted_string),
-        Level::Warn => log::warn!("{}", formatted_string),
-        Level::Error => log::error!("{}", formatted_string),
-        Level::Trace => log::trace!("{}", formatted_string),
-        Level::Log => log::log!(log::Level::Info, "{}", formatted_string),
+        Level::Debug => log::debug!(target: "console", "{}", formatted_string),
+        Level::Info => log::info!(target: "console", "{}", formatted_string),
+        Level::Warn => log::warn!(target: "console", "{}", formatted_string),
+        Level::Error => log::error!(target: "console", "{}", formatted_string),
+        Level::Trace => log::trace!(target: "console", "{}", formatted_string),
+        Level::Log => log::log!(target: "console", log::Level::Info, "{}", formatted_string),
     }
 }
 
