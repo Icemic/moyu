@@ -124,9 +124,14 @@ async fn create_surface_inner(
         RenderingBackend::GLES => wgpu::Backends::GL,
     };
 
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends,
-        dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
+        backend_options: wgpu::BackendOptions {
+            dx12: wgpu::Dx12BackendOptions {
+                shader_compiler: wgpu::Dx12Compiler::Fxc,
+            },
+            ..Default::default()
+        },
         ..Default::default()
     });
     let surface = instance
@@ -156,15 +161,13 @@ async fn create_surface_inner(
 
     // graphic card with specific backend
     let (device, queue) = adapter
-        .request_device(
-            &wgpu::DeviceDescriptor {
-                required_features: adapter.features(),
-                required_limits,
-                label: None,
-                memory_hints: wgpu::MemoryHints::Performance,
-            },
-            None, // Trace path
-        )
+        .request_device(&wgpu::DeviceDescriptor {
+            required_features: adapter.features(),
+            required_limits,
+            label: None,
+            memory_hints: wgpu::MemoryHints::Performance,
+            trace: wgpu::Trace::Off,
+        })
         .await
         .expect("Unable to find a suitable GPU adapter.");
 

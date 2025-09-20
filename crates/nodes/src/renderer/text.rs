@@ -116,13 +116,13 @@ impl TextRenderer {
             layout: Some(&render_pipeline_layout),
             vertex: VertexState {
                 module: &shader,
-                entry_point: "vs_main",
+                entry_point: Some("vs_main"),
                 buffers: &[Vertex::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {
                 module: &shader,
-                entry_point: "fs_main",
+                entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
                     format: config.format,
                     blend: Some(BlendState {
@@ -429,14 +429,14 @@ impl Renderer for TextRenderer {
                         };
 
                         queue.write_texture(
-                            wgpu::ImageCopyTexture {
+                            wgpu::TexelCopyTextureInfo {
                                 aspect: wgpu::TextureAspect::All,
                                 texture: &self.texture,
                                 mip_level: 0,
                                 origin: wgpu::Origin3d::ZERO,
                             },
                             sdf_bitmap,
-                            wgpu::ImageDataLayout {
+                            wgpu::TexelCopyBufferLayout {
                                 offset: 0,
                                 bytes_per_row: Some(4 * sdf_bitmap.width()),
                                 rows_per_image: Some(sdf_bitmap.height()),
