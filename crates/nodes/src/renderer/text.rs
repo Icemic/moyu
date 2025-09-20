@@ -571,7 +571,7 @@ impl Renderer for TextRenderer {
             .downcast_ref::<Text>()
             .expect("this node is not a text node");
 
-        if node.vertex_buffer.is_some() && node.index_buffer.is_some() {
+        if node.vertex_buffer.is_some() && node.index_buffer.is_some() && node.num_indices > 0 {
             let vertex_buffer = node.vertex_buffer.as_ref().unwrap();
             let index_buffer = node.index_buffer.as_ref().unwrap();
             let num_indices = node.num_indices;
