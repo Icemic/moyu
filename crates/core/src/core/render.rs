@@ -182,7 +182,10 @@ impl Graphics {
             buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
                 let _ = tx.send(result);
             });
-            self.device.poll(wgpu::Maintain::Wait);
+            if let Err(err) = self.device.poll(wgpu::PollType::Wait) {
+                log::warn!("Failed to poll device for snapshot: {}", err);
+                return None;
+            }
 
             // Check if mapping completed
             if let Ok(Ok(())) = rx.try_recv() {
@@ -289,6 +292,10 @@ impl Graphics {
                 log::warn!("surface timeout, ignored.");
                 return Ok(());
             }
+            Err(wgpu::SurfaceError::Other) => {
+                log::warn!("surface other error, ignored.");
+                return Ok(());
+            }
         };
 
         let view = output
@@ -328,6 +335,7 @@ impl Graphics {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
+                    depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(color),
@@ -395,15 +403,15 @@ impl Graphics {
 
             // Copy the texture to the buffer
             encoder.copy_texture_to_buffer(
-                wgpu::ImageCopyTexture {
+                wgpu::TexelCopyTextureInfo {
                     texture: &output.texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
                 },
-                wgpu::ImageCopyBuffer {
+                wgpu::TexelCopyBufferInfo {
                     buffer: &snapshot_buffer,
-                    layout: wgpu::ImageDataLayout {
+                    layout: wgpu::TexelCopyBufferLayout {
                         offset: 0,
                         bytes_per_row: Some(4 * width),
                         rows_per_image: Some(height),
