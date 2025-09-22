@@ -7,10 +7,9 @@ repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.7.0"
 
 [dependencies]
-quickjs-rusty = "0.9.1"
-
 anyhow = {workspace = true}
 log = {workspace = true}
+quickjs-rusty = {workspace = true}
 serde = {workspace = true}
 tokio = {workspace = true, features = ["time", "sync"]}
 

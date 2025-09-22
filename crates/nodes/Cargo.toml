@@ -29,7 +29,7 @@ moyu_resource = {workspace = true}
 
 # optional for features
 ffmpeg-rs = {version = "5.2.1", optional = true}
-huozi = {version = "0.12", optional = true}
+huozi = {workspace = true, optional = true}
 
 csscolorparser = {workspace = true, optional = true}
 glam = {workspace = true, optional = true}
