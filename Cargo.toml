@@ -27,6 +27,7 @@ image = {version = "0.25", default-features = false, features = ["rayon", "bmp",
 log = "0.4"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
+sixu = {version = "0.2", features = ["serde"]}
 tokio = {version = "1"}
 wasm-bindgen = {version = "0.2", default-features = false}
 wasm-bindgen-futures = "0.4"
@@ -49,5 +50,3 @@ moyu_scenario = {path = "crates/scenario"}
 # huozi = {path = "../huozi-rs"}
 # quickjs-rusty = {path = "../quickjs-rusty"}
 # sixu = {path = "../sixu/sixu"}
-
-sixu = {git = "https://github.com/Icemic/sixu", branch = "master"}
