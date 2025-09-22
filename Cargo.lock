@@ -3553,8 +3553,9 @@ checksum = "38b58827f4464d87d377d175e90bf58eb00fd8716ff0a62f80356b5e61555d0d"
 
 [[package]]
 name = "sixu"
-version = "0.1.0"
-source = "git+https://github.com/Icemic/sixu?branch=master#9f40b708d052ecb00714b3010e5d296e5fb465ff"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a040c43214682dc8364a8f55b34bf226457c3802e11746cb00a34ea5f1be2f6"
 dependencies = [
  "anyhow",
  "arc-swap",

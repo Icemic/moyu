@@ -8,13 +8,13 @@ repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.7.0"
 
 [dependencies]
-sixu = {version = "0.1", features = ["serde"]}
 zip = {version = "5.1", default-features = false, features = ["zstd"]}
 
 anyhow = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
 serde_json = {workspace = true}
+sixu = {workspace = true}
 
 moyu_macros = {workspace = true}
 
