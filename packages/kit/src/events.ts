@@ -29,17 +29,12 @@ const globalEventListeners: Record<string, ((event: any) => void)[]> = {};
 const globalRequestAnimationFrameListeners: FrameRequestCallback[] = [];
 
 const BUBBLE_EVENT_NAMES = ['mouseevent', 'touchevent', 'keyboardevent'];
-// not implemented yet
-const GLOBAL_EVENT_NAMES = ['fullscreenevent', 'focusevent', 'resizeevent'];
 
 globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
   const { name, body } = raw_event;
 
   if (BUBBLE_EVENT_NAMES.includes(name)) {
     handleBubbleEvent(name, body as unknown as MouseEvent | TouchEvent);
-  } else if (GLOBAL_EVENT_NAMES.includes(name)) {
-    // handleGlobalEvent(name, body);
-    console.warn(`Event ${name} is not implemented yet`);
   } else {
     // handles non-dom events and return
     switch (name) {
@@ -68,6 +63,30 @@ globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
         for (const listener of listeners) {
           listener?.(timestamp);
         }
+        return;
+      }
+      case 'fullscreenevent': {
+        if (body.kind === 'change') {
+          globalEventListeners['fullscreenchange']?.forEach((listener) => listener(body));
+        } else {
+          console.warn('Fullscreen error event occurred', body);
+        }
+        return;
+      }
+      case 'resizeevent': {
+        globalEventListeners['resize']?.forEach((listener) => listener(body));
+        return;
+      }
+      case 'focusevent': {
+        if (body.kind === 'focus') {
+          globalEventListeners['focus']?.forEach((listener) => listener(body));
+        } else if (body.kind === 'blur') {
+          globalEventListeners['blur']?.forEach((listener) => listener(body));
+        }
+        return;
+      }
+      default: {
+        console.warn(`Unknown event: ${name}`, body);
         return;
       }
     }
