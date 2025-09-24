@@ -1,5 +1,5 @@
-use moyu_pal::config::WindowState;
 use log::debug;
+use moyu_pal::config::WindowState;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use winit::event::{Event, WindowEvent};
@@ -7,7 +7,10 @@ use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
 
 use crate::core::SurfaceSize;
-use crate::events::AnimationFrameCallbackEvent;
+use crate::events::{
+    AnimationFrameCallbackEvent, FocusEvent, FocusEventKind, FullScreenEvent, FullscreenEventKind,
+    ResizeEvent,
+};
 use crate::utils::dispatch_event::dispatch_event;
 
 use super::Core;
@@ -96,20 +99,51 @@ impl Core {
                                 self.resize_stage(stage_size);
                             }
 
+                            let state;
+
                             if window.fullscreen().is_some() {
-                                self.window_state.store(Arc::new(WindowState::Fullscreen));
+                                state = WindowState::Fullscreen;
                             } else if window.is_maximized() {
-                                self.window_state.store(Arc::new(WindowState::Maximized));
+                                state = WindowState::Maximized;
                             } else if let Some(true) = window.is_minimized() {
-                                self.window_state.store(Arc::new(WindowState::Minimized));
+                                state = WindowState::Minimized;
                             } else {
-                                self.window_state.store(Arc::new(WindowState::Idle));
+                                state = WindowState::Idle;
                             }
 
-                            debug!("window state changes to {:?}", self.window_state.load());
+                            debug!("window state changes to {:?}", state);
+
+                            let prev_state = *self.window_state.swap(Arc::new(state));
+
+                            // only dispatch event when entering or exiting fullscreen
+                            if (state == WindowState::Fullscreen
+                                || prev_state == WindowState::Fullscreen)
+                                && state != prev_state
+                            {
+                                dispatch_event(FullScreenEvent {
+                                    kind: FullscreenEventKind::Change,
+                                });
+                            }
+
+                            let (width, height) = stage_size.logical_size();
+
+                            // minimized windows have zero width and height, do not dispatch resize event
+                            if state != WindowState::Minimized {
+                                dispatch_event(ResizeEvent { width, height });
+                            }
                         }
                         WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                             self.stage_size.write().set_scale_factor(*scale_factor);
+                        }
+                        WindowEvent::Focused(focused) => {
+                            dispatch_event(FocusEvent {
+                                kind: if *focused {
+                                    FocusEventKind::Focus
+                                } else {
+                                    FocusEventKind::Blur
+                                },
+                                target_id: 0,
+                            });
                         }
                         _ => {}
                     }

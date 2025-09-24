@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::traits::Event;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum FocusEventKind {
     Focus,
     Blur,
