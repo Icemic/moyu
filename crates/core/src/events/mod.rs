@@ -1,3 +1,4 @@
+mod beforeunload;
 mod custom;
 mod focus;
 mod fullscreen;
@@ -9,6 +10,7 @@ mod resize;
 mod touch;
 mod wheel;
 
+pub use beforeunload::*;
 pub use custom::*;
 pub use focus::*;
 pub use fullscreen::*;
