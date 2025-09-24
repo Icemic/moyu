@@ -8,8 +8,8 @@ use winit::window::Window;
 
 use crate::core::SurfaceSize;
 use crate::events::{
-    AnimationFrameCallbackEvent, FocusEvent, FocusEventKind, FullScreenEvent, FullscreenEventKind,
-    ResizeEvent,
+    AnimationFrameCallbackEvent, BeforeUnloadEvent, FocusEvent, FocusEventKind, FullScreenEvent,
+    FullscreenEventKind, ResizeEvent,
 };
 use crate::utils::dispatch_event::dispatch_event;
 
@@ -84,7 +84,9 @@ impl Core {
                                 }
                             }
                         }
-                        WindowEvent::CloseRequested => event_loop.exit(),
+                        WindowEvent::CloseRequested => {
+                            dispatch_event(BeforeUnloadEvent {});
+                        }
                         WindowEvent::Resized(physical_size) => {
                             let stage_size = SurfaceSize::from_physical_size(
                                 physical_size,

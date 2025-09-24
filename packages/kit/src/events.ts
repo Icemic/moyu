@@ -85,6 +85,10 @@ globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
         }
         return;
       }
+      case 'beforeunloadevent': {
+        globalEventListeners['beforeunload']?.forEach((listener) => listener(body));
+        return;
+      }
       default: {
         console.warn(`Unknown event: ${name}`, body);
         return;
