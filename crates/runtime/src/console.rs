@@ -1,3 +1,5 @@
+use std::io::IsTerminal;
+
 use quickjs_rusty::console::Level;
 use quickjs_rusty::OwnedJsValue;
 
@@ -18,7 +20,11 @@ fn format_string(args: Vec<OwnedJsValue>) -> std::string::String {
     let mut others = vec![];
     let mut i = 0;
     for arg in args {
-        let raw_string = arg.js_to_string().unwrap();
+        let raw_string = if std::io::stdout().is_terminal() {
+            arg.to_json_string(0).unwrap()
+        } else {
+            arg.js_to_string().unwrap()
+        };
 
         if i == 0 {
             template_string = raw_string;
