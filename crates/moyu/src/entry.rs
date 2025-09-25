@@ -75,6 +75,9 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
 
     let _core_handle = set_core(core.clone());
 
+    #[cfg(web)]
+    core.init_graphics().await;
+
     let _vm_handle = match moyu_ops::spawn::spawn_runtime_with_core(&core) {
         Ok(v) => v,
         Err(err) => {
@@ -82,9 +85,6 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
             platform::show_fatal_error_and_exit(err.to_string().as_str());
         }
     };
-
-    #[cfg(web)]
-    core.init_graphics().await;
 
     event_loop
         .run(move |event, event_loop| {
