@@ -21,7 +21,7 @@ pub fn from_js<T: serde::de::DeserializeOwned>(value: &JSValue) -> anyhow::Resul
 }
 
 #[cfg(web)]
-pub fn from_js<'a, T: serde::de::DeserializeOwned>(value: &mut JSValue) -> anyhow::Result<T> {
+pub fn from_js<'a, T: serde::de::DeserializeOwned>(value: &JSValue) -> anyhow::Result<T> {
     use anyhow::anyhow;
 
     serde_wasm_bindgen::from_value(value.to_owned()).map_err(|e| anyhow!(e.to_string()))
