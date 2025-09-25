@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::js_sys::{Object, Reflect};
+use web_sys::wasm_bindgen::JsValue;
 use web_sys::FileSystemRemoveOptions;
 
 use super::{get_path_in_appdata, FileEntry};
@@ -181,6 +183,9 @@ pub async fn readdir_from_appdata(
 
     let mut arr = Vec::new();
     let entries = dir.values();
+
+    let property_value = JsValue::from_str("value");
+
     loop {
         let promise = entries
             .next()
@@ -189,6 +194,10 @@ pub async fn readdir_from_appdata(
         let item = JsFuture::from(promise)
             .await
             .map_err(|err| anyhow::anyhow!("Failed to get next entry: {:?}", err))?;
+
+        let item = Reflect::get(&item, &property_value).map_err(|err| {
+            anyhow::anyhow!("Failed to get 'value' property from entry: {:?}", err)
+        })?;
 
         if item.is_undefined() {
             break;
