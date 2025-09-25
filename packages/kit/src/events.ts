@@ -97,15 +97,7 @@ globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
   }
 };
 
-function handleBubbleEvent(name: string, _body: MouseEvent | TouchEvent) {
-  let body: typeof _body;
-  // serde-wasm-bindgen may serialize body as a Map, we need to convert it to a plain object
-  // see more on the comment of `MoyuEvent` in the Rust side
-  if (_body instanceof Map) {
-    body = Object.fromEntries(_body as unknown as Map<string, unknown>) as unknown as typeof _body;
-  } else {
-    body = _body;
-  }
+function handleBubbleEvent(name: string, body: MouseEvent | TouchEvent) {
   const event: MouseEvent | TouchEvent = createBubbleEvent(body, body.targetId, body.targetLabel ?? '');
 
   const { kind, bubbleTargetIds } = body;
