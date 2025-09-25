@@ -191,8 +191,10 @@ impl Core {
             window.set_maximized(window_maximized);
 
             // reset fullscreen status
-            window.set_fullscreen(None);
-            window.set_fullscreen(window_fullscreen);
+            if window_fullscreen.is_some() {
+                window.set_fullscreen(None);
+                window.set_fullscreen(window_fullscreen);
+            }
         }
     }
 
@@ -327,18 +329,26 @@ impl Core {
         // get current focus state since focus may lost after state changes.
         let has_focus = window.has_focus();
 
+        let is_fullscreen = window.fullscreen().is_some();
+
         match state {
             WindowState::Idle => {
                 window.set_maximized(false);
                 window.set_minimized(false);
-                window.set_fullscreen(None);
+                if is_fullscreen {
+                    window.set_fullscreen(None);
+                }
             }
             WindowState::Maximized => {
-                window.set_fullscreen(None);
+                if is_fullscreen {
+                    window.set_fullscreen(None);
+                }
                 window.set_maximized(true);
             }
             WindowState::Minimized => {
-                window.set_fullscreen(None);
+                if is_fullscreen {
+                    window.set_fullscreen(None);
+                }
                 window.set_minimized(true);
             }
             WindowState::Fullscreen => {
