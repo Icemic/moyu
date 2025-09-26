@@ -47,7 +47,9 @@ pub fn to_js<T: serde::Serialize>(value: &T) -> anyhow::Result<OwnedJsValue> {
 pub fn to_js<'a, T: serde::Serialize>(value: &T) -> anyhow::Result<JSValue> {
     use anyhow::anyhow;
 
-    serde_wasm_bindgen::to_value(value).map_err(|e| anyhow!(e.to_string()).into())
+    value
+        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .map_err(|e| anyhow!(e.to_string()).into())
 }
 
 #[cfg(all(native, feature = "js_runtime"))]
