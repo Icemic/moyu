@@ -1,21 +1,22 @@
 pub mod types;
 mod utils;
 
+use dashmap::DashMap;
 use image::GenericImageView;
 use log::debug;
-use moyu_pal::{config::entry_dir, sync::RwLock};
+use moyu_pal::config::entry_dir;
 use moyu_pal::{fs, task};
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use wgpu::{Device, Queue};
 
-use crate::types::{Texture, TextureId, TextureStatus};
+use crate::types::{Asset, AssetId, AssetKind, Texture, TextureStatus, create_asset_id};
 use crate::utils::premultiply_alpha;
 
 #[derive(Debug)]
 pub struct ResourceManager {
     device: Arc<Device>,
     queue: Arc<Queue>,
-    texture_map: Arc<RwLock<HashMap<Arc<TextureId>, Arc<Texture>>>>,
+    assets_map: DashMap<Arc<AssetId>, Arc<Asset>>,
 }
 
 impl ResourceManager {
@@ -23,107 +24,115 @@ impl ResourceManager {
         Self {
             device,
             queue,
-            texture_map: Default::default(),
+            assets_map: Default::default(),
         }
     }
 
-    pub fn try_get_texture(&self, texture_id: &Arc<TextureId>) -> Option<Arc<Texture>> {
-        if let Some(texture) = self.texture_map.read().get(texture_id) {
-            return Some(texture.clone());
+    pub fn try_get_asset(&self, asset_id: &Arc<AssetId>) -> Option<Arc<Asset>> {
+        if let Some(asset) = self.assets_map.get(asset_id) {
+            return Some(asset.clone());
         }
 
         None
     }
 
-    /// get a texture
-    /// if there's already a texture with the same texture id, return it, or:
-    ///   1. for `TextureId::Path`, it will add a new task to load a new texture
-    ///   2. for `TextureId::Custom`, it will create a empty texture then return
-    pub fn get_texture(&self, texture_id: &Arc<TextureId>) -> Arc<Texture> {
-        if let Some(texture) = self.texture_map.read().get(texture_id) {
-            return texture.clone();
+    pub fn load_asset(&self, kind: AssetKind, src: &str) -> Arc<AssetId> {
+        self.sweep();
+
+        let mut asset_id = create_asset_id(kind, src.to_string());
+
+        if let Some(asset) = self.assets_map.get(&asset_id) {
+            return asset.key().clone();
         }
 
-        match &**texture_id {
-            TextureId::Path(_) => self.add_load_task(texture_id.clone()),
-            TextureId::Data(data) => {
-                let texture = Arc::new(Texture::new());
-                self.texture_map
-                    .write()
-                    .insert(texture_id.clone(), texture.clone());
-                let device = self.device.clone();
-                let queue = self.queue.clone();
+        match kind {
+            AssetKind::Texture => {
+                let texture = load_texture(&self.device, &self.queue, src);
+                let asset = Arc::new(Asset::Texture(texture));
+                asset_id.attach_asset(&asset);
+                let asset_id = Arc::new(asset_id);
+                self.assets_map.insert(asset_id.clone(), asset);
+                asset_id
+            }
+            _ => {
+                todo!()
+            }
+        }
+    }
 
-                if let Err(err) = load_image_to_texture(&texture, &device, &queue, data, None) {
+    pub fn insert_asset(&self, kind: AssetKind, src: &str, data: Vec<u8>) -> Arc<AssetId> {
+        self.sweep();
+
+        let mut asset_id = create_asset_id(kind, src.to_string());
+
+        let asset = match kind {
+            AssetKind::Texture => {
+                let texture = Arc::new(Texture::new());
+                if let Err(err) =
+                    load_image_to_texture(&texture, &self.device, &self.queue, &data, None)
+                {
                     log::error!("failed to load texture from raw image data: {}", err);
                     texture.set_status(TextureStatus::Error);
                 }
-
-                texture
+                Asset::Texture(texture)
             }
-            TextureId::Custom(_) => {
-                let texture = Arc::new(Texture::new());
-                self.texture_map
-                    .write()
-                    .insert(texture_id.clone(), texture.clone());
-                texture
-            }
-        }
+            _ => todo!(),
+        };
+        let asset = Arc::new(asset);
+        asset_id.attach_asset(&asset);
+        let asset_id = Arc::new(asset_id);
+        self.assets_map.insert(asset_id.clone(), asset);
+        asset_id
     }
 
-    /// add a task to load a new texture.
-    /// it does not check whether a same asset has been loaded.
-    fn add_load_task(&self, texture_id: Arc<TextureId>) -> Arc<Texture> {
-        if let TextureId::Path(asset_relative_path) = &*texture_id {
-            let asset_full_path = entry_dir()
-                .join("assets/")
-                .unwrap()
-                .join(asset_relative_path)
-                .unwrap();
-            debug!("texture will load from {}", asset_relative_path);
+    fn sweep(&self) {
+        self.assets_map.retain(|k, _| {
+            let key_ref_count = Arc::strong_count(k);
+            // if format!("{:?}", k).contains("mainmenu_button.png") {
+            //     log::info!("sweeping texture {:?}, strong_count = {}", k, key_ref_count);
+            // }
+            if key_ref_count > 1 {
+                true
+            } else {
+                log::debug!("drop unused texture {:?} {}", *k, key_ref_count);
+                false
+            }
+        });
+    }
+}
 
-            let texture = Arc::new(Texture::new());
-            self.texture_map
-                .write()
-                .insert(texture_id.clone(), texture.clone());
-            let _texture = texture.clone();
+fn load_texture(device: &Device, queue: &Queue, src: &str) -> Arc<Texture> {
+    let src_full = entry_dir().join("assets/").unwrap().join(src).unwrap();
 
-            let device = self.device.clone();
-            let queue = self.queue.clone();
-            let asset_relative_path = asset_relative_path.to_owned();
-            let task_fn = async move {
-                let bytes = match fs::read(&asset_full_path).await {
-                    Ok(v) => v,
-                    Err(err) => {
-                        log::error!("Failed to read '{}': {}", asset_relative_path, err);
-                        return Err(anyhow::format_err!(
-                            "Failed to read '{}': {}",
-                            asset_relative_path,
-                            err
-                        ));
-                    }
-                };
+    debug!("loading texture from {}", src);
 
-                load_image_to_texture(
-                    &texture,
-                    &device,
-                    &queue,
-                    &bytes,
-                    Some(&asset_relative_path),
-                )?;
+    let texture = Arc::new(Texture::new());
 
-                debug!("texture '{}' loaded", asset_relative_path);
-
-                Ok(())
+    {
+        let device = device.clone();
+        let queue = queue.clone();
+        let texture = texture.clone();
+        let src = src.to_owned();
+        let task_fn = async move {
+            let bytes = match fs::read(&src_full).await {
+                Ok(v) => v,
+                Err(err) => {
+                    log::error!("Failed to read '{}': {}", src, err);
+                    return Err(anyhow::format_err!("Failed to read '{}': {}", src, err));
+                }
             };
 
-            task::spawn(task_fn);
+            load_image_to_texture(&texture, &device, &queue, &bytes, Some(&src))?;
 
-            _texture
-        } else {
-            unreachable!();
-        }
+            debug!("texture '{}' loaded", src);
+
+            Ok(())
+        };
+
+        task::spawn(task_fn);
     }
+
+    texture
 }
 
 fn load_image_to_texture(
