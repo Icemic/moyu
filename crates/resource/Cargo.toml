@@ -8,6 +8,7 @@ rayon = "1.10"
 
 anyhow = {workspace = true}
 arc-swap = {workspace = true}
+dashmap = {workspace = true}
 image = {workspace = true}
 log = {workspace = true}
 wgpu = {workspace = true}
