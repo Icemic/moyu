@@ -1,26 +1,36 @@
 use std::sync::Arc;
 
+use moyu_resource::types::AssetKind;
+
 pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
     use moyu_core::traits::NodeBaseTrait;
     use moyu_nodes::nodes::*;
     use moyu_pal::sync::RwLock;
-    use moyu_resource::types::TextureId;
+
+    let Some(graphics) = core.graphics() else {
+        return;
+    };
 
     let node_bg = {
         let n = Sprite::new("splash-bg".to_string());
-        let texture_id = Arc::new(TextureId::Data(
+        let asset_id = graphics.resource_manager().insert_asset(
+            AssetKind::Texture,
+            "builtin:white",
             include_bytes!("../static/white.png").to_vec(),
-        ));
-        n.next_texture_id.store(Some(texture_id));
+        );
+
+        n.next_texture_id.store(Some(asset_id));
         Arc::new(RwLock::new(n))
     };
 
     let node = {
         let n = Sprite::new("splash".to_string());
-        let texture_id = Arc::new(TextureId::Data(
+        let asset_id = graphics.resource_manager().insert_asset(
+            AssetKind::Texture,
+            "builtin:logo",
             include_bytes!("../static/logo.png").to_vec(),
-        ));
-        n.next_texture_id.store(Some(texture_id));
+        );
+        n.next_texture_id.store(Some(asset_id));
         Arc::new(RwLock::new(n))
     };
 

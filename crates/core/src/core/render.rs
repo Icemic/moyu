@@ -167,6 +167,10 @@ impl Graphics {
         &self.config
     }
 
+    pub fn resource_manager(&self) -> &Arc<ResourceManager> {
+        &self.resource_manager
+    }
+
     /// Request a screenshot to be taken on the next render
     pub fn request_snapshot(&self) {
         self.snapshot_requested.store(true, Ordering::Relaxed);
