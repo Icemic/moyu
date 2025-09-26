@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -6,7 +5,7 @@ use log::{debug, warn};
 #[cfg(web)]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use moyu_core::core::get_core;
+use moyu_core::core::{get_core, NodeMap, NodeRef};
 use moyu_core::nodes::Container;
 use moyu_core::traits::{Node, NodeBaseTrait};
 use moyu_core::utils::convert::JSValue;
@@ -19,15 +18,15 @@ use moyu_nodes::nodes::Sprite;
 use moyu_nodes::nodes::Text;
 #[cfg(feature = "video")]
 use moyu_nodes::nodes::Video;
-use moyu_pal::sync::{RwLock, RwLockReadGuard};
+use moyu_pal::sync::RwLock;
 #[cfg(native)]
 use moyu_runtime::quickjs_rusty::{JSContext, RawJSValue};
 
 #[inline]
 pub(super) fn get_node<'a>(
-    node_map: &'a RwLockReadGuard<HashMap<u32, Arc<RwLock<dyn Node>>>>,
+    node_map: &'a NodeMap,
     node_id: u32,
-) -> Result<&'a Arc<RwLock<dyn Node>>, std::string::String> {
+) -> Result<NodeRef<'a>, std::string::String> {
     let node = node_map.get(&node_id);
 
     if let Some(node) = node {
@@ -45,7 +44,7 @@ pub fn create_instance(
     mut props: JSValue,
 ) -> Result<u32, std::string::String> {
     let core = get_core();
-    let mut node_map = core.node_map().write();
+    let node_map = core.node_map();
 
     let label = label.unwrap_or_default();
 
@@ -98,19 +97,16 @@ pub fn create_instance(
 #[cfg_attr(native, moyu_bindgen)]
 pub fn destroy_instance(node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
-    let mut node_map = core.node_map().write();
+    let node_map = core.node_map();
 
-    destroy_instance_recursive(&mut node_map, node_id)?;
+    destroy_instance_recursive(&node_map, node_id)?;
 
     Ok(())
 }
 
-fn destroy_instance_recursive(
-    node_map: &mut HashMap<u32, Arc<RwLock<dyn Node>>>,
-    node_id: u32,
-) -> Result<(), std::string::String> {
+fn destroy_instance_recursive(node_map: &NodeMap, node_id: u32) -> Result<(), std::string::String> {
     if let Some(node) = node_map.get(&node_id) {
-        let ref_count = Arc::strong_count(node);
+        let ref_count = Arc::strong_count(&node);
         if ref_count > 2 {
             debug!(
                 "Node {} has {} references, cannot destroy it",
@@ -124,7 +120,7 @@ fn destroy_instance_recursive(
         return Ok(());
     }
 
-    let node = node_map.remove(&node_id).unwrap();
+    let (_, node) = node_map.remove(&node_id).unwrap();
 
     for child in node.read().base().children().iter() {
         let child_id = *child.read().base().id();
@@ -138,7 +134,7 @@ fn destroy_instance_recursive(
 #[cfg_attr(native, moyu_bindgen)]
 pub fn add_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map().read();
+    let node_map = core.node_map();
 
     let node = get_node(&node_map, node_id)?;
     let child_node = get_node(&node_map, child_node_id)?;
@@ -159,7 +155,7 @@ pub fn insert_child(
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map().read();
+    let node_map = core.node_map();
 
     let node = get_node(&node_map, node_id)?;
     let child_node = get_node(&node_map, child_node_id)?;
@@ -180,7 +176,7 @@ pub fn insert_child_before(
     child_node_id: u32,
 ) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map().read();
+    let node_map = core.node_map();
 
     let node = get_node(&node_map, node_id)?;
     let before_node = get_node(&node_map, before_node_id)?;
@@ -199,7 +195,7 @@ pub fn insert_child_before(
 #[cfg_attr(native, moyu_bindgen)]
 pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map().read();
+    let node_map = core.node_map();
 
     let node = get_node(&node_map, node_id)?;
     let child_node = get_node(&node_map, child_node_id)?;
@@ -216,7 +212,7 @@ pub fn remove_child(node_id: u32, child_node_id: u32) -> Result<(), std::string:
 #[cfg_attr(native, moyu_bindgen)]
 pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map().read();
+    let node_map = core.node_map();
 
     let node = get_node(&node_map, node_id)?;
 
@@ -235,7 +231,6 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
 
         core.node_map()
     };
-    let node_map = node_map.read();
     let node = get_node(&node_map, node_id)?;
 
     let mut node = node.write();
@@ -244,25 +239,11 @@ pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> 
     Ok(())
 }
 
-// #[cfg_attr(web, wasm_bindgen)]
-// #[cfg_attr(native, moyu_bindgen)]
-// pub fn get_translate(node_id: u32) -> Result<[f64; 2], std::string::String> {
-//     let core = get_core();
-// //     let node_map = core.node_map().read();
-
-//     let node = get_node(&node_map, node_id)?;
-//     let node = node.write();
-
-//     let &Point { x, y } = node.translate();
-
-//     Ok([x, y])
-// }
-
 #[cfg_attr(web, wasm_bindgen)]
 #[cfg_attr(native, moyu_bindgen)]
 pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
     let core = get_core();
-    let node_map = core.node_map().read();
+    let node_map = core.node_map();
     let node = get_node(&node_map, node_id)?;
     let mut node = node.write();
 

@@ -5,10 +5,12 @@ mod pointer_events;
 mod render;
 
 use arc_swap::{ArcSwap, ArcSwapOption};
+use dashmap::mapref::one::Ref;
+use dashmap::DashMap;
+use log::{debug, error};
 use moyu_pal::config::{get_engine_config, WindowState};
 use moyu_pal::sync::{Mutex, RwLock};
 use moyu_pal::time::Instant;
-use log::{debug, error};
 use render::Graphics;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,6 +27,9 @@ use crate::{nodes::Container, traits::*};
 
 pub use self::global::*;
 
+pub type NodeMap = DashMap<u32, Arc<RwLock<dyn Node>>>;
+pub type NodeRef<'a> = Ref<'a, u32, Arc<RwLock<dyn Node>>>;
+
 pub struct Core {
     pub(crate) window: Arc<Window>,
     pub(crate) graphics: ArcSwapOption<Graphics>,
@@ -37,9 +42,9 @@ pub struct Core {
     pub instant: Instant,
 
     pub(crate) root_node: Arc<RwLock<dyn Node>>,
-    pub(crate) node_map: Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>>,
+    pub(crate) node_map: NodeMap,
     /// map for current pointer states, mouse event is stored in index -1 while touch events are stored in their identifier
-    pub(crate) pointer_map: Arc<RwLock<HashMap<i32, PointerState>>>,
+    pub(crate) pointer_map: DashMap<i32, PointerState>,
 
     pub(crate) window_state: ArcSwap<WindowState>,
     pub(crate) cursor_state: ArcSwap<MoyuCursor>,
@@ -98,10 +103,10 @@ impl Core {
         let root_node = Container::new("Root Node".to_string());
         let root_node = Arc::new(RwLock::new(root_node));
 
-        let mut node_map: HashMap<u32, Arc<RwLock<dyn Node>>> = Default::default();
+        let node_map: NodeMap = Default::default();
         node_map.insert(0, root_node.clone());
 
-        let mut pointer_map: HashMap<i32, PointerState> = Default::default();
+        let pointer_map: DashMap<i32, PointerState> = Default::default();
         // add mouse pointer which is always there
         pointer_map.insert(MOUSE_IDENTIFIER, PointerState::default());
 
@@ -116,8 +121,8 @@ impl Core {
             instant: Instant::now(),
 
             root_node,
-            node_map: Arc::new(RwLock::new(node_map)),
-            pointer_map: Arc::new(RwLock::new(pointer_map)),
+            node_map,
+            pointer_map,
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
             cursor_state: ArcSwap::new(Arc::new(MoyuCursor::default())),
@@ -265,7 +270,7 @@ impl Core {
     }
 
     /// get whole node map
-    pub fn node_map(&self) -> &Arc<RwLock<HashMap<u32, Arc<RwLock<dyn Node>>>>> {
+    pub fn node_map(&self) -> &NodeMap {
         &self.node_map
     }
 

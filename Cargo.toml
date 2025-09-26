@@ -22,6 +22,7 @@ arc-swap = "1.6"
 bytemuck = {version = "1.13", features = ["derive"]}
 cfg_aliases = "0.2.1"
 csscolorparser = {version = "0.7", features = ["serde"]}
+dashmap = "6.1.0"
 glam = {version = "0.30", features = ["bytemuck"]}
 huozi = "0.12"
 image = {version = "0.25", default-features = false, features = ["rayon", "bmp", "jpeg", "png", "webp"]}
