@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
+use weak_table::WeakKeyHashMap;
 use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
@@ -10,7 +10,7 @@ use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use moyu_core::utils::calculate::calculate_rect_vertices;
 use moyu_core::utils::constants::{NINESLICE_INDICES, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use moyu_core::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
-use moyu_resource::types::{Texture, TextureId, TextureStatus};
+use moyu_resource::types::{Asset, AssetId, AssetKind, Texture, TextureStatus};
 
 use crate::nodes::{Sprite, SpriteMode};
 
@@ -24,7 +24,8 @@ pub struct SpriteRenderer {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     index_buffer: Buffer,
-    bind_group_map: HashMap<Arc<TextureId>, BindGroup>,
+    bind_group_map: WeakKeyHashMap<Weak<AssetId>, BindGroup>,
+    last_sweep: u64,
 }
 
 impl SpriteRenderer {
@@ -124,6 +125,7 @@ impl SpriteRenderer {
             bind_group_layout,
             index_buffer,
             bind_group_map: Default::default(),
+            last_sweep: 0,
         }
     }
 }
@@ -178,18 +180,30 @@ impl Renderer for SpriteRenderer {
 
         let node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
 
+        if let Some(next_src) = node.next_src.take() {
+            let texture_id = payload
+                .resource_manager
+                .load_asset(AssetKind::Texture, &next_src);
+            node.next_texture_id.store(Some(texture_id));
+        }
+
         // check if there's a pending texture change
         if let Some(next_texture_id) = node.next_texture_id.load().as_ref() {
-            let texture = payload.resource_manager.get_texture(next_texture_id);
+            let texture = next_texture_id.asset_unchecked();
+            let Asset::Texture(texture) = texture.as_ref() else {
+                unreachable!("asset kind is not texture");
+            };
 
             if TextureStatus::Ready == texture.status() {
-                node.texture_id.store(Some(next_texture_id.clone()));
-                node.next_texture_id.store(None);
+                node.texture_id.store(node.next_texture_id.swap(None));
             }
         }
 
         if let Some(texture_id) = node.texture_id.load().as_ref() {
-            let texture = payload.resource_manager.get_texture(texture_id);
+            let texture = texture_id.asset_unchecked();
+            let Asset::Texture(texture) = texture.as_ref() else {
+                unreachable!("asset kind is not texture");
+            };
 
             if TextureStatus::Ready != texture.status() {
                 return;
@@ -394,6 +408,13 @@ impl Renderer for SpriteRenderer {
                 let bind_group = self.get_bind_group(device, &texture);
                 self.bind_group_map.insert(texture_id.clone(), bind_group);
             }
+        }
+
+        let batch_timestamp = payload.timestamp as u64 / 10;
+        if batch_timestamp > self.last_sweep {
+            log::debug!("sweep bind_group_map");
+            self.last_sweep = batch_timestamp;
+            self.bind_group_map.remove_expired();
         }
     }
 

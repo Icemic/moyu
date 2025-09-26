@@ -15,6 +15,8 @@ video = ["dep:ffmpeg-rs"]
 yuv_sprite = []
 
 [dependencies]
+weak-table = "0.3.2"
+
 anyhow = {workspace = true}
 arc-swap = {workspace = true}
 bytemuck = {workspace = true}

@@ -1,13 +1,12 @@
 use arc_swap::ArcSwapOption;
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use wgpu::Buffer;
 
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{from_js, JSValue};
-use moyu_resource::types::TextureId;
+use moyu_resource::types::AssetId;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -35,11 +34,13 @@ pub enum NineSliceMode {
 #[derive(Debug, Default, Node)]
 pub struct Sprite {
     /// loaded texture
-    pub texture_id: ArcSwapOption<TextureId>,
+    pub texture_id: ArcSwapOption<AssetId>,
     /// next texture id to load, it will replace `texture_id` after loaded and reset to None
-    pub next_texture_id: ArcSwapOption<TextureId>,
+    pub next_texture_id: ArcSwapOption<AssetId>,
     /// texture source path
     pub src: Option<String>,
+    /// next texture source path
+    pub next_src: Option<String>,
 
     /// sprite mode, `normal` (default) or `nineslice`
     pub mode: SpriteMode,
@@ -67,6 +68,7 @@ impl Sprite {
             texture_id: ArcSwapOption::default(),
             next_texture_id: ArcSwapOption::default(),
             src: None,
+            next_src: None,
             mode: SpriteMode::Normal,
             area: [0., 0., 1., 1.],
             bounds: [0., 0., 0., 0.],
@@ -104,9 +106,8 @@ impl Node for Sprite {
 
         // set pending change to next_texture_id, avoid texture loading in render (may cause flash)
         if let Some(src) = props.src {
-            let texture_id = Arc::new(TextureId::Path(src.clone()));
-            self.next_texture_id.store(Some(texture_id));
             self.src = Some(src);
+            self.next_src = self.src.clone();
         }
 
         if let Some(mode) = props.mode {
