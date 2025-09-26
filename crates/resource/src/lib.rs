@@ -16,15 +16,38 @@ use crate::utils::premultiply_alpha;
 pub struct ResourceManager {
     device: Arc<Device>,
     queue: Arc<Queue>,
-    assets_map: DashMap<Arc<AssetId>, Arc<Asset>>,
+    assets_map: Arc<DashMap<Arc<AssetId>, Arc<Asset>>>,
 }
 
 impl ResourceManager {
     pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Self {
+        let assets_map = Arc::new(DashMap::new());
+
+        {
+            let assets_map_weak = Arc::downgrade(&assets_map);
+            moyu_pal::task::spawn(async move {
+                loop {
+                    moyu_pal::time::sleep(std::time::Duration::from_secs(10)).await;
+
+                    let assets_map = match assets_map_weak.upgrade() {
+                        Some(v) => v,
+                        None => {
+                            log::debug!("resource manager dropped, stop sweeping thread");
+                            break;
+                        }
+                    };
+
+                    log::debug!("sweeping unused assets...");
+                    sweep(&assets_map);
+                    log::debug!("sweeping unused assets done");
+                }
+            });
+        }
+
         Self {
             device,
             queue,
-            assets_map: Default::default(),
+            assets_map,
         }
     }
 
@@ -37,8 +60,6 @@ impl ResourceManager {
     }
 
     pub fn load_asset(&self, kind: AssetKind, src: &str) -> Arc<AssetId> {
-        self.sweep();
-
         let mut asset_id = create_asset_id(kind, src.to_string());
 
         if let Some(asset) = self.assets_map.get(&asset_id) {
@@ -61,8 +82,6 @@ impl ResourceManager {
     }
 
     pub fn insert_asset(&self, kind: AssetKind, src: &str, data: Vec<u8>) -> Arc<AssetId> {
-        self.sweep();
-
         let mut asset_id = create_asset_id(kind, src.to_string());
 
         let asset = match kind {
@@ -84,21 +103,18 @@ impl ResourceManager {
         self.assets_map.insert(asset_id.clone(), asset);
         asset_id
     }
+}
 
-    fn sweep(&self) {
-        self.assets_map.retain(|k, _| {
-            let key_ref_count = Arc::strong_count(k);
-            // if format!("{:?}", k).contains("mainmenu_button.png") {
-            //     log::info!("sweeping texture {:?}, strong_count = {}", k, key_ref_count);
-            // }
-            if key_ref_count > 1 {
-                true
-            } else {
-                log::debug!("drop unused texture {:?} {}", *k, key_ref_count);
-                false
-            }
-        });
-    }
+fn sweep(assets_map: &DashMap<Arc<AssetId>, Arc<Asset>>) {
+    assets_map.retain(|k, _| {
+        let key_ref_count = Arc::strong_count(k);
+        if key_ref_count > 1 {
+            true
+        } else {
+            log::debug!("drop unused texture {:?} {}", *k, key_ref_count);
+            false
+        }
+    });
 }
 
 fn load_texture(device: &Device, queue: &Queue, src: &str) -> Arc<Texture> {
