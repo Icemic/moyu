@@ -4,5 +4,6 @@
   "stageSize": "1280x720",
   "windowTitle": "BunnyMark",
   "entryFilename": "index.js",
-  "showFPS": true
+  "showFPS": true,
+  "skipSplash": true
 }

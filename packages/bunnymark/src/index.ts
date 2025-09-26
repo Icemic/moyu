@@ -1,3 +1,4 @@
+import { addEventListener, executePluginCommand } from '@momoyu-ink/kit';
 import BunnyMark from './bunnyMark';
 
 const bunnies = [
@@ -47,3 +48,9 @@ const loop: FrameRequestCallback = (now) => {
 // }, 1600);
 
 requestAnimationFrame(loop);
+
+addEventListener('beforeunload', () => {
+  executePluginCommand('system', {
+    subCommand: 'quit',
+  });
+});
