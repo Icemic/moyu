@@ -123,7 +123,7 @@ fn execute_node_command_inner(
 
     if payload.is_object() {
         let core = get_core();
-        let node_map = core.node_map().read();
+        let node_map = core.node_map();
 
         let node = get_node(&node_map, node_id).map_err(|e| anyhow!(e))?;
         let mut node = node.write();

@@ -14,8 +14,7 @@ use super::Core;
 
 macro_rules! get_pointer_state {
     ($self:ident, $name:ident, $identifier:expr) => {
-        let pointer_map = $self.pointer_map.read();
-        let pointer_state = pointer_map.get(&$identifier);
+        let pointer_state = $self.pointer_map.get(&$identifier);
 
         if pointer_state.is_none() {
             error!("Pointer state not found for identifier {}", $identifier);
@@ -26,8 +25,7 @@ macro_rules! get_pointer_state {
     };
 
     ($self:ident, $name:ident, $identifier:expr, $ret:expr) => {
-        let pointer_map = $self.pointer_map.read();
-        let pointer_state = pointer_map.get(&$identifier);
+        let pointer_state = $self.pointer_map.get(&$identifier);
 
         if pointer_state.is_none() {
             error!("Pointer state not found for identifier {}", $identifier);
@@ -40,27 +38,27 @@ macro_rules! get_pointer_state {
 
 macro_rules! get_pointer_state_mut {
     ($self:ident, $name:ident, $identifier:expr) => {
-        let mut pointer_map = $self.pointer_map.write();
-        let pointer_state = pointer_map.get_mut(&$identifier);
+        let pointer_state = $self.pointer_map.get_mut(&$identifier);
 
         if pointer_state.is_none() {
             error!("Pointer state not found for identifier {}", $identifier);
             return;
         }
 
-        let $name = pointer_state.unwrap();
+        let mut $name = pointer_state.unwrap();
+        let $name = $name.value_mut();
     };
 
     ($self:ident, $name:ident, $identifier:expr, $ret:expr) => {
-        let mut pointer_map = $self.pointer_map.write();
-        let pointer_state = pointer_map.get_mut(&$identifier);
+        let pointer_state = $self.pointer_map.get_mut(&$identifier);
 
         if pointer_state.is_none() {
             error!("Pointer state not found for identifier {}", $identifier);
             return $ret;
         }
 
-        let $name = pointer_state.unwrap();
+        let mut $name = pointer_state.unwrap();
+        let $name = $name.value_mut();
     };
 }
 
@@ -404,8 +402,7 @@ impl Core {
 
     /// Check if the pointer state exists, if not, create one.
     fn get_ensure_pointer_state(&self, identifier: i32, device_type: DeviceType) {
-        let mut pointer_map = self.pointer_map.write();
-        pointer_map.entry(identifier).or_insert_with(|| {
+        self.pointer_map.entry(identifier).or_insert_with(|| {
             let mut pointer_state = PointerState::default();
             pointer_state.device_type = device_type;
             pointer_state
