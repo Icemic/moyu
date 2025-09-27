@@ -5,7 +5,7 @@ edition = "2024"
 license = "MPL-2.0"
 name = "moyu_scenario"
 repository = "https://github.com/DeepSpaceMill/moyu"
-version = "0.7.0"
+version = "0.8.0"
 
 [dependencies]
 zip = {version = "5.1", default-features = false, features = ["zstd"]}
@@ -16,14 +16,6 @@ serde = {workspace = true}
 serde_json = {workspace = true}
 sixu = {workspace = true}
 
+moyu_core = {workspace = true, features = ["js_runtime"]}
 moyu_macros = {workspace = true}
-
-[dependencies.moyu_pal]
-path = "../platform"
-version = "0.7"
-
-[dependencies.moyu_core]
-default-features = false
-features = ["js_runtime"]
-path = "../core"
-version = "0.7"
+moyu_pal = {workspace = true}

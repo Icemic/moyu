@@ -5,7 +5,7 @@ edition = "2024"
 license = "MPL-2.0"
 name = "moyu_audio"
 repository = "https://github.com/DeepSpaceMill/moyu"
-version = "0.7.0"
+version = "0.8.0"
 
 [features]
 default = []
@@ -19,17 +19,9 @@ anyhow = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
 
+moyu_core = {workspace = true, features = ["js_runtime"]}
 moyu_macros = {workspace = true}
+moyu_pal = {workspace = true}
 
 [dev-dependencies]
 arc-swap = {workspace = true}
-
-[dependencies.moyu_pal]
-path = "../platform"
-version = "0.7"
-
-[dependencies.moyu_core]
-default-features = false
-features = ["js_runtime"]
-path = "../core"
-version = "0.7"
