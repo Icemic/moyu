@@ -61,7 +61,7 @@ pub fn derive_node_attr(item: TokenStream) -> TokenStream {
         })
         .unwrap_or_else(|| syn::Ident::new("node_base", Span::call_site()));
 
-    let gen = quote! {
+    let gen_code = quote! {
         impl NodeBaseTrait for #name {
             fn as_any(&self) -> &dyn std::any::Any {
                 self
@@ -83,7 +83,7 @@ pub fn derive_node_attr(item: TokenStream) -> TokenStream {
         }
     };
 
-    gen.into()
+    gen_code.into()
 }
 
 /// Automatically implement the `PluginBaseTrait` trait for the struct.
@@ -110,7 +110,7 @@ pub fn derive_plugin_attr(item: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(item as DeriveInput);
     let name = &ast.ident;
 
-    let gen = quote! {
+    let gen_code = quote! {
         impl PluginBaseTrait for #name {
             fn as_any(&self) -> &dyn std::any::Any {
                 self
@@ -122,5 +122,5 @@ pub fn derive_plugin_attr(item: TokenStream) -> TokenStream {
         }
     };
 
-    gen.into()
+    gen_code.into()
 }

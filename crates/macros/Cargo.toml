@@ -1,7 +1,7 @@
 [package]
 authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "Essential macros for Moyu."
-edition = "2021"
+edition = "2024"
 license = "MPL-2.0"
 name = "moyu_macros"
 repository = "https://github.com/DeepSpaceMill/moyu"
