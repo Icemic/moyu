@@ -49,6 +49,7 @@ module.exports = {
     ],
   },
   devServer: {
+    port: 6022,
     hot: false,
     liveReload: false,
     webSocketServer: false,
