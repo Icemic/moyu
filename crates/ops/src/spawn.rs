@@ -44,14 +44,6 @@ pub fn spawn_runtime_with_core(_: &Arc<Core>) -> Result<()> {
         let window = web_sys::window().expect("Cannot get global `window` object.");
         let document = window.document().expect("No document found.");
 
-        // Dispatch a custom event to notify that moyu is ready.
-        // This is useful for other scripts to know when moyu is ready or for users who want to
-        // run their game code manually.
-        let event = web_sys::CustomEvent::new("moyu-ready").unwrap();
-        if let Err(err) = document.dispatch_event(&event) {
-            log::error!("Failed to dispatch `moyu-ready` event: {:?}", err);
-        }
-
         let config = get_engine_config();
 
         if config.autorun == AutorunMode::All {
