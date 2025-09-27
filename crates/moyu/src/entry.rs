@@ -2,7 +2,9 @@ use std::sync::Arc;
 
 use moyu_audio::AudioManager;
 use moyu_core::core::set_core;
+use moyu_core::events::GameEvent;
 use moyu_core::plugins::SystemPlugin;
+use moyu_core::utils::dispatch_event::dispatch_event;
 use moyu_core::winit::event::Event;
 use moyu_core::winit::event_loop::EventLoop;
 use moyu_core::{create_moyu_core, setup};
@@ -106,11 +108,6 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
                         graphics.register_renderer("text", Box::new(text_renderer));
                     }
 
-                    // show splash screen
-                    if !get_engine_config().skip_splash {
-                        moyu_pal::task::spawn(crate::splash::show_splash_screen(core.clone()));
-                    }
-
                     // workaround for Chrome since it doesn't apply the correct size
                     #[cfg(web)]
                     let _ = core
@@ -126,6 +123,19 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
 
                     #[cfg(desktop)]
                     core.move_to_center();
+
+                    // show splash screen
+                    if !get_engine_config().skip_splash {
+                        let core = core.clone();
+                        moyu_pal::task::spawn(async move {
+                            crate::splash::show_splash_screen(core).await;
+                            // tell script that engine is ready to render
+                            dispatch_event(GameEvent::Ready);
+                        });
+                    } else {
+                        // tell script that engine is ready to render
+                        dispatch_event(GameEvent::Ready);
+                    }
                 }
                 Event::Suspended => {
                     log::warn!("Suspended");
