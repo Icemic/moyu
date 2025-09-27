@@ -37,12 +37,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libasound2-dev pkg-config libudev-dev
 
+      - name: Install wasm-pack
+        if: matrix.os == 'ubuntu-latest' && matrix.wasm == true
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install wasm-pack
+
       - name: Build Binary
-        run: cargo build --verbose
+        run: cargo build --verbose --release
         if: matrix.wasm == false
 
       - name: Build Web
         run: |
-          rustup target add wasm32-unknown-unknown
-          cargo build -p moyu --lib --target wasm32-unknown-unknown
+          wasm-pack build --target web --out-dir ../../dist --out-name moyu -s momoyu-ink crates/moyu
         if: matrix.wasm == true
