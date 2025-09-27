@@ -11,6 +11,6 @@ pub struct ResizeEvent {
 
 impl Event for ResizeEvent {
     fn name(&self) -> &'static str {
-        "resizeevent"
+        "resize"
     }
 }

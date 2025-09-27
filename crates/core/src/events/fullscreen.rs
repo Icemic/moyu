@@ -17,6 +17,9 @@ pub struct FullScreenEvent {
 
 impl Event for FullScreenEvent {
     fn name(&self) -> &'static str {
-        "fullscreenevent"
+        match self.kind {
+            FullscreenEventKind::Change => "fullscreenchange",
+            FullscreenEventKind::Error => "fullscreenerror",
+        }
     }
 }

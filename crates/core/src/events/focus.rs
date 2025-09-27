@@ -18,6 +18,9 @@ pub struct FocusEvent {
 
 impl Event for FocusEvent {
     fn name(&self) -> &'static str {
-        "focusevent"
+        match self.kind {
+            FocusEventKind::Focus => "focus",
+            FocusEventKind::Blur => "blur",
+        }
     }
 }

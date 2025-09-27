@@ -65,32 +65,8 @@ globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
         }
         return;
       }
-      case 'fullscreenevent': {
-        if (body.kind === 'change') {
-          globalEventListeners['fullscreenchange']?.forEach((listener) => listener(body));
-        } else {
-          console.warn('Fullscreen error event occurred', body);
-        }
-        return;
-      }
-      case 'resizeevent': {
-        globalEventListeners['resize']?.forEach((listener) => listener(body));
-        return;
-      }
-      case 'focusevent': {
-        if (body.kind === 'focus') {
-          globalEventListeners['focus']?.forEach((listener) => listener(body));
-        } else if (body.kind === 'blur') {
-          globalEventListeners['blur']?.forEach((listener) => listener(body));
-        }
-        return;
-      }
-      case 'beforeunloadevent': {
-        globalEventListeners['beforeunload']?.forEach((listener) => listener(body));
-        return;
-      }
       default: {
-        console.warn(`Unknown event: ${name}`, body);
+        globalEventListeners[name]?.forEach((listener) => listener(body));
         return;
       }
     }

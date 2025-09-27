@@ -8,6 +8,6 @@ pub struct BeforeUnloadEvent {}
 
 impl Event for BeforeUnloadEvent {
     fn name(&self) -> &'static str {
-        "beforeunloadevent"
+        "beforeunload"
     }
 }
