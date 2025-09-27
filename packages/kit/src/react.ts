@@ -44,7 +44,7 @@ const hostConfig: HostConfig<
    * @required
    */
   createInstance(type, props, _root, _hostContext, _internalInstanceHandle) {
-    console.debug('createInstance', type);
+    // console.debug('createInstance', type);
     const node = Node.create(props.label ?? '', type, props);
     return node;
   },
@@ -54,7 +54,7 @@ const hostConfig: HostConfig<
    * @required
    */
   createTextInstance(_text, _rootContainerInstance, _hostContext, _internalInstanceHandle) {
-    console.debug('createTextInstance');
+    // console.debug('createTextInstance');
     // return SpanNode({}, text) as SkNode;
     throw new Error('Text nodes are not supported yet');
   },
@@ -63,7 +63,7 @@ const hostConfig: HostConfig<
    * @required
    */
   appendInitialChild(parentInstance, child) {
-    console.debug('appendInitialChild');
+    // console.debug('appendInitialChild');
     parentInstance.addChild(child);
   },
 
@@ -72,7 +72,7 @@ const hostConfig: HostConfig<
    * @required
    */
   finalizeInitialChildren(parentInstance, _type, _props, _rootContainerInstance, _hostContext) {
-    console.debug('finalizeInitialChildren', parentInstance);
+    // console.debug('finalizeInitialChildren', parentInstance);
     return true;
   },
 
@@ -99,33 +99,33 @@ const hostConfig: HostConfig<
   },
 
   getRootHostContext: (_rootContainerInstance: Node) => {
-    console.debug('getRootHostContext');
+    // console.debug('getRootHostContext');
     return null;
   },
 
   getChildHostContext(_parentHostContext, _type, _rootContainerInstance) {
-    console.debug('getChildHostContext');
+    // console.debug('getChildHostContext');
     return _parentHostContext;
   },
 
   getPublicInstance(node: Instance) {
-    console.debug('getPublicInstance');
+    // console.debug('getPublicInstance');
     return node;
   },
 
   prepareForCommit(_containerInfo) {
-    console.debug('prepareForCommit');
+    // console.debug('prepareForCommit');
     return null;
   },
 
   resetAfterCommit(container) {
-    console.debug('resetAfterCommit');
+    // console.debug('resetAfterCommit');
     // TODO: this is not necessary in continuous rendering
     // container.redraw();
   },
 
   preparePortalMount: () => {
-    console.debug('preparePortalMount');
+    // console.debug('preparePortalMount');
   },
 
   scheduleTimeout: setTimeout,
@@ -134,17 +134,17 @@ const hostConfig: HostConfig<
 
   // optional
   appendChild(parent, child) {
-    console.debug('appendChild', parent, child);
+    // console.debug('appendChild', parent, child);
     parent.addChild(child);
   },
 
   appendChildToContainer(container, child) {
-    console.debug('appendChildToContainer', container, child);
+    // console.debug('appendChildToContainer', container, child);
     container.addChild(child);
   },
 
   insertBefore: (parent, child, before) => {
-    console.debug('insertBefore', parent, child, before);
+    // console.debug('insertBefore', parent, child, before);
     parent.insertChildBefore(before, child);
   },
 
@@ -153,26 +153,26 @@ const hostConfig: HostConfig<
   },
 
   removeChild: (parent, child) => {
-    console.debug('removeChild', parent, child);
+    // console.debug('removeChild', parent, child);
     parent.removeChild(child);
   },
 
   removeChildFromContainer: (parent, child) => {
-    console.debug('removeChildFromContainer', parent, child);
+    // console.debug('removeChildFromContainer', parent, child);
     parent.removeChild(child);
   },
 
   finalizeContainerChildren: () => {
-    console.debug('finalizeContainerChildren');
+    // console.debug('finalizeContainerChildren');
   },
 
   commitMount(instance, type, props, internalInstanceHandle) {
     // if finalizeInitialChildren = true
-    console.debug('commitMount');
+    // console.debug('commitMount');
   },
 
   commitUpdate(instance, _updatePayload, type, prevProps, nextProps, _internalHandle) {
-    console.debug('commitUpdate: ', type, JSON.stringify(_updatePayload));
+    // console.debug('commitUpdate: ', type, JSON.stringify(_updatePayload));
 
     instance.updateProps(_updatePayload);
 
@@ -189,7 +189,7 @@ const hostConfig: HostConfig<
   },
 
   clearContainer: (container) => {
-    console.error('clearContainer not implement');
+    // console.error('clearContainer not implement');
     // container.children.splice(0);
   },
   getCurrentEventPriority: (): number => DefaultEventPriority,
