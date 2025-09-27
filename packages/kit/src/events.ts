@@ -83,7 +83,6 @@ function handleBubbleEvent(name: string, body: MouseEvent | TouchEvent) {
     const node = STATE.nodeMap[body.targetId];
 
     if (!node) {
-      console.error(`Node not found: ${body.targetId}`);
       return;
     }
 
