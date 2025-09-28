@@ -45,16 +45,13 @@ pub struct QuickVM {
     timer_tasks: Arc<Mutex<Vec<Rc<TimerTask>>>>,
     instant: Instant,
     call_tasks: Arc<Mutex<VecDeque<(String, Vec<OwnedJsValue>, Sender<()>)>>>,
-    async_tasks: Arc<Mutex<VecDeque<Box<dyn FnOnce(&Self)>>>>,
+    async_tasks: Arc<Mutex<VecDeque<Box<dyn FnOnce(&Self) + Send>>>>,
     /// Promise resolvers registry - only accessed in QuickJS thread
     promise_resolvers: Arc<Mutex<HashMap<u64, PromiseResolvers>>>,
     /// Promise resolution task queue
     promise_tasks: Arc<Mutex<VecDeque<PromiseTask>>>,
     to_be_closed: bool,
 }
-
-unsafe impl Send for QuickVM {}
-unsafe impl Sync for QuickVM {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TimerTask {
@@ -201,7 +198,7 @@ impl QuickVM {
     }
 
     /// Execute a function in the context of the vm and in quickjs thread.
-    pub fn on_vm_thread(&self, f: impl FnOnce(&Self) + 'static) {
+    pub fn on_vm_thread(&self, f: impl FnOnce(&Self) + Send + 'static) {
         self.async_tasks.lock().unwrap().push_back(Box::new(f));
     }
 
