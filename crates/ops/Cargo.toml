@@ -1,7 +1,7 @@
 [package]
 authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "Operations inside Javascript runtime for Moyu."
-edition = "2021"
+edition = "2024"
 license = "MPL-2.0"
 name = "moyu_ops"
 repository = "https://github.com/DeepSpaceMill/moyu"
