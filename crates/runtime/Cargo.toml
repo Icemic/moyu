@@ -1,6 +1,6 @@
 [package]
 description = "Javascript runtime for Moyu based on QuickJS."
-edition = "2021"
+edition = "2024"
 license = "MPL-2.0"
 name = "moyu_runtime"
 repository = "https://github.com/DeepSpaceMill/moyu"
