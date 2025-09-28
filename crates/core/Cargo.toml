@@ -1,7 +1,7 @@
 [package]
 authors = ["Icemic <bingfeng.web@gmail.com>"]
 description = "Core implementation of Moyu game engine, and general 2D rendering library using WebGPU as well."
-edition = "2021"
+edition = "2024"
 license = "MPL-2.0"
 name = "moyu_core"
 repository = "https://github.com/DeepSpaceMill/moyu"
