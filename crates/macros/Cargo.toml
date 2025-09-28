@@ -5,7 +5,7 @@ edition = "2024"
 license = "MPL-2.0"
 name = "moyu_macros"
 repository = "https://github.com/DeepSpaceMill/moyu"
-version = "0.7.0"
+version = "0.8.0"
 
 [lib]
 proc-macro = true
