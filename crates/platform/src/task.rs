@@ -12,21 +12,19 @@ use crate::visible_hand::{InvisibleHand, VisibleHand};
 pub type JoinHandle<T> = tokio::task::JoinHandle<T>;
 
 #[cfg(native)]
-static mut HANDLE: InvisibleHand<Arc<Handle>> = InvisibleHand::new();
+static HANDLE: InvisibleHand<Arc<Handle>> = InvisibleHand::new();
 
 #[cfg(native)]
 pub(crate) fn setup_async_runtime() -> VisibleHand<Arc<Handle>> {
     let handle = Arc::new(tokio::runtime::Handle::current());
-    unsafe {
-        HANDLE.set(handle).expect("Failed to set handle.");
-        HANDLE.intervent()
-    }
+    HANDLE.set(handle).expect("Failed to set handle.");
+    HANDLE.intervent()
 }
 
 #[inline]
 #[cfg(native)]
 pub fn get_runtime_handle<'a>() -> &'a std::sync::Arc<Handle> {
-    unsafe { HANDLE.get() }
+    HANDLE.get()
 }
 
 #[inline]
