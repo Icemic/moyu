@@ -4,8 +4,8 @@ use moyu_pal::sync::{Mutex, RwLock};
 use moyu_pal::time::Instant;
 use moyu_resource::ResourceManager;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
@@ -312,9 +312,11 @@ impl Graphics {
         };
 
         let mut belt_encoder = {
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Belt Command Encoder"),
-            })
+            Some(
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Belt Command Encoder"),
+                }),
+            )
         };
 
         {
@@ -352,6 +354,8 @@ impl Graphics {
 
             render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
 
+            let mut count = 0;
+
             walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
                 let mut _child = child.write();
                 _child.base_mut().update(parent.base(), false);
@@ -363,12 +367,30 @@ impl Graphics {
                         &mut *_child,
                         &device,
                         &queue,
-                        &mut belt_encoder,
+                        belt_encoder.as_mut().unwrap(),
                         &mut staging_belt,
                         &upload_payload,
                     );
 
                     current_renderer.render(&device, &queue, &mut render_pass, &*_child);
+                }
+
+                count += 1;
+
+                if count > 100 {
+                    count = 0;
+
+                    staging_belt.finish();
+
+                    queue.submit(std::iter::once(belt_encoder.take().unwrap().finish()));
+
+                    belt_encoder = Some(device.create_command_encoder(
+                        &wgpu::CommandEncoderDescriptor {
+                            label: Some("Belt Command Encoder"),
+                        },
+                    ));
+
+                    staging_belt.recall();
                 }
 
                 false
@@ -437,7 +459,8 @@ impl Graphics {
         self.window.pre_present_notify();
 
         queue.submit(
-            std::iter::once(belt_encoder.finish()).chain(std::iter::once(encoder.finish())),
+            std::iter::once(belt_encoder.take().unwrap().finish())
+                .chain(std::iter::once(encoder.finish())),
         );
         output.present();
 

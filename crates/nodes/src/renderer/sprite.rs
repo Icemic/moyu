@@ -170,7 +170,7 @@ impl Renderer for SpriteRenderer {
         &mut self,
         node: &mut dyn Node,
         device: &Arc<Device>,
-        _: &Arc<Queue>,
+        queue: &Arc<Queue>,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
@@ -391,6 +391,7 @@ impl Renderer for SpriteRenderer {
                     node.vertex_buffer = Some(vertex_buffer);
                 } else {
                     let buf = bytemuck::cast_slice(&vertices);
+                    // queue.write_buffer(node.vertex_buffer.as_ref().unwrap(), 0, buf);
                     staging_belt
                         .write_buffer(
                             encoder,
