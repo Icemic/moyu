@@ -1,7 +1,7 @@
 use std::io::IsTerminal;
 
-use quickjs_rusty::console::Level;
 use quickjs_rusty::OwnedJsValue;
+use quickjs_rusty::console::Level;
 
 pub fn log_handler(level: Level, args: Vec<OwnedJsValue>) {
     let formatted_string = format_string(args);
@@ -20,7 +20,7 @@ fn format_string(args: Vec<OwnedJsValue>) -> std::string::String {
     let mut others = vec![];
     let mut i = 0;
     for arg in args {
-        let raw_string = if std::io::stdout().is_terminal() {
+        let raw_string = if std::io::stdout().is_terminal() && arg.is_object() {
             arg.to_json_string(0).unwrap()
         } else {
             arg.js_to_string().unwrap()
