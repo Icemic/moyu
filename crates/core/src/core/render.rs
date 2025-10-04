@@ -31,7 +31,7 @@ pub type AfterRenderHandler = Box<
 pub struct Graphics {
     pub(crate) window: Arc<Window>,
     pub(crate) instance: Instance,
-    pub(crate) surface: Arc<Surface<'static>>,
+    pub(crate) surface: Surface<'static>,
     pub(crate) device: Device,
     pub(crate) queue: Queue,
     pub(crate) config: Arc<Mutex<SurfaceConfiguration>>,
@@ -159,7 +159,7 @@ impl Graphics {
 
     /// Get surface of wgpu. This is useful when you need to do some low-level operations.
     /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn surface(&self) -> &Arc<Surface<'static>> {
+    pub fn surface(&self) -> &Surface<'static> {
         &self.surface
     }
 
@@ -269,13 +269,12 @@ impl Graphics {
             self.surface.configure(&self.device, &config);
         }
 
-        let surface = self.surface.clone();
         let device = self.device.clone();
         let queue = self.queue.clone();
 
         let mut staging_belt = self.staging_belt.lock();
 
-        let output = match surface.get_current_texture() {
+        let output = match self.surface.get_current_texture() {
             Ok(v) => v,
             // Reconfigure the surface if lost
             Err(wgpu::SurfaceError::Lost) => {
