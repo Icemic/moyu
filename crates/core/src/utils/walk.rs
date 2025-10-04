@@ -1,6 +1,4 @@
-use moyu_pal::sync::RwLock;
-use std::sync::Arc;
-
+use crate::core::NodeLock;
 use crate::traits::Node;
 
 /// walk through all node-like ones from top to bottom,
@@ -8,7 +6,7 @@ use crate::traits::Node;
 pub fn walk_nodes_top_bottom<T>(root_node: &dyn Node, func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Arc<RwLock<dyn Node>>, &dyn Node) -> bool,
+    T: FnMut(NodeLock, &dyn Node) -> bool,
 {
     let children = root_node.base().children();
     for child in children.iter() {
@@ -40,7 +38,7 @@ pub fn walk_nodes_bottom_top<T>(
 ) -> bool
 where
     // child, parent_node, parent_ids  -> should_end
-    T: FnMut(Arc<RwLock<dyn Node>>, &dyn Node, &[u32]) -> bool,
+    T: FnMut(NodeLock, &dyn Node, &[u32]) -> bool,
 {
     let children = root_node.base().children();
     for child in children.iter().rev() {

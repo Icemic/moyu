@@ -1,13 +1,11 @@
 use csscolorparser::Color;
-use moyu_pal::sync::RwLock;
 use log::warn;
-use std::sync::Arc;
 
 use crate::base::*;
+use crate::core::NodeLock;
 use crate::events::NodeEvent;
-use crate::traits::Node;
 use crate::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
-use crate::utils::convert::{from_js, JSValue};
+use crate::utils::convert::{JSValue, from_js};
 use crate::utils::dispatch_event::dispatch_event;
 
 pub static mut NODE_ID: u32 = 0;
@@ -55,7 +53,7 @@ pub struct NodeBase {
     /// transform matrix relative to global
     global_transform: Transform,
     /// children
-    children: Vec<Arc<RwLock<dyn Node>>>,
+    children: Vec<NodeLock>,
 }
 
 impl NodeBase {
@@ -294,7 +292,7 @@ impl NodeBase {
     pub fn global_transform(&self) -> &Transform {
         &self.global_transform
     }
-    pub fn children(&self) -> &Vec<Arc<RwLock<dyn Node>>> {
+    pub fn children(&self) -> &Vec<NodeLock> {
         &self.children
     }
 
@@ -382,7 +380,7 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn get_child(&self, index: usize) -> Option<Arc<RwLock<dyn Node>>> {
+    pub fn get_child(&self, index: usize) -> Option<NodeLock> {
         if let Some(child) = self.children.get(index) {
             return Some(child.clone());
         }
@@ -390,34 +388,32 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn add_child(&mut self, child: Arc<RwLock<dyn Node>>) {
+    pub fn add_child(&mut self, child: NodeLock) {
         self.children.push(child);
     }
 
     #[inline]
-    pub fn insert_child(&mut self, index: usize, child: Arc<RwLock<dyn Node>>) {
+    pub fn insert_child(&mut self, index: usize, child: NodeLock) {
         self.children.insert(index, child);
     }
 
     #[inline]
-    pub fn insert_child_before(
-        &mut self,
-        before_child: Arc<RwLock<dyn Node>>,
-        child: Arc<RwLock<dyn Node>>,
-    ) {
+    pub fn insert_child_before(&mut self, before_child: NodeLock, child: NodeLock) {
         let index = self.children.iter().position(|item| {
             let l = item.read();
             let r = before_child.read();
             *l == *r
         });
         if index.is_none() {
-            warn!("Cannot insert child before another one because the another child does not present in current children.");
+            warn!(
+                "Cannot insert child before another one because the another child does not present in current children."
+            );
         }
         self.children.insert(index.unwrap_or(0), child);
     }
 
     #[inline]
-    pub fn remove_child(&mut self, child: Arc<RwLock<dyn Node>>) -> Option<Arc<RwLock<dyn Node>>> {
+    pub fn remove_child(&mut self, child: NodeLock) -> Option<NodeLock> {
         if let Some(index) = self.children.iter().position(|item| {
             let l = item.read();
             let r = child.read();
@@ -429,7 +425,7 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn remove_child_at(&mut self, index: usize) -> Option<Arc<RwLock<dyn Node>>> {
+    pub fn remove_child_at(&mut self, index: usize) -> Option<NodeLock> {
         if index < self.children.len() {
             return Some(self.children.remove(index));
         }

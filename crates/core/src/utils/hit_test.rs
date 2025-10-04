@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
-use moyu_pal::sync::RwLock;
 use glam::Vec3;
 
+use crate::core::NodeLock;
 use crate::traits::{FocusablePayload, Node};
 
 use super::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
@@ -10,7 +8,7 @@ use super::walk::walk_nodes_bottom_top;
 
 #[derive(Debug)]
 pub struct HitTestTarget {
-    pub node: Arc<RwLock<dyn Node>>,
+    pub node: NodeLock,
     pub parent_ids: Vec<u32>,
 }
 
@@ -21,7 +19,7 @@ impl PartialEq for HitTestTarget {
 }
 
 pub fn hit_test<'a>(
-    root_node: &Arc<RwLock<dyn Node>>,
+    root_node: &NodeLock,
     global_logical_x: f32,
     global_logical_y: f32,
     upload_payload: &FocusablePayload,

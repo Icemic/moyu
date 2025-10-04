@@ -5,9 +5,9 @@ use log::{debug, warn};
 #[cfg(web)]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use moyu_core::core::{get_core, NodeMap, NodeRef};
+use moyu_core::core::{NodeLock, NodeMap, NodeRef, get_core};
 use moyu_core::nodes::Container;
-use moyu_core::traits::{Node, NodeBaseTrait};
+use moyu_core::traits::NodeBaseTrait;
 use moyu_core::utils::convert::JSValue;
 #[cfg(native)]
 use moyu_core::utils::convert::{from_js, to_js};
@@ -49,7 +49,7 @@ pub fn create_instance(
     let label = label.unwrap_or_default();
 
     let node_id;
-    let node: Arc<RwLock<dyn Node>>;
+    let node: NodeLock;
     match node_type.as_str() {
         "container" => {
             let n = Container::new(label);

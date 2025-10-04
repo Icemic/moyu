@@ -5,30 +5,31 @@ mod pointer_events;
 mod render;
 
 use arc_swap::{ArcSwap, ArcSwapOption};
-use dashmap::mapref::one::Ref;
 use dashmap::DashMap;
+use dashmap::mapref::one::Ref;
 use log::{debug, error};
-use moyu_pal::config::{get_engine_config, WindowState};
+use moyu_pal::config::{WindowState, get_engine_config};
 use moyu_pal::sync::{Mutex, RwLock};
 use moyu_pal::time::Instant;
 use render::Graphics;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use winit::dpi::{LogicalSize, Size};
 use winit::event_loop::EventLoop;
 use winit::keyboard::ModifiersState;
 use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
-use crate::state::{PointerState, MOUSE_IDENTIFIER};
+use crate::state::{MOUSE_IDENTIFIER, PointerState};
 use crate::surface::create_window;
 use crate::{nodes::Container, traits::*};
 
 pub use self::global::*;
 
-pub type NodeMap = DashMap<u32, Arc<RwLock<dyn Node>>>;
-pub type NodeRef<'a> = Ref<'a, u32, Arc<RwLock<dyn Node>>>;
+pub type NodeLock = Arc<RwLock<dyn Node>>;
+pub type NodeMap = DashMap<u32, NodeLock>;
+pub type NodeRef<'a> = Ref<'a, u32, NodeLock>;
 
 pub struct Core {
     pub(crate) window: Arc<Window>,
@@ -41,7 +42,7 @@ pub struct Core {
     /// timer from program start
     pub instant: Instant,
 
-    pub(crate) root_node: Arc<RwLock<dyn Node>>,
+    pub(crate) root_node: NodeLock,
     pub(crate) node_map: NodeMap,
     /// map for current pointer states, mouse event is stored in index -1 while touch events are stored in their identifier
     pub(crate) pointer_map: DashMap<i32, PointerState>,
@@ -254,14 +255,16 @@ impl Core {
 
         let graphics_thread = std::thread::Builder::new()
             .name("graphics".to_string())
-            .spawn(move || loop {
-                std::thread::park();
-                if let Err(err) = graphics.render() {
-                    log::error!(
-                        "Error occurs on rendering, terminate graphics thread: {:?}",
-                        err
-                    );
-                    break;
+            .spawn(move || {
+                loop {
+                    std::thread::park();
+                    if let Err(err) = graphics.render() {
+                        log::error!(
+                            "Error occurs on rendering, terminate graphics thread: {:?}",
+                            err
+                        );
+                        break;
+                    }
                 }
             })
             .expect("Failed to start graphics thread");
@@ -275,7 +278,7 @@ impl Core {
     }
 
     /// get root node
-    pub fn root_node(&self) -> &Arc<RwLock<dyn Node>> {
+    pub fn root_node(&self) -> &NodeLock {
         &self.root_node
     }
 
