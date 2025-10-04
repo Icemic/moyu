@@ -30,10 +30,10 @@ pub type AfterRenderHandler = Box<
 
 pub struct Graphics {
     pub(crate) window: Arc<Window>,
-    pub(crate) instance: Arc<Instance>,
+    pub(crate) instance: Instance,
     pub(crate) surface: Arc<Surface<'static>>,
-    pub(crate) device: Arc<Device>,
-    pub(crate) queue: Arc<Queue>,
+    pub(crate) device: Device,
+    pub(crate) queue: Queue,
     pub(crate) config: Arc<Mutex<SurfaceConfiguration>>,
 
     pub(crate) resource_manager: Arc<ResourceManager>,
@@ -141,19 +141,19 @@ impl Graphics {
 
     /// Get instance of wgpu. This is useful when you need to do some low-level operations.
     /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn instance(&self) -> &Arc<Instance> {
+    pub fn instance(&self) -> &Instance {
         &self.instance
     }
 
     /// Get device of wgpu. This is useful when you need to do some low-level operations.
     /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn device(&self) -> &Arc<Device> {
+    pub fn device(&self) -> &Device {
         &self.device
     }
 
     /// Get queue of wgpu. This is useful when you need to do some low-level operations.
     /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn queue(&self) -> &Arc<Queue> {
+    pub fn queue(&self) -> &Queue {
         &self.queue
     }
 

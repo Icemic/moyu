@@ -11,13 +11,13 @@ use crate::types::*;
 
 #[derive(Debug)]
 pub struct ResourceManager {
-    device: Arc<Device>,
-    queue: Arc<Queue>,
+    device: Device,
+    queue: Queue,
     assets_map: Arc<DashMap<Arc<AssetId>, Arc<Asset>>>,
 }
 
 impl ResourceManager {
-    pub fn new(device: Arc<Device>, queue: Arc<Queue>) -> Self {
+    pub fn new(device: Device, queue: Queue) -> Self {
         let assets_map = Arc::new(DashMap::new());
 
         {

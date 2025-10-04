@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use wgpu::util::StagingBelt;
 use wgpu::{BindGroupLayout, CommandEncoder, Device, Queue, RenderPass, RenderPipeline};
 
@@ -16,17 +14,11 @@ pub trait Renderer {
     fn update(
         &mut self,
         node: &mut dyn Node,
-        device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        device: &Device,
+        queue: &Queue,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
     );
-    fn render(
-        &self,
-        device: &Arc<Device>,
-        queue: &Arc<Queue>,
-        render_pass: &mut RenderPass,
-        node: &dyn Node,
-    );
+    fn render(&self, device: &Device, queue: &Queue, render_pass: &mut RenderPass, node: &dyn Node);
 }

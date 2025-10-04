@@ -35,7 +35,7 @@ pub struct YUVSpriteRenderer {
 }
 
 impl YUVSpriteRenderer {
-    pub fn new(device: &Arc<Device>, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
                 BindGroupLayoutEntry {
@@ -273,8 +273,8 @@ impl Renderer for YUVSpriteRenderer {
     fn update(
         &mut self,
         node: &mut dyn Node,
-        device: &Arc<Device>,
-        _: &Arc<Queue>,
+        device: &Device,
+        _: &Queue,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
@@ -334,8 +334,8 @@ impl Renderer for YUVSpriteRenderer {
 
     fn render<'a, 'b: 'a>(
         &'b self,
-        _: &Arc<Device>,
-        queue: &Arc<Queue>,
+        _: &Device,
+        queue: &Queue,
         render_pass: &mut RenderPass<'a>,
         node: &'b dyn Node,
     ) {

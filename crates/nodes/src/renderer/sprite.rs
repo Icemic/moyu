@@ -29,7 +29,7 @@ pub struct SpriteRenderer {
 }
 
 impl SpriteRenderer {
-    pub fn new(device: &Arc<Device>, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
                 BindGroupLayoutEntry {
@@ -169,8 +169,8 @@ impl Renderer for SpriteRenderer {
     fn update(
         &mut self,
         node: &mut dyn Node,
-        device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        device: &Device,
+        _: &Queue,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
@@ -391,7 +391,6 @@ impl Renderer for SpriteRenderer {
                     node.vertex_buffer = Some(vertex_buffer);
                 } else {
                     let buf = bytemuck::cast_slice(&vertices);
-                    // queue.write_buffer(node.vertex_buffer.as_ref().unwrap(), 0, buf);
                     staging_belt
                         .write_buffer(
                             encoder,
@@ -422,13 +421,7 @@ impl Renderer for SpriteRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn render(
-        &self,
-        _: &Arc<Device>,
-        _: &Arc<Queue>,
-        render_pass: &mut RenderPass,
-        node: &dyn Node,
-    ) {
+    fn render(&self, _: &Device, _: &Queue, render_pass: &mut RenderPass, node: &dyn Node) {
         if !node.base().visible() {
             return;
         }
