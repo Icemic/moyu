@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use wgpu::util::StagingBelt;
 use wgpu::*;
 
@@ -10,7 +9,7 @@ use crate::traits::{Node, Renderer, RendererUpdatePayload};
 pub struct VoidRenderer {}
 
 impl VoidRenderer {
-    pub fn new(_: &Arc<Device>, _: &SurfaceConfiguration) -> Self {
+    pub fn new(_: &Device, _: &SurfaceConfiguration) -> Self {
         Self {}
     }
 }
@@ -31,8 +30,8 @@ impl Renderer for VoidRenderer {
     fn update(
         &mut self,
         _: &mut dyn Node,
-        _: &Arc<Device>,
-        _: &Arc<Queue>,
+        _: &Device,
+        _: &Queue,
         _: &mut CommandEncoder,
         _: &mut StagingBelt,
         _: &RendererUpdatePayload,
@@ -43,5 +42,5 @@ impl Renderer for VoidRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn render(&self, _: &Arc<Device>, _: &Arc<Queue>, _: &mut RenderPass, _: &dyn Node) {}
+    fn render(&self, _: &Device, _: &Queue, _: &mut RenderPass, _: &dyn Node) {}
 }

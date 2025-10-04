@@ -1,18 +1,18 @@
 use anyhow::Result;
-use moyu_macros::node;
-use moyu_pal::sync::{Mutex, RwLock};
+use ffmpeg_rs::Packet;
 use ffmpeg_rs::decoder::Check;
 use ffmpeg_rs::ffi::{
     av_malloc, avformat_alloc_context, avformat_close_input, avformat_find_stream_info,
     avformat_open_input, avio_alloc_context,
 };
-use ffmpeg_rs::format::context::Input;
 use ffmpeg_rs::format::Pixel;
+use ffmpeg_rs::format::context::Input;
 use ffmpeg_rs::media::Type;
 use ffmpeg_rs::software::scaling::{context::Context, flag::Flags};
 use ffmpeg_rs::util::frame::video::Video as FFmpegVideo;
-use ffmpeg_rs::Packet;
 use log::{debug, error, warn};
+use moyu_macros::node;
+use moyu_pal::sync::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use std::ffi::{c_int, c_void};
@@ -28,11 +28,11 @@ use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
 
 use crate::traits::{
-    Focusable, Node, NodeType, Renderable, RendererUpdatePayload, UpdateProps, NODE_ID,
+    Focusable, NODE_ID, Node, NodeType, Renderable, RendererUpdatePayload, UpdateProps,
 };
 use crate::types::{Point, SurfaceSize, Transform, Vertex};
 use crate::utils::calculate::calculate_rect_vertices;
-use crate::utils::convert::{from_js, JSValue};
+use crate::utils::convert::{JSValue, from_js};
 
 use super::{Texture, TextureStatus};
 
@@ -302,8 +302,8 @@ impl NodeType for Video {
 impl Renderable for Video {
     fn update(
         &mut self,
-        device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        device: &Device,
+        queue: &Queue,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         bind_group_layout: &BindGroupLayout,

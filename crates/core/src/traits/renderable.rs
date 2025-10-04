@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use moyu_resource::ResourceManager;
-use wgpu::{util::StagingBelt, BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue};
+use wgpu::{BindGroup, BindGroupLayout, Buffer, CommandEncoder, Device, Queue, util::StagingBelt};
 
 use super::Node;
 
@@ -12,8 +12,8 @@ where
 {
     fn update(
         &mut self,
-        arc_device: &Arc<Device>,
-        arc_queue: &Arc<Queue>,
+        arc_device: &Device,
+        arc_queue: &Queue,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         bind_group_layout: &BindGroupLayout,

@@ -1,5 +1,5 @@
 use log::{info, warn};
-use moyu_pal::config::{get_engine_config, RenderingBackend};
+use moyu_pal::config::{RenderingBackend, get_engine_config};
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::Size;
@@ -82,10 +82,10 @@ pub fn create_window<T>(
 pub async fn create_wgpu_surface(
     window: &Arc<Window>,
 ) -> (
-    Arc<Instance>,
+    Instance,
     Arc<Surface<'static>>,
-    Arc<Device>,
-    Arc<Queue>,
+    Device,
+    Queue,
     SurfaceConfiguration,
 ) {
     // create wgpu surface
@@ -95,10 +95,10 @@ pub async fn create_wgpu_surface(
     #[cfg(web)]
     let (instance, surface, device, queue, config) =
         create_surface_inner(window, &PhysicalSize::new(1280, 720)).await;
-    let instance = Arc::new(instance);
+    let instance = instance;
     let surface = Arc::new(surface);
-    let device = Arc::new(device);
-    let queue = Arc::new(queue);
+    let device = device;
+    let queue = queue;
 
     (instance, surface, device, queue, config)
 }

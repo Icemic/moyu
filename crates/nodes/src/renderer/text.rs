@@ -1,15 +1,15 @@
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use glam::Vec3;
+use huozi::Huozi;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
-use huozi::Huozi;
 use log::{error, info};
 use moyu_pal::config::{entry_dir, get_engine_config};
 use moyu_pal::sync::Mutex;
-use wgpu::util::StagingBelt;
 use wgpu::Texture;
+use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
 use moyu_core::base::MVPMatrix;
@@ -35,7 +35,7 @@ pub struct TextRenderer {
 }
 
 impl TextRenderer {
-    pub fn new(device: &Arc<Device>, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
         let size = wgpu::Extent3d {
             width: TEXTURE_SIZE,
             height: TEXTURE_SIZE,
@@ -212,8 +212,8 @@ impl TextRenderer {
 
     fn update_vertices(
         &self,
-        device: &Arc<Device>,
-        _: &Arc<Queue>,
+        device: &Device,
+        _: &Queue,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         node: &mut Text,
@@ -364,8 +364,8 @@ impl Renderer for TextRenderer {
     fn update(
         &mut self,
         node: &mut dyn Node,
-        device: &Arc<Device>,
-        queue: &Arc<Queue>,
+        device: &Device,
+        queue: &Queue,
         encoder: &mut CommandEncoder,
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
@@ -555,13 +555,7 @@ impl Renderer for TextRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn render(
-        &self,
-        _: &Arc<Device>,
-        _: &Arc<Queue>,
-        render_pass: &mut RenderPass,
-        node: &dyn Node,
-    ) {
+    fn render(&self, _: &Device, _: &Queue, render_pass: &mut RenderPass, node: &dyn Node) {
         if !node.base().visible() {
             return;
         }
