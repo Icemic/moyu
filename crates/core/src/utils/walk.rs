@@ -5,10 +5,10 @@ use crate::traits::Node;
 
 /// walk through all node-like ones from top to bottom,
 /// due that the depth should not big, recursive is acceptable
-pub fn walk_nodes_top_bottom<T>(root_node: &(dyn Node), func: &mut T) -> bool
+pub fn walk_nodes_top_bottom<T>(root_node: &dyn Node, func: &mut T) -> bool
 where
     // child, arr, parent_node  -> should_end
-    T: FnMut(Arc<RwLock<dyn Node>>, &(dyn Node)) -> bool,
+    T: FnMut(Arc<RwLock<dyn Node>>, &dyn Node) -> bool,
 {
     let children = root_node.base().children();
     for child in children.iter() {
@@ -33,14 +33,14 @@ where
 /// walk through all node-like ones from bottom to top,
 /// due that the depth should not big, recursive is acceptable
 pub fn walk_nodes_bottom_top<T>(
-    root_node: &(dyn Node),
+    root_node: &dyn Node,
     func: &mut T,
     current_parent_ids: &[u32],
     only_interactive: bool,
 ) -> bool
 where
     // child, parent_node, parent_ids  -> should_end
-    T: FnMut(Arc<RwLock<dyn Node>>, &(dyn Node), &[u32]) -> bool,
+    T: FnMut(Arc<RwLock<dyn Node>>, &dyn Node, &[u32]) -> bool,
 {
     let children = root_node.base().children();
     for child in children.iter().rev() {
