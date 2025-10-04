@@ -83,24 +83,19 @@ pub async fn create_wgpu_surface(
     window: &Arc<Window>,
 ) -> (
     Instance,
-    Arc<Surface<'static>>,
+    Surface<'static>,
     Device,
     Queue,
     SurfaceConfiguration,
 ) {
-    // create wgpu surface
     #[cfg(native)]
-    let (instance, surface, device, queue, config) =
-        create_surface_inner(window, &window.inner_size()).await;
+    {
+        create_surface_inner(window, &window.inner_size()).await
+    }
     #[cfg(web)]
-    let (instance, surface, device, queue, config) =
-        create_surface_inner(window, &PhysicalSize::new(1280, 720)).await;
-    let instance = instance;
-    let surface = Arc::new(surface);
-    let device = device;
-    let queue = queue;
-
-    (instance, surface, device, queue, config)
+    {
+        create_surface_inner(window, &PhysicalSize::new(1280, 720)).await
+    }
 }
 
 async fn create_surface_inner(
