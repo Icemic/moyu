@@ -1,6 +1,6 @@
 use log::error;
 use moyu_pal::config::get_engine_config;
-use moyu_pal::sync::{Mutex, RwLock};
+use moyu_pal::sync::Mutex;
 use moyu_pal::time::Instant;
 use moyu_resource::ResourceManager;
 use std::collections::HashMap;
@@ -11,6 +11,7 @@ use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
 
 use crate::base::*;
+use crate::core::NodeLock;
 use crate::surface::create_wgpu_surface;
 use crate::traits::*;
 use crate::utils::fps_meter::FpsMeter;
@@ -43,7 +44,7 @@ pub struct Graphics {
     // render interrupt handler
     pub(crate) after_render_handler: Arc<Mutex<Option<AfterRenderHandler>>>,
 
-    root_node: Arc<RwLock<dyn Node>>,
+    root_node: NodeLock,
 
     staging_belt: Arc<Mutex<StagingBelt>>,
     mvp_buffer: wgpu::Buffer,
@@ -68,7 +69,7 @@ impl Graphics {
         window: &Arc<Window>,
         surface_size: &SurfaceSize,
         stage_size: &SurfaceSize,
-        root_node: Arc<RwLock<dyn Node>>,
+        root_node: NodeLock,
     ) -> Self {
         let (instance, surface, device, queue, config) = create_wgpu_surface(window).await;
 
@@ -248,7 +249,7 @@ impl Graphics {
 
     pub fn render(
         &self,
-        // root_node: &Arc<RwLock<dyn Node>>,
+        // root_node: &NodeLock,
         // resource_manager: &Arc<ResourceManager>,
     ) -> Result<(), wgpu::SurfaceError> {
         // fps
