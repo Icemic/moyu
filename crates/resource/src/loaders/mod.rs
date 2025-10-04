@@ -1,3 +1,3 @@
 mod texture;
 
-pub use texture::*;
+pub(crate) use texture::*;
