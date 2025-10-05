@@ -4,7 +4,6 @@ use log::warn;
 use crate::base::*;
 use crate::core::NodeLock;
 use crate::events::NodeEvent;
-use crate::utils::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use crate::utils::convert::{JSValue, from_js};
 use crate::utils::dispatch_event::dispatch_event;
 
@@ -464,10 +463,6 @@ impl NodeBase {
             let d = (rotation - skew_x).cos() * scale_y;
             let tx = x - ((pivot_x * a) + (pivot_y * c)) + anchor_x;
             let ty = y - ((pivot_x * b) + (pivot_y * d)) + anchor_y;
-
-            // use logical size to calculate transform matrix, so that the transform matrix will not be affected by scale ratio
-            let tx = tx / VIEWPORT_WIDTH;
-            let ty = ty / VIEWPORT_HEIGHT;
 
             self.transform.x_axis.x = a;
             self.transform.x_axis.y = b;
