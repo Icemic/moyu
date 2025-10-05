@@ -1,4 +1,4 @@
-use glam::Vec3;
+use glam::vec3a;
 
 use crate::core::NodeLock;
 use crate::traits::{FocusablePayload, Node};
@@ -70,7 +70,7 @@ pub fn get_local_logical_position(
         .base()
         .global_transform()
         .inverse()
-        .transform_point3(Vec3::new(global_logical_x, global_logical_y, 1.0));
+        .transform_point3a(vec3a(global_logical_x, global_logical_y, 1.0));
 
     (p.x, p.y)
 }
