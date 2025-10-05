@@ -11,7 +11,7 @@ use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
 
 use crate::base::*;
-use crate::core::NodeLock;
+use crate::core::NodeMap;
 use crate::surface::create_wgpu_surface;
 use crate::traits::*;
 use crate::utils::fps_meter::FpsMeter;
@@ -44,7 +44,7 @@ pub struct Graphics {
     // render interrupt handler
     pub(crate) after_render_handler: Arc<Mutex<Option<AfterRenderHandler>>>,
 
-    root_node: NodeLock,
+    node_map: NodeMap,
 
     staging_belt: Arc<Mutex<StagingBelt>>,
     mvp_buffer: wgpu::Buffer,
@@ -69,7 +69,7 @@ impl Graphics {
         window: &Arc<Window>,
         surface_size: &SurfaceSize,
         stage_size: &SurfaceSize,
-        root_node: NodeLock,
+        node_map: NodeMap,
     ) -> Self {
         let (instance, surface, device, queue, config) = create_wgpu_surface(window).await;
 
@@ -114,7 +114,7 @@ impl Graphics {
             resource_manager: Arc::new(resource_manager),
             renderers,
             after_render_handler,
-            root_node,
+            node_map,
             staging_belt,
             mvp_buffer,
             mvp_bind_group,
@@ -320,7 +320,8 @@ impl Graphics {
         };
 
         {
-            let root_node = self.root_node.read();
+            let root_node = self.node_map.get(&0).unwrap();
+            let root_node = root_node.read();
 
             let timestamp = self.instant.elapsed().as_secs_f64();
 

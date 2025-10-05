@@ -6,7 +6,7 @@ use winit::window::{CursorIcon, Window};
 use crate::base::*;
 use crate::core::FocusablePayload;
 use crate::events::{MouseEvent, MouseEventKind, TouchEvent, TouchEventKind};
-use crate::state::{DeviceType, PointerLocation, PointerState, MOUSE_IDENTIFIER};
+use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerLocation, PointerState};
 use crate::utils::dispatch_event::dispatch_event;
 use crate::utils::hit_test::{get_local_logical_position, hit_test};
 
@@ -291,7 +291,7 @@ impl Core {
         if refresh_hover_node {
             // get node under pointer
             if let Some(node) = hit_test(
-                &self.root_node,
+                &self.root_node(),
                 pointer_state.location.client_x as f32,
                 pointer_state.location.client_y as f32,
                 &upload_payload,
