@@ -228,7 +228,7 @@ impl Core {
             &self.window,
             &self.surface_size.read(),
             &self.stage_size.read(),
-            self.root_node.clone(),
+            self.node_map.clone(),
         )
         .await;
 
