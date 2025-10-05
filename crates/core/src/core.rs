@@ -28,7 +28,7 @@ use crate::{nodes::Container, traits::*};
 pub use self::global::*;
 
 pub type NodeLock = Arc<RwLock<dyn Node>>;
-pub type NodeMap = DashMap<u32, NodeLock>;
+pub type NodeMap = Arc<DashMap<u32, NodeLock>>;
 pub type NodeRef<'a> = Ref<'a, u32, NodeLock>;
 
 pub struct Core {
@@ -42,7 +42,6 @@ pub struct Core {
     /// timer from program start
     pub instant: Instant,
 
-    pub(crate) root_node: NodeLock,
     pub(crate) node_map: NodeMap,
     /// map for current pointer states, mouse event is stored in index -1 while touch events are stored in their identifier
     pub(crate) pointer_map: DashMap<i32, PointerState>,
@@ -105,7 +104,7 @@ impl Core {
         let root_node = Arc::new(RwLock::new(root_node));
 
         let node_map: NodeMap = Default::default();
-        node_map.insert(0, root_node.clone());
+        node_map.insert(0, root_node);
 
         let pointer_map: DashMap<i32, PointerState> = Default::default();
         // add mouse pointer which is always there
@@ -121,7 +120,6 @@ impl Core {
 
             instant: Instant::now(),
 
-            root_node,
             node_map,
             pointer_map,
 
@@ -247,7 +245,7 @@ impl Core {
             &self.window,
             &self.surface_size.read(),
             &self.stage_size.read(),
-            self.root_node.clone(),
+            self.node_map.clone(),
         ));
 
         let graphics = Arc::new(graphics);
@@ -278,8 +276,8 @@ impl Core {
     }
 
     /// get root node
-    pub fn root_node(&self) -> &NodeLock {
-        &self.root_node
+    pub fn root_node<'a>(&'a self) -> NodeRef<'a> {
+        self.node_map.get(&0).unwrap()
     }
 
     pub fn graphics(&self) -> Option<Arc<Graphics>> {

@@ -54,7 +54,8 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
 
     // add to root node
     {
-        let mut root = core.root_node().write();
+        let root = core.root_node();
+        let mut root = root.write();
         root.base_mut().add_child(node_bg.clone());
         root.base_mut().add_child(node.clone());
     }
@@ -80,7 +81,8 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
 
     // remove splash screen
     {
-        let mut root = core.root_node().write();
+        let root = core.root_node();
+        let mut root = root.write();
         root.base_mut().remove_child(node);
         root.base_mut().remove_child(node_bg);
     }
