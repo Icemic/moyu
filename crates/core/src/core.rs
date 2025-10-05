@@ -63,9 +63,6 @@ pub struct Core {
     pub(crate) stage_transform: Arc<RwLock<(f32, f32, f32)>>,
 }
 
-unsafe impl Send for Core {}
-unsafe impl Sync for Core {}
-
 impl Core {
     pub fn new<T>(event_loop: &EventLoop<T>, #[cfg(web)] element_id: &str) -> Self {
         let env = get_engine_config();
