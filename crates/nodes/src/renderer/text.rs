@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use glam::Vec3;
+use glam::vec3a;
 use huozi::Huozi;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
@@ -272,8 +272,7 @@ impl TextRenderer {
         for (i, vertex) in vertices.iter_mut().enumerate() {
             // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
             // y axis is inverted, so we need to invert it back, apply transform and invert it again
-            let p =
-                transform.transform_point3(Vec3::new(vertex.position[0], vertex.position[1], 1.0));
+            let p = transform.transform_point3a(vec3a(vertex.position[0], vertex.position[1], 1.0));
 
             vertex.position[0] = p.x;
             vertex.position[1] = p.y;
