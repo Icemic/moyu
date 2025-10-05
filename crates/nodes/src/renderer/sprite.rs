@@ -8,7 +8,7 @@ use moyu_core::base::*;
 use moyu_core::nodes::Video;
 use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use moyu_core::utils::calculate::calculate_rect_vertices;
-use moyu_core::utils::constants::{NINESLICE_INDICES, VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
+use moyu_core::utils::constants::NINESLICE_INDICES;
 use moyu_core::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
 use moyu_resource::types::{Asset, AssetId, AssetKind, Texture, TextureStatus};
 
@@ -221,15 +221,12 @@ impl Renderer for SpriteRenderer {
             let (tex_width, tex_height) = texture.size();
             let (tex_width, tex_height) = (tex_width as f32, tex_height as f32);
 
-            let width = tex_width / VIEWPORT_WIDTH;
-            let height = tex_height / VIEWPORT_HEIGHT;
-
             if node.base_mut().pop_update_vertices() {
                 let vertices = match node.mode {
                     SpriteMode::Normal => calculate_rect_vertices(
                         node,
-                        width,
-                        height,
+                        tex_width,
+                        tex_height,
                         &[0., 0.],
                         &node.area,
                         &[1., 1.],

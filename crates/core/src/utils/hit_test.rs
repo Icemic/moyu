@@ -3,7 +3,6 @@ use glam::Vec3;
 use crate::core::NodeLock;
 use crate::traits::{FocusablePayload, Node};
 
-use super::constants::{VIEWPORT_HEIGHT, VIEWPORT_WIDTH};
 use super::walk::walk_nodes_bottom_top;
 
 #[derive(Debug)]
@@ -71,11 +70,7 @@ pub fn get_local_logical_position(
         .base()
         .global_transform()
         .inverse()
-        .transform_point3(Vec3::new(
-            global_logical_x / VIEWPORT_WIDTH,
-            global_logical_y / VIEWPORT_HEIGHT,
-            1.0,
-        ));
+        .transform_point3(Vec3::new(global_logical_x, global_logical_y, 1.0));
 
-    (p.x * VIEWPORT_WIDTH, p.y * VIEWPORT_HEIGHT)
+    (p.x, p.y)
 }
