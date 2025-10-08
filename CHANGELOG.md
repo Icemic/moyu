@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Avoid using `static mut` for global variables to avoid undefined behavior.
 - Update edition to 2024 on all crates.
 - Split the submission of staging belt encoders to improve performance.
+- Support opus audio format on all platforms, including wasm32.
 
 ## [0.8.0] - 2025-09-28
 
