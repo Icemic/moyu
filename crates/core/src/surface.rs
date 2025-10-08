@@ -124,6 +124,7 @@ async fn create_surface_inner(
         backend_options: wgpu::BackendOptions {
             dx12: wgpu::Dx12BackendOptions {
                 shader_compiler: wgpu::Dx12Compiler::Fxc,
+                ..Default::default()
             },
             ..Default::default()
         },
@@ -159,6 +160,7 @@ async fn create_surface_inner(
         .request_device(&wgpu::DeviceDescriptor {
             required_features: adapter.features(),
             required_limits,
+            experimental_features: unsafe { wgpu::ExperimentalFeatures::enabled() },
             label: None,
             memory_hints: wgpu::MemoryHints::Performance,
             trace: wgpu::Trace::Off,
