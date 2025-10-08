@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
-use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
+use kira::sound::static_sound::StaticSoundSettings;
 use kira::sound::{EndPosition, PlaybackPosition, Region};
 use kira::{AudioManagerSettings, Decibels, DefaultBackend, Panning, StartTime, Tweenable};
 use log::{debug, warn};
@@ -13,12 +13,13 @@ use serde::{Deserialize, Serialize};
 use moyu_core::traits::Command;
 use moyu_core::traits::Plugin;
 use moyu_core::traits::PluginBaseTrait;
-use moyu_core::utils::convert::{create_promise, from_js, JSValue};
+use moyu_core::utils::convert::{JSValue, create_promise, from_js};
 use moyu_macros::Plugin;
 use moyu_pal::config::entry_dir;
 use moyu_pal::sync::Mutex;
 
 use crate::audio::{Audio, AudioLoadingState};
+use crate::kira_static_data::from_boxed_media_source;
 
 /// Settings for audio playback, including delay, start position, volume, etc.
 #[derive(Debug, Serialize, Deserialize)]
@@ -118,7 +119,7 @@ impl AudioManager {
                 }
             };
 
-            let sound_data = match StaticSoundData::from_cursor(file) {
+            let sound_data = match from_boxed_media_source(Box::new(file)) {
                 Ok(data) => data,
                 Err(e) => {
                     log::error!("Failed to create sound data: {}", e);
