@@ -2197,7 +2197,6 @@ dependencies = [
  "opus",
  "serde",
  "symphonia",
- "symphonia-core",
 ]
 
 [[package]]

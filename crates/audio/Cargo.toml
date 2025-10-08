@@ -16,7 +16,6 @@ web = []
 kira = "0.10"
 lazy_static = "1.5"
 symphonia = {version = "0.5", default-features = false}
-symphonia-core = {version = "0.5", default-features = false}
 
 anyhow = {workspace = true}
 log = {workspace = true}
