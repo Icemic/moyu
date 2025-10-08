@@ -295,6 +295,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
+name = "audiopus_sys"
+version = "0.2.1"
+source = "git+https://github.com/Icemic/audiopus_sys?branch=dev#5be8a6af796dd90e83d9b18e8f19492e53bd3445"
+dependencies = [
+ "cmake",
+ "log",
+ "pkg-config",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -619,6 +629,15 @@ dependencies = [
  "glob",
  "libc",
  "libloading",
+]
+
+[[package]]
+name = "cmake"
+version = "0.1.54"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e7caa3f9de89ddbe2c607f4101924c5abec803763ae9534e4f4d7d8f84aa81f0"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -2168,11 +2187,15 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "kira",
+ "lazy_static",
  "log",
  "moyu_core",
  "moyu_macros",
  "moyu_pal",
+ "opus",
  "serde",
+ "symphonia",
+ "symphonia-core",
 ]
 
 [[package]]
@@ -2795,6 +2818,14 @@ name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
+
+[[package]]
+name = "opus"
+version = "0.3.0"
+source = "git+https://github.com/Icemic/opus-rs?branch=dev#516417bdecfd2f7698f188d9561f2eb9b2eb04c9"
+dependencies = [
+ "audiopus_sys",
+]
 
 [[package]]
 name = "orbclient"

@@ -38,6 +38,8 @@ web-sys = "0.3"
 wgpu = {version = "26.0", features = ["fragile-send-sync-non-atomic-wasm", "webgl"]}
 winit = "0.29"
 
+opus = {version = "0.3", git = "https://github.com/Icemic/opus-rs", branch = "dev"}
+
 moyu_audio = {path = "crates/audio"}
 moyu_core = {path = "crates/core"}
 moyu_gamepad = {path = "crates/gamepad"}
