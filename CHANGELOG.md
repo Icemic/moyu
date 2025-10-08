@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Avoid using `static mut` for global variables to avoid undefined behavior.
 - Update edition to 2024 on all crates.
 - Upgrade `wgpu` to 27.x.
+- Upgrade `quickjs-rusty` to 0.10 which fixes a number conversion issue.
 
 ### Performance
 
