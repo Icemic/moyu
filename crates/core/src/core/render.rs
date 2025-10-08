@@ -187,7 +187,7 @@ impl Graphics {
             buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
                 let _ = tx.send(result);
             });
-            if let Err(err) = self.device.poll(wgpu::PollType::Wait) {
+            if let Err(err) = self.device.poll(wgpu::PollType::wait_indefinitely()) {
                 log::warn!("Failed to poll device for snapshot: {}", err);
                 return None;
             }
