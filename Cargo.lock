@@ -297,9 +297,11 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "audiopus_sys"
 version = "0.2.1"
-source = "git+https://github.com/Icemic/audiopus_sys?branch=dev#5be8a6af796dd90e83d9b18e8f19492e53bd3445"
+source = "git+https://github.com/Icemic/audiopus_sys?branch=dev#0db0a1fbfeee79d45f9a3d6b4b4a22659a98997c"
 dependencies = [
+ "cc",
  "cmake",
+ "libm",
  "log",
  "pkg-config",
 ]
