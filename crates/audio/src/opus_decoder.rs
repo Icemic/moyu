@@ -1,10 +1,10 @@
-use symphonia_core::audio::AsAudioBufferRef;
-use symphonia_core::audio::AudioBuffer;
-use symphonia_core::audio::Layout;
-use symphonia_core::audio::Signal;
-use symphonia_core::audio::SignalSpec;
-use symphonia_core::codecs::*;
-use symphonia_core::support_codec;
+use symphonia::core::audio::AsAudioBufferRef;
+use symphonia::core::audio::AudioBuffer;
+use symphonia::core::audio::Layout;
+use symphonia::core::audio::Signal;
+use symphonia::core::audio::SignalSpec;
+use symphonia::core::codecs::*;
+use symphonia::core::support_codec;
 
 const DEFAULT_FRAME_SIZE: usize = 960; // 20ms at 48kHz
 
@@ -25,7 +25,7 @@ impl symphonia::core::codecs::Decoder for OpusDecoder {
     fn try_new(
         params: &CodecParameters,
         _options: &DecoderOptions,
-    ) -> symphonia_core::errors::Result<Self>
+    ) -> symphonia::core::errors::Result<Self>
     where
         Self: Sized,
     {
@@ -102,7 +102,7 @@ impl symphonia::core::codecs::Decoder for OpusDecoder {
         &self.params
     }
 
-    fn last_decoded(&self) -> symphonia_core::audio::AudioBufferRef<'_> {
+    fn last_decoded(&self) -> symphonia::core::audio::AudioBufferRef<'_> {
         self.buffer.as_audio_buffer_ref()
     }
 

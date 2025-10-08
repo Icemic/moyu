@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use symphonia::default::register_enabled_codecs;
-use symphonia_core::codecs::CodecRegistry;
+use symphonia::core::codecs::CodecRegistry;
 
 use crate::opus_decoder::OpusDecoder;
 
