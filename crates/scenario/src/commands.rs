@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use moyu_core::traits::{Command, PluginEventSource};
-use moyu_core::utils::convert::{from_js, to_js, JSValue};
+use moyu_core::utils::convert::{JSValue, from_js, to_js};
 use serde::{Deserialize, Serialize};
 use sixu::format::Literal;
 
@@ -74,6 +74,7 @@ enum ScenarioCommand {
     /// save the current game session to disk
     SaveGame {
         name: String,
+        extra: Option<serde_json::Value>,
     },
     /// load a saved game session from disk
     LoadGame {
@@ -218,8 +219,8 @@ impl Command for ScenarioPlugin {
                 }
                 return self.save_global_data_to_file().map(Some);
             }
-            ScenarioCommand::SaveGame { name } => {
-                return self.save_game_data_to_file(&name).map(Some);
+            ScenarioCommand::SaveGame { name, extra } => {
+                return self.save_game_data_to_file(&name, extra).map(Some);
             }
             ScenarioCommand::LoadGame { name, overwrite } => {
                 if !overwrite && !self.runtime.lock().context().stack().is_empty() {
