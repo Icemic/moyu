@@ -11,15 +11,15 @@ use moyu_core::core::get_core;
 use moyu_core::plugins::SystemPlugin;
 use moyu_core::traits::PluginBaseTrait;
 use moyu_core::traits::{Command, Plugin, PluginEventSource};
-use moyu_core::utils::convert::{create_promise, to_js, JSValue};
+use moyu_core::utils::convert::{JSValue, create_promise, to_js};
 use moyu_macros::Plugin;
 use moyu_pal::config::entry_dir;
 use moyu_pal::fs::{
     read_from_appdata, readdir_from_appdata, remove_from_appdata, write_to_appdata,
 };
-use moyu_pal::sync::mpsc::error::TryRecvError;
-use moyu_pal::sync::mpsc::Receiver;
 use moyu_pal::sync::Mutex;
+use moyu_pal::sync::mpsc::Receiver;
+use moyu_pal::sync::mpsc::error::TryRecvError;
 use sixu::runtime::Runtime;
 use zip::write::SimpleFileOptions;
 
@@ -191,7 +191,11 @@ impl ScenarioPlugin {
         Ok(promise)
     }
 
-    fn save_game_data_to_file(&self, name: &str) -> Result<JSValue> {
+    fn save_game_data_to_file(
+        &self,
+        name: &str,
+        extra: Option<serde_json::Value>,
+    ) -> Result<JSValue> {
         let zip_data = Cursor::new(Vec::new());
         let mut zip = zip::ZipWriter::new(zip_data);
 
@@ -241,9 +245,16 @@ impl ScenarioPlugin {
                 "edition": METADATA_VERSION,
                 "saveByVersion": env!("CARGO_PKG_VERSION"),
                 "timestamp": timestamp,
+                "extra": extra,
             });
             zip.start_file("metadata.json", options)?;
             zip.write_all(&serde_json::to_vec(&metadata)?)?;
+        }
+
+        {
+            let extra = extra.unwrap_or(serde_json::json!({}));
+            zip.start_file("extra.json", options)?;
+            zip.write_all(&serde_json::to_vec(&extra)?)?;
         }
 
         // set identifier to detect if this is a MOYU save file
@@ -271,8 +282,8 @@ impl ScenarioPlugin {
     }
 
     fn get_save_data_list(&self, pattern: Option<String>) -> Result<JSValue> {
-        create_promise(async move {
-            let mut list = readdir_from_appdata(
+        let future = async move {
+            let list = readdir_from_appdata(
                 "saves",
                 pattern.map(|mut p| {
                     p.push_str(".sav");
@@ -281,16 +292,45 @@ impl ScenarioPlugin {
             )
             .await?;
 
-            list.iter_mut().for_each(|entry| {
-                entry.name = entry
-                    .name
-                    .strip_suffix(".sav")
-                    .unwrap_or_default()
-                    .to_string();
-            });
+            let mut results = Vec::new();
 
-            Ok(list)
-        })
+            for item in list.into_iter() {
+                if item.is_dir {
+                    continue;
+                }
+
+                let path = format!("saves/{}", item.name);
+                let Some(data) = read_from_appdata(&path).await? else {
+                    log::error!("No save data found for {}, this should not happen", path);
+                    continue;
+                };
+
+                let mut zip = zip::ZipArchive::new(Cursor::new(data))?;
+                if zip.comment() != ZIP_COMMENT.as_bytes() {
+                    log::warn!("Invalid ZIP comment, this may not be a valid MOYU save file");
+                }
+
+                let metadata = zip.by_name("metadata.json")?;
+                let metadata: serde_json::Value = serde_json::from_reader(metadata)?;
+
+                // extra field is optional and usually a map but not guaranteed
+                let extra = if let Ok(extra) = zip.by_name("extra.json") {
+                    Some(serde_json::from_reader::<_, serde_json::Value>(extra)?)
+                } else {
+                    None
+                };
+
+                results.push(serde_json::json!({
+                    "name": item.name.trim_end_matches(".sav"),
+                    "metadata": metadata,
+                    "extra": extra,
+                }));
+            }
+
+            Ok(results)
+        };
+
+        create_promise(future)
     }
 
     /// Execute the next step in the scenario
