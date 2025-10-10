@@ -1,8 +1,8 @@
 use anyhow::Result;
 use log::info;
 
-use moyu_pal::config::entry_dir;
-use moyu_pal::url::{resolve_package_from, Url};
+use moyu_pal::dir::entry_dir;
+use moyu_pal::url::{Url, resolve_package_from};
 use moyu_pal::{fs, task};
 
 pub fn module_loader(module_name: &str, _: *mut std::ffi::c_void) -> Result<String> {

@@ -1,4 +1,5 @@
 pub mod config;
+pub mod dir;
 pub mod fs;
 pub mod logger;
 pub mod platform;

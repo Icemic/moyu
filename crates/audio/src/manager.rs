@@ -15,7 +15,7 @@ use moyu_core::traits::Plugin;
 use moyu_core::traits::PluginBaseTrait;
 use moyu_core::utils::convert::{JSValue, create_promise, from_js};
 use moyu_macros::Plugin;
-use moyu_pal::config::entry_dir;
+use moyu_pal::dir::entry_dir;
 use moyu_pal::sync::Mutex;
 
 use crate::audio::{Audio, AudioLoadingState};
