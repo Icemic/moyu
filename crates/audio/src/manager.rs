@@ -15,7 +15,7 @@ use moyu_core::traits::Plugin;
 use moyu_core::traits::PluginBaseTrait;
 use moyu_core::utils::convert::{JSValue, create_promise, from_js};
 use moyu_macros::Plugin;
-use moyu_pal::dir::entry_dir;
+use moyu_pal::dir::assets_dir;
 use moyu_pal::sync::Mutex;
 
 use crate::audio::{Audio, AudioLoadingState};
@@ -106,7 +106,7 @@ impl AudioManager {
         self.create_audio(&name);
         let audio = self.get_audio(name)?;
         let manager = self.manager.clone();
-        let asset_full_path = entry_dir().join("assets/")?.join(src)?;
+        let asset_full_path = assets_dir().join(src)?;
 
         return Ok(async move {
             audio.lock().loading_state = AudioLoadingState::Loading;

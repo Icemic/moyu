@@ -7,6 +7,10 @@ pub fn entry_dir() -> Url {
     parse_entry_dir(entry_dir)
 }
 
+pub fn assets_dir() -> Url {
+    entry_dir().join("assets/").unwrap()
+}
+
 pub(crate) fn parse_entry_dir(entry_dir: &String) -> Url {
     if entry_dir.starts_with("http://")
         || entry_dir.starts_with("https://")
