@@ -7,7 +7,7 @@ use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
 use log::{error, info};
 use moyu_pal::config::get_engine_config;
-use moyu_pal::dir::entry_dir;
+use moyu_pal::dir::assets_dir;
 use moyu_pal::sync::Mutex;
 use wgpu::Texture;
 use wgpu::util::StagingBelt;
@@ -187,11 +187,7 @@ impl TextRenderer {
         let huozi = self.huozi.clone();
         moyu_pal::task::spawn(async move {
             let font_file = &get_engine_config().font_file;
-            let asset_full_path = entry_dir()
-                .join("assets/")
-                .unwrap()
-                .join(font_file)
-                .unwrap();
+            let asset_full_path = assets_dir().join(font_file).unwrap();
 
             info!("Loading font file: {}", asset_full_path);
 

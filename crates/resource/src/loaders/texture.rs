@@ -1,6 +1,6 @@
 use image::GenericImageView;
 use log::debug;
-use moyu_pal::dir::entry_dir;
+use moyu_pal::dir::assets_dir;
 use moyu_pal::{fs, task};
 use std::sync::Arc;
 use wgpu::{Device, Queue};
@@ -9,7 +9,7 @@ use crate::types::{Texture, TextureStatus};
 use crate::utils::premultiply_alpha;
 
 pub(crate) fn load_texture(device: &Device, queue: &Queue, src: &str) -> Arc<Texture> {
-    let src_full = entry_dir().join("assets/").unwrap().join(src).unwrap();
+    let src_full = assets_dir().join(src).unwrap();
 
     debug!("loading texture from {}", src);
 
