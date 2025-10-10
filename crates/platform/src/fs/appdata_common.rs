@@ -3,18 +3,10 @@ use std::path::PathBuf;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::config::get_engine_config;
 use crate::dir::appdata_dir;
 
 pub fn get_path_in_appdata(relative_path: &str) -> Result<PathBuf> {
-    let appdata_dir = appdata_dir().ok_or_else(|| {
-        anyhow::anyhow!(
-            "Failed to get appdata directory for app '{}'",
-            get_engine_config().app_name
-        )
-    })?;
-
-    let path = appdata_dir.join(path_clean::clean(relative_path));
+    let path = appdata_dir().join(path_clean::clean(relative_path));
 
     Ok(path)
 }
