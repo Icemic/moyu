@@ -37,7 +37,8 @@ pub fn spawn_runtime_with_core(
 #[cfg(web)]
 pub fn spawn_runtime_with_core(_: &Arc<Core>) -> Result<()> {
     use log::debug;
-    use moyu_pal::config::{entry_dir, get_engine_config, AutorunMode};
+    use moyu_pal::config::{AutorunMode, get_engine_config};
+    use moyu_pal::dir::entry_dir;
 
     wasm_bindgen_futures::spawn_local(async move {
         debug!("Injecting entry script.");
