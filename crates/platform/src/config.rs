@@ -2,8 +2,6 @@ mod backend;
 mod logical_size;
 mod present_mode;
 
-use std::path::PathBuf;
-
 use csscolorparser::Color;
 use logical_size::MoyuLogicalSize;
 use once_cell::sync::OnceCell;
@@ -78,41 +76,6 @@ impl Default for MoyuConfig {
             enable_gamepads: false,
             skip_splash: false,
         }
-    }
-}
-
-impl MoyuConfig {
-    pub fn appdata_dir(&self) -> Option<PathBuf> {
-        #[cfg(desktop)]
-        {
-            if let Some(mut appdata_dir) = dirs::data_dir() {
-                appdata_dir.push(&self.app_name);
-                // equals to `mkdir -p`
-                std::fs::create_dir_all(&appdata_dir).unwrap();
-                return Some(appdata_dir);
-            };
-        }
-
-        #[cfg(web)]
-        {
-            use std::str::FromStr;
-            return Some(PathBuf::from_str("moyu").unwrap().join(&self.app_name));
-        }
-
-        #[cfg(android)]
-        {
-            use crate::platform::get_android_app;
-            if let Some(external_data_path) = get_android_app().external_data_path() {
-                let appdata_dir = external_data_path.join("files");
-                std::fs::create_dir_all(&appdata_dir).unwrap();
-                return Some(appdata_dir);
-            }
-        }
-
-        #[cfg(ios)]
-        unimplemented!("appdata_dir is to be implemented in ios platform.");
-
-        None
     }
 }
 

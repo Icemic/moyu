@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use url::Url;
 
 use crate::config::get_engine_config;
@@ -9,6 +11,40 @@ pub fn entry_dir() -> Url {
 
 pub fn assets_dir() -> Url {
     entry_dir().join("assets/").unwrap()
+}
+
+pub fn appdata_dir() -> Option<PathBuf> {
+    let app_name = &get_engine_config().app_name;
+    #[cfg(desktop)]
+    {
+        if let Some(mut appdata_dir) = dirs::data_dir() {
+            appdata_dir.push(app_name);
+            // equals to `mkdir -p`
+            std::fs::create_dir_all(&appdata_dir).unwrap();
+            return Some(appdata_dir);
+        };
+    }
+
+    #[cfg(web)]
+    {
+        use std::str::FromStr;
+        return Some(PathBuf::from_str("moyu").unwrap().join(app_name));
+    }
+
+    #[cfg(android)]
+    {
+        use crate::platform::get_android_app;
+        if let Some(external_data_path) = get_android_app().external_data_path() {
+            let appdata_dir = external_data_path.join("files");
+            std::fs::create_dir_all(&appdata_dir).unwrap();
+            return Some(appdata_dir);
+        }
+    }
+
+    #[cfg(ios)]
+    unimplemented!("appdata_dir is to be implemented in ios platform.");
+
+    None
 }
 
 pub(crate) fn parse_entry_dir(entry_dir: &String) -> Url {
