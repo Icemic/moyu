@@ -13,7 +13,7 @@ use moyu_core::traits::PluginBaseTrait;
 use moyu_core::traits::{Command, Plugin, PluginEventSource};
 use moyu_core::utils::convert::{JSValue, create_promise, to_js};
 use moyu_macros::Plugin;
-use moyu_pal::config::entry_dir;
+use moyu_pal::dir::entry_dir;
 use moyu_pal::fs::{
     read_from_appdata, readdir_from_appdata, remove_from_appdata, write_to_appdata,
 };

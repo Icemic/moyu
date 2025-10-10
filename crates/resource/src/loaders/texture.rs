@@ -1,6 +1,6 @@
 use image::GenericImageView;
 use log::debug;
-use moyu_pal::config::entry_dir;
+use moyu_pal::dir::entry_dir;
 use moyu_pal::{fs, task};
 use std::sync::Arc;
 use wgpu::{Device, Queue};
