@@ -8,7 +8,7 @@ use winit::platform::android::activity::AndroidApp;
 
 #[allow(dead_code)]
 #[cfg(target_os = "android")]
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[tokio::main]
 async fn android_main(app: AndroidApp) {
     moyu_pal::logger::setup();
