@@ -17,6 +17,7 @@ use crate::platform::get_android_app;
 /// Open a file from a URL, returns a `Vec<u8>`
 pub async fn read(url: &Url) -> Result<Vec<u8>> {
     match url.scheme() {
+        #[cfg(native)]
         "file" => read_by_file(url).await,
         "http" | "https" => read_by_http(url).await,
         "assets" => {
