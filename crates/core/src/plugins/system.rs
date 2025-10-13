@@ -10,7 +10,7 @@ use crate::base::Snapshot;
 use crate::core::Core;
 use crate::traits::PluginBaseTrait;
 use crate::traits::{Command, Plugin};
-use crate::utils::convert::{create_promise, from_js, to_js, JSValue};
+use crate::utils::convert::{JSValue, create_promise, from_js, to_js};
 
 #[derive(Plugin)]
 pub struct SystemPlugin {
@@ -61,7 +61,11 @@ pub enum SystemCommmad {
     GetWindowState,
     GetWindowInnerPosition,
     GetWindowInnerSize,
-    TakeSnapshot,
+    TakeSnapshot {
+        width: Option<u32>,
+        height: Option<u32>,
+        keep_aspect_ratio: Option<bool>,
+    },
     Quit,
 }
 
@@ -99,7 +103,11 @@ impl Command for SystemPlugin {
                 let size: winit::dpi::LogicalSize<u32> = size.to_logical(scale_factor);
                 return Ok(Some(to_js(&size)?));
             }
-            SystemCommmad::TakeSnapshot => {
+            SystemCommmad::TakeSnapshot {
+                width,
+                height,
+                keep_aspect_ratio,
+            } => {
                 if let Some(graphics) = self.core.graphics() {
                     graphics.request_snapshot();
 
@@ -109,15 +117,21 @@ impl Command for SystemPlugin {
                     let fut = async move {
                         // Poll until the snapshot is ready
                         loop {
-                            if let Some((data, width, height, format)) =
+                            if let Some((data, origin_width, origin_height, format)) =
                                 graphics_clone.try_get_snapshot()
                             {
-                                let snapshot = Snapshot {
-                                    width,
-                                    height,
+                                let mut snapshot = Snapshot {
+                                    width: origin_width,
+                                    height: origin_height,
                                     data,
                                     format: format.into(),
                                 };
+
+                                snapshot.resize(
+                                    width.unwrap_or(u32::MAX),
+                                    height.unwrap_or(u32::MAX),
+                                    keep_aspect_ratio.unwrap_or(true),
+                                )?;
 
                                 snapshot_store.store(Some(Arc::new(snapshot)));
                                 return Ok(());
