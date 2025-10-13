@@ -19,6 +19,7 @@ resolver = "2"
 [workspace.dependencies]
 anyhow = "1.0"
 arc-swap = "1.6"
+base64 = "0.22.1"
 bytemuck = {version = "1.24", features = ["derive"]}
 cfg_aliases = "0.2.1"
 csscolorparser = {version = "0.7", features = ["serde"]}
@@ -37,6 +38,7 @@ wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
 wgpu = {version = "27.0", features = ["fragile-send-sync-non-atomic-wasm", "webgl"]}
 winit = "0.29"
+zip = {version = "5.1", default-features = false, features = ["zstd"]}
 
 opus = {version = "0.3", git = "https://github.com/Icemic/opus-rs", branch = "dev"}
 
