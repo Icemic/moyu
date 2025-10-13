@@ -2,10 +2,12 @@ mod commands;
 mod executor;
 mod types;
 
-use std::io::{Cursor, Write};
+use std::io::{Cursor, Read, Write};
 use std::sync::Arc;
 
 use anyhow::Result;
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use moyu_core::base::ImageFormat;
 use moyu_core::core::get_core;
 use moyu_core::plugins::SystemPlugin;
@@ -310,6 +312,29 @@ impl ScenarioPlugin {
                     log::warn!("Invalid ZIP comment, this may not be a valid MOYU save file");
                 }
 
+                let snapshot = if let Ok(mut snapshot) = zip.by_name("snapshot.webp") {
+                    let mut buf = Vec::with_capacity(snapshot.size() as usize);
+                    // implicitly ignore errors
+                    snapshot.read_to_end(&mut buf)?;
+
+                    if snapshot.size() > 128 * 1024 {
+                        // use `saves:`` schema if the image is too large
+                        // add random query to avoid caching
+                        Some(format!(
+                            "saves:{}?random={}#snapshot.webp",
+                            item.name,
+                            snapshot.crc32()
+                        ))
+                    } else {
+                        // use data URI schema directly
+                        let mut prefix = "data:image/webp;base64,".to_string();
+                        prefix += &BASE64_STANDARD.encode(&buf);
+                        Some(prefix)
+                    }
+                } else {
+                    None
+                };
+
                 let metadata = zip.by_name("metadata.json")?;
                 let metadata: serde_json::Value = serde_json::from_reader(metadata)?;
 
@@ -322,6 +347,7 @@ impl ScenarioPlugin {
 
                 results.push(serde_json::json!({
                     "name": item.name.trim_end_matches(".sav"),
+                    "snapshot": snapshot,
                     "metadata": metadata,
                     "extra": extra,
                 }));

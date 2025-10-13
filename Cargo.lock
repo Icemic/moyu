@@ -2369,6 +2369,7 @@ name = "moyu_scenario"
 version = "0.8.0"
 dependencies = [
  "anyhow",
+ "base64",
  "log",
  "moyu_core",
  "moyu_macros",
