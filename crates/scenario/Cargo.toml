@@ -8,13 +8,13 @@ repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.8.0"
 
 [dependencies]
-zip = {workspace = true}
-
 anyhow = {workspace = true}
+base64 = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
 serde_json = {workspace = true}
 sixu = {workspace = true}
+zip = {workspace = true}
 
 moyu_core = {workspace = true, features = ["js_runtime"]}
 moyu_macros = {workspace = true}
