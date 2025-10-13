@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support opus audio format on all platforms, including wasm32.
 - Allow adding extra data to save files in addition to metadata.
+- Add `assets:`, `appdata:`, `saves:` and `data:` URL schemes for file access.
 
 ### Changed
 
