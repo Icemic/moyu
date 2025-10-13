@@ -3,6 +3,7 @@ pub mod types;
 mod utils;
 
 use dashmap::DashMap;
+use moyu_pal::dir::assets_dir;
 use std::sync::Arc;
 use wgpu::{Device, Queue};
 
@@ -57,7 +58,8 @@ impl ResourceManager {
     }
 
     pub fn load_asset(&self, kind: AssetKind, src: &str) -> Arc<AssetId> {
-        let mut asset_id = create_asset_id(kind, src.to_string());
+        let url = assets_dir().join(src).expect("failed to get asset url");
+        let mut asset_id = create_asset_id(kind, url.clone());
 
         if let Some(asset) = self.assets_map.get(&asset_id) {
             return asset.key().clone();
@@ -65,7 +67,7 @@ impl ResourceManager {
 
         match kind {
             AssetKind::Texture => {
-                let texture = load_texture(&self.device, &self.queue, src);
+                let texture = load_texture(&self.device, &self.queue, &url);
                 let asset = Arc::new(Asset::Texture(texture));
                 asset_id.attach_asset(&asset);
                 let asset_id = Arc::new(asset_id);
@@ -79,7 +81,8 @@ impl ResourceManager {
     }
 
     pub fn insert_asset(&self, kind: AssetKind, src: &str, data: Vec<u8>) -> Arc<AssetId> {
-        let mut asset_id = create_asset_id(kind, src.to_string());
+        let url = assets_dir().join(src).expect("failed to get asset url");
+        let mut asset_id = create_asset_id(kind, url);
 
         let asset = match kind {
             AssetKind::Texture => {

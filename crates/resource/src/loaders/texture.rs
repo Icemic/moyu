@@ -1,6 +1,6 @@
 use image::GenericImageView;
 use log::debug;
-use moyu_pal::dir::assets_dir;
+use moyu_pal::url::Url;
 use moyu_pal::{fs, task};
 use std::sync::Arc;
 use wgpu::{Device, Queue};
@@ -8,10 +8,8 @@ use wgpu::{Device, Queue};
 use crate::types::{Texture, TextureStatus};
 use crate::utils::premultiply_alpha;
 
-pub(crate) fn load_texture(device: &Device, queue: &Queue, src: &str) -> Arc<Texture> {
-    let src_full = assets_dir().join(src).unwrap();
-
-    debug!("loading texture from {}", src);
+pub(crate) fn load_texture(device: &Device, queue: &Queue, url: &Url) -> Arc<Texture> {
+    debug!("loading texture from {}", url);
 
     let texture = Arc::new(Texture::new());
 
@@ -19,19 +17,19 @@ pub(crate) fn load_texture(device: &Device, queue: &Queue, src: &str) -> Arc<Tex
         let device = device.clone();
         let queue = queue.clone();
         let texture = texture.clone();
-        let src = src.to_owned();
+        let url = url.to_owned();
         let task_fn = async move {
-            let bytes = match fs::read(&src_full).await {
+            let bytes = match fs::read(&url).await {
                 Ok(v) => v,
                 Err(err) => {
-                    log::error!("Failed to read '{}': {}", src, err);
-                    return Err(anyhow::format_err!("Failed to read '{}': {}", src, err));
+                    log::error!("Failed to read '{}': {}", url, err);
+                    return Err(anyhow::format_err!("Failed to read '{}': {}", url, err));
                 }
             };
 
-            load_image_to_texture(&texture, &device, &queue, &bytes, Some(&src))?;
+            load_image_to_texture(&texture, &device, &queue, &bytes, Some(url.as_str()))?;
 
-            debug!("texture '{}' loaded", src);
+            debug!("texture '{}' loaded", url);
 
             Ok(())
         };
