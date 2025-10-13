@@ -8,6 +8,7 @@ repository = "https://github.com/DeepSpaceMill/moyu"
 version = "0.8.0"
 
 [dependencies]
+base64 = "0.22.1"
 dirs = "6.0"
 ehttp = {version = "0.5", features = ["native-async"]}
 fast-glob = "1.0.0"
@@ -15,6 +16,7 @@ once_cell = "1.16"
 path-clean = "1.0.1"
 pollster = "0.4.0"
 url = "2.2"
+zip = {version = "5.1", default-features = false, features = ["zstd"]}
 
 anyhow = {workspace = true}
 csscolorparser = {workspace = true}

@@ -2309,6 +2309,7 @@ dependencies = [
  "android-activity",
  "android_logger",
  "anyhow",
+ "base64",
  "cfg_aliases 0.2.1",
  "console_error_panic_hook",
  "console_log",
@@ -2333,6 +2334,7 @@ dependencies = [
  "wasmtimer",
  "web-sys",
  "windows 0.62.0",
+ "zip",
 ]
 
 [[package]]
