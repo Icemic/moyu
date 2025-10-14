@@ -180,7 +180,7 @@ jobs:
             # For dev releases
             RELEASE_NAME="Development Build"
             TAG_NAME="dev"
-            gh release create "$TAG_NAME" --title "$RELEASE_NAME" --prerelease --notes "Latest development build from main branch" --repo ${{ github.repository }}
+            gh release create "$TAG_NAME" --title "$RELEASE_NAME" --prerelease --draft=false --notes "Latest development build from main branch" --repo ${{ github.repository }}
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
