@@ -58,7 +58,16 @@ pub struct Graphics {
     /// Flag to request a screenshot on the next render
     snapshot_requested: AtomicBool,
     /// Buffer to store screenshot data
-    snapshot_buffer: Arc<Mutex<Option<(wgpu::Buffer, u32, u32)>>>,
+    snapshot_buffer: Arc<
+        Mutex<
+            Option<(
+                wgpu::Buffer,
+                u32,
+                u32,
+                Option<std::sync::mpsc::Receiver<Result<(), wgpu::BufferAsyncError>>>,
+            )>,
+        >,
+    >,
 }
 
 unsafe impl Send for Graphics {}
@@ -180,17 +189,24 @@ impl Graphics {
     /// Check if there's a screenshot ready and return it
     pub fn try_get_snapshot(&self) -> Option<(Vec<u8>, u32, u32, wgpu::TextureFormat)> {
         let mut snapshot_buffer = self.snapshot_buffer.lock();
-        if let Some((buffer, width, height)) = snapshot_buffer.take() {
+        if let Some((buffer, width, height, rx)) = snapshot_buffer.take() {
             let buffer_slice = buffer.slice(..);
-            // Try to map the buffer asynchronously
-            let (tx, rx) = std::sync::mpsc::channel();
-            buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
-                let _ = tx.send(result);
-            });
-            if let Err(err) = self.device.poll(wgpu::PollType::wait_indefinitely()) {
-                log::warn!("Failed to poll device for snapshot: {}", err);
-                return None;
-            }
+
+            // If there's no receiver, we need to start mapping
+            let rx = if rx.is_none() {
+                // Try to map the buffer asynchronously
+                let (tx, rx) = std::sync::mpsc::channel();
+                buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+                    let _ = tx.send(result);
+                });
+                if let Err(err) = self.device.poll(wgpu::PollType::wait_indefinitely()) {
+                    log::error!("Failed to poll device for snapshot: {}", err);
+                    return None;
+                }
+                rx
+            } else {
+                rx.unwrap()
+            };
 
             // Check if mapping completed
             if let Ok(Ok(())) = rx.try_recv() {
@@ -201,7 +217,7 @@ impl Graphics {
                 return Some((rgba_data, width, height, self.config.lock().format));
             } else {
                 // Put the buffer back if mapping didn't complete
-                *snapshot_buffer = Some((buffer, width, height));
+                *snapshot_buffer = Some((buffer, width, height, Some(rx)));
             }
         }
         None
@@ -453,7 +469,7 @@ impl Graphics {
 
             // Store the buffer for later retrieval
             let mut snapshot_buffer_guard = self.snapshot_buffer.lock();
-            *snapshot_buffer_guard = Some((snapshot_buffer, width, height));
+            *snapshot_buffer_guard = Some((snapshot_buffer, width, height, None));
         }
 
         // TODO: in winit, it is an empty function now, keep an eye on it.
