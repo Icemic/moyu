@@ -75,9 +75,9 @@ where
 
     let promise = future_to_promise(async move {
         match future.await {
-            Ok(value) => Ok(serde_wasm_bindgen::to_value(&value)
-                // .map(|v| v.0)
-                .unwrap()),
+            Ok(value) => value
+                .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+                .map_err(|err| wasm_bindgen::JsValue::from_str(&err.to_string())),
             Err(err) => Err(wasm_bindgen::JsValue::from_str(&err.to_string())),
         }
     });

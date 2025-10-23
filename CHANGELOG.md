@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgrade `wgpu` to 27.x.
 - Upgrade `quickjs-rusty` to 0.10 which fixes a number conversion issue.
 - Fix crashes on Web when taking snapshots due to double mapping of snapshot buffer.
+- Fix wrong conversion json object to Map in `create_promise` on Web.
 
 ### Performance
 
