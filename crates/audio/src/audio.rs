@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use kira::sound::static_sound::{StaticSoundData, StaticSoundHandle};
 use kira::*;
 
@@ -37,6 +37,11 @@ impl Audio {
         } else {
             Err(anyhow!("Sound not playing or not loaded"))
         }
+    }
+
+    /// Returns true if the sound is currently or has been played.
+    pub fn played(&self) -> bool {
+        self.handle.is_some()
     }
 
     pub fn play(&mut self, manager: &mut AudioManager) -> Result<()> {
