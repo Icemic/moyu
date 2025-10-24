@@ -87,7 +87,10 @@ impl AudioManager {
 
     pub fn remove_audio(&mut self, name: &str) {
         if let Some(audio) = self.audios.remove(name) {
-            if let Err(err) = audio.lock().stop() {
+            let mut audio = audio.lock();
+            if audio.played()
+                && let Err(err) = audio.stop()
+            {
                 warn!("Failed to stop audio {}: {}", name, err);
             }
         } else {
