@@ -3,8 +3,8 @@ use std::collections::{HashMap, VecDeque};
 use std::ffi::c_void;
 use std::ptr::null_mut;
 use std::rc::Rc;
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 use std::time::Instant;
 
 use moyu_pal::config::get_engine_config;
@@ -92,6 +92,12 @@ impl QuickVM {
 
         context
             .set_host_promise_rejection_tracker(Some(host_promise_rejection_tracker), null_mut());
+
+        context
+            .global()
+            .unwrap()
+            .set_property("window", context.global().unwrap().into_value())
+            .unwrap();
 
         let timer_tasks = Arc::new(Mutex::new(Vec::new()));
         let instant = Instant::now();
@@ -418,11 +424,7 @@ impl QuickVM {
             .filter_map(|task| {
                 let matched = task.duration_until <= self.instant.elapsed().as_millis() as u32;
 
-                if matched {
-                    Some(task.clone())
-                } else {
-                    None
-                }
+                if matched { Some(task.clone()) } else { None }
             })
             .collect::<Vec<_>>();
 
