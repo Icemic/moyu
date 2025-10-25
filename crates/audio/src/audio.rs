@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anyhow::{Result, anyhow};
 use kira::sound::static_sound::{StaticSoundData, StaticSoundHandle};
 use kira::*;
@@ -6,6 +8,7 @@ pub struct Audio {
     pub(crate) sound: Option<StaticSoundData>,
     pub(crate) handle: Option<StaticSoundHandle>,
     pub(crate) loading_state: AudioLoadingState,
+    volume: f64,
 }
 
 #[derive(Debug)]
@@ -28,6 +31,7 @@ impl Audio {
             sound: None,
             handle: None,
             loading_state: AudioLoadingState::Unloaded,
+            volume: 1.0,
         }
     }
 
@@ -44,9 +48,9 @@ impl Audio {
         self.handle.is_some()
     }
 
-    pub fn play(&mut self, manager: &mut AudioManager) -> Result<()> {
+    pub fn play(&mut self, manager: &mut AudioManager, fade_time: Option<u32>) -> Result<()> {
         if let Some(ref sound_data) = self.sound {
-            let handle = match manager.play(sound_data.clone()) {
+            let mut handle = match manager.play(sound_data.clone()) {
                 Ok(handle) => handle,
                 Err(e) => {
                     log::error!("Failed to play sound: {}", e);
@@ -54,6 +58,14 @@ impl Audio {
                     return Err(e.into());
                 }
             };
+            handle.set_volume(
+                Decibels::interpolate(Decibels::SILENCE, Decibels::IDENTITY, 0.0),
+                tween(Some(0)),
+            );
+            handle.set_volume(
+                Decibels::interpolate(Decibels::SILENCE, Decibels::IDENTITY, self.volume),
+                tween(fade_time),
+            );
             self.handle = Some(handle);
             Ok(())
         } else {
@@ -61,36 +73,37 @@ impl Audio {
         }
     }
 
-    pub fn stop(&mut self) -> Result<()> {
+    pub fn stop(&mut self, fade_time: Option<u32>) -> Result<()> {
         self.handle().map(|handle| {
-            handle.stop(Tween::default());
+            handle.stop(tween(fade_time));
         })?;
         self.handle = None;
         Ok(())
     }
 
-    pub fn pause(&mut self) -> Result<()> {
+    pub fn pause(&mut self, fade_time: Option<u32>) -> Result<()> {
         self.handle().map(|handle| {
-            handle.pause(Tween::default());
+            handle.pause(tween(fade_time));
         })
     }
 
-    pub fn resume(&mut self) -> Result<()> {
+    pub fn resume(&mut self, fade_time: Option<u32>) -> Result<()> {
         let _ = self.handle().map(|handle| {
             if handle.state() != kira::sound::PlaybackState::Paused {
                 return Err(anyhow!("Sound is not paused"));
             }
-            handle.resume(Tween::default());
+            handle.resume(tween(fade_time));
             Ok(())
         })?;
         Ok(())
     }
 
-    pub fn set_volume(&mut self, volume: f64) -> Result<()> {
+    pub fn set_volume(&mut self, volume: f64, fade_time: Option<u32>) -> Result<()> {
+        self.volume = volume;
         self.handle().map(|handle| {
             handle.set_volume(
                 Decibels::interpolate(Decibels::SILENCE, Decibels::IDENTITY, volume),
-                Tween::default(),
+                tween(fade_time),
             );
         })
     }
@@ -123,5 +136,17 @@ impl Audio {
         self.handle().map(|handle| {
             handle.set_panning(Panning::from(panning as f32), Tween::default());
         })
+    }
+}
+
+fn tween(fade_time: Option<u32>) -> Tween {
+    if let Some(time) = fade_time {
+        Tween {
+            start_time: StartTime::Immediate,
+            duration: Duration::from_millis(time as u64),
+            easing: Easing::InOutPowf(2.),
+        }
+    } else {
+        Tween::default()
     }
 }

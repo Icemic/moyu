@@ -42,6 +42,8 @@ pub struct AudioSettings {
     pub panning: f64,
     /// Whether the audio should start playing automatically after loading.
     pub auto_play: bool,
+    /// Optional fade time in milliseconds for audio transitions.
+    pub fade_time: Option<u32>,
 }
 
 impl Default for AudioSettings {
@@ -55,6 +57,7 @@ impl Default for AudioSettings {
             playback_rate: 1.0,
             panning: 0.0,
             auto_play: false,
+            fade_time: None,
         }
     }
 }
@@ -89,7 +92,7 @@ impl AudioManager {
         if let Some(audio) = self.audios.remove(name) {
             let mut audio = audio.lock();
             if audio.played()
-                && let Err(err) = audio.stop()
+                && let Err(err) = audio.stop(Some(0))
             {
                 warn!("Failed to stop audio {}: {}", name, err);
             }
@@ -164,7 +167,7 @@ impl AudioManager {
             // audio will play automatically by default, so if auto_play is false, stop it
             if settings.auto_play {
                 let mut manager = manager.lock();
-                audio.play(&mut manager)?;
+                audio.play(&mut manager, settings.fade_time)?;
             }
 
             Ok(())
@@ -206,19 +209,24 @@ pub enum AudioCommmad {
     },
     Play {
         name: String,
+        fade_time: Option<u32>,
     },
     Stop {
         name: String,
+        fade_time: Option<u32>,
     },
     Pause {
         name: String,
+        fade_time: Option<u32>,
     },
     Resume {
         name: String,
+        fade_time: Option<u32>,
     },
     SetVolume {
         name: String,
         volume: f64,
+        fade_time: Option<u32>,
     },
     SeekBy {
         name: String,
@@ -261,29 +269,33 @@ impl Command for AudioManager {
             AudioCommmad::Release { name } => {
                 self.remove_audio(&name);
             }
-            AudioCommmad::Play { name } => {
+            AudioCommmad::Play { name, fade_time } => {
                 let audio = self.get_audio(&name)?;
                 let mut audio = audio.lock();
                 // ignore the error if audio is not playing or not loaded
-                let _ = audio.stop();
+                let _ = audio.stop(fade_time);
                 let mut manager = self.manager.lock();
-                audio.play(&mut manager)?;
+                audio.play(&mut manager, fade_time)?;
             }
-            AudioCommmad::Stop { name } => {
+            AudioCommmad::Stop { name, fade_time } => {
                 let audio = self.get_audio(&name)?;
-                audio.lock().stop()?;
+                audio.lock().stop(fade_time)?;
             }
-            AudioCommmad::Pause { name } => {
+            AudioCommmad::Pause { name, fade_time } => {
                 let audio = self.get_audio(&name)?;
-                audio.lock().pause()?;
+                audio.lock().pause(fade_time)?;
             }
-            AudioCommmad::Resume { name } => {
+            AudioCommmad::Resume { name, fade_time } => {
                 let audio = self.get_audio(&name)?;
-                audio.lock().resume()?;
+                audio.lock().resume(fade_time)?;
             }
-            AudioCommmad::SetVolume { name, volume } => {
+            AudioCommmad::SetVolume {
+                name,
+                volume,
+                fade_time,
+            } => {
                 let audio = self.get_audio(&name)?;
-                audio.lock().set_volume(volume)?;
+                audio.lock().set_volume(volume, fade_time)?;
             }
             AudioCommmad::SeekBy { name, time } => {
                 let audio = self.get_audio(&name)?;
