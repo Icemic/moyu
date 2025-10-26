@@ -99,3 +99,56 @@ pub fn is_main_thread() -> bool {
     #[cfg(web)]
     return true;
 }
+
+#[cfg(native)]
+pub struct TimeoutHandle(tokio::task::JoinHandle<()>);
+#[cfg(web)]
+pub struct TimeoutHandle(i32);
+
+pub fn set_timeout<F>(duration: std::time::Duration, callback: F) -> TimeoutHandle
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    #[cfg(native)]
+    {
+        let handle = tokio::spawn(async move {
+            tokio::time::sleep(duration).await;
+            callback.await;
+        });
+        TimeoutHandle(handle)
+    }
+
+    #[cfg(web)]
+    {
+        use wasm_bindgen::JsCast;
+
+        let closure = wasm_bindgen::closure::Closure::once_into_js(move || {
+            wasm_bindgen_futures::spawn_local(async move {
+                let _ = callback.await;
+            });
+        });
+        let id = web_sys::window()
+            .expect("no global `window` exists")
+            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                closure.unchecked_ref(),
+                duration.as_millis() as i32,
+            )
+            .expect("should register `setTimeout` OK");
+        TimeoutHandle(id)
+    }
+}
+
+pub fn clear_timeout(handle: &TimeoutHandle) {
+    #[cfg(native)]
+    {
+        handle.0.abort();
+    }
+
+    #[cfg(web)]
+    {
+        web_sys::window()
+            .expect("no global `window` exists")
+            .clear_timeout_with_handle(handle.0);
+    }
+}
