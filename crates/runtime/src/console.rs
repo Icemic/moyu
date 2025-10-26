@@ -23,7 +23,10 @@ fn format_string(args: Vec<OwnedJsValue>) -> std::string::String {
         let raw_string = if std::io::stdout().is_terminal() && arg.is_object() {
             arg.to_json_string(0).unwrap()
         } else {
-            arg.js_to_string().unwrap()
+            match arg.js_to_string() {
+                Ok(s) => s,
+                Err(_) => "[unrepresentable value]".to_string(),
+            }
         };
 
         if i == 0 {
