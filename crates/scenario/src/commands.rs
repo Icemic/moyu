@@ -100,7 +100,7 @@ enum ScenarioCommand {
 impl Command for ScenarioPlugin {
     fn execute(&mut self, payload: &mut JSValue) -> Result<Option<JSValue>> {
         let payload: ScenarioCommand = from_js(payload)?;
-        log::info!("scenario plugin received: {:?}", payload);
+        log::debug!("scenario plugin received: {:?}", payload);
 
         match payload {
             ScenarioCommand::AddStory { name, path } => {
