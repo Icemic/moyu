@@ -2330,6 +2330,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "url",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasmtimer",
  "web-sys",
@@ -2369,6 +2370,7 @@ name = "moyu_scenario"
 version = "0.8.0"
 dependencies = [
  "anyhow",
+ "arc-swap",
  "base64",
  "log",
  "moyu_core",

@@ -41,6 +41,7 @@ parking_lot = "0.12"
 wasmtimer = "0.4"
 
 tokio = {workspace = true, features = ["sync"]}
+wasm-bindgen = {workspace = true}
 wasm-bindgen-futures = {workspace = true}
 web-sys = {workspace = true, features = [
   "Window",
