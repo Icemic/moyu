@@ -163,6 +163,7 @@ impl AudioManager {
             let mut audio = audio.lock();
             audio.sound = Some(sound_data);
             audio.loading_state = AudioLoadingState::Loaded;
+            audio.volume = settings.volume;
 
             // audio will play automatically by default, so if auto_play is false, stop it
             if settings.auto_play {

@@ -8,7 +8,7 @@ pub struct Audio {
     pub(crate) sound: Option<StaticSoundData>,
     pub(crate) handle: Option<StaticSoundHandle>,
     pub(crate) loading_state: AudioLoadingState,
-    volume: f64,
+    pub(crate) volume: f64,
 }
 
 #[derive(Debug)]
