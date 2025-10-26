@@ -13,6 +13,8 @@ pub enum ScenarioEvent {
         text: Option<String>,
     },
     Finished,
+    Waiting,
+    WaitingCancelled,
 }
 
 impl Event for ScenarioEvent {
@@ -22,6 +24,8 @@ impl Event for ScenarioEvent {
             ScenarioEvent::ExtraSystemCall(_) => "scenarioExtraSystemCall",
             ScenarioEvent::Text { .. } => "scenarioText",
             ScenarioEvent::Finished => "scenarioFinished",
+            ScenarioEvent::Waiting => "scenarioWaiting",
+            ScenarioEvent::WaitingCancelled => "scenarioWaitingCancelled",
         }
     }
 }
@@ -32,4 +36,9 @@ pub struct GameData {
     pub stack: Vec<ExecutionState>,
     /// Variables for the current game session
     pub variables: serde_json::Value,
+}
+
+pub struct WaitingState {
+    pub until: moyu_pal::time::Instant,
+    pub skippable: bool,
 }
