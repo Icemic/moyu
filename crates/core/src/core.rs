@@ -12,7 +12,6 @@ use moyu_pal::config::{WindowState, get_engine_config};
 use moyu_pal::sync::{Mutex, RwLock};
 use moyu_pal::time::Instant;
 use render::Graphics;
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use winit::dpi::{LogicalSize, Size};
