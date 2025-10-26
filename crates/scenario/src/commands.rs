@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use moyu_core::traits::{Command, PluginEventSource};
+use moyu_core::traits::Command;
 use moyu_core::utils::convert::{JSValue, from_js, to_js};
 use serde::{Deserialize, Serialize};
 use sixu::format::Literal;
@@ -38,6 +38,14 @@ enum ScenarioCommand {
     TerminateStory,
     /// Parse the next line of the current story
     NextLine,
+    /// Set the waiting time before the next line is parsed
+    SetWaiting {
+        /// waiting time in milliseconds
+        time: u32,
+        /// whether the waiting can be skipped by user input
+        skippable: bool,
+    },
+    /// Set a variable in current game session
     SetVariable {
         name: String,
         value: serde_json::Value,
@@ -130,9 +138,12 @@ impl Command for ScenarioPlugin {
                 return Ok(None);
             }
             ScenarioCommand::NextLine => {
-                let result = self.next_line()?;
-                self.send_event(result.clone());
-                return Ok(Some(to_js(&result)?));
+                self.next_line()?;
+                return Ok(None);
+            }
+            ScenarioCommand::SetWaiting { time, skippable } => {
+                self.set_waiting(time, skippable);
+                return Ok(None);
             }
 
             ScenarioCommand::SetVariable { name, value } => {

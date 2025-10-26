@@ -4,6 +4,7 @@ mod types;
 
 use std::io::{Cursor, Read, Write};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 use base64::Engine;
@@ -20,13 +21,12 @@ use moyu_pal::fs::{
     read_from_appdata, readdir_from_appdata, remove_from_appdata, write_to_appdata,
 };
 use moyu_pal::sync::Mutex;
-use moyu_pal::sync::mpsc::Receiver;
-use moyu_pal::sync::mpsc::error::TryRecvError;
+use moyu_pal::sync::mpsc::{Receiver, Sender};
 use sixu::runtime::Runtime;
 use zip::write::SimpleFileOptions;
 
 use crate::executor::ScenarioExecutor;
-use crate::types::{GameData, ScenarioEvent};
+use crate::types::{GameData, ScenarioEvent, WaitingState};
 
 const METADATA_VERSION: u32 = 1;
 const ZIP_COMMENT: &str = "MOYU\0";
@@ -35,8 +35,11 @@ const ZIP_COMMENT: &str = "MOYU\0";
 pub struct ScenarioPlugin {
     /// The runtime that handles scenario execution
     runtime: Arc<Mutex<Runtime<ScenarioExecutor>>>,
+    /// Sender channel for execution results
+    pub sender: Sender<ScenarioEvent>,
     /// Receive channel for execution results
     pub receiver: Receiver<ScenarioEvent>,
+    waiting: Option<WaitingState>,
 }
 
 impl ScenarioPlugin {
@@ -45,14 +48,16 @@ impl ScenarioPlugin {
 
         let context = RuntimeContext::new();
 
-        let (sender, receiver) = moyu_pal::sync::mpsc::channel(1);
+        let (sender, receiver) = moyu_pal::sync::mpsc::channel(100);
 
-        let executor = ScenarioExecutor::new(sender);
+        let executor = ScenarioExecutor::new(sender.clone());
         let runtime = Runtime::new_with_context(executor, context);
 
         Self {
             runtime: Arc::new(Mutex::new(runtime)),
+            sender,
             receiver,
+            waiting: Default::default(),
         }
     }
 
@@ -112,7 +117,13 @@ impl ScenarioPlugin {
             Ok::<(), anyhow::Error>(())
         };
 
-        let promise = create_promise(future).unwrap();
+        let promise = match create_promise(future) {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("Failed to create promise for adding story: {}", e);
+                return Err(e);
+            }
+        };
 
         Ok(promise)
     }
@@ -359,27 +370,52 @@ impl ScenarioPlugin {
         create_promise(future)
     }
 
+    pub fn set_waiting(&mut self, time: u32, skippable: bool) {
+        if self.waiting.is_some() {
+            log::warn!("Already in waiting state, clearing previous timeout");
+        }
+
+        let until = moyu_pal::time::Instant::now() + Duration::from_millis(time as u64);
+        self.waiting = Some(WaitingState { until, skippable });
+    }
+
     /// Execute the next step in the scenario
-    pub fn next_line(&mut self) -> Result<ScenarioEvent> {
-        let mut runtime = self.runtime.lock();
-        loop {
-            runtime.next()?;
-            match self.receiver.try_recv() {
-                Ok(result) => return Ok(result),
-                Err(TryRecvError::Empty) => {
-                    log::debug!("No execution result available, continuing execution");
-                    continue;
-                }
-                Err(TryRecvError::Disconnected) => {
-                    log::error!("Receiver disconnected, stopping execution");
-                    return Err(anyhow::anyhow!("Receiver disconnected"));
-                }
+    pub fn next_line(&mut self) -> Result<()> {
+        if let Some(state) = self.waiting.as_ref() {
+            if state.skippable {
+                let _ = self.waiting.take();
+                self.send_event(ScenarioEvent::WaitingCancelled);
+            } else {
+                self.send_event(ScenarioEvent::Waiting);
+                return Ok(());
             }
         }
+
+        let mut runtime = self.runtime.lock();
+
+        runtime.next()?;
+
+        Ok(())
     }
 }
 
 impl Plugin for ScenarioPlugin {
+    fn update(&mut self, _: bool) {
+        if let Some(state) = self.waiting.as_ref() {
+            if moyu_pal::time::Instant::now() >= state.until {
+                let mut runtime = self.runtime.lock();
+                if let Err(err) = runtime.next() {
+                    log::error!("Error during scenario execution after wait: {}", err);
+                }
+                let _ = self.waiting.take();
+            }
+        }
+
+        if let Ok(event) = self.receiver.try_recv() {
+            self.send_event(event);
+        }
+    }
+
     fn plugin_name(&self) -> &'static str {
         "scenario"
     }
