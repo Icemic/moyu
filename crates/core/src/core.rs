@@ -30,6 +30,8 @@ pub use self::global::*;
 pub type NodeLock = Arc<RwLock<dyn Node>>;
 pub type NodeMap = Arc<DashMap<u32, NodeLock>>;
 pub type NodeRef<'a> = Ref<'a, u32, NodeLock>;
+pub type PluginLock = Arc<Mutex<dyn Plugin>>;
+pub type PluginRef<'a> = Ref<'a, String, PluginLock>;
 
 pub struct Core {
     pub(crate) window: Arc<Window>,
@@ -37,7 +39,7 @@ pub struct Core {
     #[cfg(native)]
     pub(crate) graphics_thread: ArcSwapOption<std::thread::JoinHandle<()>>,
 
-    plugins: Arc<Mutex<HashMap<String, Arc<Mutex<dyn Plugin>>>>>,
+    plugins: DashMap<String, PluginLock>,
 
     /// timer from program start
     pub instant: Instant,
@@ -113,7 +115,7 @@ impl Core {
             #[cfg(native)]
             graphics_thread: ArcSwapOption::empty(),
 
-            plugins: Arc::new(Mutex::new(HashMap::new())),
+            plugins: DashMap::new(),
 
             instant: Instant::now(),
 
@@ -132,18 +134,16 @@ impl Core {
         }
     }
 
-    pub fn register_plugin(&self, name: &str, plugin: Arc<Mutex<dyn Plugin>>) {
-        let mut plugins = self.plugins.lock();
-        if plugins.contains_key(name) {
+    pub fn register_plugin(&self, name: &str, plugin: PluginLock) {
+        if self.plugins.contains_key(name) {
             error!("There's already a plugin named '{}'.", name);
             return;
         }
-        plugins.insert(name.to_owned(), plugin);
+        self.plugins.insert(name.to_owned(), plugin);
     }
 
-    pub fn get_plugin(&self, name: &str) -> Option<Arc<Mutex<dyn Plugin>>> {
-        let plugins = self.plugins.lock();
-        plugins.get(name).cloned()
+    pub fn get_plugin(&self, name: &str) -> Option<PluginRef<'_>> {
+        self.plugins.get(name)
     }
 
     /// Get window of winit. This is useful when you need to do some low-level operations.

@@ -1,7 +1,7 @@
 use log::debug;
 use moyu_pal::config::WindowState;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::Window;
@@ -25,7 +25,7 @@ impl Core {
         match event {
             &Event::AboutToWait => {
                 // poll all plugins
-                for plugin in self.plugins.lock().values_mut() {
+                for plugin in self.plugins.iter() {
                     plugin.lock().update(false);
                 }
             }
@@ -43,7 +43,7 @@ impl Core {
                     match event {
                         WindowEvent::RedrawRequested => {
                             // poll all plugins
-                            for plugin in self.plugins.lock().values_mut() {
+                            for plugin in self.plugins.iter() {
                                 plugin.lock().update(true);
                             }
 
