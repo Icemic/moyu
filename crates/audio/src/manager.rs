@@ -80,9 +80,9 @@ impl AudioManager {
     }
 
     pub fn create_audio(&mut self, name: &str) {
-        if self.audios.contains_key(name) {
-            warn!("Audio {} already exists", name);
-            return;
+        if let Some(old) = self.audios.remove(name) {
+            warn!("Audio {} already exists, stopping it", name);
+            old.lock().stop(None).ok();
         }
         self.audios
             .insert(name.to_string(), Arc::new(Mutex::new(Audio::new())));
