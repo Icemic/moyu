@@ -18,12 +18,12 @@ impl PartialEq for HitTestTarget {
 }
 
 pub fn hit_test<'a>(
-    root_node: &NodeLock,
+    _root_node: &NodeLock,
     global_logical_x: f32,
     global_logical_y: f32,
     upload_payload: &FocusablePayload,
 ) -> Option<HitTestTarget> {
-    let root_node = root_node.read();
+    let root_node = _root_node.read();
     let mut focused_node = None;
 
     walk_nodes_bottom_top(
@@ -57,7 +57,13 @@ pub fn hit_test<'a>(
         true,
     );
 
-    focused_node
+    // at least hit the root node
+    focused_node.or_else(|| {
+        Some(HitTestTarget {
+            node: _root_node.clone(),
+            parent_ids: vec![],
+        })
+    })
 }
 
 #[inline]
