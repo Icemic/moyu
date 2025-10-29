@@ -58,8 +58,9 @@ pub struct NodeBase {
 impl NodeBase {
     pub fn new(label: String) -> Self {
         let id = unsafe {
+            let id = NODE_ID;
             NODE_ID += 1;
-            NODE_ID
+            id
         };
         Self {
             label,
