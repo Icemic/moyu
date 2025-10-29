@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add global `window` object in QuickJS environment corresponding to browser environment.
 - Enhance console logger, `[unrepresentable value]` is shown for unrepresentable values instead of panicking.
 - Avoid compiling quickjs runtime on wasm32 target to remove warnings from `rust-analyzer`.
+- Update `sixu` to 0.3.0 for better flow control.
 
 ### Performance
 

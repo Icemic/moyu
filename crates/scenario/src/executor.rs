@@ -20,22 +20,22 @@ impl RuntimeExecutor for ScenarioExecutor {
         &mut self,
         _ctx: &mut RuntimeContext,
         command_line: &CommandLine,
-    ) -> sixu::error::Result<()> {
+    ) -> sixu::error::Result<bool> {
         self.sender
             .try_send(ScenarioEvent::CommandLine(command_line.clone()))
             .map_err(anyhow::Error::from)?;
-        Ok(())
+        Ok(false)
     }
 
     fn handle_extra_system_call(
         &mut self,
         _ctx: &mut RuntimeContext,
         systemcall_line: &SystemCallLine,
-    ) -> sixu::error::Result<()> {
+    ) -> sixu::error::Result<bool> {
         self.sender
             .try_send(ScenarioEvent::ExtraSystemCall(systemcall_line.clone()))
             .map_err(anyhow::Error::from)?;
-        Ok(())
+        Ok(false)
     }
 
     fn handle_text(
@@ -43,25 +43,25 @@ impl RuntimeExecutor for ScenarioExecutor {
         _ctx: &mut RuntimeContext,
         leading: Option<&str>,
         text: Option<&str>,
-    ) -> sixu::error::Result<()> {
+    ) -> sixu::error::Result<bool> {
         self.sender
             .try_send(ScenarioEvent::Text {
                 leading: leading.map(|s| s.to_string()),
                 text: text.map(|s| s.to_string()),
             })
             .map_err(anyhow::Error::from)?;
-        Ok(())
+        Ok(false)
     }
 
     fn eval_script(
         &mut self,
         _ctx: &mut RuntimeContext,
         _script: &String,
-    ) -> sixu::error::Result<Option<RValue>> {
+    ) -> sixu::error::Result<(Option<RValue>, bool)> {
         // TODO: Implement actual script evaluation logic here
         // For now, return None
         log::warn!("Script evaluation not implemented");
-        Ok(None)
+        Ok((None, true))
     }
 
     fn finished(&mut self, _ctx: &mut RuntimeContext) {
