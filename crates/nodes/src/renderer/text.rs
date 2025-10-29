@@ -379,7 +379,7 @@ impl Renderer for TextRenderer {
         let need_relayout = node.base_mut().pop_update_vertices();
 
         if need_relayout {
-            match huozi.layout_parse(
+            match huozi.layout_parse_with::<'<', '>'>(
                 &node.text,
                 &node.layout_style,
                 &node.text_style,

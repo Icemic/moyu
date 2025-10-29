@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhance console logger, `[unrepresentable value]` is shown for unrepresentable values instead of panicking.
 - Avoid compiling quickjs runtime on wasm32 target to remove warnings from `rust-analyzer`.
 - Update `sixu` to 0.3.0 for better flow control.
+- Update `huozi` to 0.14.1 and use `<>` as style tag in text layout parsing.
 
 ### Performance
 
