@@ -5,5 +5,6 @@ export * from './spring';
 export type * from './declaration';
 export * from './events';
 export type * from './node';
+export * from './utils';
 
 export { moyu };
