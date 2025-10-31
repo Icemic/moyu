@@ -1,4 +1,3 @@
-import { omitBy } from './utils';
 import type { ReactElement } from 'react';
 import Reconciler from 'react-reconciler';
 import type { HostConfig } from 'react-reconciler';
@@ -262,4 +261,17 @@ export function createRoot(options?: RootOptions) {
       return MoyuRenderer.updateContainer(reactElement, rootElement, null, callback);
     },
   };
+}
+
+function omitBy<T extends Record<string, any>>(
+  object: T,
+  predicate: (value: T[keyof T], key: keyof T) => boolean,
+): Partial<T> {
+  const result: Partial<T> = {};
+  for (const key of Object.keys(object) as (keyof T)[]) {
+    if (!predicate(object[key], key)) {
+      result[key] = object[key];
+    }
+  }
+  return result;
 }
