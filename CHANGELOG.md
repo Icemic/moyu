@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update `huozi` to 0.14.1 and use `<>` as style tag in text layout parsing.
 - Correctly set node id to 0 instead of 1 for the root node.
 - Improve hit testing to always hit the root node at least.
+- Support specifying entry point when starting a story in Scenario plugin.
 
 ### Performance
 

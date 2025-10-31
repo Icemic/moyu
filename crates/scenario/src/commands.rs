@@ -34,6 +34,8 @@ enum ScenarioCommand {
     StartStory {
         /// The name of the story to start
         name: String,
+        /// The entry point to start from
+        entry: Option<String>,
     },
     TerminateStory,
     /// Parse the next line of the current story
@@ -127,9 +129,9 @@ impl Command for ScenarioPlugin {
                 log::info!("get story list");
                 return self.get_story_list().map(Some);
             }
-            ScenarioCommand::StartStory { name } => {
+            ScenarioCommand::StartStory { name, entry } => {
                 log::info!("start story: {}", name);
-                self.runtime.lock().start(&name)?;
+                self.runtime.lock().start(&name, entry.as_deref())?;
                 return Ok(None);
             }
             ScenarioCommand::TerminateStory => {
