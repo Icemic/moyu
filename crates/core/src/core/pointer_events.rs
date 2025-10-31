@@ -103,9 +103,8 @@ impl Core {
                                 bubble_target_ids,
                                 location,
                             });
-                            if let winit::event::MouseButton::Left = button {
-                                pointer_state.down_id = Some(target_id);
-                            }
+
+                            pointer_state.down_id = Some(target_id);
                         }
                         ElementState::Released => {
                             dispatch_event(MouseEvent {
