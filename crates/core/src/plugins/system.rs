@@ -61,6 +61,7 @@ pub enum SystemCommmad {
     GetWindowState,
     GetWindowInnerPosition,
     GetWindowInnerSize,
+    GetStageSize,
     TakeSnapshot {
         width: Option<u32>,
         height: Option<u32>,
@@ -101,6 +102,10 @@ impl Command for SystemPlugin {
                 let scale_factor = self.core.window().scale_factor();
                 let size = self.core.window().inner_size();
                 let size: winit::dpi::LogicalSize<u32> = size.to_logical(scale_factor);
+                return Ok(Some(to_js(&size)?));
+            }
+            SystemCommmad::GetStageSize => {
+                let size = self.core.stage_size();
                 return Ok(Some(to_js(&size)?));
             }
             SystemCommmad::TakeSnapshot {

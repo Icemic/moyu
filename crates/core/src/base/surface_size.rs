@@ -1,7 +1,8 @@
+use serde::Serialize;
 use winit::dpi::PhysicalSize;
 
 /// Size struct for surface, it handles all size related stuff
-#[derive(Debug, PartialEq, Copy, Clone, Default)]
+#[derive(Debug, PartialEq, Copy, Clone, Default, Serialize)]
 pub struct SurfaceSize {
     /// logical width
     width: f64,
