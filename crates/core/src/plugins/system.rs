@@ -122,13 +122,19 @@ impl Command for SystemPlugin {
                     let fut = async move {
                         // Poll until the snapshot is ready
                         loop {
-                            if let Some((data, origin_width, origin_height, format)) =
-                                graphics_clone.try_get_snapshot()
+                            if let Some((
+                                data,
+                                origin_width,
+                                origin_height,
+                                bytes_per_row,
+                                format,
+                            )) = graphics_clone.try_get_snapshot()
                             {
                                 let mut snapshot = Snapshot {
                                     width: origin_width,
                                     height: origin_height,
                                     data,
+                                    stride: bytes_per_row,
                                     format: format.into(),
                                 };
 

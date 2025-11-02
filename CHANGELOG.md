@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correctly set node id to 0 instead of 1 for the root node.
 - Improve hit testing to always hit the root node at least.
 - Support specifying entry point when starting a story in Scenario plugin.
+- Fix `COPY_BYTES_PER_ROW_ALIGNMENT` problem when taking snapshots.
 
 ### Performance
 
