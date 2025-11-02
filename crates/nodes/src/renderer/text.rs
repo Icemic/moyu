@@ -342,6 +342,30 @@ impl TextRenderer {
                 .copy_from_slice(buf_indices);
         }
     }
+
+    fn update_cursor_position(&self, node: &mut Text, next_index: usize) {
+        // next_index is the end value of an open interval, but we need the end value of a closed interval,
+        // so -1.
+        let last_index = next_index as i32 - 1;
+        if last_index < 0 {
+            node.cursor_position = Some((0., 0.));
+            return;
+        }
+
+        if let Some(glyph) = &node.glyph_vertices.get(last_index as usize) {
+            let (next_x, next_y);
+            if node.layout_style.direction == huozi::layout::LayoutDirection::Horizontal {
+                // the last graph is top-right corner, this may be changed by huozi in the future
+                next_x = (glyph.x + glyph.width) as f32 * glyph.scale_ratio as f32;
+                next_y = glyph.y as f32 * glyph.scale_ratio as f32;
+            } else {
+                // bottom-left corner
+                next_x = glyph.x as f32 * glyph.scale_ratio as f32;
+                next_y = (glyph.y + glyph.height) as f32 * glyph.scale_ratio as f32;
+            }
+            node.cursor_position = Some((next_x, next_y));
+        }
+    }
 }
 
 impl Renderer for TextRenderer {
@@ -519,10 +543,6 @@ impl Renderer for TextRenderer {
 
             node.send_event(TextEvent::Progress(total_progress));
 
-            if progress >= 1.0 {
-                node.send_event(TextEvent::Finish);
-            }
-
             self.update_vertices(
                 device,
                 queue,
@@ -533,8 +553,14 @@ impl Renderer for TextRenderer {
                 fade_from_index,
                 progress as f32,
             );
+
+            if progress >= 1.0 {
+                node.send_event(TextEvent::Finish);
+            }
+
+            self.update_cursor_position(node, index);
         } else if need_relayout {
-            // re-render all when verti
+            // re-render all when vertices need update and not printing
             self.update_vertices(
                 device,
                 queue,
@@ -545,6 +571,7 @@ impl Renderer for TextRenderer {
                 None,
                 1.0,
             );
+            self.update_cursor_position(node, node.glyph_vertices.len());
         }
     }
 
