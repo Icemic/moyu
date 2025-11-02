@@ -287,7 +287,7 @@ impl Node for Text {
 pub enum TextCommmad {
     SetText { text: String, instant: Option<bool> },
     FinishPrinting,
-    GetCursorPos,
+    GetCursorPosition,
 }
 
 impl Command for Text {
@@ -311,8 +311,8 @@ impl Command for Text {
                 self.print_start_time = Some(f64::MIN);
                 self.base_mut().pend_update();
             }
-            TextCommmad::GetCursorPos => {
-                return Ok(Some(to_js(&[11, 22])?));
+            TextCommmad::GetCursorPosition => {
+                return Ok(Some(to_js(&self.cursor_position)?));
             }
         }
 
