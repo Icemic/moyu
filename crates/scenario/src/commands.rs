@@ -65,12 +65,12 @@ enum ScenarioCommand {
 
     /// Set a permanent variable that will be saved across game sessions
     SetPermanentVariable {
-        name: String,
+        key: String,
         value: serde_json::Value,
     },
     /// Get a permanent variable that will be saved across game sessions
     GetPermanentVariable {
-        name: String,
+        key: String,
     },
     /// Set multiple permanent variables that will be saved across game sessions
     SetPermanentVariables {
@@ -184,7 +184,7 @@ impl Command for ScenarioPlugin {
                 let game_vars = runtime.context().archive_variables();
                 return Ok(Some(to_js(&game_vars)?));
             }
-            ScenarioCommand::SetPermanentVariable { name, value } => {
+            ScenarioCommand::SetPermanentVariable { key: name, value } => {
                 {
                     let mut runtime = self.runtime.lock();
                     runtime
@@ -195,7 +195,7 @@ impl Command for ScenarioPlugin {
                 }
                 return self.save_global_data_to_file().map(Some);
             }
-            ScenarioCommand::GetPermanentVariable { name } => {
+            ScenarioCommand::GetPermanentVariable { key: name } => {
                 let runtime = self.runtime.lock();
                 let value = runtime.context().global_variables().as_object()?.get(&name);
                 return Ok(Some(to_js(&value)?));
