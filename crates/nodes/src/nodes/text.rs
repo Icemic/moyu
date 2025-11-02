@@ -8,7 +8,7 @@ use wgpu::Buffer;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Command, NodeEventSource};
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
-use moyu_core::utils::convert::{from_js, to_js, JSValue};
+use moyu_core::utils::convert::{JSValue, from_js, to_js};
 
 use crate::events::TextEvent;
 
@@ -41,6 +41,8 @@ pub struct Text {
     /// Start time of text printing, used for typewriter or printer mode.\
     /// It will be set to `None` after printing finished.
     pub(crate) print_start_time: Option<f64>,
+    /// Store the position of next character to be printed. And also used for cursor position.
+    pub(crate) cursor_position: Option<(f32, f32)>,
 
     #[base]
     node_base: NodeBase,
@@ -74,6 +76,7 @@ impl Text {
             index_buffer: None,
             num_indices: 0,
             print_start_time: None,
+            cursor_position: None,
             node_base: NodeBase::new(label),
         }
     }
