@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add fade time option for audio playback and transitions
 - Add `set_timeout` and `clear_timeout` functions to schedule async tasks in QuickJS & browser environment.
 - Add waiting state management in Scenario plugin with `SetWaiting` command.
+- Implement `GetCursorPosition` command of Text node to get the current cursor position.
 
 ### Changed
 
