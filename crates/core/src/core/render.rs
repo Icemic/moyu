@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use wgpu::util::{DeviceExt, StagingBelt};
-use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
+use wgpu::{COPY_BYTES_PER_ROW_ALIGNMENT, Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::window::Window;
 
 use crate::base::*;
@@ -58,10 +58,12 @@ pub struct Graphics {
     /// Flag to request a screenshot on the next render
     snapshot_requested: AtomicBool,
     /// Buffer to store screenshot data
+    /// Tuple: (buffer, width, height, bytes_per_row, receiver)
     snapshot_buffer: Arc<
         Mutex<
             Option<(
                 wgpu::Buffer,
+                u32,
                 u32,
                 u32,
                 Option<std::sync::mpsc::Receiver<Result<(), wgpu::BufferAsyncError>>>,
@@ -186,10 +188,17 @@ impl Graphics {
         self.snapshot_requested.store(true, Ordering::Relaxed);
     }
 
-    /// Check if there's a screenshot ready and return it
-    pub fn try_get_snapshot(&self) -> Option<(Vec<u8>, u32, u32, wgpu::TextureFormat)> {
+    /// Check if there's a screenshot ready and return it.
+    ///
+    /// Returns: (data, width, height, bytes_per_row, format)
+    ///
+    /// Note: The returned data may contain padding bytes to align with GPU requirements.
+    /// `bytes_per_row` (aka `stride`) indicates the actual number of bytes per row in the buffer,
+    /// while the actual image data is `width * 4` bytes per row.
+    /// Callers should strip the padding when processing the image.
+    pub fn try_get_snapshot(&self) -> Option<(Vec<u8>, u32, u32, u32, wgpu::TextureFormat)> {
         let mut snapshot_buffer = self.snapshot_buffer.lock();
-        if let Some((buffer, width, height, rx)) = snapshot_buffer.take() {
+        if let Some((buffer, width, height, bytes_per_row, rx)) = snapshot_buffer.take() {
             let buffer_slice = buffer.slice(..);
 
             // If there's no receiver, we need to start mapping
@@ -214,10 +223,16 @@ impl Graphics {
                 let rgba_data = data.to_vec();
                 drop(data);
                 buffer.unmap();
-                return Some((rgba_data, width, height, self.config.lock().format));
+                return Some((
+                    rgba_data,
+                    width,
+                    height,
+                    bytes_per_row,
+                    self.config.lock().format,
+                ));
             } else {
                 // Put the buffer back if mapping didn't complete
-                *snapshot_buffer = Some((buffer, width, height, Some(rx)));
+                *snapshot_buffer = Some((buffer, width, height, bytes_per_row, Some(rx)));
             }
         }
         None
@@ -435,8 +450,13 @@ impl Graphics {
             let height = config.height;
             drop(config);
 
+            // Calculate aligned bytes_per_row to satisfy COPY_BYTES_PER_ROW_ALIGNMENT (256)
+            let padded_bytes_per_row = (width * 4 + COPY_BYTES_PER_ROW_ALIGNMENT - 1)
+                / COPY_BYTES_PER_ROW_ALIGNMENT
+                * COPY_BYTES_PER_ROW_ALIGNMENT;
+
             // Create a buffer to copy the texture data to
-            let buffer_size = (width * height * 4) as u64; // RGBA
+            let buffer_size = (padded_bytes_per_row * height) as u64;
             let snapshot_buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("Screenshot Buffer"),
                 size: buffer_size,
@@ -456,7 +476,7 @@ impl Graphics {
                     buffer: &snapshot_buffer,
                     layout: wgpu::TexelCopyBufferLayout {
                         offset: 0,
-                        bytes_per_row: Some(4 * width),
+                        bytes_per_row: Some(padded_bytes_per_row),
                         rows_per_image: Some(height),
                     },
                 },
@@ -469,7 +489,8 @@ impl Graphics {
 
             // Store the buffer for later retrieval
             let mut snapshot_buffer_guard = self.snapshot_buffer.lock();
-            *snapshot_buffer_guard = Some((snapshot_buffer, width, height, None));
+            *snapshot_buffer_guard =
+                Some((snapshot_buffer, width, height, padded_bytes_per_row, None));
         }
 
         // TODO: in winit, it is an empty function now, keep an eye on it.

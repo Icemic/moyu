@@ -42,7 +42,12 @@ pub struct Snapshot {
     /// The height of the snapshot in pixels.
     pub height: u32,
     /// The raw pixel data of the snapshot.
+    /// Note: This data may contain padding bytes for memory alignment.
+    /// Use `stride` to determine the actual bytes per row in the buffer.
     pub data: Vec<u8>,
+    /// The stride (bytes per row) in the data buffer.
+    /// This may be larger than `width * bytes_per_pixel()` due to alignment requirements.
+    pub stride: u32,
     /// The texture format of the snapshot data.
     pub format: SnapshotFormat,
 }
@@ -54,6 +59,42 @@ impl Snapshot {
             SnapshotFormat::Bgra8 => 4,
             SnapshotFormat::Rgba16f => 8,
         }
+    }
+
+    /// Convert raw snapshot data (with potential padding and BGRA format) to a DynamicImage.
+    /// This handles both stride padding removal and BGRA->RGBA conversion.
+    fn to_image(&self) -> std::io::Result<image::DynamicImage> {
+        let bytes_per_pixel = self.bytes_per_pixel();
+        let data_width = self.stride / bytes_per_pixel;
+
+        // Create image from raw data with stride width
+        let mut image = match image::RgbaImage::from_raw(data_width, self.height, self.data.clone())
+        {
+            Some(img) => image::DynamicImage::ImageRgba8(img),
+            None => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Failed to create image from raw data",
+                ));
+            }
+        };
+
+        // Strip padding by cropping to actual width if needed
+        if data_width > self.width {
+            image = image.crop_imm(0, 0, self.width, self.height);
+        }
+
+        // Handle BGRA to RGBA conversion if needed
+        if matches!(self.format, SnapshotFormat::Bgra8) {
+            if let image::DynamicImage::ImageRgba8(ref mut img) = image {
+                for pixel in img.pixels_mut() {
+                    let [b, g, r, a] = pixel.0;
+                    pixel.0 = [r, g, b, a]; // BGRA -> RGBA
+                }
+            }
+        }
+
+        Ok(image)
     }
 
     pub fn save_to_buffer(&self, format: ImageFormat) -> std::io::Result<Vec<u8>> {
@@ -72,43 +113,8 @@ impl Snapshot {
             ));
         }
 
-        // Create DynamicImage based on the format
-        let image = match self.format {
-            SnapshotFormat::Rgba8 => {
-                // RGBA8 can be used directly
-                match image::RgbaImage::from_raw(self.width, self.height, self.data.clone()) {
-                    Some(img) => image::DynamicImage::ImageRgba8(img),
-                    None => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            "Failed to create image from raw RGBA8 data",
-                        ));
-                    }
-                }
-            }
-            SnapshotFormat::Bgra8 => {
-                // BGRA8 needs to be converted to RGBA using image crate's pixel operations
-                match image::RgbaImage::from_raw(self.width, self.height, self.data.clone()) {
-                    Some(mut img) => {
-                        // Use image crate's pixel iterator for BGRA -> RGBA conversion
-                        for pixel in img.pixels_mut() {
-                            let [b, g, r, a] = pixel.0;
-                            pixel.0 = [r, g, b, a]; // BGRA -> RGBA
-                        }
-                        image::DynamicImage::ImageRgba8(img)
-                    }
-                    None => {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            "Failed to create image from raw BGRA8 data",
-                        ));
-                    }
-                }
-            }
-            SnapshotFormat::Rgba16f => {
-                unreachable!("RGBA16F should be handled above");
-            }
-        };
+        // Use the shared conversion logic
+        let image = self.to_image()?;
 
         // Encode as byte array in the specified format
         let mut buffer = std::io::Cursor::new(Vec::new());
@@ -192,16 +198,8 @@ impl Snapshot {
             (width, height)
         };
 
-        // Create original image
-        let image = match image::RgbaImage::from_raw(self.width, self.height, self.data.clone()) {
-            Some(img) => image::DynamicImage::ImageRgba8(img),
-            None => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Failed to create image from raw data",
-                ));
-            }
-        };
+        // Use the shared conversion logic to get a clean image
+        let image = self.to_image()?;
 
         // Perform scaling
         let image = image.resize(
@@ -217,6 +215,10 @@ impl Snapshot {
         self.width = target_width;
         self.height = target_height;
         self.data = data;
+        // After resize, there's no padding
+        self.stride = target_width * self.bytes_per_pixel();
+        // After resize, format is RGBA8
+        self.format = SnapshotFormat::Rgba8;
 
         Ok(())
     }
