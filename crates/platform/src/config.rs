@@ -3,7 +3,6 @@ mod logical_size;
 mod present_mode;
 
 use csscolorparser::Color;
-use logical_size::MoyuLogicalSize;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +10,7 @@ use crate::dir::parse_entry_dir;
 use crate::platform::show_fatal_error_and_exit;
 
 pub use self::backend::RenderingBackend;
+use self::logical_size::MoyuLogicalSize;
 pub use self::present_mode::RenderingPresentMode;
 
 static MOYU_ENV: OnceCell<MoyuConfig> = OnceCell::new();
@@ -42,7 +42,7 @@ pub struct MoyuConfig {
     pub window_title: String,
     pub window_state: WindowState,
     pub window_resizable: bool,
-    pub surface_size: MoyuLogicalSize,
+    pub initial_surface_size: MoyuLogicalSize,
     pub stage_size: MoyuLogicalSize,
     pub present_mode: RenderingPresentMode,
     pub backend: RenderingBackend,
@@ -66,7 +66,7 @@ impl Default for MoyuConfig {
             window_title: "moyu".to_string(),
             window_state: WindowState::Idle,
             window_resizable: false,
-            surface_size: "1280x720".parse().unwrap(),
+            initial_surface_size: "1280x720".parse().unwrap(),
             stage_size: "1280x720".parse().unwrap(),
             present_mode: RenderingPresentMode::default(),
             backend: RenderingBackend::default(),
