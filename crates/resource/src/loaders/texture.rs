@@ -23,15 +23,17 @@ pub(crate) fn load_texture(device: &Device, queue: &Queue, url: &Url) -> Arc<Tex
                 Ok(v) => v,
                 Err(err) => {
                     log::error!("Failed to read '{}': {}", url, err);
-                    return Err(anyhow::format_err!("Failed to read '{}': {}", url, err));
+                    return;
                 }
             };
 
-            load_image_to_texture(&texture, &device, &queue, &bytes, Some(url.as_str()))?;
-
-            debug!("texture '{}' loaded", url);
-
-            Ok(())
+            if let Err(err) =
+                load_image_to_texture(&texture, &device, &queue, &bytes, Some(url.as_str()))
+            {
+                log::error!("Failed to load image '{}': {}", url, err);
+            } else {
+                debug!("texture '{}' loaded", url);
+            }
         };
 
         task::spawn(task_fn);
