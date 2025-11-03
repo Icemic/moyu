@@ -170,6 +170,41 @@ impl Core {
         }
     }
 
+    pub fn set_correct_canvas_size_for_web(&self) {
+        // winit does not set the canvas size correctly on the web platform (it doesn't handle DPI),
+        // so we follow the common web approach: create a canvas scaled by the DPI, and then shrink it
+        // via CSS by 1/DPI.
+        //
+        // However, for now we do not support dynamic DPI changes (e.g. moving the browser window between monitors with
+        // different DPIs).
+        #[cfg(web)]
+        {
+            use winit::platform::web::WindowExtWebSys;
+            let window = &self.window;
+
+            let dpi = window.scale_factor();
+
+            let initial_surface_size = get_engine_config().initial_surface_size.as_tuple();
+            let initial_surface_size = (
+                initial_surface_size.0 as f64 * dpi,
+                initial_surface_size.1 as f64 * dpi,
+            );
+
+            let _ = window.request_inner_size(Size::Logical(initial_surface_size.into()));
+
+            if let Some(canvas) = window.canvas() {
+                canvas
+                    .style()
+                    .set_property("transform", &format!("scale({})", 1.0 / dpi))
+                    .unwrap();
+                canvas
+                    .style()
+                    .set_property("transform-origin", "top left")
+                    .unwrap();
+            }
+        }
+    }
+
     /// resize window, should be called in main thread
     pub fn resize_window(&self, logical_width: f64, logical_height: f64, factor: Option<f64>) {
         let window = &self.window;
@@ -180,10 +215,23 @@ impl Core {
         let window_maximized = window.is_maximized();
 
         if logical_width > 0. && logical_height > 0. {
-            let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
+            // see [Self::set_correct_canvas_size_for_web] for explanation about web platform
+            let surface_size = if cfg!(web) {
+                SurfaceSize::new(logical_width * factor, logical_height * factor, factor)
+            } else {
+                SurfaceSize::new(logical_width, logical_height, factor)
+            };
+
             self.resize_stage(surface_size);
 
-            let window_size = Size::Logical(LogicalSize::new(logical_width, logical_height));
+            let window_size = if cfg!(web) {
+                Size::Logical(LogicalSize::new(
+                    logical_width * factor,
+                    logical_height * factor,
+                ))
+            } else {
+                Size::Logical(LogicalSize::new(logical_width, logical_height))
+            };
 
             let _ = window.request_inner_size(window_size);
 

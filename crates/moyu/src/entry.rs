@@ -110,14 +110,7 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
 
                     // workaround for Chrome since it doesn't apply the correct size
                     #[cfg(web)]
-                    let _ = core
-                        .window()
-                        .request_inner_size(moyu_core::winit::dpi::Size::Logical(
-                            moyu_pal::config::get_engine_config()
-                                .surface_size
-                                .as_tuple()
-                                .into(),
-                        ));
+                    core.set_correct_canvas_size_for_web();
 
                     core.window().set_visible(true);
 
