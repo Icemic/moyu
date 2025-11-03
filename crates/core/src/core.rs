@@ -179,16 +179,15 @@ impl Core {
         // different DPIs).
         #[cfg(web)]
         {
+            use wasm_bindgen::JsCast;
             use winit::platform::web::WindowExtWebSys;
+
             let window = &self.window;
 
             let dpi = window.scale_factor();
 
-            let initial_surface_size = get_engine_config().initial_surface_size.as_tuple();
-            let initial_surface_size = (
-                initial_surface_size.0 as f64 * dpi,
-                initial_surface_size.1 as f64 * dpi,
-            );
+            let size = get_engine_config().initial_surface_size.as_tuple();
+            let initial_surface_size = (size.0 as f64 * dpi, size.1 as f64 * dpi);
 
             let _ = window.request_inner_size(Size::Logical(initial_surface_size.into()));
 
@@ -201,6 +200,21 @@ impl Core {
                     .style()
                     .set_property("transform-origin", "top left")
                     .unwrap();
+
+                // also set parent element size to remove empty areas
+                if let Some(parent) = canvas.parent_element() {
+                    if let Ok(parent) = parent.dyn_into::<web_sys::HtmlElement>() {
+                        parent
+                            .style()
+                            .set_property("width", &format!("{}px", size.0))
+                            .unwrap();
+                        parent
+                            .style()
+                            .set_property("height", &format!("{}px", size.1))
+                            .unwrap();
+                        parent.style().set_property("overflow", "hidden").unwrap();
+                    }
+                }
             }
         }
     }
@@ -237,6 +251,38 @@ impl Core {
 
             window.set_minimized(window_minimized.unwrap_or(false));
             window.set_maximized(window_maximized);
+
+            // see [Self::set_correct_canvas_size_for_web] for explanation about web platform
+            #[cfg(web)]
+            {
+                use wasm_bindgen::JsCast;
+                use winit::platform::web::WindowExtWebSys;
+
+                if let Some(canvas) = window.canvas() {
+                    canvas
+                        .style()
+                        .set_property("transform", &format!("scale({})", 1.0 / factor))
+                        .unwrap();
+                    canvas
+                        .style()
+                        .set_property("transform-origin", "top left")
+                        .unwrap();
+
+                    if let Some(parent) = canvas.parent_element() {
+                        if let Ok(parent) = parent.dyn_into::<web_sys::HtmlElement>() {
+                            parent
+                                .style()
+                                .set_property("width", &format!("{}px", logical_width))
+                                .unwrap();
+                            parent
+                                .style()
+                                .set_property("height", &format!("{}px", logical_height))
+                                .unwrap();
+                            parent.style().set_property("overflow", "hidden").unwrap();
+                        }
+                    }
+                }
+            }
 
             // reset fullscreen status
             if window_fullscreen.is_some() {
