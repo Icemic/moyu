@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve hit testing to always hit the root node at least.
 - Support specifying entry point when starting a story in Scenario plugin.
 - Fix `COPY_BYTES_PER_ROW_ALIGNMENT` problem when taking snapshots.
+- Enhance size setting logic in SpriteRenderer.
 
 ### Performance
 
