@@ -5,7 +5,7 @@ use wgpu::Buffer;
 
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
-use moyu_core::utils::convert::{from_js, JSValue};
+use moyu_core::utils::convert::{JSValue, from_js};
 use moyu_resource::types::AssetId;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -118,6 +118,8 @@ impl Node for Sprite {
 
         if let Some(area) = props.area {
             self.area = area;
+            // clean base node size, and re-assign it in renderer
+            self.base_mut().set_size(0, 0);
         }
 
         if let Some(bounds) = props.bounds {
@@ -126,22 +128,20 @@ impl Node for Sprite {
 
         if let Some(nine_slice_mode) = props.nine_slice_mode {
             self.nine_slice_mode = nine_slice_mode;
+            // clean base node size, and re-assign it in renderer
+            self.base_mut().set_size(0, 0);
         }
 
         if let Some(target_width) = props.target_width {
             self.target_width = target_width;
-            // use target width as width when mode is nineslice
-            if self.mode == SpriteMode::Nineslice {
-                self.base_mut().set_width(target_width);
-            }
+            // clean base node size, and re-assign it in renderer
+            self.base_mut().set_size(0, 0);
         }
 
         if let Some(target_height) = props.target_height {
             self.target_height = target_height;
-            // use target height as height when mode is nineslice
-            if self.mode == SpriteMode::Nineslice {
-                self.base_mut().set_height(target_height);
-            }
+            // clean base node size, and re-assign it in renderer
+            self.base_mut().set_size(0, 0);
         }
 
         // force update vertices
