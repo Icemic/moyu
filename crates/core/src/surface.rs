@@ -33,7 +33,7 @@ pub fn create_window<T>(
     let env = get_engine_config();
     // create window
     let mut builder = WindowBuilder::new()
-        .with_inner_size(Size::Logical(env.surface_size.as_tuple().into()))
+        .with_inner_size(Size::Logical(env.initial_surface_size.as_tuple().into()))
         .with_resizable(env.window_resizable)
         .with_visible(false)
         .with_active(true)
