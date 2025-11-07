@@ -3,8 +3,9 @@ struct VertexInput {
     @location(1) tex_coords: vec2<f32>,
     @location(2) page: i32,
     @location(3) buffer: f32,
-    @location(4) gamma: f32,
-    @location(5) color: vec4<f32>,
+    @location(4) fill_buffer: f32,
+    @location(5) gamma: f32,
+    @location(6) color: vec4<f32>,
 }
 
 struct VertexOutput {
@@ -12,8 +13,9 @@ struct VertexOutput {
     @location(0) tex_coords: vec2<f32>,
     @location(1) @interpolate(flat) page: i32,
     @location(2) buffer: f32,
-    @location(3) gamma: f32,
-    @location(4) color: vec4<f32>,
+    @location(3) fill_buffer: f32,
+    @location(4) gamma: f32,
+    @location(5) color: vec4<f32>,
 }
 
 @group(0) @binding(0)
@@ -28,6 +30,7 @@ fn vs_main(
     out.clip_position = mvp_matrix * vec4<f32>(model.position, 1.0);
     out.page = model.page;
     out.buffer = model.buffer;
+    out.fill_buffer = model.fill_buffer;
     out.gamma = model.gamma;
     out.color = model.color;
     return out;
@@ -49,6 +52,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let gamma = fill_gamma + in.gamma;
 
-    let alpha = smoothstep(in.buffer - gamma, in.buffer + gamma, dist);
-    return vec4(in.color.rgb, alpha * in.color.a);
+    let outer = smoothstep(in.buffer - gamma, in.buffer + gamma, dist);
+    let inner = smoothstep(in.fill_buffer - fill_gamma, in.fill_buffer + fill_gamma, dist);
+    return vec4(in.color.rgb, (outer - inner) * in.color.a);
 }

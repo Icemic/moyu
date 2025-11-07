@@ -1472,9 +1472,9 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
 name = "huozi"
-version = "0.14.3"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8de8c2e27482fac0f61fbe3e94b59246a70c53af2f32bf48b0e7b6abb1a5a3a6"
+checksum = "f83879006bb1bbcb571c1586436ed0bb934d80d99ff09b2d725d59509e1fedc6"
 dependencies = [
  "ab_glyph",
  "anyhow",
