@@ -17,7 +17,7 @@ export interface TouchEvent extends BubbleEvent {
   clientY: number;
   screenX: number;
   screenY: number;
-  layerX: number;
-  layerY: number;
+  offsetX: number;
+  offsetY: number;
   identifier: number;
 }

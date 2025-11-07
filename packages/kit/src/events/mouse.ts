@@ -21,6 +21,6 @@ export interface MouseEvent extends BubbleEvent {
   clientY: number;
   screenX: number;
   screenY: number;
-  layerX: number;
-  layerY: number;
+  offsetX: number;
+  offsetY: number;
 }

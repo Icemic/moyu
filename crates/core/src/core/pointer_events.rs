@@ -260,8 +260,8 @@ impl Core {
             client_y: stage_logical_y.round() as u32,
             screen_x: screen_logical_x.round() as u32,
             screen_y: screen_logical_y.round() as u32,
-            layer_x: 0.,
-            layer_y: 0.,
+            offset_x: 0.,
+            offset_y: 0.,
         };
 
         pointer_state.location = location;
@@ -302,8 +302,8 @@ impl Core {
                     pointer_state.location.client_y as f32,
                 );
 
-                pointer_state.location.layer_x = x;
-                pointer_state.location.layer_y = y;
+                pointer_state.location.offset_x = x;
+                pointer_state.location.offset_y = y;
 
                 drop(node_ref);
 
@@ -332,8 +332,8 @@ impl Core {
 
                         let mut location = pointer_state.location;
 
-                        location.layer_x = x;
-                        location.layer_y = y;
+                        location.offset_x = x;
+                        location.offset_y = y;
 
                         let target_id = *node_ref.base().id();
 
@@ -378,8 +378,8 @@ impl Core {
                 pointer_state.location.client_y as f32,
             );
 
-            pointer_state.location.layer_x = x;
-            pointer_state.location.layer_y = y;
+            pointer_state.location.offset_x = x;
+            pointer_state.location.offset_y = y;
 
             if identifier == MOUSE_IDENTIFIER {
                 let target_id = *node_ref.base().id();

@@ -9,8 +9,8 @@ pub struct PointerLocation {
     pub client_y: u32,
     pub screen_x: u32,
     pub screen_y: u32,
-    pub layer_x: f32,
-    pub layer_y: f32,
+    pub offset_x: f32,
+    pub offset_y: f32,
 }
 
 /// Struct for storing the state of a pointer device state
