@@ -112,10 +112,10 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
                     #[cfg(web)]
                     core.set_correct_canvas_size_for_web();
 
-                    core.window().set_visible(true);
-
                     #[cfg(desktop)]
                     core.move_to_center();
+
+                    core.window().set_visible(true);
 
                     // show splash screen
                     if !get_engine_config().skip_splash {
