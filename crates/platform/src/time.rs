@@ -1,13 +1,9 @@
 #[cfg(native)]
-pub use std::time::*;
+mod native;
 #[cfg(native)]
-pub use tokio::time::{
-    interval, interval_at, sleep, sleep_until, timeout, timeout_at, Interval, Sleep, Timeout,
-};
+pub use native::*;
 
 #[cfg(web)]
-pub use wasmtimer::std::*;
+mod web;
 #[cfg(web)]
-pub use wasmtimer::tokio::{
-    interval, interval_at, sleep, sleep_until, timeout, timeout_at, Interval, Sleep, Timeout,
-};
+pub use web::*;
