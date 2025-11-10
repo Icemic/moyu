@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- Rename `name` to `key` in SetPermanentVariable and GetPermanentVariable (#37)
+- Rename `surface_size` to `initial_surface_size` in `index.json` for clarity
+- Implement correct canvas size handling on web platform, considering device pixel ratio. (#38)
+- Rename `layer_x`/`layer_y` to `offset_x`/`offset_y` for mouse and touch events
+
 ### Added
 
 - Support opus audio format on all platforms, including wasm32.
@@ -36,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support specifying entry point when starting a story in Scenario plugin.
 - Fix `COPY_BYTES_PER_ROW_ALIGNMENT` problem when taking snapshots.
 - Enhance size setting logic in SpriteRenderer.
+- Fixes wrong size setting in sprite node when `area` is set.
+- Fixes an issue causing slplash screen stuck on web platform.
 
 ### Performance
 
