@@ -8,12 +8,7 @@ pub mod surface;
 pub mod traits;
 pub mod utils;
 
-use std::sync::Arc;
-use winit::event_loop::EventLoop;
-
 pub use winit;
-
-use crate::core::Core;
 
 /// setup moyu core
 pub fn setup() {
@@ -27,16 +22,4 @@ pub fn setup() {
         );
         debug!("FFmpeg configuration: {}", ffmpeg_rs::util::configuration());
     }
-}
-
-/// create moyu core instance
-pub fn create_moyu_core<T>(event_loop: &EventLoop<T>, #[cfg(web)] element_id: &str) -> Arc<Core> {
-    // create multithread shared core
-    let core = Core::new(
-        event_loop,
-        #[cfg(web)]
-        element_id,
-    );
-
-    Arc::new(core)
 }

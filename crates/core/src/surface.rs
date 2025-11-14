@@ -3,17 +3,16 @@ use moyu_pal::config::{RenderingBackend, get_engine_config};
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
 use winit::dpi::Size;
-use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopWindowTarget};
+use winit::event_loop::{ActiveEventLoop, EventLoop};
 #[cfg(android)]
 use winit::platform::android::activity::AndroidApp;
-use winit::window::WindowBuilder;
 use winit::{dpi::PhysicalSize, window::Window};
 
 pub fn create_eventloop(#[cfg(android)] app: AndroidApp) -> EventLoop<()> {
     // create main thread infinity loop
     #[cfg(not(android))]
     {
-        EventLoopBuilder::with_user_event().build().unwrap()
+        EventLoop::with_user_event().build().unwrap()
     }
 
     #[cfg(android)]
@@ -26,13 +25,10 @@ pub fn create_eventloop(#[cfg(android)] app: AndroidApp) -> EventLoop<()> {
     }
 }
 
-pub fn create_window<T>(
-    event_loop: &EventLoopWindowTarget<T>,
-    #[cfg(web)] element_id: &str,
-) -> Arc<Window> {
+pub fn create_window(event_loop: &ActiveEventLoop, #[cfg(web)] element_id: &str) -> Arc<Window> {
     let env = get_engine_config();
     // create window
-    let mut builder = WindowBuilder::new()
+    let mut builder = Window::default_attributes()
         .with_inner_size(Size::Logical(env.initial_surface_size.as_tuple().into()))
         .with_resizable(env.window_resizable)
         .with_visible(false)
@@ -57,7 +53,9 @@ pub fn create_window<T>(
         }
     };
 
-    let window = builder.build(event_loop).unwrap();
+    let window = event_loop
+        .create_window(builder)
+        .expect("Failed to create window.");
 
     // web target only
     // add a canvas element to dom as 'window'
