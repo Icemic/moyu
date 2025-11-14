@@ -79,25 +79,6 @@ pub fn create_window(event_loop: &ActiveEventLoop, #[cfg(web)] element_id: &str)
 
 pub async fn create_wgpu_surface(
     window: &Arc<Window>,
-) -> (
-    Instance,
-    Surface<'static>,
-    Device,
-    Queue,
-    SurfaceConfiguration,
-) {
-    #[cfg(native)]
-    {
-        create_surface_inner(window, &window.inner_size()).await
-    }
-    #[cfg(web)]
-    {
-        create_surface_inner(window, &PhysicalSize::new(1280, 720)).await
-    }
-}
-
-async fn create_surface_inner(
-    window: &Arc<Window>,
     size: &PhysicalSize<u32>,
 ) -> (
     Instance,
