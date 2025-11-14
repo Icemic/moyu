@@ -325,8 +325,8 @@ impl Core {
     pub fn init_graphics(&self) {
         let graphics = moyu_pal::task::block_on_without_runtime(Graphics::init(
             &self.window,
-            &self.surface_size.read(),
-            &self.stage_size.read(),
+            &self.surface_size(),
+            &self.stage_size(),
             self.node_map.clone(),
         ));
 
