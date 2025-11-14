@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename `surface_size` to `initial_surface_size` in `index.json` for clarity
 - Implement correct canvas size handling on web platform, considering device pixel ratio. (#38)
 - Rename `layer_x`/`layer_y` to `offset_x`/`offset_y` for mouse and touch events
+- Upgrade `winit` to 0.30.
 
 ### Added
 
