@@ -18,7 +18,7 @@ pub fn create_eventloop<T>(#[cfg(android)] app: AndroidApp) -> EventLoop<T> {
     #[cfg(android)]
     {
         use winit::platform::android::EventLoopBuilderExtAndroid;
-        EventLoopBuilder::with_user_event()
+        EventLoop::with_user_event()
             .with_android_app(app)
             .build()
             .unwrap()

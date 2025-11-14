@@ -1,5 +1,3 @@
-#[cfg(target_os = "android")]
-use std::io::Read;
 use std::io::{Cursor, Read};
 use std::path::PathBuf;
 
@@ -56,7 +54,9 @@ pub async fn read_from_file(url: &Url) -> Result<Vec<u8>> {
         return Ok(buf);
     }
 
-    return Err("You can only read from 'file:///android_asset/' on Android.".into());
+    return Err(anyhow::anyhow!(
+        "You can only read from 'file:///android_asset/' on Android."
+    ));
 }
 
 /// Open a file from a URL, returns a `Vec<u8>`
