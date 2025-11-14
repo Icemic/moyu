@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use arc_swap::ArcSwap;
 use moyu_audio::AudioManager;
 use moyu_core::core::{Core, get_core, set_core, try_get_core};
 use moyu_core::events::GameEvent;
@@ -24,7 +23,7 @@ use moyu_runtime::QuickVM;
 use moyu_scenario::ScenarioPlugin;
 
 #[allow(dead_code)]
-pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str) {
+pub async fn main_entry(event_loop: EventLoop<ApplicationInitEvent>, #[cfg(web)] element_id: &str) {
     // hold the global variable lifetime using VisibleHand
     let _async_runtime_handle = platform::setup();
 
@@ -42,7 +41,7 @@ pub async fn main_entry(event_loop: EventLoop<()>, #[cfg(web)] element_id: &str)
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-enum ApplicationInitState {
+pub(crate) enum ApplicationInitEvent {
     #[default]
     Start,
     Graphic,
@@ -51,13 +50,11 @@ enum ApplicationInitState {
 }
 
 struct Application {
-    event_proxy: EventLoopProxy<()>,
+    event_proxy: EventLoopProxy<ApplicationInitEvent>,
     #[cfg(web)]
     element_id: String,
     #[cfg(native)]
     loop_helper: Option<spin_sleep_util::Interval>,
-
-    init_state: Arc<ArcSwap<ApplicationInitState>>,
 
     #[cfg(native)]
     _vm_handle: Arc<Mutex<Option<VisibleHand<Arc<QuickVM>>>>>,
@@ -67,14 +64,16 @@ struct Application {
 }
 
 impl Application {
-    fn new(event_proxy: EventLoopProxy<()>, #[cfg(web)] element_id: &str) -> Self {
+    fn new(
+        event_proxy: EventLoopProxy<ApplicationInitEvent>,
+        #[cfg(web)] element_id: &str,
+    ) -> Self {
         Application {
             event_proxy,
             #[cfg(web)]
             element_id: element_id.to_string(),
             #[cfg(native)]
             loop_helper: None,
-            init_state: Arc::new(ArcSwap::from_pointee(ApplicationInitState::Start)),
             _vm_handle: Arc::new(Mutex::new(None)),
             _core_handle: Arc::new(Mutex::new(None)),
         }
@@ -85,35 +84,35 @@ impl Application {
     }
 }
 
-impl ApplicationHandler for Application {
-    fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {
-        match self.init_state.load().as_ref() {
-            ApplicationInitState::Start => {
+impl ApplicationHandler<ApplicationInitEvent> for Application {
+    fn user_event(&mut self, _: &ActiveEventLoop, event: ApplicationInitEvent) {
+        match event {
+            ApplicationInitEvent::Start => {
                 // do nothing
             }
-            ApplicationInitState::Graphic => {
+            ApplicationInitEvent::Graphic => {
                 let core = get_core().clone();
 
                 #[cfg(native)]
                 {
                     core.init_graphics();
-                    self.init_state
-                        .store(Arc::new(ApplicationInitState::Plugin));
-                    self.event_proxy.send_event(()).unwrap();
+                    self.event_proxy
+                        .send_event(ApplicationInitEvent::Plugin)
+                        .unwrap();
                 }
 
                 #[cfg(web)]
                 {
-                    let state = self.init_state.clone();
                     let event_proxy = self.event_proxy.clone();
                     moyu_pal::task::spawn(async move {
                         core.init_graphics().await;
-                        state.store(Arc::new(ApplicationInitState::Plugin));
-                        event_proxy.send_event(()).unwrap();
+                        event_proxy
+                            .send_event(ApplicationInitEvent::Plugin)
+                            .unwrap();
                     });
                 }
             }
-            ApplicationInitState::Plugin => {
+            ApplicationInitEvent::Plugin => {
                 let core = get_core();
                 if let Some(graphics) = core.graphics() {
                     let device = graphics.device();
@@ -129,7 +128,6 @@ impl ApplicationHandler for Application {
                 }
 
                 let core = get_core().clone();
-                let state = self.init_state.clone();
                 let event_proxy = self.event_proxy.clone();
                 moyu_pal::task::spawn(async move {
                     match AudioManager::new() {
@@ -157,11 +155,12 @@ impl ApplicationHandler for Application {
                         let gamepad = GamepadPlugin::new();
                         core.register_plugin("gamepad", Arc::new(Mutex::new(gamepad)));
                     }
-                    state.store(Arc::new(ApplicationInitState::ShowAndRun));
-                    event_proxy.send_event(()).unwrap();
+                    event_proxy
+                        .send_event(ApplicationInitEvent::ShowAndRun)
+                        .unwrap();
                 });
             }
-            ApplicationInitState::ShowAndRun => {
+            ApplicationInitEvent::ShowAndRun => {
                 let core = get_core();
                 // All plugins are ready, now we can spawn the runtime and execute scripts
                 let _vm_handle = match moyu_ops::spawn::spawn_runtime_with_core(&core) {
@@ -233,9 +232,9 @@ impl ApplicationHandler for Application {
         let _core_handle = set_core(core.clone());
         self._core_handle.lock().replace(_core_handle);
 
-        self.init_state
-            .store(Arc::new(ApplicationInitState::Graphic));
-        self.event_proxy.send_event(()).unwrap();
+        self.event_proxy
+            .send_event(ApplicationInitEvent::Graphic)
+            .unwrap();
     }
 
     fn suspended(&mut self, _: &moyu_core::winit::event_loop::ActiveEventLoop) {
