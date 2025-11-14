@@ -8,7 +8,7 @@ use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::platform::android::activity::AndroidApp;
 use winit::{dpi::PhysicalSize, window::Window};
 
-pub fn create_eventloop(#[cfg(android)] app: AndroidApp) -> EventLoop<()> {
+pub fn create_eventloop<T>(#[cfg(android)] app: AndroidApp) -> EventLoop<T> {
     // create main thread infinity loop
     #[cfg(not(android))]
     {
