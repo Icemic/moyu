@@ -12,6 +12,11 @@ pub fn get_core<'a>() -> &'a Arc<Core> {
 }
 
 #[inline]
+pub fn try_get_core<'a>() -> Option<&'a Arc<Core>> {
+    CORE.try_get()
+}
+
+#[inline]
 pub fn set_core(core: Arc<Core>) -> VisibleHand<Arc<Core>> {
     CORE.set(core).expect("Failed to set core instance.");
     CORE.intervent()

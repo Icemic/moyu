@@ -15,13 +15,11 @@ use render::Graphics;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use winit::dpi::{LogicalSize, Size};
-use winit::event_loop::EventLoop;
 use winit::keyboard::ModifiersState;
 use winit::window::{Fullscreen, Window};
 
 use crate::base::*;
 use crate::state::{MOUSE_IDENTIFIER, PointerState};
-use crate::surface::create_window;
 use crate::{nodes::Container, traits::*};
 
 pub use self::global::*;
@@ -65,14 +63,8 @@ pub struct Core {
 }
 
 impl Core {
-    pub fn new<T>(event_loop: &EventLoop<T>, #[cfg(web)] element_id: &str) -> Self {
+    pub fn new(window: Arc<Window>) -> Self {
         let env = get_engine_config();
-
-        let window = create_window(
-            event_loop,
-            #[cfg(web)]
-            element_id,
-        );
 
         // store surface and stage size
         let size = window.inner_size();
@@ -319,8 +311,8 @@ impl Core {
     pub async fn init_graphics(&self) {
         let graphics = Graphics::init(
             &self.window,
-            &self.surface_size.read(),
-            &self.stage_size.read(),
+            &self.surface_size(),
+            &self.stage_size(),
             self.node_map.clone(),
         )
         .await;
@@ -473,7 +465,7 @@ impl Core {
         if *prev_cursor != cursor {
             match cursor {
                 MoyuCursor::Visible(cursor) => {
-                    self.window.set_cursor_icon(cursor);
+                    self.window.set_cursor(cursor);
                     self.window.set_cursor_visible(true);
                     debug!("set cursor to {}", cursor.name());
                 }

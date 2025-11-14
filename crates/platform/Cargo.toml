@@ -61,7 +61,7 @@ web-sys = {workspace = true, features = [
 web-time = {workspace = true}
 
 [target.'cfg(target_os = "android")'.dependencies]
-android-activity = "0.5.2"
+android-activity = "0.6.0"
 android_logger = "0.14.1"
 
 [target.'cfg(target_os = "windows")'.dependencies]

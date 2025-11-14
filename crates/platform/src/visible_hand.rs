@@ -1,5 +1,5 @@
-use std::sync::atomic::{AtomicPtr, Ordering};
 use std::ptr;
+use std::sync::atomic::{AtomicPtr, Ordering};
 
 use anyhow::Result;
 use log::debug;
@@ -57,9 +57,7 @@ impl<T> InvisibleHand<T> {
     }
 
     pub fn intervent(&'static self) -> VisibleHand<T> {
-        VisibleHand {
-            hand: self,
-        }
+        VisibleHand { hand: self }
     }
 }
 

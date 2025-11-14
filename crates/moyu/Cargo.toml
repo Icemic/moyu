@@ -31,6 +31,7 @@ path = "src/lib.rs"
 [dependencies]
 spin_sleep_util = "0.1.1"
 
+arc-swap = {workspace = true}
 log = {workspace = true}
 
 moyu_audio = {workspace = true}
