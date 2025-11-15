@@ -56,6 +56,8 @@ struct Application {
     #[cfg(native)]
     loop_helper: Option<spin_sleep_util::Interval>,
 
+    initialized: bool,
+
     #[cfg(native)]
     _vm_handle: Arc<Mutex<Option<VisibleHand<Arc<QuickVM>>>>>,
     #[cfg(web)]
@@ -74,6 +76,7 @@ impl Application {
             element_id: element_id.to_string(),
             #[cfg(native)]
             loop_helper: None,
+            initialized: false,
             _vm_handle: Arc::new(Mutex::new(None)),
             _core_handle: Arc::new(Mutex::new(None)),
         }
@@ -193,6 +196,8 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                     // tell script that engine is ready to render
                     dispatch_event(GameEvent::Ready);
                 }
+
+                self.initialized = true;
             }
         }
     }
@@ -253,6 +258,10 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
         window_id: moyu_core::winit::window::WindowId,
         event: moyu_core::winit::event::WindowEvent,
     ) {
+        if !self.initialized {
+            return;
+        }
+
         if let Some(core) = self.core() {
             core.handle_window_event(&event, &window_id, event_loop);
         }
