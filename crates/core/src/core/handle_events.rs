@@ -132,6 +132,7 @@ impl Core {
                     }
                     WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                         self.stage_size.write().set_scale_factor(*scale_factor);
+                        self.surface_size.write().set_scale_factor(*scale_factor);
                     }
                     WindowEvent::Focused(focused) => {
                         dispatch_event(FocusEvent {
