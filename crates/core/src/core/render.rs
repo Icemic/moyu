@@ -82,13 +82,7 @@ impl Graphics {
         stage_size: &SurfaceSize,
         node_map: NodeMap,
     ) -> Self {
-        let physical_size = if cfg!(native) {
-            surface_size.physical_size().into()
-        } else {
-            // for web because surface_size on web is zero due to winit (bug?)
-            // we then call `set_correct_canvas_size_for_web` after graphics is initialized
-            get_engine_config().initial_surface_size.as_tuple().into()
-        };
+        let physical_size = surface_size.physical_size().into();
 
         let (instance, surface, device, queue, config) =
             create_wgpu_surface(window, &physical_size).await;

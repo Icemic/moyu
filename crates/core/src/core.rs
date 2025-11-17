@@ -67,7 +67,27 @@ impl Core {
         let env = get_engine_config();
 
         // store surface and stage size
-        let size = window.inner_size();
+        let mut size = window.inner_size();
+
+        if size.width == 0 || size.height == 0 {
+            // for web, it is common to have zero size at the beginning
+            // see: https://github.com/rust-windowing/winit/pull/2859
+            // and https://github.com/rust-windowing/winit/pull/3502#issuecomment-1953234987
+            #[cfg(not(web))]
+            log::warn!(
+                "Window size is zero (width: {}, height: {}), use initial surface size from config.",
+                size.width,
+                size.height
+            );
+
+            let logical_size = env.initial_surface_size.as_tuple();
+            let scale_factor = window.scale_factor();
+            size = winit::dpi::PhysicalSize {
+                width: (logical_size.0 as f64 * scale_factor) as u32,
+                height: (logical_size.1 as f64 * scale_factor) as u32,
+            };
+        }
+
         let scale_factor = window.scale_factor();
         let surface_size = SurfaceSize::from_physical_size(&size, scale_factor);
 
@@ -158,55 +178,6 @@ impl Core {
                     y: monitor_size.height.saturating_sub(window_size.height) as f64 / 2.
                         + monitor.position().y as f64,
                 });
-            }
-        }
-    }
-
-    pub fn set_correct_canvas_size_for_web(&self) {
-        // winit does not set the canvas size correctly on the web platform (it doesn't handle DPI),
-        // so we follow the common web approach: create a canvas scaled by the DPI, and then shrink it
-        // via CSS by 1/DPI.
-        //
-        // However, for now we do not support dynamic DPI changes (e.g. moving the browser window between monitors with
-        // different DPIs).
-        #[cfg(web)]
-        {
-            use wasm_bindgen::JsCast;
-            use winit::platform::web::WindowExtWebSys;
-
-            let window = &self.window;
-
-            let dpi = window.scale_factor();
-
-            let size = get_engine_config().initial_surface_size.as_tuple();
-            let initial_surface_size = (size.0 as f64 * dpi, size.1 as f64 * dpi);
-
-            let _ = window.request_inner_size(Size::Logical(initial_surface_size.into()));
-
-            if let Some(canvas) = window.canvas() {
-                canvas
-                    .style()
-                    .set_property("transform", &format!("scale({})", 1.0 / dpi))
-                    .unwrap();
-                canvas
-                    .style()
-                    .set_property("transform-origin", "top left")
-                    .unwrap();
-
-                // also set parent element size to remove empty areas
-                if let Some(parent) = canvas.parent_element() {
-                    if let Ok(parent) = parent.dyn_into::<web_sys::HtmlElement>() {
-                        parent
-                            .style()
-                            .set_property("width", &format!("{}px", size.0))
-                            .unwrap();
-                        parent
-                            .style()
-                            .set_property("height", &format!("{}px", size.1))
-                            .unwrap();
-                        parent.style().set_property("overflow", "hidden").unwrap();
-                    }
-                }
             }
         }
     }
