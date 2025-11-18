@@ -175,10 +175,6 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 };
                 self._vm_handle.lock().replace(_vm_handle);
 
-                // workaround for Chrome since it doesn't apply the correct size
-                #[cfg(web)]
-                core.set_correct_canvas_size_for_web();
-
                 #[cfg(desktop)]
                 core.move_to_center();
 

@@ -66,10 +66,29 @@ pub fn create_window(event_loop: &ActiveEventLoop, #[cfg(web)] element_id: &str)
             .and_then(|win| win.document())
             .and_then(|document| document.get_element_by_id(element_id))
             .and_then(|el| {
-                el.append_child(&web_sys::Element::from(
-                    window.canvas().expect("canvas not found"),
-                ))
-                .ok()
+                let scale_factor = window.scale_factor();
+
+                let size = env.initial_surface_size;
+
+                let canvas_width = (size.width() as f64 * scale_factor) as u32;
+                let canvas_height = (size.height() as f64 * scale_factor) as u32;
+
+                let canvas = window
+                    .canvas()
+                    .expect("Failed to get canvas from winit window.");
+
+                canvas.set_width(canvas_width);
+                canvas.set_height(canvas_height);
+                canvas
+                    .style()
+                    .set_property("width", &format!("{}px", size.width()))
+                    .ok();
+                canvas
+                    .style()
+                    .set_property("height", &format!("{}px", size.height()))
+                    .ok();
+
+                el.append_child(&web_sys::Element::from(canvas)).ok()
             })
             .expect(format!("couldn't append canvas to {}", element_id).as_str());
     }
