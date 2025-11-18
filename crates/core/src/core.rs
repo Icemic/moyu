@@ -101,8 +101,8 @@ impl Core {
         let (scale, translate_x, translate_y) = get_scale_and_translate(
             env.stage_size.width() as f32,
             env.stage_size.height() as f32,
-            size.width as f32,
-            size.height as f32,
+            surface_size.logical_size_f32().0,
+            surface_size.logical_size_f32().1,
         );
 
         let surface_size = Arc::new(RwLock::new(surface_size));
