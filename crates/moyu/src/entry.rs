@@ -179,6 +179,7 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 core.move_to_center();
 
                 core.window().set_visible(true);
+                core.window().request_redraw();
 
                 // show splash screen
                 if !get_engine_config().skip_splash {
