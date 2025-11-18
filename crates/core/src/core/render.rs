@@ -250,17 +250,9 @@ impl Graphics {
     pub fn reconfigure_surface(&self, surface_size: SurfaceSize, stage_size: SurfaceSize) {
         let mut config = self.config.lock();
 
-        if cfg!(web) {
-            // on web, we need to set physical size to logical size
-            // wtf, not sure why this is needed, but it works.
-            let (width, height) = surface_size.logical_size();
-            config.width = width.round() as u32;
-            config.height = height.round() as u32;
-        } else {
-            let (width, height) = surface_size.physical_size();
-            config.width = width;
-            config.height = height;
-        }
+        let (width, height) = surface_size.physical_size();
+        config.width = width;
+        config.height = height;
 
         let stage_size = stage_size.logical_size_f32();
 
