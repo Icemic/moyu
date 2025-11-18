@@ -46,6 +46,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhance size setting logic in SpriteRenderer.
 - Fixes wrong size setting in sprite node when `area` is set.
 - Fixes an issue causing slplash screen stuck on web platform.
+- Fixed graphic size issues on initialization on web platform.
+- Refactor DPI handling logic on web platform.
+- Update scale factor in surface size storage when scale factor changed
 
 ### Performance
 
