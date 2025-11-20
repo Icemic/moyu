@@ -109,20 +109,20 @@ function handleBubbleEvent(name: string, body: MouseEvent | TouchEvent) {
       }
 
       // simulate mouse events as same as browsers
-      if (kind === TouchEventKind.TouchEnd && !STATE.touchMoved[identifier] && !event.defaultPrevented) {
-        for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click'] as MouseEventKind[]) {
-          event.bubbles = true;
-          event.kind = eventKind;
-          node?.listeners?.[`on${eventKind}`]?.(event);
-          const _bubbleTargetIds = [...bubbleTargetIds];
-          while (event.bubbles && _bubbleTargetIds.length) {
-            // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
-            event.currentTargetId = _bubbleTargetIds.pop()!;
-            event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
-            STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${eventKind}`]?.(event);
-          }
-        }
-      }
+      // if (kind === TouchEventKind.TouchEnd && !STATE.touchMoved[identifier] && !event.defaultPrevented) {
+      //   for (const eventKind of ['MouseMove', 'MouseDown', 'MouseUp', 'Click'] as MouseEventKind[]) {
+      //     event.bubbles = true;
+      //     event.kind = eventKind;
+      //     node?.listeners?.[`on${eventKind}`]?.(event);
+      //     const _bubbleTargetIds = [...bubbleTargetIds];
+      //     while (event.bubbles && _bubbleTargetIds.length) {
+      //       // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
+      //       event.currentTargetId = _bubbleTargetIds.pop()!;
+      //       event.currentTargetLabel = STATE.nodeMap[event.currentTargetId]?.label;
+      //       STATE.nodeMap[event.currentTargetId]?.listeners?.[`on${eventKind}`]?.(event);
+      //     }
+      //   }
+      // }
 
       if (kind === TouchEventKind.TouchStart) {
         STATE.touchMoved[identifier] = false;
