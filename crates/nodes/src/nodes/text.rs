@@ -1,6 +1,7 @@
 use csscolorparser::Color;
 use huozi::glyph_vertices::GlyphVertices;
-use huozi::layout::{LayoutDirection, LayoutStyle, ShadowStyle, StrokeStyle, TextStyle};
+use huozi::layout::{LayoutDirection, LayoutStyle, SegmentGlyphSpan};
+use huozi::parser::{ShadowStyle, StrokeStyle, TextStyle};
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
@@ -14,7 +15,9 @@ use crate::events::TextEvent;
 
 #[derive(Debug, Default, Node)]
 pub struct Text {
-    /// the text content
+    /// the previous text content
+    pub prev_text: String,
+    /// the current text content
     pub text: String,
     /// the layout style of text, see [`LayoutStyle`] for more details.
     pub layout_style: LayoutStyle,
@@ -28,7 +31,10 @@ pub struct Text {
     /// and it will be ignored if `print_mode` is [`TextPrintMode::Instant`].
     pub print_speed: f64,
 
+    /// glyph vertices after layout
     pub glyph_vertices: Vec<GlyphVertices>,
+    /// glyph ranges of segments after layout
+    pub glyph_ranges: Vec<SegmentGlyphSpan>,
     /// acutal width after layout
     pub total_width: u32,
     /// acutal height after layout
@@ -64,6 +70,7 @@ pub enum TextPrintMode {
 impl Text {
     pub fn new(label: String, text: &str) -> Self {
         Text {
+            prev_text: "".to_owned(),
             text: text.to_owned(),
             layout_style: LayoutStyle::default(),
             text_style: TextStyle::default(),
@@ -72,6 +79,7 @@ impl Text {
             total_width: 0,
             total_height: 0,
             glyph_vertices: vec![],
+            glyph_ranges: vec![],
             vertex_buffer: None,
             index_buffer: None,
             num_indices: 0,
@@ -174,6 +182,7 @@ impl Node for Text {
         };
 
         if let Some(text) = props.text {
+            self.prev_text = self.text.clone();
             self.text = text.to_owned();
             // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
             self.print_start_time = Some(0.);
