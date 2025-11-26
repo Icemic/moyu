@@ -5,6 +5,7 @@ use glam::vec3a;
 use huozi::Huozi;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
+use huozi::parser::{Segment, SegmentId};
 use log::{error, info};
 use moyu_pal::config::get_engine_config;
 use moyu_pal::dir::assets_dir;
@@ -403,19 +404,39 @@ impl Renderer for TextRenderer {
         let need_relayout = node.base_mut().pop_update_vertices();
 
         if need_relayout {
+            let pos = if node.text.starts_with(&node.prev_text) {
+                node.prev_text.len()
+            } else {
+                0
+            };
+
+            let (prev, cur) = node.text.split_at(pos);
+
+            let segments = vec![
+                Segment {
+                    id: None,
+                    content: prev,
+                },
+                Segment {
+                    id: Some(SegmentId::Lite(0)),
+                    content: cur,
+                },
+            ];
+
             match huozi.layout_parse_with::<'<', '>'>(
-                &node.text,
+                &segments,
                 &node.layout_style,
                 &node.text_style,
                 huozi::ColorSpace::SRGB,
                 None,
             ) {
-                Ok((glyphs, total_width, total_height)) => {
+                Ok((glyphs, ranges, total_width, total_height)) => {
                     // set layout size
                     node.total_width = total_width;
                     node.total_height = total_height;
 
                     node.glyph_vertices = glyphs;
+                    node.glyph_ranges = ranges;
 
                     // Set size if size is different,
                     // this will trigger another relayout which is in fact unnecessary.
@@ -486,19 +507,25 @@ impl Renderer for TextRenderer {
                     (node.glyph_vertices.len(), None, 1.0, 1.0)
                 }
                 TextPrintMode::Typewriter => {
-                    let total = node.glyph_vertices.len();
+                    let last_range = node
+                        .glyph_ranges
+                        .last()
+                        .map(|v| v.glyph_range.clone())
+                        .unwrap_or_else(|| 0..node.glyph_vertices.len());
+                    let total = last_range.end - last_range.start;
                     // current progress (in glyphs), it may be larger than the length of the text
                     let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
-                    let total_progress = progress / total as f64;
+                    let mut total_progress = progress / total as f64;
                     let index;
                     // check if the text is fully printed
                     if progress >= total as f64 {
                         progress = 1.;
-                        index = total;
+                        total_progress = 1.;
+                        index = node.glyph_vertices.len();
                         node.print_start_time = None;
                     } else {
                         // calculate the progress in the current glyph
-                        index = progress.ceil() as usize;
+                        index = last_range.start + progress.ceil() as usize;
                         progress %= 1.0;
                     }
 
@@ -510,16 +537,29 @@ impl Renderer for TextRenderer {
                     )
                 }
                 TextPrintMode::Printer => {
+                    let glyph_start = node
+                        .glyph_ranges
+                        .last()
+                        .map(|v| v.glyph_range.start)
+                        .unwrap_or(0);
+
+                    let row_start = node
+                        .glyph_vertices
+                        .get(glyph_start)
+                        .map(|g| g.row)
+                        .unwrap_or(0);
                     // max row + 1
-                    let total = node.glyph_vertices.last().map(|g| g.row + 1).unwrap_or(0);
+                    let row_end = node.glyph_vertices.last().map(|g| g.row + 1).unwrap_or(0);
+                    let total = row_end - row_start;
                     // current progress (in rows), it may be larger than the max row count of the text
                     let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
-                    let total_progress = progress / total as f64;
+                    let mut total_progress = progress / total as f64;
                     let index;
                     let fade_from_index;
                     // check if the text is fully printed
                     if progress >= total as f64 {
                         progress = 1.;
+                        total_progress = 1.;
                         index = node.glyph_vertices.len();
                         fade_from_index = None;
                         node.print_start_time = None;
@@ -528,12 +568,12 @@ impl Renderer for TextRenderer {
                         index = node
                             .glyph_vertices
                             .iter()
-                            .position(|g| g.row as f64 >= progress)
+                            .position(|g| g.row as f64 - row_start as f64 >= progress)
                             .unwrap_or(node.glyph_vertices.len());
                         fade_from_index = node
                             .glyph_vertices
                             .iter()
-                            .position(|g| (g.row + 1) as f64 >= progress);
+                            .position(|g| (g.row + 1 - row_start) as f64 >= progress);
                         progress %= 1.0;
                     }
 

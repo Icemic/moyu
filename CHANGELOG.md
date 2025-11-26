@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `set_timeout` and `clear_timeout` functions to schedule async tasks in QuickJS & browser environment.
 - Add waiting state management in Scenario plugin with `SetWaiting` command.
 - Implement `GetCursorPosition` command of Text node to get the current cursor position.
+- Enhance text node to support printing text following existing content (nvl mode).
 
 ### Changed
 
