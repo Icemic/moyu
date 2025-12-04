@@ -5,7 +5,6 @@ use glam::vec3a;
 use huozi::Huozi;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
-use huozi::parser::{Segment, SegmentId};
 use log::{error, info};
 use moyu_pal::config::get_engine_config;
 use moyu_pal::dir::assets_dir;
@@ -404,27 +403,8 @@ impl Renderer for TextRenderer {
         let need_relayout = node.base_mut().pop_update_vertices();
 
         if need_relayout {
-            let pos = if node.text.starts_with(&node.prev_text) {
-                node.prev_text.len()
-            } else {
-                0
-            };
-
-            let (prev, cur) = node.text.split_at(pos);
-
-            let segments = vec![
-                Segment {
-                    id: None,
-                    content: prev,
-                },
-                Segment {
-                    id: Some(SegmentId::Lite(0)),
-                    content: cur,
-                },
-            ];
-
             match huozi.layout_parse_with::<'<', '>'>(
-                &segments,
+                &node.segments,
                 &node.layout_style,
                 &node.text_style,
                 huozi::ColorSpace::SRGB,
@@ -507,26 +487,42 @@ impl Renderer for TextRenderer {
                     (node.glyph_vertices.len(), None, 1.0, 1.0)
                 }
                 TextPrintMode::Typewriter => {
-                    let last_range = node
-                        .glyph_ranges
-                        .last()
-                        .map(|v| v.glyph_range.clone())
-                        .unwrap_or_else(|| 0..node.glyph_vertices.len());
-                    let total = last_range.end - last_range.start;
                     // current progress (in glyphs), it may be larger than the length of the text
                     let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
-                    let mut total_progress = progress / total as f64;
                     let index;
-                    // check if the text is fully printed
-                    if progress >= total as f64 {
-                        progress = 1.;
-                        total_progress = 1.;
-                        index = node.glyph_vertices.len();
-                        node.print_start_time = None;
-                    } else {
-                        // calculate the progress in the current glyph
-                        index = last_range.start + progress.ceil() as usize;
-                        progress %= 1.0;
+                    let mut total_progress;
+
+                    loop {
+                        let last_range = node
+                            .glyph_ranges
+                            .get(node.current_range_index)
+                            .map(|v| v.glyph_range.clone())
+                            .unwrap_or_else(|| 0..node.glyph_vertices.len());
+                        let total = last_range.end - last_range.start;
+                        total_progress = progress / total as f64;
+                        // check if the text is fully printed
+                        if progress >= total as f64 {
+                            // move to next segment
+                            node.current_range_index += 1;
+
+                            // reset progress for next segment
+                            if node.current_range_index < node.glyph_ranges.len() {
+                                node.print_start_time = Some(payload.timestamp);
+                                progress -= total as f64;
+                                continue;
+                            }
+
+                            // all segments printed
+                            progress = 1.;
+                            total_progress = 1.;
+                            index = node.glyph_vertices.len();
+                            node.print_start_time = None;
+                        } else {
+                            // calculate the progress in the current glyph
+                            index = last_range.start + progress.ceil() as usize;
+                            progress %= 1.0;
+                        }
+                        break;
                     }
 
                     (
@@ -537,44 +533,62 @@ impl Renderer for TextRenderer {
                     )
                 }
                 TextPrintMode::Printer => {
-                    let glyph_start = node
-                        .glyph_ranges
-                        .last()
-                        .map(|v| v.glyph_range.start)
-                        .unwrap_or(0);
-
-                    let row_start = node
-                        .glyph_vertices
-                        .get(glyph_start)
-                        .map(|g| g.row)
-                        .unwrap_or(0);
-                    // max row + 1
-                    let row_end = node.glyph_vertices.last().map(|g| g.row + 1).unwrap_or(0);
-                    let total = row_end - row_start;
                     // current progress (in rows), it may be larger than the max row count of the text
                     let mut progress = (payload.timestamp - print_start_time) * node.print_speed;
-                    let mut total_progress = progress / total as f64;
                     let index;
                     let fade_from_index;
-                    // check if the text is fully printed
-                    if progress >= total as f64 {
-                        progress = 1.;
-                        total_progress = 1.;
-                        index = node.glyph_vertices.len();
-                        fade_from_index = None;
-                        node.print_start_time = None;
-                    } else {
-                        // calculate the progress in the current row
-                        index = node
+                    let mut total_progress;
+
+                    loop {
+                        let glyph_start = node
+                            .glyph_ranges
+                            .get(node.current_range_index)
+                            .map(|v| v.glyph_range.start)
+                            .unwrap_or(0);
+
+                        let row_start = node
                             .glyph_vertices
-                            .iter()
-                            .position(|g| g.row as f64 - row_start as f64 >= progress)
-                            .unwrap_or(node.glyph_vertices.len());
-                        fade_from_index = node
-                            .glyph_vertices
-                            .iter()
-                            .position(|g| (g.row + 1 - row_start) as f64 >= progress);
-                        progress %= 1.0;
+                            .get(glyph_start)
+                            .map(|g| g.row)
+                            .unwrap_or(0);
+                        // max row + 1
+                        let row_end = node.glyph_vertices.last().map(|g| g.row + 1).unwrap_or(0);
+                        let total = row_end - row_start;
+
+                        total_progress = progress / total as f64;
+
+                        // check if the text is fully printed
+                        if progress >= total as f64 {
+                            // move to next segment
+                            node.current_range_index += 1;
+
+                            // reset progress for next segment
+                            if node.current_range_index < node.glyph_ranges.len() {
+                                node.print_start_time = Some(payload.timestamp);
+                                progress -= total as f64;
+                                continue;
+                            }
+
+                            progress = 1.;
+                            total_progress = 1.;
+                            index = node.glyph_vertices.len();
+                            fade_from_index = None;
+                            node.print_start_time = None;
+                        } else {
+                            // calculate the progress in the current row
+                            index = node
+                                .glyph_vertices
+                                .iter()
+                                .position(|g| g.row as f64 - row_start as f64 >= progress)
+                                .unwrap_or(node.glyph_vertices.len());
+                            fade_from_index = node
+                                .glyph_vertices
+                                .iter()
+                                .position(|g| (g.row + 1 - row_start) as f64 >= progress);
+                            progress %= 1.0;
+                        }
+
+                        break;
                     }
 
                     (index, fade_from_index, progress, total_progress)
