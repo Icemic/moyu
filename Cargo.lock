@@ -1396,9 +1396,9 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
 name = "huozi"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b91cd374c652f66108c6e043ca617f642917af1a3687c0bb91a6a1ba73946d76"
+checksum = "19281ea98b4380b53c2d005d9960d63a4d7ac7f53097a92ebb58c4ff269d28be"
 dependencies = [
  "ab_glyph",
  "anyhow",
@@ -3470,9 +3470,9 @@ checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 
 [[package]]
 name = "sixu"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d10dba34c5b939d251ac117035acb77c51fad9ec658898b7d2f379e50b52026"
+checksum = "db75de6bbf865709351ba31ec6ad41277e3b6086602d74add6d7ffe21a1ed9cf"
 dependencies = [
  "anyhow",
  "arc-swap",

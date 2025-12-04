@@ -11,6 +11,7 @@ pub enum ScenarioEvent {
     Text {
         leading: Option<String>,
         text: Option<String>,
+        tailing: Option<String>,
     },
     Finished,
     Waiting,

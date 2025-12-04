@@ -43,11 +43,13 @@ impl RuntimeExecutor for ScenarioExecutor {
         _ctx: &mut RuntimeContext,
         leading: Option<&str>,
         text: Option<&str>,
+        tailing: Option<&str>,
     ) -> sixu::error::Result<bool> {
         self.sender
             .try_send(ScenarioEvent::Text {
                 leading: leading.map(|s| s.to_string()),
                 text: text.map(|s| s.to_string()),
+                tailing: tailing.map(|s| s.to_string()),
             })
             .map_err(anyhow::Error::from)?;
         Ok(false)
