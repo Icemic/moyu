@@ -1,7 +1,9 @@
+use std::borrow::Cow;
+
 use csscolorparser::Color;
 use huozi::glyph_vertices::GlyphVertices;
 use huozi::layout::{LayoutDirection, LayoutStyle, SegmentGlyphSpan};
-use huozi::parser::{ShadowStyle, StrokeStyle, TextStyle};
+use huozi::parser::{Segment, SegmentId, ShadowStyle, StrokeStyle, TextStyle};
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use wgpu::Buffer;
@@ -15,8 +17,6 @@ use crate::events::TextEvent;
 
 #[derive(Debug, Default, Node)]
 pub struct Text {
-    /// the previous text content
-    pub prev_text: String,
     /// the current text content
     pub text: String,
     /// the layout style of text, see [`LayoutStyle`] for more details.
@@ -31,6 +31,7 @@ pub struct Text {
     /// and it will be ignored if `print_mode` is [`TextPrintMode::Instant`].
     pub print_speed: f64,
 
+    pub segments: Vec<Segment<'static>>,
     /// glyph vertices after layout
     pub glyph_vertices: Vec<GlyphVertices>,
     /// glyph ranges of segments after layout
@@ -47,6 +48,8 @@ pub struct Text {
     /// Start time of text printing, used for typewriter or printer mode.\
     /// It will be set to `None` after printing finished.
     pub(crate) print_start_time: Option<f64>,
+    /// Store the position of current printing span. It is the index of `segments`.
+    pub(crate) current_range_index: usize,
     /// Store the position of next character to be printed. And also used for cursor position.
     pub(crate) cursor_position: Option<(f32, f32)>,
 
@@ -70,7 +73,6 @@ pub enum TextPrintMode {
 impl Text {
     pub fn new(label: String, text: &str) -> Self {
         Text {
-            prev_text: "".to_owned(),
             text: text.to_owned(),
             layout_style: LayoutStyle::default(),
             text_style: TextStyle::default(),
@@ -78,12 +80,14 @@ impl Text {
             print_speed: 2.0,
             total_width: 0,
             total_height: 0,
+            segments: vec![],
             glyph_vertices: vec![],
             glyph_ranges: vec![],
             vertex_buffer: None,
             index_buffer: None,
             num_indices: 0,
             print_start_time: None,
+            current_range_index: 0,
             cursor_position: None,
             node_base: NodeBase::new(label),
         }
@@ -182,10 +186,28 @@ impl Node for Text {
         };
 
         if let Some(text) = props.text {
-            self.prev_text = self.text.clone();
-            self.text = text.to_owned();
-            // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
-            self.print_start_time = Some(0.);
+            let prev_text = self.text.clone();
+
+            if !prev_text.is_empty() && text.starts_with(&prev_text) {
+                let (_, cur) = text.split_at(prev_text.len());
+                self.segments.push(Segment {
+                    id: Some(SegmentId::Lite(self.segments.len() as u32)),
+                    content: Cow::Owned(cur.to_owned()),
+                });
+            } else {
+                self.current_range_index = 0;
+                self.segments = vec![Segment {
+                    id: Some(SegmentId::Lite(0)),
+                    content: Cow::Owned(text.clone()),
+                }];
+            };
+
+            self.text = text;
+
+            if self.print_start_time.is_none() {
+                // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
+                self.print_start_time = Some(0.);
+            }
         }
 
         if let Some(print_mode) = props.print_mode {
