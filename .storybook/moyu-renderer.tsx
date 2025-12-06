@@ -56,7 +56,7 @@ export async function initializeMoyuEngine(): Promise<void> {
         entry: './index.json',
         entryFilename: './main.js',
         autorun: 'all',
-        fontFile: 'fonts/default.otf',
+        fontFile: 'default.otf',
         enableGamepads: true,
         skipSplash: true,
       });
