@@ -15,10 +15,6 @@ dist/
 /index.json
 /3rdparty
 *.dll
-*.otf
-*.ttf
-*.woff
-*.woff2
 /assets
 
 # keep it local-only
