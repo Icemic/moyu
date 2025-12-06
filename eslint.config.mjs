@@ -6,7 +6,13 @@ import tseslint from 'typescript-eslint';
 export default [
   ...ainouCodeStyle,
   {
-    files: ['packages/**/vite.config.ts', 'packages/**/rspack.config.ts', 'packages/**/*.d.ts'],
+    files: [
+      'packages/**/vite.config.ts',
+      'packages/**/rspack.config.ts',
+      'packages/**/*.d.ts',
+      '.storybook/**/*.{ts,tsx}',
+      'packages/**/stories/**/*.ts',
+    ],
     ...tseslint.configs.disableTypeChecked,
   },
   {

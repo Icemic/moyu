@@ -6,10 +6,10 @@
   "module": "src/lib.ts",
   "types": "dist/lib.d.ts",
   "scripts": {
-    "dev": "tsc --outDir ./dist -w",
-    "prepack": "tsc --outDir ./dist",
-    "build": "tsc --outDir ./dist",
-    "watch": "tsc --outDir ./dist -w"
+    "dev": "tsc --outDir ./dist -w -p tsconfig.build.json",
+    "prepack": "tsc --outDir ./dist -p tsconfig.build.json",
+    "build": "tsc --outDir ./dist -p tsconfig.build.json",
+    "watch": "tsc --outDir ./dist -w -p tsconfig.build.json"
   },
   "author": "Icemic <bingfeng.web@gmail.com>",
   "license": "MIT",
