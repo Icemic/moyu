@@ -126,6 +126,12 @@ pub async fn setup() {
     }
 }
 
+#[cfg(web)]
+pub fn setup_with_wasm_config(config: wasm_bindgen::JsValue) {
+    let config: MoyuConfig = config.into_serde().unwrap_or_default();
+    MOYU_ENV.set(config).unwrap();
+}
+
 pub fn get_engine_config() -> &'static MoyuConfig {
     MOYU_ENV.get().unwrap()
 }

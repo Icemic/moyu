@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add waiting state management in Scenario plugin with `SetWaiting` command.
 - Implement `GetCursorPosition` command of Text node to get the current cursor position.
 - Enhance text node to support printing text following existing content (nvl mode).
+- Support passing configuration from JavaScript when initializing Moyu on web platform.
 
 ### Changed
 
