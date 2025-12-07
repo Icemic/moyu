@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement correct canvas size handling on web platform, considering device pixel ratio. (#38)
 - Rename `layer_x`/`layer_y` to `offset_x`/`offset_y` for mouse and touch events
 - Upgrade `winit` to 0.30.
+- Upgrade `react` and related packages to 19.x.
 
 ### Added
 
