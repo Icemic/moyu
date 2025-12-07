@@ -1,7 +1,8 @@
-import type { ReactElement } from 'react';
+import React from 'react';
+import type { Component, ReactElement } from 'react';
 import Reconciler from 'react-reconciler';
-import type { HostConfig } from 'react-reconciler';
-import { DefaultEventPriority } from 'react-reconciler/constants';
+import type { BaseErrorInfo, HostConfig } from 'react-reconciler';
+import { DefaultEventPriority, NoEventPriority } from 'react-reconciler/constants';
 import type { DetailedMoyuProps, MoyuNodeAttributes } from './declaration';
 import { Node } from './node';
 
@@ -12,12 +13,15 @@ type Instance = Node;
 type TextInstance = never;
 type SuspenseInstance = never;
 type HydratableInstance = never;
+type FormInstance = never;
 type PublicInstance = any;
 type HostContext = Record<string, any>;
-type UpdatePayload = Record<string, any>;
 type ChildSet = any; // TODO Placeholder for undocumented API
 type TimeoutHandle = any;
 type NoTimeout = any;
+type TransitionStatus = any;
+
+let currentUpdatePriority: number = NoEventPriority;
 
 const hostConfig: HostConfig<
   Type,
@@ -27,12 +31,13 @@ const hostConfig: HostConfig<
   TextInstance,
   SuspenseInstance,
   HydratableInstance,
+  FormInstance,
   PublicInstance,
   HostContext,
-  UpdatePayload,
   ChildSet,
   TimeoutHandle,
-  NoTimeout
+  NoTimeout,
+  TransitionStatus
 > = {
   isPrimaryRenderer: true,
   supportsHydration: false,
@@ -75,31 +80,13 @@ const hostConfig: HostConfig<
     return true;
   },
 
-  prepareUpdate: (
-    instance,
-    type,
-    oldProps: Record<string, any>,
-    newProps: Record<string, any>,
-    _rootContainerInstance,
-    _hostContext,
-  ) => {
-    const { label, children, ...props } = newProps;
-    const changedProps = omitBy(props, (value, key) => oldProps[key] === value);
-
-    if (Object.keys(changedProps).length) {
-      return changedProps;
-    }
-
-    return null;
-  },
-
   shouldSetTextContent(_type, _props) {
     return false;
   },
 
   getRootHostContext: (_rootContainerInstance: Node) => {
     // console.debug('getRootHostContext');
-    return null;
+    return {};
   },
 
   getChildHostContext(_parentHostContext, _type, _rootContainerInstance) {
@@ -170,10 +157,14 @@ const hostConfig: HostConfig<
     // console.debug('commitMount');
   },
 
-  commitUpdate(instance, _updatePayload, type, prevProps, nextProps, _internalHandle) {
+  commitUpdate(instance, type, prevProps, nextProps, _internalHandle) {
     // console.debug('commitUpdate: ', type, JSON.stringify(_updatePayload));
+    const { label, children, ...props } = nextProps;
+    const changedProps = omitBy(props, (value, key) => prevProps[key] === value);
 
-    instance.updateProps(_updatePayload);
+    if (Object.keys(changedProps).length) {
+      instance.updateProps(changedProps);
+    }
 
     // if (shallowEq(prevProps, nextProps) && allChildrenAreMemoized(instance)) {
     //   return;
@@ -191,7 +182,6 @@ const hostConfig: HostConfig<
     // console.error('clearContainer not implement');
     // container.children.splice(0);
   },
-  getCurrentEventPriority: (): number => DefaultEventPriority,
   getInstanceFromNode(node: any): Reconciler.Fiber | null | undefined {
     console.error('getInstanceFromNode not implement');
     throw new Error('Function not implemented.');
@@ -217,6 +207,33 @@ const hostConfig: HostConfig<
     // node will be destroyed by the engine
     // just do nothing here
   },
+  NotPendingTransition: undefined,
+  // see https://github.com/pmndrs/react-three-fiber/blob/2541e81fb6ddc22d0869b9eb5cdbedcbbc62324c/packages/fiber/src/core/reconciler.tsx#L570
+  HostTransitionContext: /* @__PURE__ */ React.createContext<TransitionStatus>(
+    null,
+  ) as unknown as Reconciler.ReactContext<TransitionStatus>,
+  setCurrentUpdatePriority(newPriority: number) {
+    currentUpdatePriority = newPriority;
+  },
+  getCurrentUpdatePriority() {
+    return currentUpdatePriority;
+  },
+  resolveUpdatePriority() {
+    if (currentUpdatePriority !== NoEventPriority) return currentUpdatePriority;
+
+    return DefaultEventPriority;
+  },
+  resetFormInstance() {},
+  requestPostPaintCallback() {},
+  shouldAttemptEagerTransition: () => false,
+  trackSchedulerEvent: () => {},
+  resolveEventType: () => null,
+  resolveEventTimeStamp: () => -1.1,
+  maySuspendCommit: () => false,
+  preloadInstance: () => true,
+  startSuspendingCommit() {},
+  suspendInstance() {},
+  waitForCommitToBeReady: () => null,
 };
 
 export const MoyuRenderer = Reconciler(hostConfig);
@@ -226,7 +243,10 @@ export interface RootOptions {
    * Prefix for `useId`.
    */
   identifierPrefix?: string;
-  onRecoverableError?: (error: unknown) => void;
+  onUncaughtError: (error: Error, info: BaseErrorInfo & { errorBoundary?: Component }) => void;
+  onCaughtError: (error: Error, info: BaseErrorInfo) => void;
+  onRecoverableError: (error: Error, info: BaseErrorInfo) => void;
+  onDefaultTransitionIndicator: () => void;
 }
 
 export function createRoot(options?: RootOptions) {
@@ -238,10 +258,19 @@ export function createRoot(options?: RootOptions) {
     false,
     false,
     options?.identifierPrefix ?? 'moyu',
+    options?.onUncaughtError ??
+      ((err) => {
+        console.error('uncaught error: ', err);
+      }),
+    options?.onCaughtError ??
+      ((err) => {
+        console.error('caught error: ', err);
+      }),
     options?.onRecoverableError ??
       ((err) => {
         console.error('unrecoverable error: ', err);
       }),
+    options?.onDefaultTransitionIndicator ?? (() => {}),
     null,
   );
 
