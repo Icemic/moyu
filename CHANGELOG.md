@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename `layer_x`/`layer_y` to `offset_x`/`offset_y` for mouse and touch events
 - Upgrade `winit` to 0.30.
 - Upgrade `react` and related packages to 19.x.
+- Remove `path` field from AddStory command in Scenario plugin.
+- Make `NextLine` command in Scenario plugin async command.
 
 ### Added
 
@@ -27,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement `GetCursorPosition` command of Text node to get the current cursor position.
 - Enhance text node to support printing text following existing content (nvl mode).
 - Support passing configuration from JavaScript when initializing Moyu on web platform.
+- Support dynamically loading scenario script files in scenario script.
 
 ### Changed
 

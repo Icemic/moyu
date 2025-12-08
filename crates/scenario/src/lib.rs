@@ -4,6 +4,7 @@ mod types;
 
 use std::io::{Cursor, Read, Write};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use anyhow::Result;
@@ -16,7 +17,6 @@ use moyu_core::traits::PluginBaseTrait;
 use moyu_core::traits::{Command, Plugin, PluginEventSource};
 use moyu_core::utils::convert::{JSValue, create_promise, to_js};
 use moyu_macros::Plugin;
-use moyu_pal::dir::assets_dir;
 use moyu_pal::fs::{
     read_from_appdata, readdir_from_appdata, remove_from_appdata, write_to_appdata,
 };
@@ -40,6 +40,8 @@ pub struct ScenarioPlugin {
     /// Receive channel for execution results
     pub receiver: Receiver<ScenarioEvent>,
     waiting: Option<WaitingState>,
+    /// Disable reacting to next line requests
+    disable_next_line: Arc<AtomicBool>,
 }
 
 impl ScenarioPlugin {
@@ -58,6 +60,7 @@ impl ScenarioPlugin {
             sender,
             receiver,
             waiting: Default::default(),
+            disable_next_line: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -85,35 +88,17 @@ impl ScenarioPlugin {
         Ok(())
     }
 
-    fn add_story(&self, name: &str, path: &str) -> Result<JSValue> {
-        if self.has_story(name)? {
+    fn add_story(&self, name: &str) -> Result<JSValue> {
+        if self.has_story(name) {
             log::warn!("Story '{}' already exists, skipping load", name);
             return Ok(to_js(&false)?);
         }
 
-        let asset_full_path = assets_dir().join(path).unwrap();
-
-        let name = name.to_string();
         let runtime = self.runtime.clone();
+        let name = name.to_string();
         let future = async move {
-            let data = match moyu_pal::fs::read(&asset_full_path).await {
-                Ok(data) => data,
-                Err(e) => {
-                    log::error!(
-                        "Failed to read font file: {}, text rendering may not work.",
-                        e
-                    );
-                    return Err(e.into());
-                }
-            };
-            let text = String::from_utf8(data)
-                .map_err(|e| anyhow::anyhow!("Failed to parse story file: {}", e))?;
-
-            let (_, story) = sixu::parser::parse(&name, &text).unwrap();
-
-            runtime.lock().context_mut().stories_mut().push(story);
-
-            log::info!("Loaded game data from file: {}", asset_full_path);
+            let mut runtime = runtime.lock();
+            runtime.load_story(&name).await?;
             Ok::<(), anyhow::Error>(())
         };
 
@@ -140,10 +125,9 @@ impl ScenarioPlugin {
         Ok(to_js(&false)?)
     }
 
-    fn has_story(&self, name: &str) -> Result<bool> {
+    fn has_story(&self, name: &str) -> bool {
         let runtime = self.runtime.lock();
-        let stories = runtime.context().stories();
-        Ok(stories.iter().any(|s| s.name == name))
+        runtime.has_story(name)
     }
 
     fn get_story_list(&self) -> Result<JSValue> {
@@ -380,22 +364,33 @@ impl ScenarioPlugin {
     }
 
     /// Execute the next step in the scenario
-    pub fn next_line(&mut self) -> Result<()> {
+    pub fn next_line(&mut self) -> Result<JSValue> {
+        if self.disable_next_line.load(Ordering::Relaxed) {
+            return to_js(&());
+        }
+
         if let Some(state) = self.waiting.as_ref() {
             if state.skippable {
                 let _ = self.waiting.take();
                 self.send_event(ScenarioEvent::WaitingCancelled);
             } else {
                 self.send_event(ScenarioEvent::Waiting);
-                return Ok(());
+                return to_js(&());
             }
         }
 
-        let mut runtime = self.runtime.lock();
+        self.disable_next_line.store(true, Ordering::Relaxed);
 
-        runtime.next()?;
+        let runtime = self.runtime.clone();
+        let disable_next_line = self.disable_next_line.clone();
+        let future = async move {
+            let mut runtime = runtime.lock();
+            runtime.next().await?;
+            disable_next_line.store(false, Ordering::Relaxed);
+            Ok::<(), anyhow::Error>(())
+        };
 
-        Ok(())
+        create_promise(future)
     }
 }
 
@@ -403,11 +398,15 @@ impl Plugin for ScenarioPlugin {
     fn update(&mut self, _: bool) {
         if let Some(state) = self.waiting.as_ref() {
             if moyu_pal::time::Instant::now() >= state.until {
-                let mut runtime = self.runtime.lock();
-                if let Err(err) = runtime.next() {
-                    log::error!("Error during scenario execution after wait: {}", err);
-                }
                 let _ = self.waiting.take();
+
+                let runtime = self.runtime.clone();
+                moyu_pal::task::spawn(async move {
+                    let mut runtime = runtime.lock();
+                    if let Err(err) = runtime.next().await {
+                        log::error!("Error during scenario execution after wait: {}", err);
+                    }
+                });
             }
         }
 

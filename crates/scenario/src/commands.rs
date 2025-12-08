@@ -15,10 +15,9 @@ use crate::ScenarioPlugin;
     tag = "subCommand"
 )]
 enum ScenarioCommand {
-    /// Start a scenario from a URI
+    /// Start a scenario by name
     AddStory {
         name: String,
-        path: String,
     },
     /// Remove a scenario by name
     RemoveStory {
@@ -113,9 +112,9 @@ impl Command for ScenarioPlugin {
         log::debug!("scenario plugin received: {:?}", payload);
 
         match payload {
-            ScenarioCommand::AddStory { name, path } => {
-                log::info!("add story: {} {}", name, path);
-                return self.add_story(&name, &path).map(Some);
+            ScenarioCommand::AddStory { name } => {
+                log::info!("add story: {}", name);
+                return self.add_story(&name).map(Some);
             }
             ScenarioCommand::RemoveStory { name } => {
                 log::info!("remove story: {}", name);
@@ -123,7 +122,7 @@ impl Command for ScenarioPlugin {
             }
             ScenarioCommand::HasStory { name } => {
                 log::info!("has story: {}", name);
-                return Ok(Some(to_js(&self.has_story(&name)?)?));
+                return Ok(Some(to_js(&self.has_story(&name))?));
             }
             ScenarioCommand::GetStoryList => {
                 log::info!("get story list");
@@ -140,8 +139,7 @@ impl Command for ScenarioPlugin {
                 return Ok(None);
             }
             ScenarioCommand::NextLine => {
-                self.next_line()?;
-                return Ok(None);
+                return self.next_line().map(Some);
             }
             ScenarioCommand::SetWaiting { time, skippable } => {
                 self.set_waiting(time, skippable);
