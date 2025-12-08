@@ -1,3 +1,4 @@
+use moyu_pal::dir::assets_dir;
 use moyu_pal::sync::mpsc::Sender;
 use sixu::format::*;
 use sixu::runtime::*;
@@ -68,5 +69,36 @@ impl RuntimeExecutor for ScenarioExecutor {
 
     fn finished(&mut self, _ctx: &mut RuntimeContext) {
         let _ = self.sender.send(ScenarioEvent::Finished);
+    }
+
+    async fn read_story_file(
+        &mut self,
+        _ctx: &mut RuntimeContext,
+        story_name: &str,
+    ) -> sixu::error::Result<Vec<u8>> {
+        let asset_full_path = assets_dir()
+            .join(&format!("scenario/{}.sixu", story_name))
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to construct asset path for scenario {}: {}",
+                    story_name,
+                    e
+                )
+            })?;
+
+        let data = match moyu_pal::fs::read(&asset_full_path).await {
+            Ok(data) => data,
+            Err(e) => {
+                log::error!(
+                    "Failed to read scenario file: {}, scenario loading may not work.",
+                    e
+                );
+                return Err(e.into());
+            }
+        };
+
+        log::info!("Loaded scenario from file: {}", asset_full_path);
+
+        Ok(data)
     }
 }
