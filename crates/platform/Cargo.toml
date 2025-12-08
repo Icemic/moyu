@@ -28,7 +28,7 @@ zip = {workspace = true}
 env_logger = "0.11"
 log-panics = "2"
 node-resolve = "2.2"
-parking_lot = {version = "0.12", features = ["hardware-lock-elision"]}
+parking_lot = {version = "0.12", features = ["hardware-lock-elision", "send_guard"]}
 tokio = {workspace = true, features = ["full"]}
 
 [target.'cfg(all(not(target_arch = "wasm32"),not(target_os = "android")))'.dependencies]
