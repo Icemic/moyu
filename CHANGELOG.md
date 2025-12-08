@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed graphic size issues on initialization on web platform.
 - Refactor DPI handling logic on web platform.
 - Update scale factor in surface size storage when scale factor changed
+- Make `.send_event()` method of `PluginEventSource` and `NodeEventSource` use async dispatch to avoid potential deadlocks.
 
 ### Performance
 
