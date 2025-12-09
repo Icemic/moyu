@@ -267,7 +267,7 @@ impl Core {
         pointer_state.location = location;
     }
 
-    fn handle_pointer_hover(&self, identifier: i32, refresh_hover_node: bool) {
+    pub(super) fn handle_pointer_hover(&self, identifier: i32, refresh_hover_node: bool) {
         let surface_size = {
             let surface_size = self.surface_size.read();
             *surface_size
