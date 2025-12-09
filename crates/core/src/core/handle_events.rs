@@ -11,6 +11,8 @@ use crate::events::{
     AnimationFrameCallbackEvent, BeforeUnloadEvent, FocusEvent, FocusEventKind, FullScreenEvent,
     FullscreenEventKind, ResizeEvent,
 };
+#[cfg(desktop)]
+use crate::state::MOUSE_IDENTIFIER;
 use crate::utils::dispatch_event::dispatch_event;
 
 use super::Core;
@@ -66,6 +68,9 @@ impl Core {
                         dispatch_event(AnimationFrameCallbackEvent {
                             timestamp: self.instant.elapsed().as_millis() as u32,
                         });
+
+                        #[cfg(desktop)]
+                        self.handle_pointer_hover(MOUSE_IDENTIFIER, true);
 
                         #[cfg(native)]
                         if let Some(vm) = moyu_runtime::try_get_vm() {
