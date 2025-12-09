@@ -11,9 +11,13 @@ pub type SpawnRuntimeCallback =
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(native)]
-pub fn spawn_runtime_with_core(
+pub fn spawn_runtime_with_core<F>(
     _core: &Arc<Core>,
-) -> Result<moyu_pal::visible_hand::VisibleHand<Arc<moyu_runtime::QuickVM>>> {
+    on_load: F,
+) -> Result<moyu_pal::visible_hand::VisibleHand<Arc<moyu_runtime::QuickVM>>>
+where
+    F: FnOnce() + Send + 'static,
+{
     use moyu_runtime::{get_vm, setup_vm};
 
     let vm_handle = setup_vm();
@@ -29,13 +33,18 @@ pub fn spawn_runtime_with_core(
         ));
     }
 
+    on_load();
+
     Ok(vm_handle)
 }
 
 /// spawn a thread with javascript runtime and executes scripts
 /// use `spawn_callback` to do anything else which should be under a async runtime.
 #[cfg(web)]
-pub fn spawn_runtime_with_core(_: &Arc<Core>) -> Result<()> {
+pub fn spawn_runtime_with_core<F>(_: &Arc<Core>, on_load: F) -> Result<()>
+where
+    F: FnOnce() + Send + 'static,
+{
     use log::debug;
     use moyu_pal::config::{AutorunMode, get_engine_config};
     use moyu_pal::dir::entry_dir;
@@ -48,6 +57,9 @@ pub fn spawn_runtime_with_core(_: &Arc<Core>) -> Result<()> {
         let config = get_engine_config();
 
         if config.autorun == AutorunMode::All {
+            use wasm_bindgen::JsCast;
+            use wasm_bindgen::prelude::Closure;
+
             let body = document.body().expect("No body found.");
 
             let root_script = document
@@ -63,6 +75,13 @@ pub fn spawn_runtime_with_core(_: &Arc<Core>) -> Result<()> {
                 )
                 .unwrap();
             root_script.set_attribute("type", "module").unwrap();
+
+            root_script
+                .add_event_listener_with_callback(
+                    "load",
+                    Closure::once_into_js(on_load).as_ref().unchecked_ref(),
+                )
+                .unwrap();
 
             body.append_child(&root_script).unwrap();
         }
