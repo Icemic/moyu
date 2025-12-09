@@ -46,7 +46,8 @@ pub(crate) enum ApplicationInitEvent {
     Start,
     Graphic,
     Plugin,
-    ShowAndRun,
+    LoadUserScript,
+    ShowAndStart,
 }
 
 struct Application {
@@ -159,14 +160,20 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                         core.register_plugin("gamepad", Arc::new(Mutex::new(gamepad)));
                     }
                     event_proxy
-                        .send_event(ApplicationInitEvent::ShowAndRun)
+                        .send_event(ApplicationInitEvent::LoadUserScript)
                         .unwrap();
                 });
             }
-            ApplicationInitEvent::ShowAndRun => {
+            ApplicationInitEvent::LoadUserScript => {
                 let core = get_core();
+                let event_proxy = self.event_proxy.clone();
                 // All plugins are ready, now we can spawn the runtime and execute scripts
-                let _vm_handle = match moyu_ops::spawn::spawn_runtime_with_core(&core) {
+                let _vm_handle = match moyu_ops::spawn::spawn_runtime_with_core(&core, move || {
+                    log::info!("User script loaded.");
+                    event_proxy
+                        .send_event(ApplicationInitEvent::ShowAndStart)
+                        .unwrap();
+                }) {
                     Ok(v) => v,
                     Err(err) => {
                         log::error!("{}", err);
@@ -174,6 +181,9 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                     }
                 };
                 self._vm_handle.lock().replace(_vm_handle);
+            }
+            ApplicationInitEvent::ShowAndStart => {
+                let core = get_core();
 
                 #[cfg(desktop)]
                 core.move_to_center();
