@@ -315,7 +315,7 @@ impl Node for Text {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "subCommand")]
-pub enum TextCommmad {
+pub enum TextCommand {
     SetText { text: String, instant: Option<bool> },
     FinishPrinting,
     GetCursorPosition,
@@ -323,9 +323,9 @@ pub enum TextCommmad {
 
 impl Command for Text {
     fn execute(&mut self, _payload: &mut JSValue) -> anyhow::Result<Option<JSValue>> {
-        let payload: TextCommmad = from_js(_payload)?;
+        let payload: TextCommand = from_js(_payload)?;
         match payload {
-            TextCommmad::SetText { text, instant } => {
+            TextCommand::SetText { text, instant } => {
                 self.text = text;
                 // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
                 self.print_start_time = Some(0.);
@@ -336,13 +336,13 @@ impl Command for Text {
                 }
                 self.base_mut().pend_update();
             }
-            TextCommmad::FinishPrinting => {
+            TextCommand::FinishPrinting => {
                 // Set to f64::MIN to make renderer feel it's finished.
                 // Cannot set to None which leads to lost of essential event sending.
                 self.print_start_time = Some(f64::MIN);
                 self.base_mut().pend_update();
             }
-            TextCommmad::GetCursorPosition => {
+            TextCommand::GetCursorPosition => {
                 return Ok(Some(to_js(&self.cursor_position)?));
             }
         }
