@@ -1,5 +1,5 @@
 ---
-applyTo: 'packages/**'
+applyTo: '**'
 ---
 
 # Moyu JavaScript SDK - Agent Coding Instructions

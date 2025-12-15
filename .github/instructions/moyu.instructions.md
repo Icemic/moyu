@@ -1,5 +1,5 @@
 ---
-applyTo: 'crates/**'
+applyTo: '**'
 ---
 
 # Moyu Visual Novel Engine - Agent Coding Instructions
