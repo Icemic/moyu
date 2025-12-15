@@ -225,22 +225,6 @@ pub fn remove_child_at(node_id: u32, index: usize) -> Result<(), std::string::St
 
 #[cfg_attr(web, wasm_bindgen)]
 #[cfg_attr(native, moyu_bindgen)]
-pub fn move_to(node_id: u32, x: f32, y: f32) -> Result<(), std::string::String> {
-    let node_map = {
-        let core = get_core();
-
-        core.node_map()
-    };
-    let node = get_node(&node_map, node_id)?;
-
-    let mut node = node.write();
-    node.base_mut().move_to(x, y);
-
-    Ok(())
-}
-
-#[cfg_attr(web, wasm_bindgen)]
-#[cfg_attr(native, moyu_bindgen)]
 pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string::String> {
     let core = get_core();
     let node_map = core.node_map();

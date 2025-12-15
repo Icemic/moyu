@@ -4,8 +4,8 @@ pub mod spawn;
 use moyu_core::utils::convert::JSValue;
 #[cfg(native)]
 use moyu_runtime::{
-    quickjs_rusty::{JSContext, RawJSValue},
     QuickVM,
+    quickjs_rusty::{JSContext, RawJSValue},
 };
 #[cfg(web)]
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -57,8 +57,8 @@ fn receive_command(
 ) -> anyhow::Result<Option<RawJSValue>> {
     use moyu_runtime::quickjs_rusty::OwnedJsArray;
 
-    use moyu_core::utils::convert::from_js;
     use moyu_core::utils::convert::JSValue;
+    use moyu_core::utils::convert::from_js;
 
     let command_name = JSValue::own(context, &args[0]);
     let command_name = from_js::<String>(&command_name)?;
@@ -80,8 +80,6 @@ fn receive_command(
         "insert_child_before" => insert_child_before(context, command_args),
         "remove_child" => remove_child(context, command_args),
         "remove_child_at" => remove_child_at(context, command_args),
-        "move_to" => move_to(context, command_args),
-        // "get_translate" => get_translate(context, command_args),
         "update_props" => update_props(context, command_args),
         _ => Err(anyhow::anyhow!("Unknown command '{}'", command_name)),
     }
@@ -92,8 +90,8 @@ fn execute_node_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use moyu_core::utils::convert::from_js;
     use moyu_core::utils::convert::JSValue;
+    use moyu_core::utils::convert::from_js;
 
     let node_id = JSValue::own(context, &args[0]);
     let node_id: u32 = from_js(&node_id)?;
@@ -151,8 +149,8 @@ fn execute_plugin_command(
     context: *mut JSContext,
     args: &[RawJSValue],
 ) -> anyhow::Result<Option<RawJSValue>> {
-    use moyu_core::utils::convert::from_js;
     use moyu_core::utils::convert::JSValue;
+    use moyu_core::utils::convert::from_js;
 
     let plugin_name = JSValue::own(context, &args[0]);
     let plugin_name = from_js::<String>(&plugin_name)?;
