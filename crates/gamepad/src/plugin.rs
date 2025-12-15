@@ -6,10 +6,11 @@ use gilrs::ff::{BaseEffect, BaseEffectType, EffectBuilder, Repeat, Replay, Ticks
 use gilrs::{Event, Gilrs};
 use moyu_core::traits::PluginBaseTrait;
 use moyu_core::traits::{Command, Plugin, PluginEventSource};
-use moyu_core::utils::convert::{from_js, to_js, JSValue};
+use moyu_core::utils::convert::{JSValue, from_js, to_js};
 use moyu_macros::Plugin;
 use moyu_pal::time::Instant;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::events::GamepadEvent;
 use crate::gamepad::{Gamepad, GamepadHapticActuator};
@@ -223,6 +224,8 @@ impl Plugin for GamepadPlugin {
     rename_all_fields = "camelCase",
     tag = "subCommand"
 )]
+#[derive(TS)]
+#[ts(export)]
 enum GamepadCommand {
     GetGamepads,
     /// see https://developer.mozilla.org/en-US/docs/Web/API/GamepadHapticActuator/playEffect
@@ -236,6 +239,8 @@ enum GamepadCommand {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
+#[derive(TS)]
+#[ts(export)]
 struct EffectParams {
     duration: u32,
     start_delay: u32,

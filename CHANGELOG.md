@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhance text node to support printing text following existing content (nvl mode).
 - Support passing configuration from JavaScript when initializing Moyu on web platform.
 - Support dynamically loading scenario script files in scenario script.
+- Add `ts-rs` across multiple crates and update package.json for bindings generation
 
 ### Changed
 

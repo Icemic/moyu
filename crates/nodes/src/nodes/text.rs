@@ -6,6 +6,7 @@ use huozi::layout::{LayoutDirection, LayoutStyle, SegmentGlyphSpan};
 use huozi::parser::{Segment, SegmentId, ShadowStyle, StrokeStyle, TextStyle};
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use wgpu::Buffer;
 
 use moyu_core::nodes::NodeBase;
@@ -315,6 +316,8 @@ impl Node for Text {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "subCommand")]
+#[derive(TS)]
+#[ts(export)]
 pub enum TextCommand {
     SetText { text: String, instant: Option<bool> },
     FinishPrinting,

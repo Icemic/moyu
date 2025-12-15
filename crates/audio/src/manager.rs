@@ -17,6 +17,7 @@ use moyu_core::utils::convert::{JSValue, create_promise, from_js};
 use moyu_macros::Plugin;
 use moyu_pal::dir::assets_dir;
 use moyu_pal::sync::Mutex;
+use ts_rs::TS;
 
 use crate::audio::{Audio, AudioLoadingState};
 use crate::kira_static_data::from_boxed_media_source;
@@ -24,6 +25,8 @@ use crate::kira_static_data::from_boxed_media_source;
 /// Settings for audio playback, including delay, start position, volume, etc.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
+#[derive(TS)]
+#[ts(export)]
 pub struct AudioSettings {
     /// Optional delay time in seconds before the audio starts playing.
     pub delay_time: Option<f64>,
@@ -199,6 +202,8 @@ impl Plugin for AudioManager {
     rename_all_fields = "camelCase",
     tag = "subCommand"
 )]
+#[derive(TS)]
+#[ts(export)]
 pub enum AudioCommand {
     Load {
         name: String,

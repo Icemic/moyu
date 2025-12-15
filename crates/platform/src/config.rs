@@ -5,6 +5,7 @@ mod present_mode;
 use csscolorparser::Color;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::dir::parse_entry_dir;
 use crate::platform::show_fatal_error_and_exit;
@@ -17,6 +18,8 @@ static MOYU_ENV: OnceCell<MoyuConfig> = OnceCell::new();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(TS)]
+#[ts(export)]
 pub enum WindowState {
     Idle,
     Maximized,

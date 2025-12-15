@@ -5,6 +5,7 @@ use moyu_core::traits::Command;
 use moyu_core::utils::convert::{JSValue, from_js, to_js};
 use serde::{Deserialize, Serialize};
 use sixu::format::Literal;
+use ts_rs::TS;
 
 use crate::ScenarioPlugin;
 
@@ -14,6 +15,8 @@ use crate::ScenarioPlugin;
     rename_all_fields = "camelCase",
     tag = "subCommand"
 )]
+#[derive(TS)]
+#[ts(export)]
 enum ScenarioCommand {
     /// Start a scenario by name
     AddStory {

@@ -33,6 +33,7 @@ debug = 1
 
 [env]
 FFMPEG_DIR = {value = "3rdparty/ffmpeg", relative = true}
+TS_RS_EXPORT_DIR = {value = "packages/kit/src/bindings", relative = true}
 
 [alias]
 run-desktop = "run --package moyu --features desktop"

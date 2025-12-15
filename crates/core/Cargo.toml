@@ -23,6 +23,7 @@ glam = {workspace = true}
 image = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
+ts-rs = {workspace = true}
 wgpu = {workspace = true}
 winit = {workspace = true, features = ["serde"]}
 
