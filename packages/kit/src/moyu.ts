@@ -1,15 +1,12 @@
+import type { Command, MaybePromise } from './commands';
 import type { MoyuEvent } from './events';
 
 declare const moyu: {
   pushCommand: (name: string, args: any[], callback?: (...args: any[]) => void) => any;
-  executeNodeCommand: (nodeId: number, payload: MoyuCommandPayload) => any;
-  executePluginCommand: (pluginName: string, payload: MoyuCommandPayload) => any;
+  executeNodeCommand: (nodeId: number, payload: Command) => MaybePromise;
+  executePluginCommand: (pluginName: string, payload: Command) => MaybePromise;
   [key: string]: (...args: any[]) => any;
 };
-
-export interface MoyuCommandPayload extends Record<string, any> {
-  subCommand: string;
-}
 
 declare global {
   interface Window {
@@ -59,10 +56,10 @@ export function updateProps(nodeId: number, props: Record<string, any>) {
   moyu.pushCommand('update_props', [nodeId, props]);
 }
 
-export function executeNodeCommand(nodeId: number, payload: MoyuCommandPayload) {
+export function executeNodeCommand(nodeId: number, payload: Command): MaybePromise {
   return moyu.executeNodeCommand(nodeId, payload);
 }
 
-export function executePluginCommand(pluginName: string, payload: MoyuCommandPayload) {
+export function executePluginCommand(pluginName: string, payload: Command): MaybePromise {
   return moyu.executePluginCommand(pluginName, payload);
 }

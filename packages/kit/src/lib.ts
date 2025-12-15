@@ -6,5 +6,6 @@ export type * from './declaration';
 export * from './events';
 export type * from './node';
 export * from './utils';
+export * from './commands';
 
 export { moyu };
