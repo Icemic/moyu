@@ -1,5 +1,4 @@
 import type { MoyuEvent } from './events';
-import { STATE } from './state';
 
 declare const moyu: {
   pushCommand: (name: string, args: any[], callback?: (...args: any[]) => void) => any;
@@ -54,26 +53,6 @@ export function removeChildAt(nodeId: number, index: number) {
 
 export function removeChild(nodeId: number, childNodeId: number) {
   moyu.pushCommand('remove_child', [nodeId, childNodeId]);
-}
-
-export function moveTo(nodeId: number, x: number, y: number) {
-  // moyu.pushCommand('move_to', [nodeId, x, y]);
-  moyu.pushCommand('update_props', [nodeId, { x, y }]);
-}
-
-export function getTranslate(nodeId: number) {
-  let x = 0;
-  let y = 0;
-  const ret = moyu.pushCommand('get_translate', [nodeId], (_x: number, _y: number) => {
-    x = _x;
-    y = _y;
-  });
-
-  if (ret) {
-    return { x: ret[0], y: ret[1] };
-  }
-
-  return { x, y };
 }
 
 export function updateProps(nodeId: number, props: Record<string, any>) {
