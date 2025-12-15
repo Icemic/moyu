@@ -2048,6 +2048,7 @@ dependencies = [
  "opus",
  "serde",
  "symphonia",
+ "ts-rs",
 ]
 
 [[package]]
@@ -2070,6 +2071,7 @@ dependencies = [
  "moyu_runtime",
  "serde",
  "serde-wasm-bindgen",
+ "ts-rs",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -2090,6 +2092,7 @@ dependencies = [
  "moyu_pal",
  "serde",
  "serde_json",
+ "ts-rs",
 ]
 
 [[package]]
@@ -2120,6 +2123,7 @@ dependencies = [
  "moyu_pal",
  "moyu_resource",
  "serde",
+ "ts-rs",
  "weak-table",
  "wgpu",
 ]
@@ -2168,6 +2172,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "ts-rs",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -2217,6 +2222,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sixu",
+ "ts-rs",
  "zip",
 ]
 
@@ -3936,6 +3942,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "420466259f9fa5decc654c490b9ab538400e5420df8237f84ecbe20368bcf72b"
 dependencies = [
  "crossbeam-utils",
+]
+
+[[package]]
+name = "ts-rs"
+version = "11.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4994acea2522cd2b3b85c1d9529a55991e3ad5e25cdcd3de9d505972c4379424"
+dependencies = [
+ "serde_json",
+ "thiserror 2.0.17",
+ "ts-rs-macros",
+]
+
+[[package]]
+name = "ts-rs-macros"
+version = "11.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee6ff59666c9cbaec3533964505d39154dc4e0a56151fdea30a09ed0301f62e2"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "termcolor",
 ]
 
 [[package]]

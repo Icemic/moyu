@@ -5,6 +5,7 @@ use arc_swap::ArcSwapOption;
 use moyu_macros::Plugin;
 use moyu_pal::config::WindowState;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::base::Snapshot;
 use crate::core::Core;
@@ -46,6 +47,8 @@ impl Plugin for SystemPlugin {
     rename_all_fields = "camelCase",
     tag = "subCommand"
 )]
+#[derive(TS)]
+#[ts(export)]
 pub enum SystemCommand {
     SetWindowSize {
         width: f64,
