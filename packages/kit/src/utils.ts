@@ -10,3 +10,11 @@ export function getStageSize(): { width: number; height: number; scaleFactor: nu
   };
   return stageSize;
 }
+
+export type MakeNullOptional<T> = T extends any
+  ? {
+      [K in keyof T as null extends T[K] ? never : K]: T[K];
+    } & {
+      [K in keyof T as null extends T[K] ? K : never]?: T[K];
+    }
+  : never;
