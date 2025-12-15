@@ -199,7 +199,7 @@ impl Plugin for AudioManager {
     rename_all_fields = "camelCase",
     tag = "subCommand"
 )]
-pub enum AudioCommmad {
+pub enum AudioCommand {
     Load {
         name: String,
         src: String,
@@ -254,11 +254,11 @@ pub enum AudioCommmad {
 
 impl Command for AudioManager {
     fn execute(&mut self, payload: &mut JSValue) -> Result<Option<JSValue>> {
-        let payload: AudioCommmad = from_js(payload)?;
+        let payload: AudioCommand = from_js(payload)?;
         log::debug!("audio manager received: {:?}", payload);
 
         match payload {
-            AudioCommmad::Load {
+            AudioCommand::Load {
                 name,
                 src,
                 settings,
@@ -267,10 +267,10 @@ impl Command for AudioManager {
                 let promise = create_promise(fut)?;
                 return Ok(Some(promise));
             }
-            AudioCommmad::Release { name } => {
+            AudioCommand::Release { name } => {
                 self.remove_audio(&name);
             }
-            AudioCommmad::Play { name, fade_time } => {
+            AudioCommand::Play { name, fade_time } => {
                 let audio = self.get_audio(&name)?;
                 let mut audio = audio.lock();
                 // ignore the error if audio is not playing or not loaded
@@ -278,19 +278,19 @@ impl Command for AudioManager {
                 let mut manager = self.manager.lock();
                 audio.play(&mut manager, fade_time)?;
             }
-            AudioCommmad::Stop { name, fade_time } => {
+            AudioCommand::Stop { name, fade_time } => {
                 let audio = self.get_audio(&name)?;
                 audio.lock().stop(fade_time)?;
             }
-            AudioCommmad::Pause { name, fade_time } => {
+            AudioCommand::Pause { name, fade_time } => {
                 let audio = self.get_audio(&name)?;
                 audio.lock().pause(fade_time)?;
             }
-            AudioCommmad::Resume { name, fade_time } => {
+            AudioCommand::Resume { name, fade_time } => {
                 let audio = self.get_audio(&name)?;
                 audio.lock().resume(fade_time)?;
             }
-            AudioCommmad::SetVolume {
+            AudioCommand::SetVolume {
                 name,
                 volume,
                 fade_time,
@@ -298,23 +298,23 @@ impl Command for AudioManager {
                 let audio = self.get_audio(&name)?;
                 audio.lock().set_volume(volume, fade_time)?;
             }
-            AudioCommmad::SeekBy { name, time } => {
+            AudioCommand::SeekBy { name, time } => {
                 let audio = self.get_audio(&name)?;
                 audio.lock().seek_by(time)?;
             }
-            AudioCommmad::SeekTo { name, time } => {
+            AudioCommand::SeekTo { name, time } => {
                 let audio = self.get_audio(&name)?;
                 audio.lock().seek_to(time)?;
             }
-            AudioCommmad::SetPlaybackRate { name, rate } => {
+            AudioCommand::SetPlaybackRate { name, rate } => {
                 let audio = self.get_audio(&name)?;
                 audio.lock().set_playback_rate(rate)?;
             }
-            AudioCommmad::SetLoopRegion { name, start, end } => {
+            AudioCommand::SetLoopRegion { name, start, end } => {
                 let audio = self.get_audio(&name)?;
                 audio.lock().set_loop_region(start, end)?;
             }
-            AudioCommmad::SetPanning { name, panning } => {
+            AudioCommand::SetPanning { name, panning } => {
                 let audio = self.get_audio(&name)?;
                 audio.lock().set_panning(panning)?;
             }

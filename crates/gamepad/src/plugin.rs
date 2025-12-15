@@ -223,7 +223,7 @@ impl Plugin for GamepadPlugin {
     rename_all_fields = "camelCase",
     tag = "subCommand"
 )]
-enum GamepadCommmad {
+enum GamepadCommand {
     GetGamepads,
     /// see https://developer.mozilla.org/en-US/docs/Web/API/GamepadHapticActuator/playEffect
     PlayEffect {
@@ -256,10 +256,10 @@ impl Default for EffectParams {
 
 impl Command for GamepadPlugin {
     fn execute(&mut self, payload: &mut JSValue) -> Result<Option<JSValue>> {
-        let payload: GamepadCommmad = from_js(payload)?;
+        let payload: GamepadCommand = from_js(payload)?;
 
         match payload {
-            GamepadCommmad::GetGamepads => {
+            GamepadCommand::GetGamepads => {
                 let mut gamepads: Vec<Option<Gamepad>> = vec![];
 
                 for (index, gamepad) in self.gamepads.iter() {
@@ -272,7 +272,7 @@ impl Command for GamepadPlugin {
 
                 return Ok(Some(to_js(&gamepads)?));
             }
-            GamepadCommmad::PlayEffect {
+            GamepadCommand::PlayEffect {
                 index,
                 effect: _,
                 params,
