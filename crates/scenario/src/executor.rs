@@ -20,7 +20,7 @@ impl RuntimeExecutor for ScenarioExecutor {
     fn handle_command(
         &mut self,
         _ctx: &mut RuntimeContext,
-        command_line: &CommandLine,
+        command_line: &ResolvedCommandLine,
     ) -> sixu::error::Result<bool> {
         self.sender
             .try_send(ScenarioEvent::CommandLine(command_line.clone()))
@@ -31,7 +31,7 @@ impl RuntimeExecutor for ScenarioExecutor {
     fn handle_extra_system_call(
         &mut self,
         _ctx: &mut RuntimeContext,
-        systemcall_line: &SystemCallLine,
+        systemcall_line: &ResolvedSystemCallLine,
     ) -> sixu::error::Result<bool> {
         self.sender
             .try_send(ScenarioEvent::ExtraSystemCall(systemcall_line.clone()))
