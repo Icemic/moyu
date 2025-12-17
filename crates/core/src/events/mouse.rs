@@ -18,7 +18,7 @@ pub enum MouseEventKind {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, rename = "RawMouseEvent")]
 pub struct MouseEvent {
     pub kind: MouseEventKind,
     pub target_id: u32,

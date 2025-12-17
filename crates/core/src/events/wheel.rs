@@ -13,7 +13,7 @@ pub enum WheelEventDeltaMode {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, rename = "RawWheelEvent")]
 pub struct WheelEvent {
     pub target_id: u32,
     pub bubble_target_ids: Vec<u32>,

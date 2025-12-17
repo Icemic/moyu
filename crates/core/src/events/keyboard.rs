@@ -20,7 +20,7 @@ pub enum KeyboardLocation {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, rename = "RawKeyboardEvent")]
 pub struct KeyboardEvent {
     pub kind: KeyboardEventKind,
     pub target_id: u32,
