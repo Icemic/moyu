@@ -1,15 +1,5 @@
+import { MouseEventKind } from '../bindings/MouseEventKind';
 import type { BubbleEvent } from './base';
-
-export enum MouseEventKind {
-  MouseDown = 'MouseDown',
-  MouseUp = 'MouseUp',
-  MouseMove = 'MouseMove',
-  MouseEnter = 'MouseEnter',
-  MouseLeave = 'MouseLeave',
-  Click = 'Click',
-  DoubleClick = 'DoubleClick',
-  ContextMenu = 'ContextMenu',
-}
 
 export interface MouseEvent extends BubbleEvent {
   kind: MouseEventKind;

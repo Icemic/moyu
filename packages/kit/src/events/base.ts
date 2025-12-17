@@ -1,9 +1,12 @@
+export interface MoyuEvent<T extends Record<string, unknown> = Record<string, unknown>> {
+  name: string;
+  body: T;
+}
+
 export interface BubbleEvent {
   targetId: number;
   bubbleTargetIds: number[];
   currentTargetId: number;
-  targetLabel?: string;
-  currentTargetLabel?: string;
   stopPropagation: () => void;
   preventDefault: () => void;
   defaultPrevented: boolean;
@@ -13,14 +16,11 @@ export interface BubbleEvent {
 export function createBubbleEvent<T extends BubbleEvent>(
   body: Record<string, any> & { bubbleTargetIds: number[] },
   targetId: number,
-  label: string,
 ): T {
   const event: BubbleEvent = {
     ...body,
     targetId,
     currentTargetId: targetId,
-    targetLabel: label,
-    currentTargetLabel: label,
     stopPropagation: () => {
       event.bubbles = false;
     },

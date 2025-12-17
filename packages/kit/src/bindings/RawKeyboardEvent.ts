@@ -2,7 +2,7 @@
 import type { KeyboardEventKind } from './KeyboardEventKind';
 import type { KeyboardLocation } from './KeyboardLocation';
 
-export type KeyboardEvent = {
+export type RawKeyboardEvent = {
   kind: KeyboardEventKind;
   targetId: number;
   bubbleTargetIds: Array<number>;
