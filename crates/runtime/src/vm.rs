@@ -99,6 +99,16 @@ impl QuickVM {
             .set_property("window", context.global().unwrap().into_value())
             .unwrap();
 
+        context
+            .global()
+            .unwrap()
+            .set_property("self", context.global().unwrap().into_value())
+            .unwrap();
+
+        context
+            .eval(include_str!("injections/location.js"), false)
+            .unwrap();
+
         let timer_tasks = Arc::new(Mutex::new(Vec::new()));
         let instant = Instant::now();
 
