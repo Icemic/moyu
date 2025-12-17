@@ -1,8 +1,10 @@
 use moyu_core::traits::Event;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 #[serde(untagged)]
+#[ts(export)]
 pub enum TextEvent {
     Start,
     Progress(f64),

@@ -1,15 +1,16 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::traits::Event;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 pub enum KeyboardEventKind {
     KeyDown,
     KeyUp,
     KeyPress,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 pub enum KeyboardLocation {
     Standard,
     Left,
@@ -17,8 +18,9 @@ pub enum KeyboardLocation {
     Numpad,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct KeyboardEvent {
     pub kind: KeyboardEventKind,
     pub target_id: u32,

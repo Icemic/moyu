@@ -1,16 +1,18 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::traits::Event;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 pub enum FocusEventKind {
     Focus,
     Blur,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct FocusEvent {
     pub kind: FocusEventKind,
     pub target_id: u32,

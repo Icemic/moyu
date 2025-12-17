@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::state::PointerLocation;
 use crate::traits::Event;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 pub enum MouseEventKind {
     MouseEnter,
     MouseLeave,
@@ -15,8 +16,9 @@ pub enum MouseEventKind {
     ContextMenu,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct MouseEvent {
     pub kind: MouseEventKind,
     pub target_id: u32,
