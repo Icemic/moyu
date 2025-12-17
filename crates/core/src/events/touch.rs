@@ -14,7 +14,7 @@ pub enum TouchEventKind {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, rename = "RawTouchEvent")]
 pub struct TouchEvent {
     pub kind: TouchEventKind,
     pub target_id: u32,
