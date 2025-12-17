@@ -1,11 +1,5 @@
+import { TouchEventKind } from '../bindings/TouchEventKind';
 import type { BubbleEvent } from './base';
-
-export enum TouchEventKind {
-  TouchStart = 'TouchStart',
-  TouchMove = 'TouchMove',
-  TouchEnd = 'TouchEnd',
-  TouchCancel = 'TouchCancel',
-}
 
 export interface TouchEvent extends BubbleEvent {
   kind: TouchEventKind;
