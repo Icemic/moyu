@@ -1,11 +1,12 @@
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::events::CustomEvent;
 
 use super::Node;
 use super::Plugin;
 
-pub trait Event: Serialize + Send + 'static {
+pub trait Event: Serialize + TS + Send + 'static {
     fn name(&self) -> &'static str;
 }
 

@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 /// The Gamepad interface of the [Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API)
 /// defines an individual gamepad or other controller, allowing access to information such as button presses,
 /// axis positions, and id.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Gamepad {
     /// A string containing identifying information about the controller.
@@ -44,7 +45,7 @@ impl Default for Gamepad {
 
 /// The GamepadButton interface defines an individual button of a gamepad or other controller, allowing
 /// access to the current state of different types of buttons available on the control device.
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct GamepadButton {
     /// A boolean value indicating whether the button is currently pressed (`true`) or unpressed (`false`).
@@ -60,14 +61,14 @@ pub struct GamepadButton {
 /// The GamepadHapticActuator interface of the [Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API)
 /// represents hardware in the controller designed to provide haptic feedback to the user (if available),
 /// most commonly vibration hardware.
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct GamepadHapticActuator {
     /// Returns an array of enumerated values representing the different haptic effects that the actuator supports.
     pub effects: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
 #[serde(rename_all = "kebab-case")]
 pub enum GamepadHapticActuatorEffect {
     /// A positional rumbling effect created by dual vibration motors in each handle of a controller,

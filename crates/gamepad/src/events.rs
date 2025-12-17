@@ -1,10 +1,12 @@
 use moyu_core::traits::Event;
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::{Gamepad, GamepadButton};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", untagged)]
+#[ts(export)]
 pub enum GamepadEvent {
     Connected {
         gamepad: Gamepad,

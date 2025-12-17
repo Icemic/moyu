@@ -1,4 +1,9 @@
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+use crate::traits::Event;
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum WheelEventDeltaMode {
     Pixel = 0,
@@ -6,12 +11,9 @@ pub enum WheelEventDeltaMode {
     Page = 2,
 }
 
-use serde::{Deserialize, Serialize};
-
-use crate::traits::Event;
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct WheelEvent {
     pub target_id: u32,
     pub bubble_target_ids: Vec<u32>,
