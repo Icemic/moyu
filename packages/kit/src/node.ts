@@ -1,3 +1,4 @@
+import { Command } from './commands';
 import type { BubbleEvent } from './events/base';
 import * as moyu from './moyu';
 import { STATE } from './state';
@@ -62,7 +63,7 @@ export class Node {
     }
   }
 
-  public executeCommand(payload: moyu.MoyuCommandPayload) {
+  public executeCommand(payload: Command) {
     return moyu.executeNodeCommand(this.nodeId, payload);
   }
 }
