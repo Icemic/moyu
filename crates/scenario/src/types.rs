@@ -1,13 +1,15 @@
 use moyu_core::traits::Event;
 use serde::{Deserialize, Serialize};
-use sixu::format::{CommandLine, SystemCallLine};
+use sixu::format::{ResolvedCommandLine, ResolvedSystemCallLine};
 use sixu::runtime::ExecutionState;
+use ts_rs::TS;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", untagged)]
+#[ts(export)]
 pub enum ScenarioEvent {
-    CommandLine(CommandLine),
-    ExtraSystemCall(SystemCallLine),
+    CommandLine(ResolvedCommandLine),
+    ExtraSystemCall(ResolvedSystemCallLine),
     Text {
         leading: Option<String>,
         text: Option<String>,
