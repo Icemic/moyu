@@ -186,7 +186,7 @@ impl Core {
                                 target_id,
                                 bubble_target_ids,
                                 location,
-                                identifier: Some(touch.id as u32),
+                                identifier: touch.id as u32,
                             });
                         }
                         TouchPhase::Moved => {
@@ -195,7 +195,7 @@ impl Core {
                                 target_id,
                                 bubble_target_ids,
                                 location,
-                                identifier: Some(touch.id as u32),
+                                identifier: touch.id as u32,
                             });
                         }
                         TouchPhase::Ended => {
@@ -204,7 +204,7 @@ impl Core {
                                 target_id,
                                 bubble_target_ids,
                                 location,
-                                identifier: Some(touch.id as u32),
+                                identifier: touch.id as u32,
                             });
                         }
                         TouchPhase::Cancelled => {
@@ -213,7 +213,7 @@ impl Core {
                                 target_id,
                                 bubble_target_ids,
                                 location,
-                                identifier: Some(touch.id as u32),
+                                identifier: touch.id as u32,
                             });
                         }
                     }

@@ -21,7 +21,7 @@ pub struct TouchEvent {
     pub bubble_target_ids: Vec<u32>,
     #[serde(flatten)]
     pub location: PointerLocation,
-    pub identifier: Option<u32>,
+    pub identifier: u32,
 }
 
 impl Event for TouchEvent {
