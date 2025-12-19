@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicI32, Ordering};
 
 use anyhow::{Result, anyhow};
 use futures_util::{SinkExt, StreamExt};
@@ -11,21 +12,20 @@ use tokio_tungstenite::{
     connect_async, tungstenite::protocol::CloseFrame, tungstenite::protocol::Message,
 };
 
-// Use thread-local storage for next WebSocket ID since QuickJS runs each VM in its own thread
-thread_local! {
-    static NEXT_WS_ID: std::cell::RefCell<i32> = std::cell::RefCell::new(1);
-}
+static NEXT_WS_ID: AtomicI32 = AtomicI32::new(1);
 
 struct WsHandle {
     tx: mpsc::UnboundedSender<Message>,
+    vm_id: usize,
 }
 
 static WS_HANDLES: LazyLock<Mutex<HashMap<i32, WsHandle>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub fn register_websocket_ops(context: &Context) {
+    let ws_connect_func = context.create_custom_callback(ws_connect).unwrap();
     context
-        .add_callback("__moyu_ws_connect", ws_connect)
+        .set_global("__moyu_ws_connect", ws_connect_func)
         .unwrap();
     let ws_send_func = context.create_custom_callback(ws_send).unwrap();
     context.set_global("__moyu_ws_send", ws_send_func).unwrap();
@@ -35,13 +35,33 @@ pub fn register_websocket_ops(context: &Context) {
         .unwrap();
 }
 
-fn ws_connect(url: String) -> i32 {
-    let id = NEXT_WS_ID.with(|cell| {
-        let mut val = cell.borrow_mut();
-        let current_id = *val;
-        *val += 1;
-        current_id
-    });
+pub fn cleanup_websockets(vm_id: usize) {
+    let mut handles = WS_HANDLES.lock().unwrap();
+    let to_remove: Vec<i32> = handles
+        .iter()
+        .filter(|(_, handle)| handle.vm_id == vm_id)
+        .map(|(id, _)| *id)
+        .collect();
+
+    for id in to_remove {
+        if let Some(handle) = handles.remove(&id) {
+            let _ = handle.tx.send(Message::Close(Some(CloseFrame {
+                code: 1001.into(),
+                reason: "VM Destroyed".into(),
+            })));
+        }
+    }
+}
+
+fn ws_connect(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<RawJSValue>> {
+    if args.len() < 1 {
+        return Err(anyhow!("ws_connect requires 1 argument"));
+    }
+
+    let url: String = OwnedJsValue::own(context, &args[0]).try_into()?;
+    let vm_id = context as usize;
+
+    let id = NEXT_WS_ID.fetch_add(1, Ordering::SeqCst);
 
     moyu_pal::task::get_runtime_handle().spawn(async move {
         match connect_async(&url).await {
@@ -51,7 +71,7 @@ fn ws_connect(url: String) -> i32 {
 
                 {
                     let mut handles = WS_HANDLES.lock().unwrap();
-                    handles.insert(id, WsHandle { tx });
+                    handles.insert(id, WsHandle { tx, vm_id });
                 }
 
                 // Dispatch open event
@@ -108,7 +128,7 @@ fn ws_connect(url: String) -> i32 {
         }
     });
 
-    id
+    Ok(Some(unsafe { q::JS_NewNumber(context, id as f64) }))
 }
 
 // fn ws_send(id: u32, data: OwnedJsValue) -> bool {
