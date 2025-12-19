@@ -109,6 +109,9 @@ impl QuickVM {
             .eval(include_str!("injections/location.js"), false)
             .unwrap();
 
+        context
+            .eval(include_str!("injections/addeventlistener.js"), false)
+            .unwrap();
 
         crate::websocket::register_websocket_ops(&context);
         context
