@@ -492,6 +492,8 @@ impl Drop for QuickVM {
         self.async_tasks.lock().unwrap().clear();
         self.promise_resolvers.lock().unwrap().clear();
         self.promise_tasks.lock().unwrap().clear();
+
+        crate::websocket::cleanup_websockets(unsafe { self.context.context_raw() } as usize);
     }
 }
 
