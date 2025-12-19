@@ -109,6 +109,12 @@ impl QuickVM {
             .eval(include_str!("injections/location.js"), false)
             .unwrap();
 
+
+        crate::websocket::register_websocket_ops(&context);
+        context
+            .eval(include_str!("injections/websocket.js"), false)
+            .unwrap();
+
         let timer_tasks = Arc::new(Mutex::new(Vec::new()));
         let instant = Instant::now();
 

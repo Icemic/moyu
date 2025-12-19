@@ -3,6 +3,7 @@
 mod console;
 mod module;
 mod vm;
+mod websocket;
 
 use std::sync::Arc;
 
