@@ -8,6 +8,8 @@ use futures_util::{SinkExt, StreamExt};
 use quickjs_rusty::serde::to_js;
 use quickjs_rusty::{JSContext, OwnedJsValue, RawJSValue, q};
 use tokio::sync::mpsc;
+use tokio_tungstenite::tungstenite::ClientRequestBuilder;
+use tokio_tungstenite::tungstenite::http::Uri;
 use tokio_tungstenite::{
     connect_async, tungstenite::protocol::CloseFrame, tungstenite::protocol::Message,
 };
@@ -54,7 +56,27 @@ pub(super) fn ws_connect(
     let id = NEXT_WS_ID.fetch_add(1, Ordering::SeqCst);
 
     moyu_pal::task::get_runtime_handle().spawn(async move {
-        match connect_async(&url).await {
+        let uri = match url.parse::<Uri>() {
+            Ok(u) => u,
+            Err(e) => {
+                log::error!("WebSocket invalid URL (url={}): {:?}", url, e);
+                dispatch_ws_event(id, "error", None);
+                // Also dispatch close if connection failed to ensure JS state is updated
+                dispatch_ws_event(id, "close", Some(WsData::Close(1006, e.to_string())));
+                return;
+            }
+        };
+
+        // simulate browser-like origin header
+        let origin = match uri.scheme_str() {
+            Some("wss") => format!("https://{}", uri.host().unwrap_or("")),
+            Some("ws") => format!("http://{}", uri.host().unwrap_or("")),
+            _ => format!("http://{}", uri.host().unwrap_or("")),
+        };
+
+        let client_request = ClientRequestBuilder::new(uri).with_header("origin", origin);
+
+        match connect_async(client_request).await {
             Ok((ws_stream, _)) => {
                 let (mut write, mut read) = ws_stream.split();
                 let (tx, mut rx) = mpsc::unbounded_channel::<Message>();
