@@ -1,10 +1,9 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 mod console;
-mod http;
 mod module;
+mod ops;
 mod vm;
-mod websocket;
 
 use std::sync::Arc;
 

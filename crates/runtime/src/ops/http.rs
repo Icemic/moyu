@@ -1,9 +1,7 @@
 use anyhow::{Result, anyhow};
-use quickjs_rusty::{Context, JSContext, OwnedJsValue, RawJSValue};
+use quickjs_rusty::{JSContext, OwnedJsValue, RawJSValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-use crate::get_vm;
 
 #[derive(Serialize, Deserialize)]
 pub struct FetchResponse {
@@ -14,29 +12,10 @@ pub struct FetchResponse {
     pub bytes: Vec<u8>,
 }
 
-pub fn register_http_ops(context: &Context) {
-    let fetch_func = context.create_custom_callback(moyu_fetch).unwrap();
-    context.set_global("__moyu_fetch", fetch_func).unwrap();
-    let eval_func = context.create_custom_callback(moyu_eval).unwrap();
-    context.set_global("__moyu_eval", eval_func).unwrap();
-}
-
-fn moyu_eval(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<RawJSValue>> {
-    if args.len() < 1 {
-        return Err(anyhow!("eval requires 1 argument"));
-    }
-
-    let code: String = OwnedJsValue::own(context, &args[0]).try_into()?;
-
-    get_vm()
-        .context()
-        .eval(&code, false)
-        .map(|v| unsafe { v.extract() })
-        .map(|v| Some(v))
-        .map_err(|e| anyhow::anyhow!("Eval error: {:?}", e))
-}
-
-fn moyu_fetch(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<RawJSValue>> {
+pub(super) fn moyu_fetch(
+    context: *mut JSContext,
+    args: &[RawJSValue],
+) -> Result<Option<RawJSValue>> {
     if args.len() < 1 {
         return Err(anyhow!("fetch requires at least 1 argument"));
     }

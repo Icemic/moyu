@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use anyhow::{Result, anyhow};
 use futures_util::{SinkExt, StreamExt};
 use quickjs_rusty::serde::to_js;
-use quickjs_rusty::{Context, JSContext, OwnedJsValue, RawJSValue, q};
+use quickjs_rusty::{JSContext, OwnedJsValue, RawJSValue, q};
 use tokio::sync::mpsc;
 use tokio_tungstenite::{
     connect_async, tungstenite::protocol::CloseFrame, tungstenite::protocol::Message,
@@ -21,19 +21,6 @@ struct WsHandle {
 
 static WS_HANDLES: LazyLock<Mutex<HashMap<i32, WsHandle>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
-
-pub fn register_websocket_ops(context: &Context) {
-    let ws_connect_func = context.create_custom_callback(ws_connect).unwrap();
-    context
-        .set_global("__moyu_ws_connect", ws_connect_func)
-        .unwrap();
-    let ws_send_func = context.create_custom_callback(ws_send).unwrap();
-    context.set_global("__moyu_ws_send", ws_send_func).unwrap();
-    let ws_close_func = context.create_custom_callback(ws_close).unwrap();
-    context
-        .set_global("__moyu_ws_close", ws_close_func)
-        .unwrap();
-}
 
 pub fn cleanup_websockets(vm_id: usize) {
     let mut handles = WS_HANDLES.lock().unwrap();
@@ -53,7 +40,10 @@ pub fn cleanup_websockets(vm_id: usize) {
     }
 }
 
-fn ws_connect(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<RawJSValue>> {
+pub(super) fn ws_connect(
+    context: *mut JSContext,
+    args: &[RawJSValue],
+) -> Result<Option<RawJSValue>> {
     if args.len() < 1 {
         return Err(anyhow!("ws_connect requires 1 argument"));
     }
@@ -131,8 +121,7 @@ fn ws_connect(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<Raw
     Ok(Some(unsafe { q::JS_NewNumber(context, id as f64) }))
 }
 
-// fn ws_send(id: u32, data: OwnedJsValue) -> bool {
-fn ws_send(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<RawJSValue>> {
+pub(super) fn ws_send(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<RawJSValue>> {
     if args.len() < 2 {
         return Err(anyhow!("ws_send requires 2 arguments"));
     }
@@ -171,8 +160,7 @@ fn ws_send(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<RawJSV
     }
 }
 
-// fn ws_close(id: u32, code: Option<u16>, reason: Option<String>) {
-fn ws_close(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<RawJSValue>> {
+pub(super) fn ws_close(context: *mut JSContext, args: &[RawJSValue]) -> Result<Option<RawJSValue>> {
     if args.len() < 1 {
         return Err(anyhow!("ws_close requires at least 1 argument"));
     }
