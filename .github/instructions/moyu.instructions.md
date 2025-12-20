@@ -102,6 +102,8 @@ core/src/
 - `QuickVM` - VM 实例管理
 - `console` - 控制台 API
 - `module` - 模块加载
+- `ops` - 注册桥接操作
+- `injections` - 全局对象注入（如 `location`），与 ops 配合使用
 
 #### `moyu_ops` - JS 桥接
 
