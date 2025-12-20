@@ -1,11 +1,10 @@
 use moyu_runtime::{get_vm, setup_vm};
-use log::error;
 
 #[tokio::main]
 async fn main() {
-    moyu_pal::config::setup().await;
+    // moyu_pal::config::setup().await;
     env_logger::builder()
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Info)
         .init();
 
     let async_runtime_handle = moyu_pal::platform::setup();
@@ -25,16 +24,32 @@ async fn main() {
                 .eval("var x = setInterval(() => console.log('Hello %s!', 'World'), 1000); setTimeout(() => clearTimeout(x), 1500)", false)
                 .unwrap();
 
+            vm.context()
+                .eval(include_str!("echo.client.js"), false)
+                .unwrap();
 
-            if let Err(err) = vm.prepare_entry() {
-                error!("{:?}", err);
-            };
+            // 运行 fetch 测试
+            vm.context()
+                .eval(include_str!("eval.client.js"), false)
+                .unwrap();
 
-            vm.block_on_ticking();
+            vm.context()
+                .eval(include_str!("fetch.client.js"), false)
+                .unwrap();
+
+            // 运行 DOM/脚本加载测试
+            vm.context()
+                .eval(include_str!("dom.client.js"), false)
+                .unwrap();
+
+            // if let Err(err) = vm.prepare_entry() {
+            //     log::error!("{:?}", err);
+            // };
         })
         .unwrap();
 
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    let vm = get_vm();
+    vm.block_on_ticking();
 
     // drop global variable
     drop(vm_handle);
