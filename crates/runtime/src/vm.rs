@@ -8,6 +8,8 @@ use std::sync::atomic::AtomicU64;
 use std::time::Instant;
 
 use moyu_pal::config::get_engine_config;
+use moyu_pal::dir::entry_dir;
+use quickjs_rusty::serde::to_js;
 use quickjs_rusty::{
     Arguments, Context, ExecutionError, JSContext, JsFunction, OwnedJsPromise, OwnedJsValue,
     RawJSValue,
@@ -104,6 +106,15 @@ impl QuickVM {
             .global()
             .unwrap()
             .set_property("self", context.global().unwrap().into_value())
+            .unwrap();
+
+        context
+            .global()
+            .unwrap()
+            .set_property(
+                "__moyu_base_url",
+                to_js(unsafe { context.context_raw() }, &entry_dir().to_string()).unwrap(),
+            )
             .unwrap();
 
         inject_scripts(&context);
