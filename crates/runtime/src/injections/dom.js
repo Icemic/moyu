@@ -73,6 +73,15 @@
     body: {
       appendChild: (el) => el,
     },
+    // for webpack's auto public path
+    currentScript: {
+      get tagName() {
+        return 'script';
+      },
+      get src() {
+        return globalThis.__moyu_base_url || '';
+      },
+    },
   };
 
   globalThis.document = document;
