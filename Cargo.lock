@@ -2315,6 +2315,7 @@ name = "moyu_runtime"
 version = "0.8.0"
 dependencies = [
  "anyhow",
+ "ehttp",
  "env_logger",
  "futures-util",
  "log",
