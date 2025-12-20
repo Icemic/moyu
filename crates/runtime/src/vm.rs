@@ -17,6 +17,7 @@ use tokio::sync::oneshot::{Receiver, Sender};
 
 use crate::console::log_handler;
 use crate::module::{module_loader, module_normalize};
+use crate::ops::{inject_scripts, register_ops};
 
 static mut TIMER_ID: i32 = 0;
 static PROMISE_ID_COUNTER: AtomicU64 = AtomicU64::new(1);
@@ -105,26 +106,8 @@ impl QuickVM {
             .set_property("self", context.global().unwrap().into_value())
             .unwrap();
 
-        context
-            .eval(include_str!("injections/location.js"), false)
-            .unwrap();
-
-        context
-            .eval(include_str!("injections/addeventlistener.js"), false)
-            .unwrap();
-
-        crate::websocket::register_websocket_ops(&context);
-        context
-            .eval(include_str!("injections/websocket.js"), false)
-            .unwrap();
-
-        crate::http::register_http_ops(&context);
-        context
-            .eval(include_str!("injections/fetch.js"), false)
-            .unwrap();
-        context
-            .eval(include_str!("injections/dom.js"), false)
-            .unwrap();
+        inject_scripts(&context);
+        register_ops(&context);
 
         let timer_tasks = Arc::new(Mutex::new(Vec::new()));
         let instant = Instant::now();
@@ -501,7 +484,7 @@ impl Drop for QuickVM {
         self.promise_resolvers.lock().unwrap().clear();
         self.promise_tasks.lock().unwrap().clear();
 
-        crate::websocket::cleanup_websockets(unsafe { self.context.context_raw() } as usize);
+        crate::ops::websocket::cleanup_websockets(unsafe { self.context.context_raw() } as usize);
     }
 }
 
