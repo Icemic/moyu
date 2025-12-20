@@ -1,6 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 mod console;
+mod http;
 mod module;
 mod vm;
 mod websocket;
