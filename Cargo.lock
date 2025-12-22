@@ -3216,9 +3216,9 @@ dependencies = [
 
 [[package]]
 name = "quickjs-rusty"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54542fa649279e5e8ae40ca37052599790f1cce867b8ad011095a620828239da"
+checksum = "6e8f139203b7c846d0aaf086e236fa2a2b2af59a58aebc56065d6c0d578164c9"
 dependencies = [
  "anyhow",
  "chrono",

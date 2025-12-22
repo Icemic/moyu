@@ -20,7 +20,7 @@ fn format_string(args: Vec<OwnedJsValue>) -> std::string::String {
     let mut others = vec![];
     let mut i = 0;
     for arg in args {
-        let raw_string = if std::io::stdout().is_terminal() && arg.is_object() {
+        let raw_string = if std::io::stdout().is_terminal() && arg.is_object() && !arg.is_error() {
             arg.to_json_string(0).unwrap()
         } else {
             match arg.js_to_string() {
