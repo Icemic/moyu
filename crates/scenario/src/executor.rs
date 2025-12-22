@@ -4,6 +4,7 @@ use sixu::format::*;
 use sixu::runtime::*;
 
 use crate::types::ScenarioEvent;
+use crate::types::TextLine;
 
 /// Executor that implements the runtime execution logic for ScenarioPlugin
 pub struct ScenarioExecutor {
@@ -47,11 +48,11 @@ impl RuntimeExecutor for ScenarioExecutor {
         tailing: Option<&str>,
     ) -> sixu::error::Result<bool> {
         self.sender
-            .try_send(ScenarioEvent::Text {
+            .try_send(ScenarioEvent::Text(TextLine {
                 leading: leading.map(|s| s.to_string()),
                 text: text.map(|s| s.to_string()),
                 tailing: tailing.map(|s| s.to_string()),
-            })
+            }))
             .map_err(anyhow::Error::from)?;
         Ok(false)
     }
