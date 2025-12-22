@@ -10,14 +10,18 @@ use ts_rs::TS;
 pub enum ScenarioEvent {
     CommandLine(ResolvedCommandLine),
     ExtraSystemCall(ResolvedSystemCallLine),
-    Text {
-        leading: Option<String>,
-        text: Option<String>,
-        tailing: Option<String>,
-    },
+    Text(TextLine),
     Finished,
     Waiting,
     WaitingCancelled,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct TextLine {
+    pub leading: Option<String>,
+    pub text: Option<String>,
+    pub tailing: Option<String>,
 }
 
 impl Event for ScenarioEvent {
@@ -25,7 +29,7 @@ impl Event for ScenarioEvent {
         match self {
             ScenarioEvent::CommandLine(_) => "scenarioCommandLine",
             ScenarioEvent::ExtraSystemCall(_) => "scenarioExtraSystemCall",
-            ScenarioEvent::Text { .. } => "scenarioText",
+            ScenarioEvent::Text(_) => "scenarioText",
             ScenarioEvent::Finished => "scenarioFinished",
             ScenarioEvent::Waiting => "scenarioWaiting",
             ScenarioEvent::WaitingCancelled => "scenarioWaitingCancelled",
