@@ -26,6 +26,7 @@ export * from './bindings/ResizeEvent';
 export * from './bindings/ResolvedArgument';
 export * from './bindings/ResolvedCommandLine';
 export * from './bindings/ResolvedSystemCallLine';
+export * from './bindings/TextLine';
 export * from './bindings/ScenarioEvent';
 export * from './bindings/TextEvent';
 export * from './bindings/TouchEventKind';
