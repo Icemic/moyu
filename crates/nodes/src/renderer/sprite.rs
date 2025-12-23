@@ -6,23 +6,138 @@ use wgpu::{util::DeviceExt, *};
 use moyu_core::base::*;
 #[cfg(feature = "video")]
 use moyu_core::nodes::Video;
+use moyu_core::traits::Renderer;
 use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
-use moyu_core::utils::calculate::calculate_rect_vertices;
-use moyu_core::utils::constants::NINESLICE_INDICES;
-use moyu_core::{traits::Renderer, utils::constants::RECTANGLE_INDICES};
 use moyu_resource::types::{Asset, AssetId, AssetKind, Texture, TextureStatus};
 
 use crate::nodes::{Sprite, SpriteMode};
 
-/// the number of vertices in a sprite is always 4.
-// pub static NUM_VERTICES: u32 = 4;
+pub const RECTANGLE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 
-static NUM_INDICES: u32 = RECTANGLE_INDICES.len() as u32;
-static NUM_INDICES_NINESLICE: u32 = NINESLICE_INDICES.len() as u32;
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SpriteInstance {
+    pub transform_0: [f32; 4],
+    pub transform_1: [f32; 4],
+    pub transform_2: [f32; 4],
+    pub transform_3: [f32; 4],
+    pub local_bounds: [f32; 4],
+    pub uv_bounds: [f32; 4],
+    pub tint: [f32; 4],
+}
+
+impl VertexDesc for SpriteInstance {
+    fn attribs() -> &'static [wgpu::VertexAttribute] {
+        static ATTRIBS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
+            2 => Float32x4, // transform_0
+            3 => Float32x4, // transform_1
+            4 => Float32x4, // transform_2
+            5 => Float32x4, // transform_3
+            6 => Float32x4, // local_bounds
+            7 => Float32x4, // uv_bounds
+            8 => Float32x4  // tint
+        ];
+        &ATTRIBS
+    }
+
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: Self::attribs(),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct QuadVertex {
+    pub position: [f32; 2],
+}
+
+impl VertexDesc for QuadVertex {
+    fn attribs() -> &'static [wgpu::VertexAttribute] {
+        static ATTRIBS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![
+            0 => Float32x2,
+        ];
+        &ATTRIBS
+    }
+}
+
+fn calculate_sprite_instance(
+    node: &dyn Node,
+    tex_width: f32,
+    tex_height: f32,
+    origin: &[f32; 2],
+    area: &[f32; 4],
+    scale: &[f32; 2],
+) -> SpriteInstance {
+    let [x0, y0, x1, y1] = *area;
+    let [x_scale, y_scale] = *scale;
+
+    // scale size to fit area
+    let width = tex_width * (x1 - x0);
+    let height = tex_height * (y1 - y0);
+
+    let w0 = origin[0] * tex_width;
+    let w1 = w0 + width * x_scale;
+    let h0 = origin[1] * tex_height;
+    let h1 = h0 + height * y_scale;
+
+    // Local rect in pixels relative to node origin
+    let local_bounds = [w0, h0, w1, h1];
+
+    // UV rect
+    let uv_bounds = [x0, y0, x1, y1];
+
+    // Global transform
+    let global_transform = node.base().global_transform();
+
+    // Tint
+    let tint = node.base().tint();
+    let opacity = node.base().global_opacity();
+    let tint_vec = [
+        tint.r as f32,
+        tint.g as f32,
+        tint.b as f32,
+        tint.a as f32 * opacity,
+    ];
+
+    SpriteInstance {
+        transform_0: [
+            global_transform.x_axis.x,
+            global_transform.x_axis.y,
+            global_transform.x_axis.z,
+            0.0,
+        ],
+        transform_1: [
+            global_transform.y_axis.x,
+            global_transform.y_axis.y,
+            global_transform.y_axis.z,
+            0.0,
+        ],
+        transform_2: [
+            global_transform.z_axis.x,
+            global_transform.z_axis.y,
+            global_transform.z_axis.z,
+            0.0,
+        ],
+        transform_3: [
+            global_transform.w_axis.x,
+            global_transform.w_axis.y,
+            global_transform.w_axis.z,
+            1.0,
+        ],
+        local_bounds,
+        uv_bounds,
+        tint: tint_vec,
+    }
+}
 
 pub struct SpriteRenderer {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
+    quad_buffer: Buffer,
     index_buffer: Buffer,
     bind_group_map: WeakKeyHashMap<Weak<AssetId>, BindGroup>,
     last_sweep: u64,
@@ -76,7 +191,7 @@ impl SpriteRenderer {
             vertex: VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[SpriteVertex::desc()],
+                buffers: &[QuadVertex::desc(), SpriteInstance::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {
@@ -111,18 +226,37 @@ impl SpriteRenderer {
             cache: None,
         });
 
+        let quad_vertices = [
+            QuadVertex {
+                position: [0.0, 0.0],
+            },
+            QuadVertex {
+                position: [0.0, 1.0],
+            },
+            QuadVertex {
+                position: [1.0, 1.0],
+            },
+            QuadVertex {
+                position: [1.0, 0.0],
+            },
+        ];
+        let quad_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Sprite Quad Buffer"),
+            contents: bytemuck::cast_slice(&quad_vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
         // index buffers for each sprite are always the same.
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Sprite Renderer Index Buffer"),
-            // NINESLICE_INDICES includes RECTANGLE_INDICES, so we can use it for both,
-            // and adjust the range when drawing.
-            contents: bytemuck::cast_slice(NINESLICE_INDICES),
+            contents: bytemuck::cast_slice(RECTANGLE_INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
 
         Self {
             pipeline,
             bind_group_layout,
+            quad_buffer,
             index_buffer,
             bind_group_map: Default::default(),
             last_sweep: 0,
@@ -237,16 +371,15 @@ impl Renderer for SpriteRenderer {
             let (tex_width, tex_height) = (tex_width as f32, tex_height as f32);
 
             if node.base_mut().pop_update_vertices() {
-                let vertices = match node.mode {
-                    SpriteMode::Normal => calculate_rect_vertices(
+                let instances = match node.mode {
+                    SpriteMode::Normal => vec![calculate_sprite_instance(
                         node,
                         tex_width,
                         tex_height,
                         &[0., 0.],
                         &node.area,
                         &[1., 1.],
-                    )
-                    .to_vec(),
+                    )],
                     SpriteMode::Nineslice => {
                         //
                         // (0,0)                            texture width
@@ -296,7 +429,7 @@ impl Renderer for SpriteRenderer {
                         let mut meshes = vec![];
 
                         // left top
-                        meshes.extend(calculate_rect_vertices(
+                        meshes.push(calculate_sprite_instance(
                             node,
                             tex_width,
                             tex_height,
@@ -306,7 +439,7 @@ impl Renderer for SpriteRenderer {
                         ));
 
                         // left center
-                        meshes.extend(calculate_rect_vertices(
+                        meshes.push(calculate_sprite_instance(
                             node,
                             tex_width,
                             tex_height,
@@ -316,7 +449,7 @@ impl Renderer for SpriteRenderer {
                         ));
 
                         // left bottom
-                        meshes.extend(calculate_rect_vertices(
+                        meshes.push(calculate_sprite_instance(
                             node,
                             tex_width,
                             tex_height,
@@ -326,7 +459,7 @@ impl Renderer for SpriteRenderer {
                         ));
 
                         // center top
-                        meshes.extend(calculate_rect_vertices(
+                        meshes.push(calculate_sprite_instance(
                             node,
                             tex_width,
                             tex_height,
@@ -336,7 +469,7 @@ impl Renderer for SpriteRenderer {
                         ));
 
                         // center center
-                        meshes.extend(calculate_rect_vertices(
+                        meshes.push(calculate_sprite_instance(
                             node,
                             tex_width,
                             tex_height,
@@ -346,7 +479,7 @@ impl Renderer for SpriteRenderer {
                         ));
 
                         // center bottom
-                        meshes.extend(calculate_rect_vertices(
+                        meshes.push(calculate_sprite_instance(
                             node,
                             tex_width,
                             tex_height,
@@ -356,7 +489,7 @@ impl Renderer for SpriteRenderer {
                         ));
 
                         // right top
-                        meshes.extend(calculate_rect_vertices(
+                        meshes.push(calculate_sprite_instance(
                             node,
                             tex_width,
                             tex_height,
@@ -366,7 +499,7 @@ impl Renderer for SpriteRenderer {
                         ));
 
                         // right center
-                        meshes.extend(calculate_rect_vertices(
+                        meshes.push(calculate_sprite_instance(
                             node,
                             tex_width,
                             tex_height,
@@ -376,7 +509,7 @@ impl Renderer for SpriteRenderer {
                         ));
 
                         // right bottom
-                        meshes.extend(calculate_rect_vertices(
+                        meshes.push(calculate_sprite_instance(
                             node,
                             tex_width,
                             tex_height,
@@ -392,21 +525,23 @@ impl Renderer for SpriteRenderer {
                     }
                 };
 
-                if node.vertex_buffer.is_none() {
-                    let vertex_buffer =
+                let buf = bytemuck::cast_slice(&instances);
+                let current_size = node.instance_buffer.as_ref().map(|b| b.size()).unwrap_or(0);
+
+                if node.instance_buffer.is_none() || current_size < buf.len() as u64 {
+                    let instance_buffer =
                         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some("Sprite Vertex Buffer"),
-                            contents: bytemuck::cast_slice(&vertices),
+                            label: Some("Sprite Instance Buffer"),
+                            contents: buf,
                             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                         });
 
-                    node.vertex_buffer = Some(vertex_buffer);
+                    node.instance_buffer = Some(instance_buffer);
                 } else {
-                    let buf = bytemuck::cast_slice(&vertices);
                     staging_belt
                         .write_buffer(
                             encoder,
-                            node.vertex_buffer.as_ref().unwrap(),
+                            node.instance_buffer.as_ref().unwrap(),
                             0,
                             (buf.len() as u64).try_into().unwrap(),
                             device,
@@ -439,15 +574,17 @@ impl Renderer for SpriteRenderer {
         }
 
         let mut bind_group = None;
-        let mut vertex_buffer = None;
-
-        let mode;
+        let mut instance_buffer = None;
+        let mut instance_count = 0;
 
         if let Some(sprite) = node.as_any().downcast_ref::<Sprite>() {
-            mode = sprite.mode;
             if let Some(texture_id) = sprite.texture_id.load().as_ref() {
                 bind_group = self.bind_group_map.get(texture_id);
-                vertex_buffer = sprite.vertex_buffer.as_ref();
+                instance_buffer = sprite.instance_buffer.as_ref();
+                instance_count = match sprite.mode {
+                    SpriteMode::Normal => 1,
+                    SpriteMode::Nineslice => 9,
+                };
             }
         }
         // else if let Some(video) = node.as_any().downcast_ref::<Video>() {
@@ -458,19 +595,15 @@ impl Renderer for SpriteRenderer {
             unreachable!()
         }
 
-        if bind_group.is_some() && vertex_buffer.is_some() {
+        if bind_group.is_some() && instance_buffer.is_some() {
             render_pass.set_pipeline(self.render_pipeline());
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
             render_pass.set_bind_group(1, bind_group.unwrap(), &[]);
-            render_pass.set_vertex_buffer(0, vertex_buffer.unwrap().slice(..));
+            render_pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
+            render_pass.set_vertex_buffer(1, instance_buffer.unwrap().slice(..));
 
-            let num_indices = match mode {
-                SpriteMode::Normal => NUM_INDICES,
-                SpriteMode::Nineslice => NUM_INDICES_NINESLICE,
-            };
-
-            render_pass.draw_indexed(0..num_indices, 0, 0..1);
+            render_pass.draw_indexed(0..6, 0, 0..instance_count);
         }
     }
 }
