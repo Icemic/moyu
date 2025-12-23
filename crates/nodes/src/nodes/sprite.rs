@@ -56,7 +56,7 @@ pub struct Sprite {
     /// (for nineslice mode) target height
     pub target_height: u32,
 
-    pub vertex_buffer: Option<Buffer>,
+    pub instance_buffer: Option<Buffer>,
 
     #[base]
     node_base: NodeBase,
@@ -75,7 +75,7 @@ impl Sprite {
             nine_slice_mode: NineSliceMode::Stretch,
             target_width: 0,
             target_height: 0,
-            vertex_buffer: None,
+            instance_buffer: None,
             node_base: NodeBase::new(label),
         }
     }
