@@ -16,7 +16,6 @@ use wgpu::{util::DeviceExt, *};
 use moyu_core::base::MVPMatrix;
 use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use moyu_core::traits::{NodeEventSource, Renderer};
-use moyu_core::utils::calculate::tint_to_vec4;
 
 use crate::events::TextEvent;
 use crate::nodes::{Text, TextPrintMode};
@@ -224,7 +223,6 @@ impl TextRenderer {
         let transform = node.base().global_transform();
         let tint = node.base().tint();
         let opacity = node.base().global_opacity();
-        let tint = tint_to_vec4(tint, *opacity);
 
         // assumes that each glyph has the same number of vertices in fill, stroke, and shadow
         let total_count_til_last_in_vertices = glyphs.iter().fold(0, |acc, g| acc + g.fill.len());
@@ -275,10 +273,11 @@ impl TextRenderer {
             vertex.position[1] = p.y;
 
             // calculate color with tint and pre-multiplied alpha
-            let color_r = vertex.color[0] * tint[0] * tint[3];
-            let color_g = vertex.color[1] * tint[1] * tint[3];
-            let color_b = vertex.color[2] * tint[2] * tint[3];
-            let mut color_a = vertex.color[3] * tint[3];
+            let tint_a = tint.a * opacity;
+            let color_r = vertex.color[0] * tint.r * tint_a;
+            let color_g = vertex.color[1] * tint.g * tint_a;
+            let color_b = vertex.color[2] * tint.b * tint_a;
+            let mut color_a = vertex.color[3] * tint_a;
 
             if let Some(fade_from_index_in_vertices) = fade_from_index_in_vertices {
                 if i % total_count_til_last_in_vertices >= fade_from_index_in_vertices {
