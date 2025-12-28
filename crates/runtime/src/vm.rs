@@ -117,6 +117,15 @@ impl QuickVM {
             )
             .unwrap();
 
+        context
+            .global()
+            .unwrap()
+            .set_property(
+                "__moyu_native",
+                to_js(unsafe { context.context_raw() }, &true).unwrap(),
+            )
+            .unwrap();
+
         inject_scripts(&context);
         register_ops(&context);
 
