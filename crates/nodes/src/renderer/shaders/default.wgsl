@@ -38,8 +38,8 @@ fn vs_main(
     let b = instance.transform_0.y;
     let c = instance.transform_1.x;
     let d = instance.transform_1.y;
-    let tx = instance.transform_2.x;
-    let ty = instance.transform_2.y;
+    let tx = instance.transform_3.x;
+    let ty = instance.transform_3.y;
 
     let world_x = a * local_x + c * local_y + tx;
     let world_y = b * local_x + d * local_y + ty;
