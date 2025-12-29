@@ -469,8 +469,8 @@ impl NodeBase {
             self.transform.x_axis.y = b;
             self.transform.y_axis.x = c;
             self.transform.y_axis.y = d;
-            self.transform.z_axis.x = tx;
-            self.transform.z_axis.y = ty;
+            self.transform.translation.x = tx;
+            self.transform.translation.y = ty;
 
             // refresh global transform matrix
             let mut global_transform = *parent.global_transform();
