@@ -124,7 +124,7 @@ function handleBubbleEvent(name: string, body: RawMouseEvent | RawTouchEvent) {
   }
 }
 
-if (!globalThis.document) {
+if ((globalThis as any).__moyu_native) {
   // detect if it is running in browser, if not, polyfill requestAnimationFrame
   globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
     return globalRequestAnimationFrameListeners.push(callback) - 1;
