@@ -1,5 +1,7 @@
 use wgpu::util::StagingBelt;
-use wgpu::{BindGroupLayout, CommandEncoder, Device, Queue, RenderPass, RenderPipeline};
+use wgpu::{BindGroupLayout, CommandEncoder, Device, Queue, RenderPipeline};
+
+use crate::core::render_command::RenderQueue;
 
 use super::{Node, RendererUpdatePayload};
 
@@ -20,5 +22,8 @@ pub trait Renderer {
         staging_belt: &mut StagingBelt,
         payload: &RendererUpdatePayload,
     );
-    fn render(&self, device: &Device, queue: &Queue, render_pass: &mut RenderPass, node: &dyn Node);
+
+    fn collect_commands(&self, node: &dyn Node, render_queue: &mut RenderQueue);
+    #[allow(unused_variables)]
+    fn collect_post_commands(&self, node: &dyn Node, render_queue: &mut RenderQueue) {}
 }

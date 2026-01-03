@@ -58,7 +58,30 @@ export interface MoyuNodeAttributes extends MoyuListenerAttributes {
   cursor?: Cursor;
 }
 
+export type FilterKind =
+  | { type: 'blur'; radius: number }
+  | {
+      type: 'colorAdjust';
+      brightness?: number;
+      contrast?: number;
+      saturation?: number;
+      hue?: number;
+    };
+
 export type MoyuContainerAttributes = MoyuNodeAttributes;
+export interface MoyuClipAttribute extends MoyuNodeAttributes {
+  width?: number;
+  height?: number;
+}
+export interface MoyuFilterAttribute extends MoyuNodeAttributes {
+  filters?: FilterKind[];
+}
+export interface MoyuBackdropAttribute extends MoyuNodeAttributes {
+  filters?: FilterKind[];
+  width: number;
+  height: number;
+}
+
 export interface MoyuSpriteAttribute extends MoyuNodeAttributes {
   src?: string;
   area?: Tuple4;
@@ -67,16 +90,6 @@ export interface MoyuSpriteAttribute extends MoyuNodeAttributes {
   nineSliceMode?: 'stretch' | 'repeat' | 'mirror' | 'blank';
   targetWidth?: number;
   targetHeight?: number;
-}
-
-export interface MoyuYUVSpriteAttribute extends MoyuNodeAttributes {
-  area?: Tuple4;
-}
-
-export interface MoyuVideoAttribute extends MoyuSpriteAttribute {
-  src: string;
-  area?: Tuple4;
-  autoplay?: boolean;
 }
 
 export type Color = number | string;
@@ -177,8 +190,9 @@ export declare namespace JSX {
   interface IntrinsicElements {
     container: DetailedMoyuProps<MoyuContainerAttributes>;
     sprite: DetailedMoyuProps<MoyuSpriteAttribute>;
-    yuvsprite: DetailedMoyuProps<MoyuYUVSpriteAttribute>;
-    video: DetailedMoyuProps<MoyuVideoAttribute>;
+    clip: DetailedMoyuProps<MoyuClipAttribute>;
+    filter: DetailedMoyuProps<MoyuFilterAttribute>;
+    backdrop: DetailedMoyuProps<MoyuBackdropAttribute>;
     text: DetailedMoyuProps<MoyuTextAttribute>;
   }
 }

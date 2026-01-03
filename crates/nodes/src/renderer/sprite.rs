@@ -3,9 +3,8 @@ use weak_table::WeakKeyHashMap;
 use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
-use moyu_core::base::*;
-#[cfg(feature = "video")]
-use moyu_core::nodes::Video;
+use moyu_core::base::{MVPMatrix, VertexDesc};
+use moyu_core::core::render_command::{RenderCommand, RenderQueue};
 use moyu_core::traits::Renderer;
 use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use moyu_resource::types::{Asset, AssetId, AssetKind, Texture, TextureStatus};
@@ -568,7 +567,7 @@ impl Renderer for SpriteRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn render(&self, _: &Device, _: &Queue, render_pass: &mut RenderPass, node: &dyn Node) {
+    fn collect_commands(&self, node: &dyn Node, render_queue: &mut RenderQueue) {
         if !node.base().visible() {
             return;
         }
@@ -580,30 +579,26 @@ impl Renderer for SpriteRenderer {
         if let Some(sprite) = node.as_any().downcast_ref::<Sprite>() {
             if let Some(texture_id) = sprite.texture_id.load().as_ref() {
                 bind_group = self.bind_group_map.get(texture_id);
-                instance_buffer = sprite.instance_buffer.as_ref();
+                instance_buffer = sprite.instance_buffer.clone();
                 instance_count = match sprite.mode {
                     SpriteMode::Normal => 1,
                     SpriteMode::Nineslice => 9,
                 };
             }
-        }
-        // else if let Some(video) = node.as_any().downcast_ref::<Video>() {
-        //     bind_group = video.texture.read().bind_group.as_ref().unwrap().clone();
-        //     vertex_buffer = video.vertex_buffer.as_ref().unwrap();
-        // }
-        else {
+        } else {
             unreachable!()
         }
 
-        if bind_group.is_some() && instance_buffer.is_some() {
-            render_pass.set_pipeline(self.render_pipeline());
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-
-            render_pass.set_bind_group(1, bind_group.unwrap(), &[]);
-            render_pass.set_vertex_buffer(0, self.quad_buffer.slice(..));
-            render_pass.set_vertex_buffer(1, instance_buffer.unwrap().slice(..));
-
-            render_pass.draw_indexed(0..6, 0, 0..instance_count);
+        if let (Some(bind_group), Some(instance_buffer)) = (bind_group, instance_buffer) {
+            render_queue.push(RenderCommand::Draw {
+                pipeline: self.pipeline.clone(),
+                bind_group: bind_group.clone(),
+                extra_bind_groups: vec![],
+                vertex_buffer: Some(self.quad_buffer.clone()),
+                index_buffer: Some(self.index_buffer.clone()),
+                instance_buffer: Some(instance_buffer),
+                count: 6 * instance_count,
+            });
         }
     }
 }
