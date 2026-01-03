@@ -1,8 +1,10 @@
+pub mod filter_registry;
 mod global;
 mod handle_events;
 mod keyboard_events;
 mod pointer_events;
 mod render;
+pub mod render_command;
 
 use arc_swap::{ArcSwap, ArcSwapOption};
 use dashmap::DashMap;

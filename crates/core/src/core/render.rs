@@ -12,10 +12,12 @@ use winit::window::Window;
 
 use crate::base::*;
 use crate::core::NodeMap;
+use crate::core::render_command::{RenderCommand, RenderQueue};
 use crate::surface::create_wgpu_surface;
 use crate::traits::*;
+use crate::utils::coordinates::calculate_surface_physical_coordinates;
 use crate::utils::fps_meter::FpsMeter;
-use crate::utils::walk::walk_nodes_top_bottom;
+use crate::utils::walk::walk_nodes_enter_leave;
 
 pub type AfterRenderHandler = Box<
     dyn Fn(
@@ -70,6 +72,8 @@ pub struct Graphics {
             )>,
         >,
     >,
+    /// Filter registry for managing filter renderers
+    filter_registry: Arc<crate::core::filter_registry::FilterRegistry>,
 }
 
 unsafe impl Send for Graphics {}
@@ -118,6 +122,17 @@ impl Graphics {
         let fps_meter = FpsMeter::default();
         let instant = Instant::now();
 
+        // 创建 Filter Registry 并注册滤镜
+        let mut filter_registry = crate::core::filter_registry::FilterRegistry::new();
+        filter_registry.register(Arc::new(crate::nodes::filters::BlurFilterRenderer::new(
+            &device,
+            config.format,
+        )));
+        filter_registry.register(Arc::new(
+            crate::nodes::filters::ColorAdjustFilterRenderer::new(&device, config.format),
+        ));
+        let filter_registry = Arc::new(filter_registry);
+
         Self {
             window: window.clone(),
             instance,
@@ -137,6 +152,7 @@ impl Graphics {
             need_reconfigure: AtomicBool::new(false),
             snapshot_requested: AtomicBool::new(false),
             snapshot_buffer: Arc::new(Mutex::new(None)),
+            filter_registry,
         }
     }
 
@@ -351,9 +367,25 @@ impl Graphics {
 
             let timestamp = self.instant.elapsed().as_secs_f64();
 
+            let surface_width = view.texture().width();
+            let surface_height = view.texture().height();
+            let scale_factor = self.window.scale_factor() as f32;
+            let surface_logical_size = (
+                surface_width as f32 / scale_factor,
+                surface_height as f32 / scale_factor,
+            );
+
+            let stage_logical_size = (
+                get_engine_config().stage_size.width() as f32,
+                get_engine_config().stage_size.height() as f32,
+            );
+
             let upload_payload = RendererUpdatePayload {
                 timestamp,
                 resource_manager: self.resource_manager.clone(),
+                surface_logical_size,
+                stage_logical_size,
+                scale_factor,
             };
 
             let color = &get_engine_config().background_color;
@@ -364,64 +396,453 @@ impl Graphics {
                 a: color.a as f64,
             };
 
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(color),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                ..Default::default()
-            });
+            // Helper function to create render pass
+            fn begin_main_render_pass<'a>(
+                encoder: &'a mut wgpu::CommandEncoder,
+                view: &'a wgpu::TextureView,
+                clear_color: wgpu::Color,
+                clear: bool,
+            ) -> wgpu::RenderPass<'static> {
+                encoder
+                    .begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: if clear {
+                                    wgpu::LoadOp::Clear(clear_color)
+                                } else {
+                                    wgpu::LoadOp::Load
+                                },
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        ..Default::default()
+                    })
+                    .forget_lifetime()
+            }
 
-            render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
+            let mut current_pass: Option<wgpu::RenderPass> = None;
 
             let mut count = 0;
+            let render_queue = std::cell::RefCell::new(RenderQueue::new());
 
-            walk_nodes_top_bottom(&*root_node, &mut |child, parent| {
-                let mut _child = child.write();
-                _child.base_mut().update(parent.base(), false);
+            walk_nodes_enter_leave(
+                &*root_node,
+                &mut |child, parent| {
+                    let mut _child = child.write();
+                    _child.base_mut().update(parent.base(), false);
 
-                let renderer_type = _child.renderer_type();
+                    let renderer_type = _child.renderer_type();
 
-                if let Some(current_renderer) = self.renderers.lock().get_mut(renderer_type) {
-                    current_renderer.update(
-                        &mut *_child,
-                        &device,
-                        &queue,
-                        belt_encoder.as_mut().unwrap(),
-                        &mut staging_belt,
-                        &upload_payload,
-                    );
+                    if let Some(current_renderer) = self.renderers.lock().get_mut(renderer_type) {
+                        current_renderer.update(
+                            &mut *_child,
+                            &device,
+                            &queue,
+                            belt_encoder.as_mut().unwrap(),
+                            &mut staging_belt,
+                            &upload_payload,
+                        );
 
-                    current_renderer.render(&device, &queue, &mut render_pass, &*_child);
+                        current_renderer.collect_commands(&*_child, &mut render_queue.borrow_mut());
+                    }
+
+                    count += 1;
+
+                    if count > 100 {
+                        count = 0;
+
+                        staging_belt.finish();
+
+                        queue.submit(std::iter::once(belt_encoder.take().unwrap().finish()));
+
+                        belt_encoder = Some(device.create_command_encoder(
+                            &wgpu::CommandEncoderDescriptor {
+                                label: Some("Belt Command Encoder"),
+                            },
+                        ));
+
+                        staging_belt.recall();
+                    }
+
+                    false
+                },
+                &mut |child, _| {
+                    let _child = child.read();
+                    let renderer_type = _child.renderer_type();
+
+                    if let Some(current_renderer) = self.renderers.lock().get(renderer_type) {
+                        current_renderer
+                            .collect_post_commands(&*_child, &mut render_queue.borrow_mut());
+                    }
+                },
+            );
+
+            let render_queue = render_queue.into_inner();
+
+            // Execute commands
+            let mut scissor_stack = vec![[0, 0, view.texture().width(), view.texture().height()]];
+            let mut offscreen_stack: Vec<wgpu::TextureView> = Vec::new();
+            let mut current_view = view.clone();
+
+            for command in render_queue.commands {
+                match command {
+                    RenderCommand::Draw {
+                        pipeline,
+                        bind_group,
+                        extra_bind_groups,
+                        vertex_buffer,
+                        index_buffer,
+                        instance_buffer,
+                        count,
+                    } => {
+                        // 确保有活动的 pass
+                        let need_create_pass = current_pass.is_none();
+                        if need_create_pass {
+                            current_pass = Some(begin_main_render_pass(
+                                &mut encoder,
+                                &current_view,
+                                color,
+                                false,
+                            ));
+                        }
+
+                        let render_pass = current_pass.as_mut().unwrap();
+                        if need_create_pass {
+                            // 设置 MVP bind group（只需设置一次）
+                            render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
+                        }
+
+                        if let Some(rect) = scissor_stack.last() {
+                            let w = rect[2].max(1);
+                            let h = rect[3].max(1);
+                            render_pass.set_scissor_rect(rect[0], rect[1], w, h);
+                        }
+
+                        render_pass.set_pipeline(&pipeline);
+                        render_pass.set_bind_group(1, &bind_group, &[]);
+                        for (i, bg) in extra_bind_groups.iter().enumerate() {
+                            render_pass.set_bind_group((2 + i) as u32, bg, &[]);
+                        }
+
+                        if let Some(vertex_buffer) = vertex_buffer {
+                            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                        }
+                        if let Some(instance_buffer) = instance_buffer {
+                            render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
+                        }
+                        if let Some(index_buffer) = index_buffer {
+                            render_pass.set_index_buffer(
+                                index_buffer.slice(..),
+                                wgpu::IndexFormat::Uint16,
+                            );
+                            render_pass.draw_indexed(0..count, 0, 0..1);
+                        } else {
+                            render_pass.draw(0..count, 0..1);
+                        }
+                    }
+                    RenderCommand::BeginClip { rect } => {
+                        // 确保有活动的 pass
+                        if current_pass.is_none() {
+                            current_pass = Some(begin_main_render_pass(
+                                &mut encoder,
+                                &current_view,
+                                color,
+                                false,
+                            ));
+                            current_pass.as_mut().unwrap().set_bind_group(
+                                0,
+                                &self.mvp_bind_group,
+                                &[],
+                            );
+                        }
+
+                        let render_pass = current_pass.as_mut().unwrap();
+
+                        // 计算捕获区域
+                        let (x, y, w, h) = calculate_surface_physical_coordinates(
+                            &rect,
+                            stage_logical_size,
+                            surface_logical_size,
+                            scale_factor,
+                        );
+
+                        let current = scissor_stack.last().unwrap();
+                        let new_x = x.max(current[0]);
+                        let new_y = y.max(current[1]);
+                        let new_right = (x + w).min(current[0] + current[2]);
+                        let new_bottom = (y + h).min(current[1] + current[3]);
+
+                        let new_w = new_right.saturating_sub(new_x);
+                        let new_h = new_bottom.saturating_sub(new_y);
+
+                        if new_w > 0 && new_h > 0 {
+                            scissor_stack.push([new_x, new_y, new_w, new_h]);
+                            render_pass.set_scissor_rect(new_x, new_y, new_w, new_h);
+                        } else {
+                            scissor_stack.push([new_x, new_y, 0, 0]);
+                            render_pass.set_scissor_rect(0, 0, 1, 1);
+                        }
+                    }
+                    RenderCommand::EndClip => {
+                        scissor_stack.pop();
+                        if let Some(rect) = scissor_stack.last() {
+                            // 确保有活动的 pass
+                            if current_pass.is_none() {
+                                current_pass =
+                                    Some(begin_main_render_pass(&mut encoder, &view, color, false));
+                                current_pass.as_mut().unwrap().set_bind_group(
+                                    0,
+                                    &self.mvp_bind_group,
+                                    &[],
+                                );
+                            }
+                            let render_pass = current_pass.as_mut().unwrap();
+                            let w = rect[2].max(1);
+                            let h = rect[3].max(1);
+                            render_pass.set_scissor_rect(rect[0], rect[1], w, h);
+                        }
+                    }
+                    RenderCommand::Barrier => {
+                        // 结束当前 pass 并提交
+                        drop(current_pass.take());
+                        staging_belt.finish();
+                        queue.submit(std::iter::once(belt_encoder.take().unwrap().finish()));
+                        queue.submit(std::iter::once(encoder.finish()));
+
+                        // 创建新的 encoder（暂不开始 pass，等待纹理操作）
+                        encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("Render Encoder"),
+                        });
+                        belt_encoder = Some(device.create_command_encoder(
+                            &wgpu::CommandEncoderDescriptor {
+                                label: Some("Belt Command Encoder"),
+                            },
+                        ));
+                        staging_belt.recall();
+                        current_pass = None;
+                    }
+                    RenderCommand::CaptureBackdrop {
+                        source_view,
+                        final_view,
+                        intermediate_view,
+                        rect: region,
+                        filters,
+                    } => {
+                        // 此时 current_pass 应该是 None（刚执行完 Barrier）
+                        if current_pass.is_some() {
+                            drop(current_pass.take());
+                        }
+
+                        // 计算捕获区域
+                        let (region_x, region_y, width, height) =
+                            calculate_surface_physical_coordinates(
+                                &region,
+                                stage_logical_size,
+                                surface_logical_size,
+                                scale_factor,
+                            );
+
+                        if width == 0 || height == 0 {
+                            continue;
+                        }
+
+                        let source_texture = source_view.texture();
+                        let final_texture = final_view.texture();
+
+                        if source_texture.width() != width || source_texture.height() != height {
+                            log::warn!(
+                                "CaptureBackdrop: output texture size ({}, {}) does not match region size ({}, {})",
+                                source_texture.width(),
+                                source_texture.height(),
+                                width,
+                                height
+                            );
+                            // continue;
+                        }
+
+                        // 2. 复制 output texture 的指定区域到临时纹理
+                        encoder.copy_texture_to_texture(
+                            wgpu::TexelCopyTextureInfo {
+                                texture: &output.texture,
+                                mip_level: 0,
+                                origin: wgpu::Origin3d {
+                                    x: region_x,
+                                    y: region_y,
+                                    z: 0,
+                                },
+                                aspect: wgpu::TextureAspect::All,
+                            },
+                            wgpu::TexelCopyTextureInfo {
+                                texture: &source_texture,
+                                mip_level: 0,
+                                origin: wgpu::Origin3d::ZERO,
+                                aspect: wgpu::TextureAspect::All,
+                            },
+                            wgpu::Extent3d {
+                                width,
+                                height,
+                                depth_or_array_layers: 1,
+                            },
+                        );
+
+                        // 3. 应用滤镜到 final_texture
+                        if !filters.is_empty() {
+                            let intermediate_textures = vec![intermediate_view];
+
+                            self.filter_registry.execute_filter_chain(
+                                &device,
+                                &mut encoder,
+                                &source_view,
+                                &final_view,
+                                &filters,
+                                width,
+                                height,
+                                &intermediate_textures,
+                            );
+                        } else {
+                            // 没有滤镜，直接复制
+                            encoder.copy_texture_to_texture(
+                                wgpu::TexelCopyTextureInfo {
+                                    texture: &source_texture,
+                                    mip_level: 0,
+                                    origin: wgpu::Origin3d::ZERO,
+                                    aspect: wgpu::TextureAspect::All,
+                                },
+                                wgpu::TexelCopyTextureInfo {
+                                    texture: &final_texture,
+                                    mip_level: 0,
+                                    origin: wgpu::Origin3d::ZERO,
+                                    aspect: wgpu::TextureAspect::All,
+                                },
+                                wgpu::Extent3d {
+                                    width,
+                                    height,
+                                    depth_or_array_layers: 1,
+                                },
+                            );
+                        }
+                    }
+                    RenderCommand::BeginOffscreenPass {
+                        offscreen_view,
+                        rect,
+                    } => {
+                        if let Some(pass) = current_pass.take() {
+                            drop(pass);
+                        }
+
+                        let (x, y, w, h) = calculate_surface_physical_coordinates(
+                            &rect,
+                            stage_logical_size,
+                            surface_logical_size,
+                            scale_factor,
+                        );
+
+                        // 保存当前视图和 offscreen 纹理引用到栈
+                        offscreen_stack.push(current_view.clone());
+
+                        // 将离屏纹理的尺寸压入 scissor_stack
+                        scissor_stack.push([0, 0, w, h]);
+
+                        // 更新当前视图为离屏目标
+                        current_view = offscreen_view.clone();
+                        // 开始新的 pass（清屏）
+                        current_pass = Some(begin_main_render_pass(
+                            &mut encoder,
+                            &current_view,
+                            wgpu::Color::TRANSPARENT,
+                            true,
+                        ));
+                        current_pass
+                            .as_mut()
+                            .unwrap()
+                            .set_bind_group(0, &self.mvp_bind_group, &[]);
+                    }
+                    RenderCommand::EndOffscreenPass {
+                        offscreen_view,
+                        final_view,
+                        intermediate_view,
+                        rect,
+                        filters,
+                    } => {
+                        if let Some(pass) = current_pass.take() {
+                            drop(pass);
+                        }
+
+                        // 从栈中恢复之前的视图和纹理信息
+                        let Some(prev_view) = offscreen_stack.pop() else {
+                            log::error!("EndOffscreenPass: stack underflow");
+                            continue;
+                        };
+
+                        current_view = prev_view;
+
+                        // 从 scissor_stack 弹出离屏纹理的尺寸
+                        scissor_stack.pop();
+
+                        let (_, _, w, h) = calculate_surface_physical_coordinates(
+                            &rect,
+                            stage_logical_size,
+                            surface_logical_size,
+                            scale_factor,
+                        );
+
+                        if !filters.is_empty() {
+                            let intermediate_textures = vec![intermediate_view];
+
+                            self.filter_registry.execute_filter_chain(
+                                &device,
+                                &mut encoder,
+                                &offscreen_view,
+                                &final_view,
+                                &filters,
+                                w,
+                                h,
+                                &intermediate_textures,
+                            );
+                        } else {
+                            encoder.copy_texture_to_texture(
+                                wgpu::TexelCopyTextureInfo {
+                                    texture: offscreen_view.texture(),
+                                    mip_level: 0,
+                                    origin: wgpu::Origin3d::ZERO,
+                                    aspect: wgpu::TextureAspect::All,
+                                },
+                                wgpu::TexelCopyTextureInfo {
+                                    texture: final_view.texture(),
+                                    mip_level: 0,
+                                    origin: wgpu::Origin3d::ZERO,
+                                    aspect: wgpu::TextureAspect::All,
+                                },
+                                wgpu::Extent3d {
+                                    width: w,
+                                    height: h,
+                                    depth_or_array_layers: 1,
+                                },
+                            );
+                        }
+
+                        // 重新开始主 pass
+                        current_pass = Some(begin_main_render_pass(
+                            &mut encoder,
+                            &current_view,
+                            color,
+                            false,
+                        ));
+                        current_pass
+                            .as_mut()
+                            .unwrap()
+                            .set_bind_group(0, &self.mvp_bind_group, &[]);
+                    }
                 }
+            }
 
-                count += 1;
-
-                if count > 100 {
-                    count = 0;
-
-                    staging_belt.finish();
-
-                    queue.submit(std::iter::once(belt_encoder.take().unwrap().finish()));
-
-                    belt_encoder = Some(device.create_command_encoder(
-                        &wgpu::CommandEncoderDescriptor {
-                            label: Some("Belt Command Encoder"),
-                        },
-                    ));
-
-                    staging_belt.recall();
-                }
-
-                false
-            });
+            // 确保最终提交
+            drop(current_pass);
         }
 
         // call after render callback if registered
