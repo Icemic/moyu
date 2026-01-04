@@ -132,9 +132,12 @@ impl BlurFilterRenderer {
 
         let sampler = device.create_sampler(&SamplerDescriptor {
             label: Some("Blur Sampler"),
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
+            // Use MirrorRepeat to avoid edge artifacts
+            // See https://chromestatus.com/feature/5382638738341888
+            address_mode_u: AddressMode::MirrorRepeat,
+            address_mode_v: AddressMode::MirrorRepeat,
+            address_mode_w: AddressMode::MirrorRepeat,
+            // Must be linear for fast gaussian blur algorithm
             mag_filter: FilterMode::Linear,
             min_filter: FilterMode::Linear,
             mipmap_filter: FilterMode::Linear,
