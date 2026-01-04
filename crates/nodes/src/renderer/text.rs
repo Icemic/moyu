@@ -10,7 +10,6 @@ use moyu_pal::config::get_engine_config;
 use moyu_pal::dir::assets_dir;
 use moyu_pal::sync::Mutex;
 use wgpu::Texture;
-use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
 use moyu_core::base::MVPMatrix;
@@ -211,8 +210,7 @@ impl TextRenderer {
         &self,
         device: &Device,
         _: &Queue,
-        encoder: &mut CommandEncoder,
-        staging_belt: &mut StagingBelt,
+        render_queue: &RenderCommandSender,
         node: &mut Text,
         last_index: usize,
         fade_from_index: Option<usize>,
@@ -322,24 +320,24 @@ impl TextRenderer {
 
             let buf_vertices = bytemuck::cast_slice(&vertices);
             let buf_indices = bytemuck::cast_slice(&indices);
-            staging_belt
-                .write_buffer(
-                    encoder,
-                    node.vertex_buffer.as_ref().unwrap(),
-                    0,
-                    (buf_vertices.len() as u64).try_into().unwrap(),
-                    device,
-                )
-                .copy_from_slice(buf_vertices);
-            staging_belt
-                .write_buffer(
-                    encoder,
-                    node.index_buffer.as_ref().unwrap(),
-                    0,
-                    (buf_indices.len() as u64).try_into().unwrap(),
-                    device,
-                )
-                .copy_from_slice(buf_indices);
+
+            render_queue
+                .send(RenderCommand::WriteBuffer {
+                    buffer: node.vertex_buffer.as_ref().unwrap().clone(),
+                    offset: 0,
+                    data: buf_vertices.to_vec(),
+                    use_staging_belt: true,
+                })
+                .unwrap();
+
+            render_queue
+                .send(RenderCommand::WriteBuffer {
+                    buffer: node.index_buffer.as_ref().unwrap().clone(),
+                    offset: 0,
+                    data: buf_indices.to_vec(),
+                    use_staging_belt: true,
+                })
+                .unwrap();
         }
     }
 
@@ -386,8 +384,7 @@ impl Renderer for TextRenderer {
         node: &mut dyn Node,
         device: &Device,
         queue: &Queue,
-        encoder: &mut CommandEncoder,
-        staging_belt: &mut StagingBelt,
+        render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     ) {
         // update only when huozi is ready
@@ -600,8 +597,7 @@ impl Renderer for TextRenderer {
             self.update_vertices(
                 device,
                 queue,
-                encoder,
-                staging_belt,
+                render_queue,
                 node,
                 index,
                 fade_from_index,
@@ -618,8 +614,7 @@ impl Renderer for TextRenderer {
             self.update_vertices(
                 device,
                 queue,
-                encoder,
-                staging_belt,
+                render_queue,
                 node,
                 node.glyph_vertices.len(),
                 None,

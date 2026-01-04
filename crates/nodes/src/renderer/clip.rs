@@ -1,7 +1,6 @@
 use moyu_core::core::render_command::RenderCommand;
 use moyu_core::traits::{Node, RenderCommandSender, Renderer, RendererUpdatePayload};
 use moyu_core::utils::coordinates::calculate_bounding_box;
-use wgpu::util::StagingBelt;
 use wgpu::*;
 
 use crate::nodes::Clip;
@@ -32,8 +31,7 @@ impl Renderer for ClipRenderer {
         node: &mut dyn Node,
         _device: &Device,
         _queue: &Queue,
-        _encoder: &mut CommandEncoder,
-        _staging_belt: &mut StagingBelt,
+        _render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     ) {
         let rect = calculate_bounding_box(

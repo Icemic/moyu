@@ -38,6 +38,14 @@ pub enum FilterKind {
 }
 
 pub enum RenderCommand {
+    BeginFrame,
+    EndFrame,
+    WriteBuffer {
+        buffer: Buffer,
+        offset: u64,
+        data: Vec<u8>,
+        use_staging_belt: bool,
+    },
     /// 标准绘制指令
     Draw {
         pipeline: RenderPipeline,
