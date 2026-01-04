@@ -129,6 +129,9 @@ impl Graphics {
             config.format,
         )));
         filter_registry.register(Arc::new(
+            crate::nodes::filters::BlurFastFilterRenderer::new(&device, config.format),
+        ));
+        filter_registry.register(Arc::new(
             crate::nodes::filters::ColorAdjustFilterRenderer::new(&device, config.format),
         ));
         let filter_registry = Arc::new(filter_registry);
