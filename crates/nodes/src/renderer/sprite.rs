@@ -4,9 +4,9 @@ use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
 use moyu_core::base::{MVPMatrix, VertexDesc};
-use moyu_core::core::render_command::{RenderCommand, RenderQueue};
-use moyu_core::traits::Renderer;
+use moyu_core::core::render_command::RenderCommand;
 use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use moyu_core::traits::{RenderCommandSender, Renderer};
 use moyu_resource::types::{Asset, AssetId, AssetKind, Texture, TextureStatus};
 
 use crate::nodes::{Sprite, SpriteMode};
@@ -567,7 +567,7 @@ impl Renderer for SpriteRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn collect_commands(&self, node: &dyn Node, render_queue: &mut RenderQueue) {
+    fn collect_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender) {
         if !node.base().visible() {
             return;
         }
@@ -590,15 +590,17 @@ impl Renderer for SpriteRenderer {
         }
 
         if let (Some(bind_group), Some(instance_buffer)) = (bind_group, instance_buffer) {
-            render_queue.push(RenderCommand::Draw {
-                pipeline: self.pipeline.clone(),
-                bind_group: bind_group.clone(),
-                extra_bind_groups: vec![],
-                vertex_buffer: Some(self.quad_buffer.clone()),
-                index_buffer: Some(self.index_buffer.clone()),
-                instance_buffer: Some(instance_buffer),
-                count: 6 * instance_count,
-            });
+            render_queue
+                .send(RenderCommand::Draw {
+                    pipeline: self.pipeline.clone(),
+                    bind_group: bind_group.clone(),
+                    extra_bind_groups: vec![],
+                    vertex_buffer: Some(self.quad_buffer.clone()),
+                    index_buffer: Some(self.index_buffer.clone()),
+                    instance_buffer: Some(instance_buffer),
+                    count: 6 * instance_count,
+                })
+                .unwrap();
         }
     }
 }

@@ -14,8 +14,8 @@ use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
 use moyu_core::base::MVPMatrix;
-use moyu_core::core::render_command::{RenderCommand, RenderQueue};
-use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use moyu_core::core::render_command::RenderCommand;
+use moyu_core::traits::{Node, NodeBaseTrait, RenderCommandSender, RendererUpdatePayload};
 use moyu_core::traits::{NodeEventSource, Renderer};
 
 use crate::events::TextEvent;
@@ -632,7 +632,7 @@ impl Renderer for TextRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn collect_commands(&self, node: &dyn Node, render_queue: &mut RenderQueue) {
+    fn collect_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender) {
         if !node.base().visible() {
             return;
         }
@@ -647,15 +647,17 @@ impl Renderer for TextRenderer {
             let index_buffer = node.index_buffer.as_ref().unwrap();
             let num_indices = node.num_indices;
 
-            render_queue.push(RenderCommand::Draw {
-                pipeline: self.pipeline.clone(),
-                bind_group: self.bind_group.clone(),
-                extra_bind_groups: vec![],
-                vertex_buffer: Some(vertex_buffer.clone()),
-                index_buffer: Some(index_buffer.clone()),
-                instance_buffer: None,
-                count: num_indices,
-            });
+            render_queue
+                .send(RenderCommand::Draw {
+                    pipeline: self.pipeline.clone(),
+                    bind_group: self.bind_group.clone(),
+                    extra_bind_groups: vec![],
+                    vertex_buffer: Some(vertex_buffer.clone()),
+                    index_buffer: Some(index_buffer.clone()),
+                    instance_buffer: None,
+                    count: num_indices,
+                })
+                .unwrap();
         }
     }
 }

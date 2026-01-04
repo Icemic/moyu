@@ -6,8 +6,8 @@ use wgpu::util::DeviceExt;
 use wgpu::util::StagingBelt;
 use wgpu::*;
 
-use moyu_core::core::render_command::{RenderCommand, RenderQueue};
-use moyu_core::traits::{Node, Renderer, RendererUpdatePayload};
+use moyu_core::core::render_command::RenderCommand;
+use moyu_core::traits::{Node, RenderCommandSender, Renderer, RendererUpdatePayload};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -303,7 +303,7 @@ impl Renderer for BackdropRenderer {
         }
     }
 
-    fn collect_commands(&self, node: &dyn Node, render_queue: &mut RenderQueue) {
+    fn collect_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender) {
         use crate::nodes::backdrop::Backdrop;
 
         let backdrop = node.as_any().downcast_ref::<Backdrop>().unwrap();
@@ -325,25 +325,29 @@ impl Renderer for BackdropRenderer {
         };
 
         // Commit any previous commands before capturing backdrop
-        render_queue.push(RenderCommand::Barrier);
+        render_queue.send(RenderCommand::Barrier).unwrap();
 
         // Capture the backdrop
-        render_queue.push(RenderCommand::CaptureBackdrop {
-            source_view: source_view.clone(),
-            final_view: final_view.clone(),
-            intermediate_view,
-            rect,
-            filters: backdrop.filters.clone(),
-        });
+        render_queue
+            .send(RenderCommand::CaptureBackdrop {
+                source_view: source_view.clone(),
+                final_view: final_view.clone(),
+                intermediate_view,
+                rect,
+                filters: backdrop.filters.clone(),
+            })
+            .unwrap();
 
-        render_queue.push(RenderCommand::Draw {
-            pipeline: self.pipeline.clone(),
-            bind_group: backdrop.bind_group.clone().unwrap(),
-            extra_bind_groups: vec![],
-            vertex_buffer: None,
-            index_buffer: None,
-            instance_buffer: None,
-            count: 6,
-        });
+        render_queue
+            .send(RenderCommand::Draw {
+                pipeline: self.pipeline.clone(),
+                bind_group: backdrop.bind_group.clone().unwrap(),
+                extra_bind_groups: vec![],
+                vertex_buffer: None,
+                index_buffer: None,
+                instance_buffer: None,
+                count: 6,
+            })
+            .unwrap();
     }
 }
