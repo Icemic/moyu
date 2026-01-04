@@ -52,19 +52,25 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     // 计算 sigma（标准差）
     let sigma = params.blur_radius / 3.0;
     let sigma_squared = sigma * sigma;
-    
-    // 垂直方向采样
-    let radius_int = i32(ceil(params.blur_radius));
-    for (var y = -radius_int; y <= radius_int; y = y + 1) {
-        let offset = vec2<f32>(0.0, f32(y) * params.texel_size.y);
-        let sample_uv = input.uv + offset;
+    let inv_two_sigma_sq = 1.0 / (2.0 * sigma_squared);
+
+    // 1. 中心采样
+    color += textureSample(source_texture, source_sampler, input.uv);
+    total_weight += 1.0;
+
+    // 2. 使用线性采样优化 (Linear Sampling Optimization)
+    let r = params.blur_radius;
+    for (var i = 1.0; i <= r; i += 2.0) {
+        let w1 = exp(-(i * i) * inv_two_sigma_sq);
+        let w2 = exp(-((i + 1.0) * (i + 1.0)) * inv_two_sigma_sq);
         
-        // Gaussian 权重：exp(-(y^2) / (2 * sigma^2))
-        let y_squared = f32(y) * f32(y);
-        let weight = exp(-y_squared / (2.0 * sigma_squared));
+        let m_weight = w1 + w2;
+        let m_offset = (i * w1 + (i + 1.0) * w2) / m_weight;
         
-        color += textureSample(source_texture, source_sampler, sample_uv) * weight;
-        total_weight += weight;
+        let offset_vec = vec2<f32>(0.0, m_offset * params.texel_size.y);
+        color += textureSample(source_texture, source_sampler, input.uv + offset_vec) * m_weight;
+        color += textureSample(source_texture, source_sampler, input.uv - offset_vec) * m_weight;
+        total_weight += m_weight * 2.0;
     }
     
     return color / total_weight;
