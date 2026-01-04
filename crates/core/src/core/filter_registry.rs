@@ -49,6 +49,7 @@ impl FilterRegistry {
             // 获取对应的 renderer
             let renderer_name = match filter {
                 FilterKind::Blur { .. } => "blur",
+                FilterKind::BlurFast { .. } => "blur-fast",
                 FilterKind::Brightness { .. }
                 | FilterKind::Contrast { .. }
                 | FilterKind::Saturation { .. } => "color_adjust",

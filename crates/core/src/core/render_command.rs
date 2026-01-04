@@ -10,6 +10,10 @@ pub enum FilterKind {
     Blur {
         radius: f32,
     },
+    BlurFast {
+        radius: f32,
+        continuous: Option<bool>,
+    },
     Brightness {
         amount: f32, // 0.0 = 全黑, 1.0 = 正常, 2.0 = 双倍亮度
     },
