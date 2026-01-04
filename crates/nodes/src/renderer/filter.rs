@@ -4,8 +4,8 @@ use wgpu::util::DeviceExt;
 use wgpu::util::StagingBelt;
 use wgpu::*;
 
-use moyu_core::core::render_command::{RenderCommand, RenderQueue};
-use moyu_core::traits::{Node, Renderer, RendererUpdatePayload};
+use moyu_core::core::render_command::RenderCommand;
+use moyu_core::traits::{Node, RenderCommandSender, Renderer, RendererUpdatePayload};
 
 use crate::nodes::Filter;
 
@@ -318,7 +318,7 @@ impl Renderer for OffscreenPassRenderer {
         }
     }
 
-    fn collect_commands(&self, node: &dyn Node, render_queue: &mut RenderQueue) {
+    fn collect_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender) {
         let filter = node.as_any().downcast_ref::<Filter>().unwrap();
 
         // 获取离屏纹理引用
@@ -330,13 +330,15 @@ impl Renderer for OffscreenPassRenderer {
             }
         };
 
-        render_queue.push(RenderCommand::BeginOffscreenPass {
-            offscreen_view,
-            rect,
-        });
+        render_queue
+            .send(RenderCommand::BeginOffscreenPass {
+                offscreen_view,
+                rect,
+            })
+            .unwrap();
     }
 
-    fn collect_post_commands(&self, node: &dyn Node, render_queue: &mut RenderQueue) {
+    fn collect_post_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender) {
         let filter = node
             .as_any()
             .downcast_ref::<Filter>()
@@ -358,22 +360,26 @@ impl Renderer for OffscreenPassRenderer {
             }
         };
 
-        render_queue.push(RenderCommand::EndOffscreenPass {
-            offscreen_view,
-            final_view,
-            intermediate_view,
-            rect,
-            filters: filter.filters.clone(),
-        });
+        render_queue
+            .send(RenderCommand::EndOffscreenPass {
+                offscreen_view,
+                final_view,
+                intermediate_view,
+                rect,
+                filters: filter.filters.clone(),
+            })
+            .unwrap();
 
-        render_queue.push(RenderCommand::Draw {
-            pipeline: self.pipeline.clone(),
-            bind_group: filter.bind_group.clone().unwrap(),
-            extra_bind_groups: vec![],
-            vertex_buffer: None,
-            index_buffer: None,
-            instance_buffer: None,
-            count: 6,
-        });
+        render_queue
+            .send(RenderCommand::Draw {
+                pipeline: self.pipeline.clone(),
+                bind_group: filter.bind_group.clone().unwrap(),
+                extra_bind_groups: vec![],
+                vertex_buffer: None,
+                index_buffer: None,
+                instance_buffer: None,
+                count: 6,
+            })
+            .unwrap();
     }
 }

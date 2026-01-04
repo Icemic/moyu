@@ -292,11 +292,7 @@ impl Graphics {
         self.queue.submit(vec![]);
     }
 
-    pub fn render(
-        &self,
-        // root_node: &NodeLock,
-        // resource_manager: &Arc<ResourceManager>,
-    ) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&self) -> Result<(), wgpu::SurfaceError> {
         // fps
         if moyu_pal::config::get_engine_config().show_fps {
             if self.fps_meter.tick() {
@@ -431,7 +427,7 @@ impl Graphics {
             let mut current_pass: Option<wgpu::RenderPass> = None;
 
             let mut count = 0;
-            let render_queue = std::cell::RefCell::new(RenderQueue::new());
+            let (sender, receiver) = std::sync::mpsc::sync_channel::<RenderCommand>(10240);
 
             walk_nodes_enter_leave(
                 &*root_node,
@@ -451,7 +447,7 @@ impl Graphics {
                             &upload_payload,
                         );
 
-                        current_renderer.collect_commands(&*_child, &mut render_queue.borrow_mut());
+                        current_renderer.collect_commands(&*_child, &sender);
                     }
 
                     count += 1;
@@ -479,20 +475,17 @@ impl Graphics {
                     let renderer_type = _child.renderer_type();
 
                     if let Some(current_renderer) = self.renderers.lock().get(renderer_type) {
-                        current_renderer
-                            .collect_post_commands(&*_child, &mut render_queue.borrow_mut());
+                        current_renderer.collect_post_commands(&*_child, &sender);
                     }
                 },
             );
-
-            let render_queue = render_queue.into_inner();
 
             // Execute commands
             let mut scissor_stack = vec![[0, 0, view.texture().width(), view.texture().height()]];
             let mut offscreen_stack: Vec<wgpu::TextureView> = Vec::new();
             let mut current_view = view.clone();
 
-            for command in render_queue.commands {
+            while let Ok(command) = receiver.try_recv() {
                 match command {
                     RenderCommand::Draw {
                         pipeline,

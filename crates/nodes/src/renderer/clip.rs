@@ -1,5 +1,5 @@
-use moyu_core::core::render_command::{RenderCommand, RenderQueue};
-use moyu_core::traits::{Node, Renderer, RendererUpdatePayload};
+use moyu_core::core::render_command::RenderCommand;
+use moyu_core::traits::{Node, RenderCommandSender, Renderer, RendererUpdatePayload};
 use moyu_core::utils::coordinates::calculate_bounding_box;
 use wgpu::util::StagingBelt;
 use wgpu::*;
@@ -46,15 +46,17 @@ impl Renderer for ClipRenderer {
         clip.rect = rect;
     }
 
-    fn collect_commands(&self, node: &dyn Node, render_queue: &mut RenderQueue) {
+    fn collect_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender) {
         let clip = node.as_any().downcast_ref::<Clip>().unwrap();
 
         if let Some(rect) = &clip.rect {
-            render_queue.push(RenderCommand::BeginClip { rect: *rect });
+            render_queue
+                .send(RenderCommand::BeginClip { rect: *rect })
+                .unwrap();
         }
     }
 
-    fn collect_post_commands(&self, _node: &dyn Node, render_queue: &mut RenderQueue) {
-        render_queue.push(RenderCommand::EndClip);
+    fn collect_post_commands(&self, _node: &dyn Node, render_queue: &RenderCommandSender) {
+        render_queue.send(RenderCommand::EndClip).unwrap();
     }
 }
