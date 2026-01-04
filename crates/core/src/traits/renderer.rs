@@ -1,7 +1,6 @@
 use std::sync::mpsc::SyncSender;
 
-use wgpu::util::StagingBelt;
-use wgpu::{BindGroupLayout, CommandEncoder, Device, Queue, RenderPipeline};
+use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline};
 
 use crate::core::render_command::RenderCommand;
 
@@ -22,8 +21,7 @@ pub trait Renderer {
         node: &mut dyn Node,
         device: &Device,
         queue: &Queue,
-        encoder: &mut CommandEncoder,
-        staging_belt: &mut StagingBelt,
+        render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     );
 

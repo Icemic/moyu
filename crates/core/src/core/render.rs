@@ -12,7 +12,7 @@ use winit::window::Window;
 
 use crate::base::*;
 use crate::core::NodeMap;
-use crate::core::render_command::{RenderCommand, RenderQueue};
+use crate::core::render_command::RenderCommand;
 use crate::surface::create_wgpu_surface;
 use crate::traits::*;
 use crate::utils::coordinates::calculate_surface_physical_coordinates;
@@ -442,8 +442,7 @@ impl Graphics {
                             &mut *_child,
                             &device,
                             &queue,
-                            belt_encoder.as_mut().unwrap(),
-                            &mut staging_belt,
+                            &sender,
                             &upload_payload,
                         );
 
@@ -487,6 +486,32 @@ impl Graphics {
 
             while let Ok(command) = receiver.try_recv() {
                 match command {
+                    RenderCommand::BeginFrame => {
+                        // No-op for now
+                    }
+                    RenderCommand::EndFrame => {
+                        // No-op for now
+                    }
+                    RenderCommand::WriteBuffer {
+                        buffer,
+                        offset,
+                        data,
+                        use_staging_belt,
+                    } => {
+                        if use_staging_belt {
+                            staging_belt
+                                .write_buffer(
+                                    &mut belt_encoder.as_mut().unwrap(),
+                                    &buffer,
+                                    offset,
+                                    (data.len() as u64).try_into().unwrap(),
+                                    &device,
+                                )
+                                .copy_from_slice(&data);
+                        } else {
+                            queue.write_buffer(&buffer, offset, &data);
+                        }
+                    }
                     RenderCommand::Draw {
                         pipeline,
                         bind_group,
@@ -731,7 +756,7 @@ impl Graphics {
                             drop(pass);
                         }
 
-                        let (x, y, w, h) = calculate_surface_physical_coordinates(
+                        let (_, _, w, h) = calculate_surface_physical_coordinates(
                             &rect,
                             stage_logical_size,
                             surface_logical_size,

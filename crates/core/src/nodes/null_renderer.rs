@@ -1,4 +1,3 @@
-use wgpu::util::StagingBelt;
 use wgpu::*;
 
 use crate::traits::{Node, RenderCommandSender, Renderer, RendererUpdatePayload};
@@ -32,8 +31,7 @@ impl Renderer for VoidRenderer {
         _: &mut dyn Node,
         _: &Device,
         _: &Queue,
-        _: &mut CommandEncoder,
-        _: &mut StagingBelt,
+        _: &RenderCommandSender,
         _: &RendererUpdatePayload,
     ) {
         // do nothing

@@ -1,7 +1,6 @@
 use moyu_core::base::{MVPMatrix, Rect};
 use moyu_core::utils::coordinates::calculate_surface_physical_coordinates;
 use wgpu::util::DeviceExt;
-use wgpu::util::StagingBelt;
 use wgpu::*;
 
 use moyu_core::core::render_command::RenderCommand;
@@ -138,8 +137,7 @@ impl Renderer for OffscreenPassRenderer {
         node: &mut dyn Node,
         device: &Device,
         _queue: &Queue,
-        encoder: &mut CommandEncoder,
-        staging_belt: &mut StagingBelt,
+        render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     ) {
         let filter = node.as_any_mut().downcast_mut::<Filter>().unwrap();
@@ -305,15 +303,14 @@ impl Renderer for OffscreenPassRenderer {
 
                 let buf = bytemuck::bytes_of(&params);
 
-                staging_belt
-                    .write_buffer(
-                        encoder,
-                        params_buffer,
-                        0,
-                        (buf.len() as u64).try_into().unwrap(),
-                        device,
-                    )
-                    .copy_from_slice(buf);
+                render_queue
+                    .send(RenderCommand::WriteBuffer {
+                        buffer: params_buffer.clone(),
+                        offset: 0,
+                        data: buf.to_vec(),
+                        use_staging_belt: true,
+                    })
+                    .unwrap();
             }
         }
     }

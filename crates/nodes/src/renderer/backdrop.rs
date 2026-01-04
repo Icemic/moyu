@@ -3,7 +3,6 @@ use moyu_core::utils::coordinates::{
     calculate_bounding_box, calculate_surface_physical_coordinates,
 };
 use wgpu::util::DeviceExt;
-use wgpu::util::StagingBelt;
 use wgpu::*;
 
 use moyu_core::core::render_command::RenderCommand;
@@ -138,8 +137,7 @@ impl Renderer for BackdropRenderer {
         node: &mut dyn Node,
         device: &Device,
         _queue: &Queue,
-        _encoder: &mut CommandEncoder,
-        _staging_belt: &mut StagingBelt,
+        render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     ) {
         use crate::nodes::backdrop::Backdrop;
@@ -290,15 +288,14 @@ impl Renderer for BackdropRenderer {
 
                 let buf = bytemuck::bytes_of(&params);
 
-                _staging_belt
-                    .write_buffer(
-                        _encoder,
-                        params_buffer,
-                        0,
-                        (buf.len() as u64).try_into().unwrap(),
-                        device,
-                    )
-                    .copy_from_slice(buf);
+                render_queue
+                    .send(RenderCommand::WriteBuffer {
+                        buffer: params_buffer.clone(),
+                        offset: 0,
+                        data: buf.to_vec(),
+                        use_staging_belt: true,
+                    })
+                    .unwrap();
             }
         }
     }

@@ -1,6 +1,5 @@
 use std::sync::{Arc, Weak};
 use weak_table::WeakKeyHashMap;
-use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
 use moyu_core::base::{MVPMatrix, VertexDesc};
@@ -304,8 +303,7 @@ impl Renderer for SpriteRenderer {
         node: &mut dyn Node,
         device: &Device,
         _: &Queue,
-        encoder: &mut CommandEncoder,
-        staging_belt: &mut StagingBelt,
+        render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     ) {
         // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
@@ -537,15 +535,14 @@ impl Renderer for SpriteRenderer {
 
                     node.instance_buffer = Some(instance_buffer);
                 } else {
-                    staging_belt
-                        .write_buffer(
-                            encoder,
-                            node.instance_buffer.as_ref().unwrap(),
-                            0,
-                            (buf.len() as u64).try_into().unwrap(),
-                            device,
-                        )
-                        .copy_from_slice(buf);
+                    render_queue
+                        .send(RenderCommand::WriteBuffer {
+                            buffer: node.instance_buffer.as_ref().unwrap().clone(),
+                            offset: 0,
+                            data: buf.to_vec(),
+                            use_staging_belt: true,
+                        })
+                        .unwrap();
                 }
             }
 
