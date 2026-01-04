@@ -331,7 +331,7 @@ impl FilterRenderer for BlurFastFilterRenderer {
         } else {
             for i in 0..levels.len() - 1 {
                 let t_next = levels[i + 1].0;
-                let margin = t_next * 0.2;
+                let margin = (t_next * 0.2).min(5.0);
                 if radius < t_next - margin {
                     idx1 = i;
                     idx2 = i;
