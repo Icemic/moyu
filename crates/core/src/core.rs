@@ -327,7 +327,7 @@ impl Core {
         let graphics_render_thread = std::thread::Builder::new()
             .name("graphics".to_string())
             .spawn(move || {
-                if let Err(err) = graphics2.render(false) {
+                if let Err(err) = graphics2.render(true) {
                     log::error!(
                         "Error occurs on graphic rendering, terminate graphics thread: {:?}",
                         err

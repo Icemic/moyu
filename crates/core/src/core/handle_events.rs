@@ -79,9 +79,15 @@ impl Core {
 
                         #[cfg(web)]
                         if let Some(graphics) = self.graphics.load().as_ref() {
-                            if let Err(err) = graphics.render() {
+                            if let Err(err) = graphics.update() {
                                 log::error!(
-                                    "Error occurs on rendering, terminate graphics thread: {:?}",
+                                    "Error occurs on graphic updating, terminate graphic updating thread: {:?}",
+                                    err
+                                );
+                            }
+                            if let Err(err) = graphics.render(false) {
+                                log::error!(
+                                    "Error occurs on graphic rendering, terminate graphic rendering thread: {:?}",
                                     err
                                 );
                             }
