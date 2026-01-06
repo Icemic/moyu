@@ -463,7 +463,7 @@ impl Graphics {
                     if let Ok(command) = self.receiver.try_recv() {
                         command
                     } else {
-                        continue;
+                        break;
                     }
                 }
             };
