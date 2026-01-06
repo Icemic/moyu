@@ -37,9 +37,17 @@ pub enum FilterKind {
     },
 }
 
+#[derive(Debug)]
 pub enum RenderCommand {
-    BeginFrame,
-    EndFrame,
+    BeginFrame {
+        timestamp: f64,
+        surface_logical_size: (f32, f32),
+        stage_logical_size: (f32, f32),
+        scale_factor: f32,
+    },
+    EndFrame {
+        timestamp: f64,
+    },
     WriteBuffer {
         buffer: Buffer,
         offset: u64,
