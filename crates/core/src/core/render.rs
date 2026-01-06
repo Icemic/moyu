@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -37,7 +38,7 @@ pub struct Graphics {
 
     node_map: NodeMap,
 
-    staging_belt: Arc<Mutex<StagingBelt>>,
+    staging_belt: RefCell<StagingBelt>,
     mvp_buffer: wgpu::Buffer,
     mvp_bind_group: wgpu::BindGroup,
     fps_meter: FpsMeter,
@@ -82,7 +83,7 @@ impl Graphics {
 
         let renderers = Arc::new(Mutex::new(HashMap::default()));
 
-        let staging_belt = Arc::new(Mutex::new(StagingBelt::new(0)));
+        let staging_belt = RefCell::new(StagingBelt::new(1024 * 10));
 
         let surface_logical_size = surface_size.logical_size_f32();
         let stage_logical_size = stage_size.logical_size_f32();
@@ -425,7 +426,7 @@ impl Graphics {
                 .forget_lifetime()
         }
 
-        let mut staging_belt = self.staging_belt.lock();
+        let mut staging_belt = self.staging_belt.borrow_mut();
 
         let mut current_pass: Option<wgpu::RenderPass> = None;
 
