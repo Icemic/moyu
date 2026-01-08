@@ -9,3 +9,4 @@ applyTo: '**'
 - Be wise about performance implications when making changes.
 - Decline changes and provide detailed explanations when requirements are contradictory.
 - Read the codebase before making changes to avoid creating duplicate content.
+- You will always write comments in English.
