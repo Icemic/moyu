@@ -135,6 +135,7 @@ fn calculate_sprite_instance(
 pub struct SpriteRenderer {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
+    sampler: Sampler,
     quad_buffer: Buffer,
     index_buffer: Buffer,
     bind_group_map: WeakKeyHashMap<Weak<AssetId>, BindGroup>,
@@ -224,6 +225,16 @@ impl SpriteRenderer {
             cache: None,
         });
 
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+
         let quad_vertices = [
             QuadVertex {
                 position: [0.0, 0.0],
@@ -254,6 +265,7 @@ impl SpriteRenderer {
         Self {
             pipeline,
             bind_group_layout,
+            sampler,
             quad_buffer,
             index_buffer,
             bind_group_map: Default::default(),
@@ -275,9 +287,7 @@ impl SpriteRenderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(
-                        texture.sampler.load().as_ref().unwrap(),
-                    ),
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
                 },
             ],
             label: Some("bind_group"),

@@ -95,17 +95,8 @@ pub(crate) fn load_image_to_texture(
     );
 
     let view = texture_gpu.create_view(&wgpu::TextureViewDescriptor::default());
-    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        address_mode_w: wgpu::AddressMode::ClampToEdge,
-        mag_filter: wgpu::FilterMode::Linear,
-        min_filter: wgpu::FilterMode::Linear,
-        mipmap_filter: wgpu::FilterMode::Linear,
-        ..Default::default()
-    });
 
-    texture.set_texture(texture_gpu, view, sampler);
+    texture.set_texture(texture_gpu, view);
     texture.set_status(TextureStatus::Ready);
 
     Ok(())
