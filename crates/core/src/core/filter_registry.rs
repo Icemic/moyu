@@ -57,11 +57,18 @@ impl FilterRegistry {
                 FilterKind::Grayscale { .. } => "grayscale",
                 FilterKind::Sepia { .. } => "sepia",
                 FilterKind::Invert { .. } => "invert",
+                FilterKind::Unknown => "unknown",
             };
 
-            let renderer = self
-                .get(renderer_name)
-                .expect(&format!("Filter renderer '{}' not found", renderer_name));
+            if renderer_name == "unknown" {
+                log::warn!("Unknown filter kind: {:?}", filter);
+                continue;
+            }
+
+            let Some(renderer) = self.get(renderer_name) else {
+                log::error!("Filter renderer '{}' not found", renderer_name);
+                continue;
+            };
 
             if is_last {
                 renderer.execute(

@@ -35,6 +35,8 @@ pub enum FilterKind {
     Invert {
         amount: f32, // 0.0 = 正常, 1.0 = 完全反转
     },
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug)]
