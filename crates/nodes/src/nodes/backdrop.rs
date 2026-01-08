@@ -53,7 +53,7 @@ impl Default for Backdrop {
 impl Backdrop {
     pub fn new(label: String) -> Self {
         Self {
-            filters: vec![FilterKind::Blur { radius: 10.0 }],
+            filters: vec![],
             source_view: None,
             final_view: None,
             intermediate_view: None,
@@ -72,7 +72,6 @@ impl Focusable for Backdrop {}
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BackdropProps {
-    pub filter: Option<FilterKind>,
     pub filters: Option<Vec<FilterKind>>,
     pub width: Option<u32>,
     pub height: Option<u32>,
@@ -87,9 +86,7 @@ impl Node for Backdrop {
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: BackdropProps = from_js(props).unwrap();
 
-        if let Some(filter) = props.filter {
-            self.filters = vec![filter];
-        } else if let Some(filters) = props.filters {
+        if let Some(filters) = props.filters {
             self.filters = filters;
         }
 
