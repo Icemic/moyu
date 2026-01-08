@@ -115,13 +115,13 @@ impl Graphics {
 
         // 创建 Filter Registry 并注册滤镜
         let mut filter_registry = crate::core::filter_registry::FilterRegistry::new();
-        filter_registry.register(Arc::new(crate::nodes::filters::BlurPerfectFilterRenderer::new(
-            &device,
-            config.format,
-        )));
         filter_registry.register(Arc::new(
             crate::nodes::filters::BlurPerfectFilterRenderer::new(&device, config.format),
         ));
+        filter_registry.register(Arc::new(crate::nodes::filters::BlurFilterRenderer::new(
+            &device,
+            config.format,
+        )));
         filter_registry.register(Arc::new(
             crate::nodes::filters::ColorAdjustFilterRenderer::new(&device, config.format),
         ));
