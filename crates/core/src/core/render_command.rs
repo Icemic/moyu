@@ -7,10 +7,10 @@ use crate::base::Rect;
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum FilterKind {
-    Blur {
+    BlurPerfect {
         radius: f32,
     },
-    BlurFast {
+    Blur {
         radius: f32,
         continuous: Option<bool>,
     },
