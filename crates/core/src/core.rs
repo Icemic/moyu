@@ -5,6 +5,7 @@ mod keyboard_events;
 mod pointer_events;
 mod render;
 pub mod render_command;
+pub mod texture_pool;
 
 use arc_swap::{ArcSwap, ArcSwapOption};
 use dashmap::DashMap;

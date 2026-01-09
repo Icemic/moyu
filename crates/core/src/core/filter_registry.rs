@@ -1,4 +1,5 @@
 use crate::core::render_command::FilterKind;
+use crate::core::texture_pool::{PooledTexture, TexturePool};
 use crate::traits::FilterRenderer;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -33,20 +34,18 @@ impl FilterRegistry {
         filters: &[FilterKind],
         width: u32,
         height: u32,
-        // TODO: 纹理池支持，目前简单实现
-        intermediate_textures: &Vec<TextureView>,
+        format: TextureFormat,
+        pool: &mut TexturePool,
+        timestamp: f64,
     ) {
         if filters.is_empty() {
-            // 无滤镜，理论上不应该到这里，或者应该执行 blit
             return;
         }
 
-        let mut current_input = input;
+        let mut current_pooled_input: Option<PooledTexture> = None;
 
         for (i, filter) in filters.iter().enumerate() {
             let is_last = i == filters.len() - 1;
-
-            // 获取对应的 renderer
             let renderer_name = match filter {
                 FilterKind::BlurPerfect { .. } => "blur-perfect",
                 FilterKind::Blur { .. } => "blur",
@@ -70,32 +69,38 @@ impl FilterRegistry {
                 continue;
             };
 
+            let src_view = match &current_pooled_input {
+                Some(t) => &t.view,
+                None => input,
+            };
+
             if is_last {
                 renderer.execute(
-                    device,
-                    encoder,
-                    current_input,
-                    output,
-                    filter,
-                    width,
-                    height,
+                    device, encoder, src_view, output, filter, width, height, pool, timestamp,
                 );
             } else {
-                // 需要一个中间纹理
-                // 这里暂时假设 intermediate_textures 已经准备好了足够的纹理
-                // 实际应该从纹理池获取
-                let temp_view = &intermediate_textures[i % intermediate_textures.len()];
+                let dest_pooled = pool.acquire(device, width, height, format, timestamp);
                 renderer.execute(
                     device,
                     encoder,
-                    current_input,
-                    temp_view,
+                    src_view,
+                    &dest_pooled.view,
                     filter,
                     width,
                     height,
+                    pool,
+                    timestamp,
                 );
-                current_input = temp_view;
+
+                if let Some(t) = current_pooled_input {
+                    pool.return_texture(t);
+                }
+                current_pooled_input = Some(dest_pooled);
             }
+        }
+
+        if let Some(t) = current_pooled_input {
+            pool.return_texture(t);
         }
     }
 }

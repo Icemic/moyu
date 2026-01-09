@@ -1,4 +1,5 @@
 use crate::core::render_command::FilterKind;
+use crate::core::texture_pool::TexturePool;
 use crate::traits::FilterRenderer;
 use wgpu::util::DeviceExt;
 use wgpu::*;
@@ -168,6 +169,8 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
         filter: &FilterKind,
         width: u32,
         height: u32,
+        pool: &mut TexturePool,
+        timestamp: f64,
     ) {
         let FilterKind::BlurPerfect { radius } = filter else {
             return;
@@ -176,23 +179,9 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
             return;
         }
 
-        // 创建中间纹理用于水平模糊到垂直模糊的过渡
-        // TODO: 应该从纹理池获取
-        let intermediate_texture = device.create_texture(&TextureDescriptor {
-            label: Some("Blur Intermediate Texture"),
-            size: Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: self.format,
-            usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
-        let intermediate_view = intermediate_texture.create_view(&TextureViewDescriptor::default());
+        // Acquire from pool
+        let intermediate_pooled = pool.acquire(device, width, height, self.format, timestamp);
+        let intermediate_view = &intermediate_pooled.view;
 
         let blur_params = BlurParams {
             texel_size: [1.0 / width as f32, 1.0 / height as f32],
@@ -289,5 +278,7 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
             pass.set_bind_group(0, &bind_group, &[]);
             pass.draw(0..6, 0..1);
         }
+
+        pool.return_texture(intermediate_pooled);
     }
 }
