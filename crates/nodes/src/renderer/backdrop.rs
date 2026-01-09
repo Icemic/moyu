@@ -209,27 +209,6 @@ impl Renderer for BackdropRenderer {
             });
             let final_view = final_texture.create_view(&TextureViewDescriptor::default());
 
-            // Create intermediate texture for filter processing
-            let intermediate_texture = device.create_texture(&TextureDescriptor {
-                label: Some("Backdrop Intermediate Texture"),
-                size: Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: self.format,
-                usage: TextureUsages::RENDER_ATTACHMENT
-                    | TextureUsages::TEXTURE_BINDING
-                    | TextureUsages::COPY_DST
-                    | TextureUsages::COPY_SRC,
-                view_formats: &[],
-            });
-            let intermediate_view =
-                intermediate_texture.create_view(&TextureViewDescriptor::default());
-
             let params = BackdropParams {
                 position: [rect.x(), rect.y()],
                 size: [rect.width(), rect.height()],
@@ -263,15 +242,10 @@ impl Renderer for BackdropRenderer {
             // destroy previous textures and buffer immediately
             backdrop.source_view.take().map(|v| v.texture().destroy());
             backdrop.final_view.take().map(|v| v.texture().destroy());
-            backdrop
-                .intermediate_view
-                .take()
-                .map(|v| v.texture().destroy());
             backdrop.buffer.take().map(|v| v.destroy());
 
             backdrop.source_view = Some(source_view);
             backdrop.final_view = Some(final_view);
-            backdrop.intermediate_view = Some(intermediate_view);
             backdrop.buffer = Some(params_buffer);
             backdrop.bind_group = Some(bind_group);
             backdrop.rect = Some(rect);
@@ -306,15 +280,12 @@ impl Renderer for BackdropRenderer {
         let backdrop = node.as_any().downcast_ref::<Backdrop>().unwrap();
 
         // 获取纹理引用
-        let (source_view, final_view, intermediate_view, rect) = match (
+        let (source_view, final_view, rect) = match (
             backdrop.source_view.as_ref(),
             backdrop.final_view.as_ref(),
-            backdrop.intermediate_view.as_ref(),
             backdrop.rect.as_ref(),
         ) {
-            (Some(sv), Some(fv), Some(iv), Some(rect)) => {
-                (sv.clone(), fv.clone(), iv.clone(), *rect)
-            }
+            (Some(sv), Some(fv), Some(rect)) => (sv.clone(), fv.clone(), *rect),
             _ => {
                 // 纹理未初始化，跳过渲染
                 return;
@@ -329,7 +300,6 @@ impl Renderer for BackdropRenderer {
             .send(RenderCommand::CaptureBackdrop {
                 source_view: source_view.clone(),
                 final_view: final_view.clone(),
-                intermediate_view,
                 rect,
                 filters: backdrop.filters.clone(),
             })
