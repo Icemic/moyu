@@ -17,9 +17,6 @@ pub struct Filter {
     /// Final texture after applying filters
     pub final_view: Option<wgpu::TextureView>,
 
-    /// Intermediate texture for filter processing (ping-pong)
-    pub intermediate_view: Option<wgpu::TextureView>,
-
     /// Rect area to capture and draw, relative to the stage
     pub rect: Option<Rect>,
     pub buffer: Option<wgpu::Buffer>,
@@ -39,7 +36,6 @@ impl Default for Filter {
             filters: Vec::new(),
             offscreen_view: None,
             final_view: None,
-            intermediate_view: None,
             rect: None,
             buffer: None,
             bind_group: None,
@@ -56,7 +52,6 @@ impl Filter {
             filters: Vec::new(),
             offscreen_view: None,
             final_view: None,
-            intermediate_view: None,
             rect: None,
             buffer: None,
             bind_group: None,

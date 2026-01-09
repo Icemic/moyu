@@ -224,27 +224,6 @@ impl Renderer for OffscreenPassRenderer {
             });
             let final_view = final_texture.create_view(&TextureViewDescriptor::default());
 
-            // Create intermediate texture for filter processing
-            let intermediate_texture = device.create_texture(&TextureDescriptor {
-                label: Some("Filter Intermediate Texture"),
-                size: Extent3d {
-                    width,
-                    height,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: self.format,
-                usage: TextureUsages::RENDER_ATTACHMENT
-                    | TextureUsages::TEXTURE_BINDING
-                    | TextureUsages::COPY_DST
-                    | TextureUsages::COPY_SRC,
-                view_formats: &[],
-            });
-            let intermediate_view =
-                intermediate_texture.create_view(&TextureViewDescriptor::default());
-
             let params = FilterParams {
                 position: [rect.x(), rect.y()],
                 size: [rect.width(), rect.height()],
@@ -278,15 +257,10 @@ impl Renderer for OffscreenPassRenderer {
             // destroy previous textures and buffer immediately
             filter.offscreen_view.take().map(|v| v.texture().destroy());
             filter.final_view.take().map(|v| v.texture().destroy());
-            filter
-                .intermediate_view
-                .take()
-                .map(|v| v.texture().destroy());
             filter.buffer.take().map(|v| v.destroy());
 
             filter.offscreen_view = Some(offscreen_view);
             filter.final_view = Some(final_view);
-            filter.intermediate_view = Some(intermediate_view);
             filter.rect = Some(rect);
             filter.buffer = Some(params_buffer);
             filter.bind_group = Some(bind_group);
@@ -342,15 +316,12 @@ impl Renderer for OffscreenPassRenderer {
             .expect("Node is not OffscreenPass");
 
         // 获取所有纹理引用
-        let (offscreen_view, final_view, intermediate_view, rect) = match (
+        let (offscreen_view, final_view, rect) = match (
             filter.offscreen_view.as_ref(),
             filter.final_view.as_ref(),
-            filter.intermediate_view.as_ref(),
             filter.rect.as_ref(),
         ) {
-            (Some(ov), Some(fv), Some(iv), Some(rect)) => {
-                (ov.clone(), fv.clone(), iv.clone(), rect.clone())
-            }
+            (Some(ov), Some(fv), Some(rect)) => (ov.clone(), fv.clone(), rect.clone()),
             _ => {
                 // 纹理未初始化，跳过
                 return;
@@ -361,7 +332,6 @@ impl Renderer for OffscreenPassRenderer {
             .send(RenderCommand::EndOffscreenPass {
                 offscreen_view,
                 final_view,
-                intermediate_view,
                 rect,
                 filters: filter.filters.clone(),
             })

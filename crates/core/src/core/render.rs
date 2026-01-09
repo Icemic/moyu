@@ -801,7 +801,6 @@ impl Graphics {
                 RenderCommand::CaptureBackdrop {
                     source_view,
                     final_view,
-                    intermediate_view,
                     rect: region,
                     filters,
                 } => {
@@ -937,7 +936,6 @@ impl Graphics {
                 RenderCommand::EndOffscreenPass {
                     offscreen_view,
                     final_view,
-                    intermediate_view,
                     rect,
                     filters,
                 } => {

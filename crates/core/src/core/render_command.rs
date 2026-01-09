@@ -84,7 +84,6 @@ pub enum RenderCommand {
     CaptureBackdrop {
         source_view: TextureView,
         final_view: TextureView,
-        intermediate_view: TextureView,
         rect: Rect,
         filters: Vec<FilterKind>,
     },
@@ -97,7 +96,6 @@ pub enum RenderCommand {
     EndOffscreenPass {
         offscreen_view: TextureView,
         final_view: TextureView,
-        intermediate_view: TextureView,
         rect: Rect,
         filters: Vec<FilterKind>,
     },
