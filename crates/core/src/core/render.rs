@@ -63,7 +63,7 @@ pub struct Graphics {
         >,
     >,
     /// Filter registry for managing filter renderers
-    filter_registry: Arc<crate::core::filter_registry::FilterRegistry>,
+    filter_registry: RefCell<crate::core::filter_registry::FilterRegistry>,
 
     /// Texture pool for filter intermediate textures
     texture_pool: RefCell<crate::core::texture_pool::TexturePool>,
@@ -118,17 +118,17 @@ impl Graphics {
 
         // 创建 Filter Registry 并注册滤镜
         let mut filter_registry = crate::core::filter_registry::FilterRegistry::new();
-        filter_registry.register(Arc::new(
+        filter_registry.register(Box::new(
             crate::nodes::filters::BlurPerfectFilterRenderer::new(&device, config.format),
         ));
-        filter_registry.register(Arc::new(crate::nodes::filters::BlurFilterRenderer::new(
+        filter_registry.register(Box::new(crate::nodes::filters::BlurFilterRenderer::new(
             &device,
             config.format,
         )));
-        filter_registry.register(Arc::new(
+        filter_registry.register(Box::new(
             crate::nodes::filters::ColorAdjustFilterRenderer::new(&device, config.format),
         ));
-        let filter_registry = Arc::new(filter_registry);
+        let filter_registry = RefCell::new(filter_registry);
 
         Self {
             window: window.clone(),
@@ -459,6 +459,7 @@ impl Graphics {
         let mut draw_count = 0;
 
         loop {
+            let mut filter_registry = self.filter_registry.borrow_mut();
             let timestamp = self.instant.elapsed().as_secs_f64();
 
             let command = {
@@ -552,6 +553,9 @@ impl Graphics {
                     surface_logical_size = surface;
                     stage_logical_size = stage;
                     scale_factor = scale;
+
+                    // Reset all filter renderers' frame-local state
+                    filter_registry.reset_all_frames();
                 }
                 RenderCommand::EndFrame { timestamp: _ } => {
                     draw_count = 0;
@@ -868,8 +872,9 @@ impl Graphics {
 
                     // 3. 应用滤镜到 final_texture
                     if !filters.is_empty() {
-                        self.filter_registry.execute_filter_chain(
+                        filter_registry.execute_filter_chain(
                             &device,
+                            &self.queue,
                             &mut encoder.as_mut().unwrap(),
                             &source_view,
                             &final_view,
@@ -967,8 +972,9 @@ impl Graphics {
                     );
 
                     if !filters.is_empty() {
-                        self.filter_registry.execute_filter_chain(
+                        filter_registry.execute_filter_chain(
                             &device,
+                            &self.queue,
                             &mut encoder.as_mut().unwrap(),
                             &offscreen_view,
                             &final_view,

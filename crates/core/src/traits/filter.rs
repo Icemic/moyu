@@ -3,7 +3,7 @@ use crate::core::texture_pool::TexturePool;
 use wgpu::*;
 
 /// 滤镜渲染器 Trait
-pub trait FilterRenderer: Send + Sync {
+pub trait FilterRenderer {
     /// 滤镜名称
     fn name(&self) -> &'static str;
 
@@ -12,8 +12,9 @@ pub trait FilterRenderer: Send + Sync {
     /// output: 输出纹理视图
     /// filter: 滤镜配置
     fn execute(
-        &self,
+        &mut self,
         device: &Device,
+        queue: &Queue,
         encoder: &mut CommandEncoder,
         input: &TextureView,
         output: &TextureView,
@@ -23,4 +24,7 @@ pub trait FilterRenderer: Send + Sync {
         pool: &mut TexturePool,
         timestamp: f64,
     );
+
+    /// Reset frame-local state (called at the beginning of each frame)
+    fn reset_frame(&mut self);
 }

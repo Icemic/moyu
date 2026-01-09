@@ -53,6 +53,8 @@ impl TexturePool {
             }
         }
 
+        log::info!("Creating new pooled texture key: {:?}", key);
+
         let texture = device.create_texture(&TextureDescriptor {
             label: Some("Pooled Filter Texture"),
             size: Extent3d {
@@ -94,6 +96,7 @@ impl TexturePool {
             while i < list.len() {
                 if (current_time - list[i].last_used) >= TIMEOUT_SECONDS {
                     let pooled = list.swap_remove(i);
+                    log::info!("Destroying pooled texture due to timeout");
                     pooled.texture.destroy();
                 } else {
                     i += 1;
