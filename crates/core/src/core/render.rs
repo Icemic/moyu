@@ -300,6 +300,9 @@ impl Graphics {
             self.instance.poll_all(true);
             // apply new size
             self.surface.configure(&self.device, &config);
+
+            // cleanup all pooled textures immediately
+            self.texture_pool.borrow_mut().cleanup(f64::MAX);
         }
 
         let device = self.device.clone();
@@ -618,6 +621,8 @@ impl Graphics {
                     staging_belt.recall();
 
                     output.take().unwrap().present();
+
+                    self.texture_pool.borrow_mut().cleanup(timestamp);
 
                     self.window.request_redraw();
                 }
@@ -1010,8 +1015,6 @@ impl Graphics {
                 }
             }
         }
-
-        self.texture_pool.borrow_mut().cleanup(f64::MAX);
 
         Ok(())
     }
