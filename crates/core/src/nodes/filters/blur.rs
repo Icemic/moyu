@@ -1,4 +1,5 @@
 use crate::core::render_command::FilterKind;
+use crate::core::texture_pool::{PooledTexture, TexturePool};
 use crate::traits::FilterRenderer;
 use wgpu::util::DeviceExt;
 use wgpu::*;
@@ -303,6 +304,8 @@ impl FilterRenderer for BlurFilterRenderer {
         filter: &FilterKind,
         width: u32,
         height: u32,
+        pool: &mut TexturePool,
+        timestamp: f64,
     ) {
         let FilterKind::Blur { radius, continuous } = filter else {
             return;
@@ -349,7 +352,7 @@ impl FilterRenderer for BlurFilterRenderer {
             }
         }
 
-        let mut textures = Vec::new();
+        let mut pooled_resources: Vec<PooledTexture> = Vec::new();
         let mut downsampled_views = Vec::new();
         downsampled_views.push(input.clone());
 
@@ -362,21 +365,8 @@ impl FilterRenderer for BlurFilterRenderer {
             let sw = (width / next_scale).max(1);
             let sh = (height / next_scale).max(1);
 
-            let ds_tex = device.create_texture(&TextureDescriptor {
-                label: Some("Blur Iterative Downsample Texture"),
-                size: Extent3d {
-                    width: sw,
-                    height: sh,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: self.format,
-                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            });
-            let ds_view = ds_tex.create_view(&TextureViewDescriptor::default());
+            let ds_pooled = pool.acquire(device, sw, sh, self.format, timestamp);
+            let ds_view = ds_pooled.view.clone();
 
             let blit_bind_group = device.create_bind_group(&BindGroupDescriptor {
                 layout: &self.blit_bind_group_layout,
@@ -414,7 +404,7 @@ impl FilterRenderer for BlurFilterRenderer {
 
             current_view = ds_view.clone();
             downsampled_views.push(ds_view);
-            textures.push(ds_tex);
+            pooled_resources.push(ds_pooled);
             current_scale = next_scale;
         }
 
@@ -430,21 +420,8 @@ impl FilterRenderer for BlurFilterRenderer {
             }
 
             // 1. Horizontal Blur
-            let h_tex = device.create_texture(&TextureDescriptor {
-                label: Some("Blur Horizontal Texture"),
-                size: Extent3d {
-                    width: sw,
-                    height: sh,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: self.format,
-                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            });
-            let h_view = h_tex.create_view(&TextureViewDescriptor::default());
+            let h_pooled = pool.acquire(device, sw, sh, self.format, timestamp);
+            let h_view = h_pooled.view.clone();
 
             let blur_params = BlurParams {
                 texel_size: [1.0 / sw as f32, 1.0 / sh as f32],
@@ -496,21 +473,8 @@ impl FilterRenderer for BlurFilterRenderer {
             }
 
             // 2. Vertical Blur
-            let v_tex = device.create_texture(&TextureDescriptor {
-                label: Some("Blur Vertical Texture"),
-                size: Extent3d {
-                    width: sw,
-                    height: sh,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: self.format,
-                usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            });
-            let v_view = v_tex.create_view(&TextureViewDescriptor::default());
+            let v_pooled = pool.acquire(device, sw, sh, self.format, timestamp);
+            let v_view = v_pooled.view.clone();
 
             let v_bind_group = device.create_bind_group(&BindGroupDescriptor {
                 layout: &self.bind_group_layout,
@@ -550,8 +514,8 @@ impl FilterRenderer for BlurFilterRenderer {
                 pass.draw(0..6, 0..1);
             }
 
-            textures.push(h_tex);
-            textures.push(v_tex);
+            pooled_resources.push(h_pooled);
+            pooled_resources.push(v_pooled);
             v_view
         };
 
@@ -651,6 +615,10 @@ impl FilterRenderer for BlurFilterRenderer {
             pass.set_bind_group(0, &bind_group0, &[]);
             pass.set_bind_group(1, &bind_group1, &[]);
             pass.draw(0..6, 0..1);
+        }
+
+        for t in pooled_resources {
+            pool.return_texture(t);
         }
     }
 }

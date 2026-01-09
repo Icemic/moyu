@@ -1,4 +1,5 @@
 use crate::core::render_command::FilterKind;
+use crate::core::texture_pool::TexturePool;
 use wgpu::*;
 
 /// 滤镜渲染器 Trait
@@ -19,5 +20,7 @@ pub trait FilterRenderer: Send + Sync {
         filter: &FilterKind,
         width: u32,
         height: u32,
+        pool: &mut TexturePool,
+        timestamp: f64,
     );
 }

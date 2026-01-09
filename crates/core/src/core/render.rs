@@ -64,6 +64,9 @@ pub struct Graphics {
     >,
     /// Filter registry for managing filter renderers
     filter_registry: Arc<crate::core::filter_registry::FilterRegistry>,
+
+    /// Texture pool for filter intermediate textures
+    texture_pool: RefCell<crate::core::texture_pool::TexturePool>,
 }
 
 unsafe impl Send for Graphics {}
@@ -148,6 +151,7 @@ impl Graphics {
             snapshot_requested: AtomicBool::new(false),
             snapshot_buffer: Arc::new(Mutex::new(None)),
             filter_registry,
+            texture_pool: RefCell::new(crate::core::texture_pool::TexturePool::new()),
         }
     }
 
@@ -434,6 +438,7 @@ impl Graphics {
         let mut scissor_stack = vec![];
         let mut offscreen_stack: Vec<wgpu::TextureView> = Vec::new();
         let mut current_view = None;
+        let mut current_format = None;
 
         let mut encoder = None;
 
@@ -451,6 +456,8 @@ impl Graphics {
         let mut draw_count = 0;
 
         loop {
+            let timestamp = self.instant.elapsed().as_secs_f64();
+
             let command = {
                 if block {
                     if let Ok(command) = self.receiver.recv() {
@@ -537,6 +544,7 @@ impl Graphics {
                     scissor_stack.push([0, 0, v.texture().width(), v.texture().height()]);
 
                     output = Some(o);
+                    current_format = Some(v.texture().format());
                     current_view = Some(v);
                     surface_logical_size = surface;
                     stage_logical_size = stage;
@@ -856,8 +864,6 @@ impl Graphics {
 
                     // 3. 应用滤镜到 final_texture
                     if !filters.is_empty() {
-                        let intermediate_textures = vec![intermediate_view];
-
                         self.filter_registry.execute_filter_chain(
                             &device,
                             &mut encoder.as_mut().unwrap(),
@@ -866,7 +872,9 @@ impl Graphics {
                             &filters,
                             width,
                             height,
-                            &intermediate_textures,
+                            current_format.unwrap(),
+                            &mut self.texture_pool.borrow_mut(),
+                            timestamp,
                         );
                     } else {
                         // 没有滤镜，直接复制
@@ -956,8 +964,6 @@ impl Graphics {
                     );
 
                     if !filters.is_empty() {
-                        let intermediate_textures = vec![intermediate_view];
-
                         self.filter_registry.execute_filter_chain(
                             &device,
                             &mut encoder.as_mut().unwrap(),
@@ -966,7 +972,9 @@ impl Graphics {
                             &filters,
                             w,
                             h,
-                            &intermediate_textures,
+                            current_format.unwrap(),
+                            &mut self.texture_pool.borrow_mut(),
+                            timestamp,
                         );
                     } else {
                         encoder.as_mut().unwrap().copy_texture_to_texture(
@@ -1004,6 +1012,8 @@ impl Graphics {
                 }
             }
         }
+
+        self.texture_pool.borrow_mut().cleanup(f64::MAX);
 
         Ok(())
     }

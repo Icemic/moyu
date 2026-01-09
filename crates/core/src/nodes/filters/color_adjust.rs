@@ -1,4 +1,5 @@
 use crate::core::render_command::FilterKind;
+use crate::core::texture_pool::TexturePool;
 use crate::traits::FilterRenderer;
 use wgpu::util::DeviceExt;
 use wgpu::*;
@@ -128,6 +129,8 @@ impl FilterRenderer for ColorAdjustFilterRenderer {
         filter: &FilterKind,
         _width: u32,
         _height: u32,
+        _pool: &mut TexturePool,
+        _timestamp: f64,
     ) {
         let (brightness, contrast, saturation) = match filter {
             FilterKind::Brightness { amount } => (*amount, 1.0, 1.0),
