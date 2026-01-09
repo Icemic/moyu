@@ -1,7 +1,6 @@
 use crate::core::render_command::FilterKind;
 use crate::core::texture_pool::TexturePool;
 use crate::traits::FilterRenderer;
-use wgpu::util::DeviceExt;
 use wgpu::*;
 
 #[repr(C)]
@@ -13,10 +12,16 @@ struct ColorAdjustParams {
     _padding: f32,
 }
 
+const INITIAL_CAPACITY: u64 = 16;
+
 pub struct ColorAdjustFilterRenderer {
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     sampler: Sampler,
+    uniform_buffer: Buffer,
+    frame_offset: u64,
+    buffer_capacity: u64,
+    alignment: u64,
 }
 
 impl ColorAdjustFilterRenderer {
@@ -107,10 +112,24 @@ impl ColorAdjustFilterRenderer {
             ..Default::default()
         });
 
+        let alignment = device.limits().min_uniform_buffer_offset_alignment as u64;
+        let buffer_capacity = INITIAL_CAPACITY;
+
+        let uniform_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Color Adjust Uniform Buffer"),
+            size: alignment * buffer_capacity,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         Self {
             pipeline,
             bind_group_layout,
             sampler,
+            uniform_buffer,
+            frame_offset: 0,
+            buffer_capacity,
+            alignment,
         }
     }
 }
@@ -121,8 +140,9 @@ impl FilterRenderer for ColorAdjustFilterRenderer {
     }
 
     fn execute(
-        &self,
+        &mut self,
         device: &Device,
+        queue: &Queue,
         encoder: &mut CommandEncoder,
         input: &TextureView,
         output: &TextureView,
@@ -132,6 +152,24 @@ impl FilterRenderer for ColorAdjustFilterRenderer {
         _pool: &mut TexturePool,
         _timestamp: f64,
     ) {
+        // Check if we need to expand the buffer
+        if self.frame_offset + self.alignment > self.alignment * self.buffer_capacity {
+            let new_capacity = self.buffer_capacity * 2;
+            log::warn!(
+                "[ColorAdjust] Uniform buffer capacity exceeded ({} slots), expanding to {} slots",
+                self.buffer_capacity,
+                new_capacity
+            );
+
+            self.uniform_buffer = device.create_buffer(&BufferDescriptor {
+                label: Some("Color Adjust Uniform Buffer (Expanded)"),
+                size: self.alignment * new_capacity,
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.buffer_capacity = new_capacity;
+        }
+
         let (brightness, contrast, saturation) = match filter {
             FilterKind::Brightness { amount } => (*amount, 1.0, 1.0),
             FilterKind::Contrast { amount } => (1.0, *amount, 1.0),
@@ -146,11 +184,12 @@ impl FilterRenderer for ColorAdjustFilterRenderer {
             _padding: 0.0,
         };
 
-        let params_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Color Adjust Params Buffer"),
-            contents: bytemuck::bytes_of(&params),
-            usage: BufferUsages::UNIFORM,
-        });
+        // Get current offset and increment
+        let offset = self.frame_offset;
+        self.frame_offset += self.alignment;
+
+        // Write to buffer at offset
+        queue.write_buffer(&self.uniform_buffer, offset, bytemuck::bytes_of(&params));
 
         let bind_group = device.create_bind_group(&BindGroupDescriptor {
             label: Some("Color Adjust Bind Group"),
@@ -166,7 +205,16 @@ impl FilterRenderer for ColorAdjustFilterRenderer {
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: params_buffer.as_entire_binding(),
+                    resource: BindingResource::Buffer(BufferBinding {
+                        buffer: &self.uniform_buffer,
+                        offset,
+                        size: Some(
+                            std::num::NonZeroU64::new(
+                                std::mem::size_of::<ColorAdjustParams>() as u64
+                            )
+                            .unwrap(),
+                        ),
+                    }),
                 },
             ],
         });
@@ -190,5 +238,9 @@ impl FilterRenderer for ColorAdjustFilterRenderer {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.draw(0..6, 0..1);
+    }
+
+    fn reset_frame(&mut self) {
+        self.frame_offset = 0;
     }
 }

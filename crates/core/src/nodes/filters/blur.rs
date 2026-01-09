@@ -1,7 +1,6 @@
 use crate::core::render_command::FilterKind;
 use crate::core::texture_pool::{PooledTexture, TexturePool};
 use crate::traits::FilterRenderer;
-use wgpu::util::DeviceExt;
 use wgpu::*;
 
 #[repr(C)]
@@ -19,6 +18,8 @@ struct BlendParams {
     _padding: [f32; 3],
 }
 
+const INITIAL_CAPACITY: u64 = 16;
+
 pub struct BlurFilterRenderer {
     horizontal_pipeline: RenderPipeline,
     vertical_pipeline: RenderPipeline,
@@ -29,6 +30,13 @@ pub struct BlurFilterRenderer {
     blend_bind_group_layout: BindGroupLayout,
     sampler: Sampler,
     format: TextureFormat,
+    blur_uniform_buffer: Buffer,
+    blend_uniform_buffer: Buffer,
+    blur_frame_offset: u64,
+    blend_frame_offset: u64,
+    blur_buffer_capacity: u64,
+    blend_buffer_capacity: u64,
+    alignment: u64,
 }
 
 impl BlurFilterRenderer {
@@ -276,6 +284,24 @@ impl BlurFilterRenderer {
             ..Default::default()
         });
 
+        let alignment = device.limits().min_uniform_buffer_offset_alignment as u64;
+        let blur_buffer_capacity = INITIAL_CAPACITY;
+        let blend_buffer_capacity = INITIAL_CAPACITY;
+
+        let blur_uniform_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Blur Uniform Buffer"),
+            size: alignment * blur_buffer_capacity,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        let blend_uniform_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Blur Blend Uniform Buffer"),
+            size: alignment * blend_buffer_capacity,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         Self {
             horizontal_pipeline,
             vertical_pipeline,
@@ -286,6 +312,13 @@ impl BlurFilterRenderer {
             blend_bind_group_layout,
             sampler,
             format,
+            blur_uniform_buffer,
+            blend_uniform_buffer,
+            blur_frame_offset: 0,
+            blend_frame_offset: 0,
+            blur_buffer_capacity,
+            blend_buffer_capacity,
+            alignment,
         }
     }
 }
@@ -296,8 +329,9 @@ impl FilterRenderer for BlurFilterRenderer {
     }
 
     fn execute(
-        &self,
+        &mut self,
         device: &Device,
+        queue: &Queue,
         encoder: &mut CommandEncoder,
         input: &TextureView,
         output: &TextureView,
@@ -428,11 +462,36 @@ impl FilterRenderer for BlurFilterRenderer {
                 blur_radius: adjusted_radius,
                 _padding: 0.0,
             };
-            let blur_params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Blur Params Buffer"),
-                contents: bytemuck::bytes_of(&blur_params),
-                usage: BufferUsages::UNIFORM,
-            });
+
+            // Check if we need to expand the blur buffer
+            if self.blur_frame_offset + self.alignment > self.alignment * self.blur_buffer_capacity
+            {
+                let new_capacity = self.blur_buffer_capacity * 2;
+                log::warn!(
+                    "[Blur] Blur uniform buffer capacity exceeded ({} slots), expanding to {} slots",
+                    self.blur_buffer_capacity,
+                    new_capacity
+                );
+
+                self.blur_uniform_buffer = device.create_buffer(&BufferDescriptor {
+                    label: Some("Blur Uniform Buffer (Expanded)"),
+                    size: self.alignment * new_capacity,
+                    usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                self.blur_buffer_capacity = new_capacity;
+            }
+
+            // Get current offset and increment
+            let blur_offset = self.blur_frame_offset;
+            self.blur_frame_offset += self.alignment;
+
+            // Write to buffer at offset
+            queue.write_buffer(
+                &self.blur_uniform_buffer,
+                blur_offset,
+                bytemuck::bytes_of(&blur_params),
+            );
 
             let h_bind_group = device.create_bind_group(&BindGroupDescriptor {
                 layout: &self.bind_group_layout,
@@ -447,7 +506,14 @@ impl FilterRenderer for BlurFilterRenderer {
                     },
                     BindGroupEntry {
                         binding: 2,
-                        resource: blur_params_buffer.as_entire_binding(),
+                        resource: BindingResource::Buffer(BufferBinding {
+                            buffer: &self.blur_uniform_buffer,
+                            offset: blur_offset,
+                            size: Some(
+                                std::num::NonZeroU64::new(std::mem::size_of::<BlurParams>() as u64)
+                                    .unwrap(),
+                            ),
+                        }),
                     },
                 ],
                 label: None,
@@ -489,7 +555,14 @@ impl FilterRenderer for BlurFilterRenderer {
                     },
                     BindGroupEntry {
                         binding: 2,
-                        resource: blur_params_buffer.as_entire_binding(),
+                        resource: BindingResource::Buffer(BufferBinding {
+                            buffer: &self.blur_uniform_buffer,
+                            offset: blur_offset,
+                            size: Some(
+                                std::num::NonZeroU64::new(std::mem::size_of::<BlurParams>() as u64)
+                                    .unwrap(),
+                            ),
+                        }),
                     },
                 ],
                 label: None,
@@ -561,12 +634,37 @@ impl FilterRenderer for BlurFilterRenderer {
                 weight,
                 _padding: [0.0; 3],
             };
-            let blend_params_buffer =
-                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Blur Blend Params Buffer"),
-                    contents: bytemuck::bytes_of(&blend_params),
-                    usage: BufferUsages::UNIFORM,
+
+            // Check if we need to expand the blend buffer
+            if self.blend_frame_offset + self.alignment
+                > self.alignment * self.blend_buffer_capacity
+            {
+                let new_capacity = self.blend_buffer_capacity * 2;
+                log::warn!(
+                    "[Blur] Blend uniform buffer capacity exceeded ({} slots), expanding to {} slots",
+                    self.blend_buffer_capacity,
+                    new_capacity
+                );
+
+                self.blend_uniform_buffer = device.create_buffer(&BufferDescriptor {
+                    label: Some("Blur Blend Uniform Buffer (Expanded)"),
+                    size: self.alignment * new_capacity,
+                    usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
                 });
+                self.blend_buffer_capacity = new_capacity;
+            }
+
+            // Get current offset and increment
+            let blend_offset = self.blend_frame_offset;
+            self.blend_frame_offset += self.alignment;
+
+            // Write to buffer at offset
+            queue.write_buffer(
+                &self.blend_uniform_buffer,
+                blend_offset,
+                bytemuck::bytes_of(&blend_params),
+            );
 
             let bind_group0 = device.create_bind_group(&BindGroupDescriptor {
                 layout: &self.blit_bind_group_layout,
@@ -592,7 +690,17 @@ impl FilterRenderer for BlurFilterRenderer {
                     },
                     BindGroupEntry {
                         binding: 1,
-                        resource: blend_params_buffer.as_entire_binding(),
+                        resource: BindingResource::Buffer(BufferBinding {
+                            buffer: &self.blend_uniform_buffer,
+                            offset: blend_offset,
+                            size:
+                                Some(
+                                    std::num::NonZeroU64::new(
+                                        std::mem::size_of::<BlendParams>() as u64
+                                    )
+                                    .unwrap(),
+                                ),
+                        }),
                     },
                 ],
                 label: None,
@@ -620,5 +728,10 @@ impl FilterRenderer for BlurFilterRenderer {
         for t in pooled_resources {
             pool.return_texture(t);
         }
+    }
+
+    fn reset_frame(&mut self) {
+        self.blur_frame_offset = 0;
+        self.blend_frame_offset = 0;
     }
 }

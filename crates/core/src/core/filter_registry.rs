@@ -2,11 +2,10 @@ use crate::core::render_command::FilterKind;
 use crate::core::texture_pool::{PooledTexture, TexturePool};
 use crate::traits::FilterRenderer;
 use std::collections::HashMap;
-use std::sync::Arc;
 use wgpu::*;
 
 pub struct FilterRegistry {
-    renderers: HashMap<String, Arc<dyn FilterRenderer>>,
+    renderers: HashMap<String, Box<dyn FilterRenderer>>,
 }
 
 impl FilterRegistry {
@@ -16,18 +15,26 @@ impl FilterRegistry {
         }
     }
 
-    pub fn register(&mut self, renderer: Arc<dyn FilterRenderer>) {
+    pub fn register(&mut self, renderer: Box<dyn FilterRenderer>) {
         self.renderers.insert(renderer.name().to_string(), renderer);
     }
 
-    pub fn get(&self, name: &str) -> Option<&Arc<dyn FilterRenderer>> {
-        self.renderers.get(name)
+    pub fn get(&mut self, name: &str) -> Option<&mut Box<dyn FilterRenderer>> {
+        self.renderers.get_mut(name)
+    }
+
+    /// 重置所有 renderer 的帧内状态
+    pub fn reset_all_frames(&mut self) {
+        for renderer in self.renderers.values_mut() {
+            renderer.reset_frame();
+        }
     }
 
     /// 执行滤镜链
     pub fn execute_filter_chain(
-        &self,
+        &mut self,
         device: &Device,
+        queue: &Queue,
         encoder: &mut CommandEncoder,
         input: &TextureView,
         output: &TextureView,
@@ -76,12 +83,14 @@ impl FilterRegistry {
 
             if is_last {
                 renderer.execute(
-                    device, encoder, src_view, output, filter, width, height, pool, timestamp,
+                    device, queue, encoder, src_view, output, filter, width, height, pool,
+                    timestamp,
                 );
             } else {
                 let dest_pooled = pool.acquire(device, width, height, format, timestamp);
                 renderer.execute(
                     device,
+                    queue,
                     encoder,
                     src_view,
                     &dest_pooled.view,

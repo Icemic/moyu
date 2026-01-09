@@ -1,7 +1,6 @@
 use crate::core::render_command::FilterKind;
 use crate::core::texture_pool::TexturePool;
 use crate::traits::FilterRenderer;
-use wgpu::util::DeviceExt;
 use wgpu::*;
 
 #[repr(C)]
@@ -12,12 +11,18 @@ struct BlurParams {
     _padding: f32,
 }
 
+const INITIAL_CAPACITY: u64 = 16;
+
 pub struct BlurPerfectFilterRenderer {
     horizontal_pipeline: RenderPipeline,
     vertical_pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     sampler: Sampler,
     format: TextureFormat,
+    uniform_buffer: Buffer,
+    frame_offset: u64,
+    buffer_capacity: u64,
+    alignment: u64,
 }
 
 impl BlurPerfectFilterRenderer {
@@ -145,12 +150,26 @@ impl BlurPerfectFilterRenderer {
             ..Default::default()
         });
 
+        let alignment = device.limits().min_uniform_buffer_offset_alignment as u64;
+        let buffer_capacity = INITIAL_CAPACITY;
+
+        let uniform_buffer = device.create_buffer(&BufferDescriptor {
+            label: Some("Blur Perfect Uniform Buffer"),
+            size: alignment * buffer_capacity,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         Self {
             horizontal_pipeline,
             vertical_pipeline,
             bind_group_layout,
             sampler,
             format,
+            uniform_buffer,
+            frame_offset: 0,
+            buffer_capacity,
+            alignment,
         }
     }
 }
@@ -161,8 +180,9 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
     }
 
     fn execute(
-        &self,
+        &mut self,
         device: &Device,
+        queue: &Queue,
         encoder: &mut CommandEncoder,
         input: &TextureView,
         output: &TextureView,
@@ -179,6 +199,24 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
             return;
         }
 
+        // Check if we need to expand the buffer
+        if self.frame_offset + self.alignment > self.alignment * self.buffer_capacity {
+            let new_capacity = self.buffer_capacity * 2;
+            log::warn!(
+                "[BlurPerfect] Uniform buffer capacity exceeded ({} slots), expanding to {} slots",
+                self.buffer_capacity,
+                new_capacity
+            );
+
+            self.uniform_buffer = device.create_buffer(&BufferDescriptor {
+                label: Some("Blur Perfect Uniform Buffer (Expanded)"),
+                size: self.alignment * new_capacity,
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.buffer_capacity = new_capacity;
+        }
+
         // Acquire from pool
         let intermediate_pooled = pool.acquire(device, width, height, self.format, timestamp);
         let intermediate_view = &intermediate_pooled.view;
@@ -189,11 +227,16 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
             _padding: 0.0,
         };
 
-        let blur_params_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Blur Params Buffer"),
-            contents: bytemuck::bytes_of(&blur_params),
-            usage: BufferUsages::UNIFORM,
-        });
+        // Get current offset and increment
+        let offset = self.frame_offset;
+        self.frame_offset += self.alignment;
+
+        // Write to buffer at offset
+        queue.write_buffer(
+            &self.uniform_buffer,
+            offset,
+            bytemuck::bytes_of(&blur_params),
+        );
 
         // Pass 1: Horizontal Blur (input -> intermediate)
         {
@@ -211,7 +254,14 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
                     },
                     BindGroupEntry {
                         binding: 2,
-                        resource: blur_params_buffer.as_entire_binding(),
+                        resource: BindingResource::Buffer(BufferBinding {
+                            buffer: &self.uniform_buffer,
+                            offset,
+                            size: Some(
+                                std::num::NonZeroU64::new(std::mem::size_of::<BlurParams>() as u64)
+                                    .unwrap(),
+                            ),
+                        }),
                     },
                 ],
             });
@@ -253,7 +303,14 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
                     },
                     BindGroupEntry {
                         binding: 2,
-                        resource: blur_params_buffer.as_entire_binding(),
+                        resource: BindingResource::Buffer(BufferBinding {
+                            buffer: &self.uniform_buffer,
+                            offset,
+                            size: Some(
+                                std::num::NonZeroU64::new(std::mem::size_of::<BlurParams>() as u64)
+                                    .unwrap(),
+                            ),
+                        }),
                     },
                 ],
             });
@@ -280,5 +337,9 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
         }
 
         pool.return_texture(intermediate_pooled);
+    }
+
+    fn reset_frame(&mut self) {
+        self.frame_offset = 0;
     }
 }
