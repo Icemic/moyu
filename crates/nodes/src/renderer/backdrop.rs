@@ -239,11 +239,8 @@ impl Renderer for BackdropRenderer {
                 ],
             });
 
-            // destroy previous textures and buffer immediately
-            backdrop.source_view.take().map(|v| v.texture().destroy());
-            backdrop.final_view.take().map(|v| v.texture().destroy());
-            backdrop.buffer.take().map(|v| v.destroy());
-
+            // TODO: Call .destroy() on old textures to free memory immediately?
+            // But currently there may be pending references in the render queue.
             backdrop.source_view = Some(source_view);
             backdrop.final_view = Some(final_view);
             backdrop.buffer = Some(params_buffer);

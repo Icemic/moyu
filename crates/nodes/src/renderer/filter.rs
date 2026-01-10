@@ -254,11 +254,8 @@ impl Renderer for OffscreenPassRenderer {
                 ],
             });
 
-            // destroy previous textures and buffer immediately
-            filter.offscreen_view.take().map(|v| v.texture().destroy());
-            filter.final_view.take().map(|v| v.texture().destroy());
-            filter.buffer.take().map(|v| v.destroy());
-
+            // TODO: Call .destroy() on old textures to free memory immediately?
+            // But currently there may be pending references in the render queue.
             filter.offscreen_view = Some(offscreen_view);
             filter.final_view = Some(final_view);
             filter.rect = Some(rect);
