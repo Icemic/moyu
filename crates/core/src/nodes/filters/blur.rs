@@ -338,6 +338,7 @@ impl FilterRenderer for BlurFilterRenderer {
         filter: &FilterKind,
         width: u32,
         height: u32,
+        scale: f32,
         pool: &mut TexturePool,
         timestamp: f64,
     ) {
@@ -345,7 +346,7 @@ impl FilterRenderer for BlurFilterRenderer {
             return;
         };
 
-        let radius = *radius;
+        let radius = *radius * scale;
         let continuous = continuous.unwrap_or(false);
 
         if radius <= 0.0 {

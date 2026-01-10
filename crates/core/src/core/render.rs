@@ -18,7 +18,10 @@ use crate::core::NodeMap;
 use crate::core::render_command::RenderCommand;
 use crate::surface::create_wgpu_surface;
 use crate::traits::*;
-use crate::utils::coordinates::calculate_surface_physical_coordinates;
+use crate::utils::coordinates::{
+    calculate_surface_physical_coordinates,
+    calculate_surface_physical_coordinates_by_scale_and_translate,
+};
 use crate::utils::fps_meter::FpsMeter;
 use crate::utils::walk::walk_nodes_enter_leave;
 
@@ -819,11 +822,20 @@ impl Graphics {
                     }
 
                     // 计算捕获区域
+
+                    let (scale, tx, ty) = get_scale_and_translate(
+                        stage_logical_size.0,
+                        stage_logical_size.1,
+                        surface_logical_size.0,
+                        surface_logical_size.1,
+                    );
+
                     let (region_x, region_y, width, height) =
-                        calculate_surface_physical_coordinates(
+                        calculate_surface_physical_coordinates_by_scale_and_translate(
                             &region,
-                            stage_logical_size,
-                            surface_logical_size,
+                            scale,
+                            tx,
+                            ty,
                             scale_factor,
                         );
 
@@ -881,6 +893,7 @@ impl Graphics {
                             &filters,
                             width,
                             height,
+                            scale * scale_factor,
                             current_format.unwrap(),
                             &mut self.texture_pool.borrow_mut(),
                             timestamp,
@@ -964,12 +977,21 @@ impl Graphics {
                     // 从 scissor_stack 弹出离屏纹理的尺寸
                     scissor_stack.pop();
 
-                    let (_, _, w, h) = calculate_surface_physical_coordinates(
-                        &rect,
-                        stage_logical_size,
-                        surface_logical_size,
-                        scale_factor,
+                    let (scale, tx, ty) = get_scale_and_translate(
+                        stage_logical_size.0,
+                        stage_logical_size.1,
+                        surface_logical_size.0,
+                        surface_logical_size.1,
                     );
+
+                    let (_, _, w, h) =
+                        calculate_surface_physical_coordinates_by_scale_and_translate(
+                            &rect,
+                            scale,
+                            tx,
+                            ty,
+                            scale_factor,
+                        );
 
                     if !filters.is_empty() {
                         filter_registry.execute_filter_chain(
@@ -981,6 +1003,7 @@ impl Graphics {
                             &filters,
                             w,
                             h,
+                            scale * scale_factor,
                             current_format.unwrap(),
                             &mut self.texture_pool.borrow_mut(),
                             timestamp,

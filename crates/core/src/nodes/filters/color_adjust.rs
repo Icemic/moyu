@@ -149,6 +149,7 @@ impl FilterRenderer for ColorAdjustFilterRenderer {
         filter: &FilterKind,
         _width: u32,
         _height: u32,
+        _scale: f32,
         _pool: &mut TexturePool,
         _timestamp: f64,
     ) {
