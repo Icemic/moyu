@@ -41,6 +41,7 @@ impl FilterRegistry {
         filters: &[FilterKind],
         width: u32,
         height: u32,
+        scale: f32,
         format: TextureFormat,
         pool: &mut TexturePool,
         timestamp: f64,
@@ -83,7 +84,7 @@ impl FilterRegistry {
 
             if is_last {
                 renderer.execute(
-                    device, queue, encoder, src_view, output, filter, width, height, pool,
+                    device, queue, encoder, src_view, output, filter, width, height, scale, pool,
                     timestamp,
                 );
             } else {
@@ -97,6 +98,7 @@ impl FilterRegistry {
                     filter,
                     width,
                     height,
+                    scale,
                     pool,
                     timestamp,
                 );

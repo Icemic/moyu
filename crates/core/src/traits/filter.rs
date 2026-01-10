@@ -21,6 +21,7 @@ pub trait FilterRenderer {
         filter: &FilterKind,
         width: u32,
         height: u32,
+        scale: f32,
         pool: &mut TexturePool,
         timestamp: f64,
     );

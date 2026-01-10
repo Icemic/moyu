@@ -189,6 +189,7 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
         filter: &FilterKind,
         width: u32,
         height: u32,
+        scale: f32,
         pool: &mut TexturePool,
         timestamp: f64,
     ) {
@@ -198,6 +199,8 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
         if *radius <= 0.0 {
             return;
         }
+
+        let radius = radius * scale;
 
         // Check if we need to expand the buffer
         if self.frame_offset + self.alignment > self.alignment * self.buffer_capacity {
@@ -223,7 +226,7 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
 
         let blur_params = BlurParams {
             texel_size: [1.0 / width as f32, 1.0 / height as f32],
-            blur_radius: *radius,
+            blur_radius: radius,
             _padding: 0.0,
         };
 

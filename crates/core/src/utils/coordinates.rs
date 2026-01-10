@@ -54,6 +54,17 @@ pub fn calculate_surface_physical_coordinates(
         surface_logical_size.1,
     );
 
+    calculate_surface_physical_coordinates_by_scale_and_translate(rect, scale, tx, ty, scale_factor)
+}
+
+/// See `calculate_surface_physical_coordinates`
+pub fn calculate_surface_physical_coordinates_by_scale_and_translate(
+    rect: &Rect,
+    scale: f32,
+    tx: f32,
+    ty: f32,
+    scale_factor: f32,
+) -> (u32, u32, u32, u32) {
     let x = ((rect.x() * scale + tx) * scale_factor) as u32;
     let y = ((rect.y() * scale + ty) * scale_factor) as u32;
     let w = ((rect.width() * scale) * scale_factor) as u32;
