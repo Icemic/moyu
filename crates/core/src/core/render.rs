@@ -297,15 +297,7 @@ impl Graphics {
         }
 
         if self.need_reconfigure.swap(false, Ordering::Relaxed) {
-            let config = self.config.lock();
-            // Finish all queue commands before reconfigure.
-            // This is essential on DirectX 12 backend to avoid unexpected error.
-            self.instance.poll_all(true);
-            // apply new size
-            self.surface.configure(&self.device, &config);
-
-            // cleanup all pooled textures immediately
-            self.texture_pool.borrow_mut().cleanup(f64::MAX);
+            self.sender.send(RenderCommand::Reconfigure).unwrap();
         }
 
         let device = self.device.clone();
@@ -547,6 +539,28 @@ impl Graphics {
                     let v = o
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
+
+                    // Check if the actual texture size matches the expected size derived from update logic
+                    // If mismatch, it means the window has been resized but the update thread hasn't caught up,
+                    // or the reconfigure command hasn't been processed yet.
+                    // in this case, we should skip this frame to avoid texture out-of-bounds errors (e.g. CaptureBackdrop).
+                    let expected_width = (surface.0 * scale) as u32;
+                    let expected_height = (surface.1 * scale) as u32;
+
+                    if v.texture().width() != expected_width
+                        || v.texture().height() != expected_height
+                    {
+                        log::warn!(
+                            "Surface size mismatch, waiting for reconfiguration: \
+                            expected=({}, {}), actual=({}, {})",
+                            expected_width,
+                            expected_height,
+                            v.texture().width(),
+                            v.texture().height()
+                        );
+                        need_skip_current_frame = true;
+                        continue;
+                    }
 
                     scissor_stack.push([0, 0, v.texture().width(), v.texture().height()]);
 
@@ -920,6 +934,19 @@ impl Graphics {
                             },
                         );
                     }
+                }
+                RenderCommand::Reconfigure => {
+                    // Finish all queue commands before reconfigure.
+                    // This is essential on DirectX 12 backend to avoid unexpected error.
+                    self.instance.poll_all(true);
+
+                    // apply new size
+                    let config = self.config.lock();
+                    self.surface.configure(&self.device, &config);
+                    drop(config);
+
+                    // cleanup all pooled textures immediately
+                    self.texture_pool.borrow_mut().cleanup(f64::MAX);
                 }
                 RenderCommand::BeginOffscreenPass {
                     offscreen_view,

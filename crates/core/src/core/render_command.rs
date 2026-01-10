@@ -99,6 +99,8 @@ pub enum RenderCommand {
         rect: Rect,
         filters: Vec<FilterKind>,
     },
+
+    Reconfigure,
 }
 
 pub struct RenderQueue {
