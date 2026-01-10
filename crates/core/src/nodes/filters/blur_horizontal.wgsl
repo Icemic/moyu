@@ -50,7 +50,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     var total_weight = 0.0;
     
     // 计算 sigma（标准差）
-    let sigma = params.blur_radius / 3.0;
+    let sigma = params.blur_radius;
     let sigma_squared = sigma * sigma;
     let inv_two_sigma_sq = 1.0 / (2.0 * sigma_squared);
 
@@ -60,7 +60,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 
     // 2. 使用线性采样优化 (Linear Sampling Optimization)
     // 每 1 次采样可以覆盖 2 个像素的权重
-    let r = params.blur_radius;
+    let r = params.blur_radius * 3.0;
     for (var i = 1.0; i <= r; i += 2.0) {
         let w1 = exp(-(i * i) * inv_two_sigma_sq);
         let w2 = exp(-((i + 1.0) * (i + 1.0)) * inv_two_sigma_sq);
