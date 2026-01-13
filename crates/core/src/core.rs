@@ -1,8 +1,11 @@
+pub mod filter_registry;
 mod global;
 mod handle_events;
 mod keyboard_events;
 mod pointer_events;
 mod render;
+pub mod render_command;
+pub mod texture_pool;
 
 use arc_swap::{ArcSwap, ArcSwapOption};
 use dashmap::DashMap;
@@ -34,7 +37,8 @@ pub struct Core {
     pub(crate) window: Arc<Window>,
     pub(crate) graphics: ArcSwapOption<Graphics>,
     #[cfg(native)]
-    pub(crate) graphics_thread: ArcSwapOption<std::thread::JoinHandle<()>>,
+    pub(crate) graphics_thread:
+        ArcSwapOption<(std::thread::JoinHandle<()>, std::thread::JoinHandle<()>)>,
 
     plugins: DashMap<String, PluginLock>,
 
@@ -302,16 +306,17 @@ impl Core {
         ));
 
         let graphics = Arc::new(graphics);
+        let graphics2 = graphics.clone();
         self.graphics.store(Some(graphics.clone()));
 
-        let graphics_thread = std::thread::Builder::new()
+        let graphics_update_thread = std::thread::Builder::new()
             .name("graphics".to_string())
             .spawn(move || {
                 loop {
                     std::thread::park();
-                    if let Err(err) = graphics.render() {
+                    if let Err(err) = graphics.update() {
                         log::error!(
-                            "Error occurs on rendering, terminate graphics thread: {:?}",
+                            "Error occurs on graphic updating, terminate graphics thread: {:?}",
                             err
                         );
                         break;
@@ -320,7 +325,24 @@ impl Core {
             })
             .expect("Failed to start graphics thread");
 
-        self.graphics_thread.store(Some(Arc::new(graphics_thread)));
+        let graphics_render_thread = std::thread::Builder::new()
+            .name("graphics".to_string())
+            .spawn(move || {
+                if let Err(err) = graphics2.render(true) {
+                    log::error!(
+                        "Error occurs on graphic rendering, terminate graphics thread: {:?}",
+                        err
+                    );
+                } else {
+                    log::error!("Graphics render thread exited unexpectedly.");
+                }
+            })
+            .expect("Failed to start graphics thread");
+
+        self.graphics_thread.store(Some(Arc::new((
+            graphics_update_thread,
+            graphics_render_thread,
+        ))));
     }
 
     /// get whole node map

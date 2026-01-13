@@ -6,7 +6,6 @@ pub struct Texture {
     pub status: ArcSwap<TextureStatus>,
     pub texture: ArcSwapOption<wgpu::Texture>,
     pub view: ArcSwapOption<wgpu::TextureView>,
-    pub sampler: ArcSwapOption<wgpu::Sampler>,
 }
 
 impl Default for Texture {
@@ -21,7 +20,6 @@ impl Texture {
             status: ArcSwap::default(),
             texture: ArcSwapOption::default(),
             view: ArcSwapOption::default(),
-            sampler: ArcSwapOption::default(),
         }
     }
 
@@ -41,19 +39,21 @@ impl Texture {
         self.status.store(Arc::new(status));
     }
 
-    pub fn set_texture(
-        &self,
-        texture: wgpu::Texture,
-        view: wgpu::TextureView,
-        sampler: wgpu::Sampler,
-    ) {
+    pub fn set_texture(&self, texture: wgpu::Texture, view: wgpu::TextureView) {
         self.texture.store(Some(Arc::new(texture)));
         self.view.store(Some(Arc::new(view)));
-        self.sampler.store(Some(Arc::new(sampler)));
     }
 
     pub fn texture_unwrap(&self) -> Arc<wgpu::Texture> {
         self.texture.load().clone().unwrap()
+    }
+}
+
+impl Drop for Texture {
+    fn drop(&mut self) {
+        if let Some(texture) = self.texture.load().as_ref() {
+            texture.destroy();
+        }
     }
 }
 

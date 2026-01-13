@@ -6,7 +6,7 @@ use crate::{Gamepad, GamepadButton};
 
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", untagged)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub enum GamepadEvent {
     Connected {
         gamepad: Gamepad,

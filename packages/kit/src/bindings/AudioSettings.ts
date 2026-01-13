@@ -7,38 +7,38 @@ export type AudioSettings = {
   /**
    * Optional delay time in seconds before the audio starts playing.
    */
-  delayTime: number | null;
+  delayTime?: number;
   /**
    * The position in seconds where the audio should start playing.
    */
-  startPosition: number;
+  startPosition?: number;
   /**
    * Whether the sound should be played in reverse.
    */
-  reverse: boolean;
+  reverse?: boolean;
   /**
    * Loop region defined by a start and end time in seconds. `-1` for end means loop to the end of the audio.
    */
-  loopRegion: [number, number] | null;
+  loopRegion?: [number, number];
   /**
    * Volume of the audio, ranges from 0.0 (silence) to 1.0 (normal volume),
    * values greater than 1.0 can be used for amplification.
    */
-  volume: number;
+  volume?: number;
   /**
    * Playback rate of the audio, where 1.0 is normal speed.
    */
-  playbackRate: number;
+  playbackRate?: number;
   /**
    * Panning value from -1.0 (left) to 1.0 (right), with 0.0 being center.
    */
-  panning: number;
+  panning?: number;
   /**
    * Whether the audio should start playing automatically after loading.
    */
-  autoPlay: boolean;
+  autoPlay?: boolean;
   /**
    * Optional fade time in milliseconds for audio transitions.
    */
-  fadeTime: number | null;
+  fadeTime?: number;
 };

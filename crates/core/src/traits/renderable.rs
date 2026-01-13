@@ -29,4 +29,10 @@ pub struct RendererUpdatePayload {
     /// time since app start, in seconds
     pub timestamp: f64,
     pub resource_manager: Arc<ResourceManager>,
+    /// Surface logical size (width, height)
+    pub surface_logical_size: (f32, f32),
+    /// Stage logical size (width, height)
+    pub stage_logical_size: (f32, f32),
+    /// Scale factor (for DPI)
+    pub scale_factor: f32,
 }

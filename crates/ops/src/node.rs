@@ -13,11 +13,11 @@ use moyu_core::utils::convert::JSValue;
 use moyu_core::utils::convert::{from_js, to_js};
 #[cfg(native)]
 use moyu_macros::moyu_bindgen;
-use moyu_nodes::nodes::Sprite;
 #[cfg(feature = "text")]
 use moyu_nodes::nodes::Text;
 #[cfg(feature = "video")]
 use moyu_nodes::nodes::Video;
+use moyu_nodes::nodes::{Backdrop, Clip, Filter, Sprite};
 use moyu_pal::sync::RwLock;
 #[cfg(native)]
 use moyu_runtime::quickjs_rusty::{JSContext, RawJSValue};
@@ -58,6 +58,21 @@ pub fn create_instance(
         }
         "sprite" => {
             let n = Sprite::new(label);
+            node_id = *n.base().id();
+            node = Arc::new(RwLock::new(n));
+        }
+        "clip" => {
+            let n = Clip::new(label);
+            node_id = *n.base().id();
+            node = Arc::new(RwLock::new(n));
+        }
+        "filter" => {
+            let n = Filter::new(label);
+            node_id = *n.base().id();
+            node = Arc::new(RwLock::new(n));
+        }
+        "backdrop" => {
+            let n = Backdrop::new(label);
             node_id = *n.base().id();
             node = Arc::new(RwLock::new(n));
         }

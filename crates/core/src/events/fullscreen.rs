@@ -12,7 +12,7 @@ pub enum FullscreenEventKind {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub struct FullScreenEvent {
     pub kind: FullscreenEventKind,
 }
