@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove `path` field from AddStory command in Scenario plugin.
 - Make `NextLine` command in Scenario plugin async command.
 - Update `sixu` to 0.8.0 which introduces breaking changes in parsed command format.
+- Refactor all rendering pipelines to use the new RenderQueue architecture.
 
 ### Added
 
@@ -34,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `ts-rs` across multiple crates and update package.json for bindings generation
 - Add builtin WebSocket, `fetch`, dom (partly), etc. support in QuickJS environment on native platforms.
 - Support React hot reloading in development mode on native platforms.
+- Adds filters and backdrop-filters support via new RenderQueue architecture.
 
 ### Changed
 
