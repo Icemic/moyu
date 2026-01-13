@@ -18,6 +18,7 @@ var<uniform> mvp: MVPMatrix;
 struct BlitParams {
     position: vec2<f32>,
     size: vec2<f32>,
+    tint: vec4<f32>,
 };
 
 @group(1) @binding(0)
@@ -56,5 +57,6 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    return textureSample(texture_view, texture_sampler, input.uv);
+    let color = textureSample(texture_view, texture_sampler, input.uv);
+    return vec4<f32>(color.rgb * params.tint.rgb * params.tint.a, color.a * params.tint.a);
 }

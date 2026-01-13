@@ -6,13 +6,16 @@ use wgpu::util::DeviceExt;
 use wgpu::*;
 
 use moyu_core::core::render_command::RenderCommand;
-use moyu_core::traits::{Node, RenderCommandSender, Renderer, RendererUpdatePayload};
+use moyu_core::traits::{
+    Node, NodeBaseTrait, RenderCommandSender, Renderer, RendererUpdatePayload,
+};
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct BackdropParams {
     pub position: [f32; 2],
     pub size: [f32; 2],
+    pub tint: [f32; 4],
 }
 
 pub struct BackdropRenderer {
@@ -35,7 +38,7 @@ impl BackdropRenderer {
                 // BackdropParams uniform
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStages::VERTEX,
+                    visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -84,7 +87,7 @@ impl BackdropRenderer {
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
                     format: config.format,
-                    blend: Some(BlendState::ALPHA_BLENDING),
+                    blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
                 })],
                 compilation_options: Default::default(),
@@ -212,6 +215,12 @@ impl Renderer for BackdropRenderer {
             let params = BackdropParams {
                 position: [rect.x(), rect.y()],
                 size: [rect.width(), rect.height()],
+                tint: [
+                    backdrop.base().tint().r,
+                    backdrop.base().tint().g,
+                    backdrop.base().tint().b,
+                    backdrop.base().tint().a * backdrop.base().global_opacity(),
+                ],
             };
 
             let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -255,6 +264,12 @@ impl Renderer for BackdropRenderer {
                 let params = BackdropParams {
                     position: [rect.x(), rect.y()],
                     size: [rect.width(), rect.height()],
+                    tint: [
+                        backdrop.base().tint().r,
+                        backdrop.base().tint().g,
+                        backdrop.base().tint().b,
+                        backdrop.base().tint().a * backdrop.base().global_opacity(),
+                    ],
                 };
 
                 let buf = bytemuck::bytes_of(&params);
