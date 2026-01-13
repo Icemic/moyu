@@ -2,12 +2,12 @@
 import type { WindowState } from './WindowState';
 
 export type SystemCommand =
-  | { subCommand: 'setWindowSize'; width: number; height: number; factor: number | null }
+  | { subCommand: 'setWindowSize'; width: number; height: number; factor?: number }
   | { subCommand: 'setWindowState'; state: WindowState }
   | { subCommand: 'setTitle'; title: string }
   | { subCommand: 'getWindowState' }
   | { subCommand: 'getWindowInnerPosition' }
   | { subCommand: 'getWindowInnerSize' }
   | { subCommand: 'getStageSize' }
-  | { subCommand: 'takeSnapshot'; width: number | null; height: number | null; keepAspectRatio: boolean | null }
+  | { subCommand: 'takeSnapshot'; width?: number; height?: number; keepAspectRatio?: boolean }
   | { subCommand: 'quit' };
