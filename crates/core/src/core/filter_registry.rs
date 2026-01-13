@@ -59,11 +59,11 @@ impl FilterRegistry {
                 FilterKind::Blur { .. } => "blur",
                 FilterKind::Brightness { .. }
                 | FilterKind::Contrast { .. }
-                | FilterKind::Saturation { .. } => "color_adjust",
-                FilterKind::HueRotate { .. } => "hue_rotate",
-                FilterKind::Grayscale { .. } => "grayscale",
-                FilterKind::Sepia { .. } => "sepia",
-                FilterKind::Invert { .. } => "invert",
+                | FilterKind::Saturation { .. }
+                | FilterKind::HueRotate { .. }
+                | FilterKind::Grayscale { .. }
+                | FilterKind::Sepia { .. }
+                | FilterKind::Invert { .. } => "color-adjust",
                 FilterKind::Unknown => "unknown",
             };
 

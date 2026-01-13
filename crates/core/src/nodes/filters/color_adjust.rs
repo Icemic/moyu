@@ -6,11 +6,18 @@ use wgpu::*;
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct ColorAdjustParams {
-    brightness: f32,
-    contrast: f32,
-    saturation: f32,
-    _padding: f32,
+    amount: f32,
+    mode: u32,
+    _padding: [f32; 2],
 }
+
+const MODE_BRIGHTNESS: u32 = 0;
+const MODE_CONTRAST: u32 = 1;
+const MODE_SATURATION: u32 = 2;
+const MODE_HUE_ROTATE: u32 = 3;
+const MODE_GRAYSCALE: u32 = 4;
+const MODE_SEPIA: u32 = 5;
+const MODE_INVERT: u32 = 6;
 
 const INITIAL_CAPACITY: u64 = 16;
 
@@ -136,7 +143,7 @@ impl ColorAdjustFilterRenderer {
 
 impl FilterRenderer for ColorAdjustFilterRenderer {
     fn name(&self) -> &'static str {
-        "color_adjust"
+        "color-adjust"
     }
 
     fn execute(
@@ -171,18 +178,21 @@ impl FilterRenderer for ColorAdjustFilterRenderer {
             self.buffer_capacity = new_capacity;
         }
 
-        let (brightness, contrast, saturation) = match filter {
-            FilterKind::Brightness { amount } => (*amount, 1.0, 1.0),
-            FilterKind::Contrast { amount } => (1.0, *amount, 1.0),
-            FilterKind::Saturation { amount } => (1.0, 1.0, *amount),
-            _ => (1.0, 1.0, 1.0),
+        let (amount, mode) = match filter {
+            FilterKind::Brightness { amount } => (*amount, MODE_BRIGHTNESS),
+            FilterKind::Contrast { amount } => (*amount, MODE_CONTRAST),
+            FilterKind::Saturation { amount } => (*amount, MODE_SATURATION),
+            FilterKind::HueRotate { degrees } => (*degrees, MODE_HUE_ROTATE),
+            FilterKind::Grayscale { amount } => (*amount, MODE_GRAYSCALE),
+            FilterKind::Sepia { amount } => (*amount, MODE_SEPIA),
+            FilterKind::Invert { amount } => (*amount, MODE_INVERT),
+            _ => (0.0, 999), // Should not happen given registry mapping
         };
 
         let params = ColorAdjustParams {
-            brightness,
-            contrast,
-            saturation,
-            _padding: 0.0,
+            amount,
+            mode,
+            _padding: [0.0; 2],
         };
 
         // Get current offset and increment
