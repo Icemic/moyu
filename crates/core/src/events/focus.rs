@@ -12,7 +12,7 @@ pub enum FocusEventKind {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub struct FocusEvent {
     pub kind: FocusEventKind,
     pub target_id: u32,

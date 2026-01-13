@@ -9,7 +9,7 @@ pub struct DD;
 /// Custom event for user-defined events
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub struct CustomEvent<T>
 where
     T: TS + Send + 'static,

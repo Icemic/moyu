@@ -5,7 +5,7 @@ use crate::traits::Event;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 #[serde(tag = "kind", rename_all_fields = "camelCase")]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub enum NodeEvent {
     Destory { target_id: u32 },
 }

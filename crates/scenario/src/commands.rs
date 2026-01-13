@@ -16,7 +16,7 @@ use crate::ScenarioPlugin;
     tag = "subCommand"
 )]
 #[derive(TS)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 enum ScenarioCommand {
     /// Start a scenario by name
     AddStory {

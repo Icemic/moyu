@@ -6,7 +6,7 @@ use ts_rs::TS;
 
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", untagged)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub enum ScenarioEvent {
     CommandLine(ResolvedCommandLine),
     ExtraSystemCall(ResolvedSystemCallLine),

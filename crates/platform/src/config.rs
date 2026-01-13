@@ -19,7 +19,7 @@ static MOYU_ENV: OnceCell<MoyuConfig> = OnceCell::new();
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[derive(TS)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub enum WindowState {
     Idle,
     Maximized,
