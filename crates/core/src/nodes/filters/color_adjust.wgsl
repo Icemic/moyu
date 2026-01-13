@@ -37,7 +37,14 @@ struct ColorAdjustParams {
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let color = textureSample(source_texture, source_sampler, input.uv);
-    var rgb = color.rgb;
+
+    // Avoid division by zero
+    if (color.a <= 0.0) {
+        return vec4<f32>(0.0);
+    }
+
+    // Unpremultiply alpha
+    var rgb = color.rgb / color.a;
     
     // Brightness
     rgb = rgb * params.brightness;
