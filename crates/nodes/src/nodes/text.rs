@@ -59,7 +59,7 @@ pub struct Text {
 }
 
 /// Text print mode
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum TextPrintMode {
     /// print all text at once
@@ -102,8 +102,9 @@ impl Focusable for Text {}
  * FIXME: But `#[serde(flatten)]` works not quite well when there are more than one `#[serde(flatten)]` in a struct.
  * So we do it manually.
  */
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct TextProps {
     pub text: Option<String>,
     pub print_mode: Option<TextPrintMode>,
@@ -112,6 +113,7 @@ pub struct TextProps {
     /* layout styles */
     /// the writing direction of the text in the box,
     /// only `Horizontal` (right-to-left) or `Vertical` (top-to-bottom) is valid.
+    #[ts(type = "'horizontal' | 'vertical'", optional)]
     pub direction: Option<LayoutDirection>,
     /// the width of box.
     pub box_width: Option<f64>,
@@ -122,6 +124,7 @@ pub struct TextProps {
 
     /* text styles */
     pub font_size: Option<f64>,
+    #[ts(type = "string", optional)]
     pub fill_color: Option<Color>,
     pub line_height: Option<f64>,
     pub indent: Option<f64>,
@@ -129,9 +132,11 @@ pub struct TextProps {
     pub stroke: Option<bool>,
     pub shadow: Option<bool>,
 
+    #[ts(type = "string", optional)]
     pub stroke_color: Option<Color>,
     pub stroke_width: Option<f32>,
 
+    #[ts(type = "string", optional)]
     pub shadow_color: Option<Color>,
     pub shadow_offset_x: Option<f32>,
     pub shadow_offset_y: Option<f32>,
@@ -317,7 +322,7 @@ impl Node for Text {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "subCommand")]
 #[derive(TS)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub enum TextCommand {
     SetText { text: String, instant: Option<bool> },
     FinishPrinting,

@@ -48,7 +48,7 @@ impl Plugin for SystemPlugin {
     tag = "subCommand"
 )]
 #[derive(TS)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub enum SystemCommand {
     SetWindowSize {
         width: f64,

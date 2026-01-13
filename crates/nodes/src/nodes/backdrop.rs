@@ -6,6 +6,7 @@ use moyu_core::core::render_command::FilterKind;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js};
+use ts_rs::TS;
 
 #[derive(Debug, Node)]
 pub struct Backdrop {
@@ -64,8 +65,9 @@ impl Backdrop {
 
 impl Focusable for Backdrop {}
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct BackdropProps {
     pub filters: Option<Vec<FilterKind>>,
     pub width: Option<u32>,

@@ -6,6 +6,7 @@ use moyu_core::core::render_command::FilterKind;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js};
+use ts_rs::TS;
 
 #[derive(Debug, Node)]
 pub struct Filter {
@@ -64,9 +65,10 @@ impl Filter {
 
 impl Focusable for Filter {}
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-pub struct OffscreenPassProps {
+#[ts(export, optional_fields)]
+pub struct FilterProps {
     pub filters: Option<Vec<FilterKind>>,
     // pub width: Option<u32>,
     // pub height: Option<u32>,
@@ -79,7 +81,7 @@ impl Node for Filter {
     }
 
     fn update_properties(&mut self, props: &mut JSValue) {
-        let props: OffscreenPassProps = from_js(props).unwrap();
+        let props: FilterProps = from_js(props).unwrap();
 
         if let Some(filters) = props.filters {
             self.filters = filters;

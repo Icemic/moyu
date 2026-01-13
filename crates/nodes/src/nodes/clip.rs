@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js};
+use ts_rs::TS;
 
 #[derive(Debug, Default, Node)]
 pub struct Clip {
@@ -25,8 +26,9 @@ impl Clip {
 
 impl Focusable for Clip {}
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct ClipProps {
     pub width: Option<u32>,
     pub height: Option<u32>,

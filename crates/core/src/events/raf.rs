@@ -5,7 +5,7 @@ use crate::traits::Event;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub struct AnimationFrameCallbackEvent {
     pub timestamp: u32,
 }

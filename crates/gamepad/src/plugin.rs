@@ -225,7 +225,7 @@ impl Plugin for GamepadPlugin {
     tag = "subCommand"
 )]
 #[derive(TS)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 enum GamepadCommand {
     GetGamepads,
     /// see https://developer.mozilla.org/en-US/docs/Web/API/GamepadHapticActuator/playEffect
@@ -240,7 +240,7 @@ enum GamepadCommand {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 #[derive(TS)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 struct EffectParams {
     duration: u32,
     start_delay: u32,

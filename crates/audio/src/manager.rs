@@ -26,24 +26,30 @@ use crate::kira_static_data::from_boxed_media_source;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 #[derive(TS)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub struct AudioSettings {
     /// Optional delay time in seconds before the audio starts playing.
     pub delay_time: Option<f64>,
     /// The position in seconds where the audio should start playing.
+    #[ts(as = "Option<f64>")]
     pub start_position: f64,
     /// Whether the sound should be played in reverse.
+    #[ts(as = "Option<bool>")]
     pub reverse: bool,
     /// Loop region defined by a start and end time in seconds. `-1` for end means loop to the end of the audio.
     pub loop_region: Option<(f64, f64)>,
     /// Volume of the audio, ranges from 0.0 (silence) to 1.0 (normal volume),
     /// values greater than 1.0 can be used for amplification.
+    #[ts(as = "Option<f64>")]
     pub volume: f64,
     /// Playback rate of the audio, where 1.0 is normal speed.
+    #[ts(as = "Option<f64>")]
     pub playback_rate: f64,
     /// Panning value from -1.0 (left) to 1.0 (right), with 0.0 being center.
+    #[ts(as = "Option<f64>")]
     pub panning: f64,
     /// Whether the audio should start playing automatically after loading.
+    #[ts(as = "Option<bool>")]
     pub auto_play: bool,
     /// Optional fade time in milliseconds for audio transitions.
     pub fade_time: Option<u32>,
@@ -203,7 +209,7 @@ impl Plugin for AudioManager {
     tag = "subCommand"
 )]
 #[derive(TS)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub enum AudioCommand {
     Load {
         name: String,

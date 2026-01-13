@@ -4,7 +4,7 @@ use ts_rs::TS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 #[serde(untagged)]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub enum TextEvent {
     Start,
     Progress(f64),

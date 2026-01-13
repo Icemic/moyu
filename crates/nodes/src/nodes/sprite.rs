@@ -1,6 +1,7 @@
 use arc_swap::ArcSwapOption;
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use wgpu::Buffer;
 
 use moyu_core::nodes::NodeBase;
@@ -8,7 +9,7 @@ use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js};
 use moyu_resource::types::AssetId;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 pub enum SpriteMode {
     #[default]
@@ -16,7 +17,7 @@ pub enum SpriteMode {
     Nineslice,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 pub enum NineSliceMode {
     /// Stretch edge and center areas to fill the bounds.
@@ -83,8 +84,9 @@ impl Sprite {
 
 impl Focusable for Sprite {}
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct SpriteProps {
     pub src: Option<String>,
     pub mode: Option<SpriteMode>,

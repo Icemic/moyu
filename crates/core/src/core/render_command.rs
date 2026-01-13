@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use wgpu::{BindGroup, Buffer, RenderPipeline, TextureView};
 
 use crate::base::Rect;
 
 /// 滤镜配置（可序列化，用于 JS 互操作）
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "kebab-case")]
+#[ts(optional_fields)]
 pub enum FilterKind {
     BlurPerfect {
         radius: f32,
