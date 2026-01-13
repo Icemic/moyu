@@ -5,7 +5,7 @@ use crate::traits::Event;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export)]
+#[ts(export, optional_fields)]
 pub struct ResizeEvent {
     pub width: f64,
     pub height: f64,

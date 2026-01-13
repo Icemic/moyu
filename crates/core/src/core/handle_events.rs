@@ -48,14 +48,14 @@ impl Core {
                         }
 
                         #[cfg(native)]
-                        if let Some(handle) = self.graphics_thread.load().as_ref() {
-                            if handle.is_finished() {
+                        if let Some(handles) = self.graphics_thread.load().as_ref() {
+                            if handles.0.is_finished() {
                                 // detect graphics thread exit
                                 log::error!("Graphics thread exited unexpectedly.");
                                 event_loop.exit();
                             } else {
                                 // wake up graphics thread
-                                handle.thread().unpark();
+                                handles.0.thread().unpark();
                             }
                         } else {
                             // keep the loop running until the graphics thread is created
@@ -79,9 +79,15 @@ impl Core {
 
                         #[cfg(web)]
                         if let Some(graphics) = self.graphics.load().as_ref() {
-                            if let Err(err) = graphics.render() {
+                            if let Err(err) = graphics.update() {
                                 log::error!(
-                                    "Error occurs on rendering, terminate graphics thread: {:?}",
+                                    "Error occurs on graphic updating, terminate graphic updating thread: {:?}",
+                                    err
+                                );
+                            }
+                            if let Err(err) = graphics.render(false) {
+                                log::error!(
+                                    "Error occurs on graphic rendering, terminate graphic rendering thread: {:?}",
                                     err
                                 );
                             }

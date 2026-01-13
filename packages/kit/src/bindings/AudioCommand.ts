@@ -2,13 +2,13 @@
 import type { AudioSettings } from './AudioSettings';
 
 export type AudioCommand =
-  | { subCommand: 'load'; name: string; src: string; settings: AudioSettings | null }
+  | { subCommand: 'load'; name: string; src: string; settings?: AudioSettings }
   | { subCommand: 'release'; name: string }
-  | { subCommand: 'play'; name: string; fadeTime: number | null }
-  | { subCommand: 'stop'; name: string; fadeTime: number | null }
-  | { subCommand: 'pause'; name: string; fadeTime: number | null }
-  | { subCommand: 'resume'; name: string; fadeTime: number | null }
-  | { subCommand: 'setVolume'; name: string; volume: number; fadeTime: number | null }
+  | { subCommand: 'play'; name: string; fadeTime?: number }
+  | { subCommand: 'stop'; name: string; fadeTime?: number }
+  | { subCommand: 'pause'; name: string; fadeTime?: number }
+  | { subCommand: 'resume'; name: string; fadeTime?: number }
+  | { subCommand: 'setVolume'; name: string; volume: number; fadeTime?: number }
   | { subCommand: 'seekBy'; name: string; time: number }
   | { subCommand: 'seekTo'; name: string; time: number }
   | { subCommand: 'setPlaybackRate'; name: string; rate: number }

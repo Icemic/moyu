@@ -1,5 +1,6 @@
 use csscolorparser::Color;
 use log::warn;
+use ts_rs::TS;
 
 use crate::base::*;
 use crate::core::NodeLock;
@@ -314,6 +315,10 @@ impl NodeBase {
             }
         };
 
+        if let Some(label) = props.label {
+            self.label = label;
+        }
+
         if let Some(x) = props.x {
             self.set_x(x);
         }
@@ -493,9 +498,11 @@ impl NodeBase {
 }
 
 use serde::{Deserialize, Serialize};
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct NodeProps {
+    pub label: Option<String>,
     pub anchor: Option<[f32; 2]>,
     pub pivot: Option<[f32; 2]>,
     pub x: Option<f32>,
@@ -508,6 +515,7 @@ pub struct NodeProps {
     pub skew_x: Option<f32>,
     pub skew_y: Option<f32>,
     pub visible: Option<bool>,
+    #[ts(type = "string", optional)]
     pub tint: Option<Color>,
     pub opacity: Option<f32>,
     pub interactive: Option<bool>,

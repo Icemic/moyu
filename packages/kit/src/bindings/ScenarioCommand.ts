@@ -15,7 +15,7 @@ export type ScenarioCommand =
       /**
        * The entry point to start from
        */
-      entry: string | null;
+      entry?: string;
     }
   | { subCommand: 'terminateStory' }
   | { subCommand: 'nextLine' }
@@ -39,7 +39,7 @@ export type ScenarioCommand =
   | { subCommand: 'setPermanentVariables'; variables: { [key in string]?: JsonValue } }
   | { subCommand: 'getPermanentVariables' }
   | { subCommand: 'clearPermanentVariables' }
-  | { subCommand: 'saveGame'; name: string; extra: JsonValue | null }
+  | { subCommand: 'saveGame'; name: string; extra?: JsonValue }
   | {
       subCommand: 'loadGame';
       name: string;
@@ -56,5 +56,5 @@ export type ScenarioCommand =
       /**
        * matches the name of the game session
        */
-      pattern: string | null;
+      pattern?: string;
     };

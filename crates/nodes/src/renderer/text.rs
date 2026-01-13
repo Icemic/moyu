@@ -10,11 +10,11 @@ use moyu_pal::config::get_engine_config;
 use moyu_pal::dir::assets_dir;
 use moyu_pal::sync::Mutex;
 use wgpu::Texture;
-use wgpu::util::StagingBelt;
 use wgpu::{util::DeviceExt, *};
 
 use moyu_core::base::MVPMatrix;
-use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
+use moyu_core::core::render_command::RenderCommand;
+use moyu_core::traits::{Node, NodeBaseTrait, RenderCommandSender, RendererUpdatePayload};
 use moyu_core::traits::{NodeEventSource, Renderer};
 
 use crate::events::TextEvent;
@@ -210,8 +210,7 @@ impl TextRenderer {
         &self,
         device: &Device,
         _: &Queue,
-        encoder: &mut CommandEncoder,
-        staging_belt: &mut StagingBelt,
+        render_queue: &RenderCommandSender,
         node: &mut Text,
         last_index: usize,
         fade_from_index: Option<usize>,
@@ -321,24 +320,24 @@ impl TextRenderer {
 
             let buf_vertices = bytemuck::cast_slice(&vertices);
             let buf_indices = bytemuck::cast_slice(&indices);
-            staging_belt
-                .write_buffer(
-                    encoder,
-                    node.vertex_buffer.as_ref().unwrap(),
-                    0,
-                    (buf_vertices.len() as u64).try_into().unwrap(),
-                    device,
-                )
-                .copy_from_slice(buf_vertices);
-            staging_belt
-                .write_buffer(
-                    encoder,
-                    node.index_buffer.as_ref().unwrap(),
-                    0,
-                    (buf_indices.len() as u64).try_into().unwrap(),
-                    device,
-                )
-                .copy_from_slice(buf_indices);
+
+            render_queue
+                .send(RenderCommand::WriteBuffer {
+                    buffer: node.vertex_buffer.as_ref().unwrap().clone(),
+                    offset: 0,
+                    data: buf_vertices.to_vec(),
+                    use_staging_belt: true,
+                })
+                .unwrap();
+
+            render_queue
+                .send(RenderCommand::WriteBuffer {
+                    buffer: node.index_buffer.as_ref().unwrap().clone(),
+                    offset: 0,
+                    data: buf_indices.to_vec(),
+                    use_staging_belt: true,
+                })
+                .unwrap();
         }
     }
 
@@ -385,8 +384,7 @@ impl Renderer for TextRenderer {
         node: &mut dyn Node,
         device: &Device,
         queue: &Queue,
-        encoder: &mut CommandEncoder,
-        staging_belt: &mut StagingBelt,
+        render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     ) {
         // update only when huozi is ready
@@ -599,8 +597,7 @@ impl Renderer for TextRenderer {
             self.update_vertices(
                 device,
                 queue,
-                encoder,
-                staging_belt,
+                render_queue,
                 node,
                 index,
                 fade_from_index,
@@ -617,8 +614,7 @@ impl Renderer for TextRenderer {
             self.update_vertices(
                 device,
                 queue,
-                encoder,
-                staging_belt,
+                render_queue,
                 node,
                 node.glyph_vertices.len(),
                 None,
@@ -631,7 +627,7 @@ impl Renderer for TextRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn render(&self, _: &Device, _: &Queue, render_pass: &mut RenderPass, node: &dyn Node) {
+    fn collect_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender) {
         if !node.base().visible() {
             return;
         }
@@ -646,14 +642,17 @@ impl Renderer for TextRenderer {
             let index_buffer = node.index_buffer.as_ref().unwrap();
             let num_indices = node.num_indices;
 
-            render_pass.set_pipeline(self.render_pipeline());
-            render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-
-            render_pass.set_bind_group(1, &self.bind_group, &[]);
-            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-
-            // FIXME: NUM_INDICES depends on which renderer the child matches.
-            render_pass.draw_indexed(0..num_indices, 0, 0..1);
+            render_queue
+                .send(RenderCommand::Draw {
+                    pipeline: self.pipeline.clone(),
+                    bind_group: self.bind_group.clone(),
+                    extra_bind_groups: vec![],
+                    vertex_buffer: Some(vertex_buffer.clone()),
+                    index_buffer: Some(index_buffer.clone()),
+                    instance_buffer: None,
+                    count: num_indices,
+                })
+                .unwrap();
         }
     }
 }

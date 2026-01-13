@@ -1,7 +1,6 @@
-use wgpu::util::StagingBelt;
 use wgpu::*;
 
-use crate::traits::{Node, Renderer, RendererUpdatePayload};
+use crate::traits::{Node, RenderCommandSender, Renderer, RendererUpdatePayload};
 
 /// A renderer that does nothing.
 ///
@@ -32,8 +31,7 @@ impl Renderer for VoidRenderer {
         _: &mut dyn Node,
         _: &Device,
         _: &Queue,
-        _: &mut CommandEncoder,
-        _: &mut StagingBelt,
+        _: &RenderCommandSender,
         _: &RendererUpdatePayload,
     ) {
         // do nothing
@@ -42,5 +40,5 @@ impl Renderer for VoidRenderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
-    fn render(&self, _: &Device, _: &Queue, _: &mut RenderPass, _: &dyn Node) {}
+    fn collect_commands(&self, _: &dyn Node, _: &RenderCommandSender) {}
 }
