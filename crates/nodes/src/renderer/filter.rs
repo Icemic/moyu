@@ -4,7 +4,9 @@ use wgpu::util::DeviceExt;
 use wgpu::*;
 
 use moyu_core::core::render_command::RenderCommand;
-use moyu_core::traits::{Node, RenderCommandSender, Renderer, RendererUpdatePayload};
+use moyu_core::traits::{
+    Node, NodeBaseTrait, RenderCommandSender, Renderer, RendererUpdatePayload,
+};
 
 use crate::nodes::Filter;
 
@@ -13,6 +15,7 @@ use crate::nodes::Filter;
 pub struct FilterParams {
     pub position: [f32; 2],
     pub size: [f32; 2],
+    pub tint: [f32; 4],
 }
 
 pub struct OffscreenPassRenderer {
@@ -35,7 +38,7 @@ impl OffscreenPassRenderer {
                 // BackdropParams uniform
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStages::VERTEX,
+                    visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -84,7 +87,7 @@ impl OffscreenPassRenderer {
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
                     format: config.format,
-                    blend: Some(BlendState::ALPHA_BLENDING),
+                    blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
                 })],
                 compilation_options: Default::default(),
@@ -227,6 +230,12 @@ impl Renderer for OffscreenPassRenderer {
             let params = FilterParams {
                 position: [rect.x(), rect.y()],
                 size: [rect.width(), rect.height()],
+                tint: [
+                    filter.base().tint().r,
+                    filter.base().tint().g,
+                    filter.base().tint().b,
+                    filter.base().tint().a * filter.base().global_opacity(),
+                ],
             };
 
             let params_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -270,6 +279,12 @@ impl Renderer for OffscreenPassRenderer {
                 let params = FilterParams {
                     position: [rect.x(), rect.y()],
                     size: [rect.width(), rect.height()],
+                    tint: [
+                        filter.base().tint().r,
+                        filter.base().tint().g,
+                        filter.base().tint().b,
+                        filter.base().tint().a * filter.base().global_opacity(),
+                    ],
                 };
 
                 let buf = bytemuck::bytes_of(&params);
