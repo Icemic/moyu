@@ -56,6 +56,15 @@ impl Bound {
         Self::new(min_x, min_y, max_x, max_y)
     }
 
+    pub fn clamp(&self, min_x: f32, min_y: f32, max_x: f32, max_y: f32) -> Self {
+        let clamped_min_x = self.min_x().max(min_x);
+        let clamped_min_y = self.min_y().max(min_y);
+        let clamped_max_x = self.max_x().min(max_x);
+        let clamped_max_y = self.max_y().min(max_y);
+
+        Self::new(clamped_min_x, clamped_min_y, clamped_max_x, clamped_max_y)
+    }
+
     pub fn transform(&self, transform: &super::transform::Transform) -> Self {
         if self.is_empty() {
             return *self;
