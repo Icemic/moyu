@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use anyhow::Result;
 use log::error;
 use moyu_pal::config::get_engine_config;
+use moyu_pal::platform::show_fatal_error_and_exit;
 use moyu_pal::sync::Mutex;
 use moyu_pal::time::Instant;
 use moyu_resource::ResourceManager;
@@ -87,6 +88,11 @@ impl Graphics {
 
         let (instance, surface, device, queue, config) =
             create_wgpu_surface(window, &physical_size).await;
+
+        device.on_uncaptured_error(Arc::new(|error| {
+            log::error!("wgpu fatal error: {}", error);
+            show_fatal_error_and_exit("Fatal graphics error occurred. See log for details.");
+        }));
 
         let renderers = Arc::new(Mutex::new(HashMap::default()));
 
