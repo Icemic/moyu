@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Now every node has a `bounds` property representing its axis-aligned bounding box in local coordinates.
+- Catch uncaptured wgpu errors and show a fatal error message before exiting.
 
 ### Fixed
 
