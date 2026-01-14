@@ -44,6 +44,8 @@ pub struct NodeBase {
     interactive: bool,
     /// cursor style
     cursor: MoyuCursor,
+    /// AABB bounds of the node, relative to itself
+    bounds: Bound,
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
@@ -80,6 +82,7 @@ impl NodeBase {
             global_opacity: 1.0,
             interactive: true,
             cursor: MoyuCursor::default(),
+            bounds: Bound::default(),
 
             _update_id: 0,
             _current_update_id: 0,
@@ -180,6 +183,11 @@ impl NodeBase {
     #[inline]
     pub fn cursor(&self) -> &MoyuCursor {
         &self.cursor
+    }
+
+    #[inline]
+    pub fn bounds(&self) -> &Bound {
+        &self.bounds
     }
 
     #[inline]
@@ -443,6 +451,18 @@ impl NodeBase {
     }
 
     #[inline]
+    pub fn calculate_bounds(&mut self) {
+        let mut bounds = Bound::new(0.0, 0.0, self.width as f32, self.height as f32);
+        for child in &self.children {
+            let child_read = child.read();
+            let child_base = child_read.base();
+            let child_bounds = child_base.bounds().transform(child_base.transform());
+            bounds = bounds.union(&child_bounds);
+        }
+        self.bounds = bounds;
+    }
+
+    #[inline]
     pub fn update(&mut self, parent: &Self, force: bool) {
         if force || self._update_id != self._current_update_id {
             let x = self.translate.x;
@@ -453,15 +473,19 @@ impl NodeBase {
             let skew_x = self.skew.x;
             let skew_y = self.skew.y;
 
-            let width = self.width as f32;
-            let height = self.height as f32;
-            let parent_width = parent.width as f32;
-            let parent_height = parent.height as f32;
+            let bounds = &self.bounds;
 
-            let pivot_x = self.pivot.x * width;
-            let pivot_y = self.pivot.y * height;
-            let anchor_x = self.anchor.x * parent_width;
-            let anchor_y = self.anchor.y * parent_height;
+            let pivot_x = bounds.min_x() + self.pivot.x * bounds.width();
+            let pivot_y = bounds.min_y() + self.pivot.y * bounds.height();
+            // FIXME:
+            // Cannot use parent_bounds to calculate anchor, because anchor will in turn affect
+            // the calculation of parent_bounds, eventually forming a non-converging loop.
+            //
+            // However, using self width/height is not perfect either, because children may
+            // overflow the parent bounds, causing anchor misplacement.
+            //
+            let anchor_x = self.anchor.x * parent.width as f32;
+            let anchor_y = self.anchor.y * parent.height as f32;
 
             let a = (rotation + skew_y).cos() * scale_x;
             let b = (rotation + skew_y).sin() * scale_x;
