@@ -335,8 +335,7 @@ impl Graphics {
 
         {
             let root_node = self.node_map.get(&0).unwrap();
-            let root_node = root_node.read();
-
+            let mut root_node = root_node.upgradable_read();
             let upload_payload = RendererUpdatePayload {
                 timestamp,
                 resource_manager: self.resource_manager.clone(),
@@ -368,6 +367,11 @@ impl Graphics {
                     false
                 },
                 &mut |child, _| {
+                    {
+                        let mut _child = child.write();
+                        _child.base_mut().calculate_bounds();
+                    }
+
                     let _child = child.read();
                     let renderer_type = _child.renderer_type();
 
@@ -376,6 +380,8 @@ impl Graphics {
                     }
                 },
             );
+
+            root_node.with_upgraded(|n| n.base_mut().calculate_bounds());
         }
 
         self.sender

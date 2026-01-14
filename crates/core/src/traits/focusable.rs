@@ -10,7 +10,7 @@ pub trait Focusable: Node {
        Or, if it is not square, you may need to do something more complex to calculate the correct area.
     */
     fn contains(&self, x: f32, y: f32, _: &FocusablePayload) -> bool {
-        if x > 0. && x < *self.base().width() as f32 && y > 0. && y < *self.base().height() as f32 {
+        if self.base().bounds().contains(x, y) {
             return true;
         }
 
