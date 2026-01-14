@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Now every node has a `bounds` property representing its axis-aligned bounding box in local coordinates.
+
+### Fixed
+
+- Potential deadlock on hit testing.
+- Enhance rect calculation for `Clip` and `Backdrop` nodes.
+- `Filter` node uses bounds size to allocate offscreen texture instead of full canvas size.
+- Fix rendering crash when bounds of `Backdrop` node out of canvas.
+
+### Optimized
+
+- add RenderState for managing rendering state
+
+## [0.9.0] - 2026-01-13
+
 ### Breaking
 
 - Rename `name` to `key` in SetPermanentVariable and GetPermanentVariable (#37)
