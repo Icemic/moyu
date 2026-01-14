@@ -1,4 +1,4 @@
-use moyu_core::base::{MVPMatrix, Rect};
+use moyu_core::base::MVPMatrix;
 use moyu_core::utils::coordinates::calculate_surface_physical_coordinates;
 use wgpu::util::DeviceExt;
 use wgpu::*;
@@ -145,35 +145,26 @@ impl Renderer for OffscreenPassRenderer {
     ) {
         let filter = node.as_any_mut().downcast_mut::<Filter>().unwrap();
 
-        // Calculate the rect that covers the entire physical surface.
-        // We need to reverse the calculation in calculate_surface_physical_coordinates
-        // to ensure we get (0, 0, surface_width, surface_height) in physical coordinates.
-        use moyu_core::base::get_scale_and_translate;
-        let (scale, tx, ty) = get_scale_and_translate(
-            payload.stage_logical_size.0,
-            payload.stage_logical_size.1,
-            payload.surface_logical_size.0,
-            payload.surface_logical_size.1,
+        // Calculate the bounding box of the node by transforming its local bounds
+        // to stage logical coordinates and clipping to stage dimensions.
+        let bounds = filter
+            .base()
+            .bounds()
+            .transform(filter.base().global_transform());
+
+        let bounds = bounds.clamp(
+            0.0,
+            0.0,
+            payload.stage_logical_size.0 as f32,
+            payload.stage_logical_size.1 as f32,
         );
 
-        let rect = Rect::new(
-            -tx / scale,
-            -ty / scale,
-            payload.surface_logical_size.0 / scale,
-            payload.surface_logical_size.1 / scale,
-        );
+        if bounds.max_x() <= bounds.min_x() || bounds.max_y() <= bounds.min_y() {
+            filter.rect = None;
+            return;
+        }
 
-        // let rect = calculate_bounding_box(
-        //     filter,
-        //     payload.stage_logical_size.0,
-        //     payload.stage_logical_size.1,
-        // );
-
-        // if rect.is_none() {
-        //     return;
-        // }
-
-        // let rect = rect.unwrap();
+        let rect = bounds.into_rect();
 
         let (_, _, width, height) = calculate_surface_physical_coordinates(
             &rect,
