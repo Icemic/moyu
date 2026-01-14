@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Optimized
 
-- add RenderState for managing rendering state
+- Add RenderState for managing rendering state
+- Optimize RenderCommand collection by culling invisible nodes based on their global bounds
 
 ## [0.9.0] - 2026-01-13
 

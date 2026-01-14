@@ -343,6 +343,8 @@ impl Graphics {
                 scale_factor,
             };
 
+            let stage_bound = Bound::new(0., 0., stage_logical_size.0, stage_logical_size.1);
+
             walk_nodes_enter_leave(
                 &*root_node,
                 &mut |child, parent| {
@@ -350,6 +352,7 @@ impl Graphics {
                     _child.base_mut().update(parent.base(), false);
 
                     let renderer_type = _child.renderer_type();
+                    let mut collect_command = false;
 
                     if let Some(current_renderer) = self.renderers.lock().get_mut(renderer_type) {
                         current_renderer.update(
@@ -360,12 +363,15 @@ impl Graphics {
                             &upload_payload,
                         );
 
-                        current_renderer.collect_commands(&*_child, &self.sender);
+                        collect_command = _child.base().global_bounds().intersects(&stage_bound);
+                        if collect_command {
+                            current_renderer.collect_commands(&*_child, &self.sender);
+                        }
                     }
 
-                    false
+                    collect_command
                 },
-                &mut |child, _| {
+                &mut |child, _, collect_command| {
                     {
                         let mut _child = child.write();
                         _child.base_mut().calculate_bounds();
@@ -375,7 +381,9 @@ impl Graphics {
                     let renderer_type = _child.renderer_type();
 
                     if let Some(current_renderer) = self.renderers.lock().get(renderer_type) {
-                        current_renderer.collect_post_commands(&*_child, &self.sender);
+                        if collect_command {
+                            current_renderer.collect_post_commands(&*_child, &self.sender);
+                        }
                     }
                 },
             );
