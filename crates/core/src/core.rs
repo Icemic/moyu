@@ -311,7 +311,7 @@ impl Core {
         self.graphics.store(Some(graphics.clone()));
 
         let graphics_update_thread = std::thread::Builder::new()
-            .name("graphics".to_string())
+            .name("Graphic Update".to_string())
             .spawn(move || {
                 loop {
                     std::thread::park();
@@ -327,7 +327,7 @@ impl Core {
             .expect("Failed to start graphics thread");
 
         let graphics_render_thread = std::thread::Builder::new()
-            .name("graphics".to_string())
+            .name("Graphic Render".to_string())
             .spawn(move || {
                 if let Err(err) = graphics2.render(true) {
                     log::error!(
