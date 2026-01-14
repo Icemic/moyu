@@ -1,3 +1,4 @@
+mod bound;
 mod cursor;
 mod mvp_matrix;
 mod point;
@@ -7,6 +8,7 @@ mod surface_size;
 mod transform;
 mod vertex;
 
+pub use bound::*;
 pub use cursor::*;
 pub use mvp_matrix::*;
 pub use point::*;
