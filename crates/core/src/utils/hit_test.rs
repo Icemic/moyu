@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use glam::vec3a;
 
 use crate::core::NodeLock;
@@ -13,7 +15,7 @@ pub struct HitTestTarget {
 
 impl PartialEq for HitTestTarget {
     fn eq(&self, other: &Self) -> bool {
-        self.node.read().base().id() == other.node.read().base().id()
+        Arc::ptr_eq(&self.node, &other.node)
     }
 }
 
