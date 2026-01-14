@@ -962,7 +962,7 @@ impl Graphics {
                         drop(pass);
                     }
 
-                    let (_, _, w, h) = calculate_surface_physical_coordinates(
+                    let (px, py, w, h) = calculate_surface_physical_coordinates(
                         &rect,
                         stage_logical_size,
                         surface_logical_size,
