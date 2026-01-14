@@ -1,7 +1,5 @@
 use moyu_core::base::MVPMatrix;
-use moyu_core::utils::coordinates::{
-    calculate_bounding_box, calculate_surface_physical_coordinates,
-};
+use moyu_core::utils::coordinates::calculate_surface_physical_coordinates;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
@@ -147,17 +145,11 @@ impl Renderer for BackdropRenderer {
 
         let backdrop = node.as_any_mut().downcast_mut::<Backdrop>().unwrap();
 
-        let rect = calculate_bounding_box(
-            backdrop,
-            payload.stage_logical_size.0,
-            payload.stage_logical_size.1,
-        );
-
-        if rect.is_none() {
-            return;
-        }
-
-        let rect = rect.unwrap();
+        let rect = backdrop
+            .base()
+            .bounds()
+            .transform(backdrop.base().global_transform())
+            .into_rect();
 
         let (_, _, width, height) = calculate_surface_physical_coordinates(
             &rect,
