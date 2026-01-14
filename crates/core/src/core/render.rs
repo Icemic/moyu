@@ -325,8 +325,6 @@ impl Graphics {
 
         self.sender
             .send(RenderCommand::BeginFrame {
-                // output,
-                // view,
                 timestamp,
                 surface_logical_size,
                 stage_logical_size,
@@ -443,14 +441,6 @@ impl Graphics {
         let mut staging_belt = self.staging_belt.borrow_mut();
 
         let mut current_pass: Option<wgpu::RenderPass> = None;
-
-        // Execute commands
-        // let mut scissor_stack = vec![];
-        // let mut offscreen_stack: Vec<(wgpu::TextureView, (u32, u32), [f32; 4])> = Vec::new();
-        // let mut current_offscreen_offset = (0u32, 0u32);
-        // let mut current_viewport = [0.0f32, 0.0, 0.0, 0.0];
-        // let mut current_view = None;
-        // let mut current_format = None;
 
         let mut state = RenderState::default();
 
@@ -578,18 +568,10 @@ impl Graphics {
                         continue;
                     }
 
-                    // scissor_stack.push([0, 0, v.texture().width(), v.texture().height()]);
-
                     output = Some(o);
-                    // current_format = Some(v.texture().format());
-                    // current_view = Some(v);
                     surface_logical_size = surface;
                     stage_logical_size = stage;
                     scale_factor = scale;
-
-                    // offscreen_stack.clear();
-                    // current_offscreen_offset = (0, 0);
-                    // current_viewport = [0.0, 0.0, surface.0 * scale, surface.1 * scale];
 
                     state.reset(
                         [0, 0, v.texture().width(), v.texture().height()],
@@ -603,7 +585,6 @@ impl Graphics {
                 }
                 RenderCommand::EndFrame { timestamp: _ } => {
                     draw_count = 0;
-                    // scissor_stack.pop();
 
                     drop(current_pass.take());
 
@@ -791,29 +772,6 @@ impl Graphics {
                         scale_factor,
                     );
 
-                    // 转换为相对于当前视图的坐标
-                    // let x = (x as i32 - current_offscreen_offset.0 as i32) as i32;
-                    // let y = (y as i32 - current_offscreen_offset.1 as i32) as i32;
-
-                    // let current = scissor_stack.last().unwrap();
-                    // let new_x = x.max(current[0] as i32);
-                    // let new_y = y.max(current[1] as i32);
-                    // let new_right = (x + w as i32).min((current[0] + current[2]) as i32);
-                    // let new_bottom = (y + h as i32).min((current[1] + current[3]) as i32);
-
-                    // let new_w = (new_right - new_x).max(0) as u32;
-                    // let new_h = (new_bottom - new_y).max(0) as u32;
-                    // let new_x = new_x.max(0) as u32;
-                    // let new_y = new_y.max(0) as u32;
-
-                    // if new_w > 0 && new_h > 0 {
-                    //     scissor_stack.push([new_x, new_y, new_w, new_h]);
-                    //     render_pass.set_scissor_rect(new_x, new_y, new_w, new_h);
-                    // } else {
-                    //     scissor_stack.push([new_x, new_y, 0, 0]);
-                    //     render_pass.set_scissor_rect(0, 0, 1, 1);
-                    // }
-
                     let rect = state.push_scissor_rect(x as i32, y as i32, w as i32, h as i32);
                     render_pass.set_scissor_rect(rect.0, rect.1, rect.2, rect.3);
                 }
@@ -908,7 +866,6 @@ impl Graphics {
                             width,
                             height
                         );
-                        // continue;
                     }
 
                     // 2. 复制 output texture 的指定区域到临时纹理
@@ -1003,28 +960,6 @@ impl Graphics {
                         scale_factor,
                     );
 
-                    // // 保存当前视图、偏移和视口到栈
-                    // offscreen_stack.push((
-                    //     current_view.as_ref().cloned().unwrap().clone(),
-                    //     current_offscreen_offset,
-                    //     current_viewport,
-                    // ));
-
-                    // // 更新为新的离屏状态
-                    // current_offscreen_offset = (px, py);
-                    // current_viewport = [
-                    //     -(px as f32),
-                    //     -(py as f32),
-                    //     surface_logical_size.0 * scale_factor,
-                    //     surface_logical_size.1 * scale_factor,
-                    // ];
-
-                    // // 将离屏纹理的尺寸压入 scissor_stack
-                    // scissor_stack.push([0, 0, w, h]);
-
-                    // // 更新当前视图为离屏目标
-                    // current_view = Some(offscreen_view.clone());
-
                     state.push_offscreen_state(
                         [0, 0, w, h],
                         (px, py),
@@ -1060,20 +995,6 @@ impl Graphics {
                     if let Some(pass) = current_pass.take() {
                         drop(pass);
                     }
-
-                    // // 从栈中恢复之前的视图和纹理信息
-                    // let Some((prev_view, prev_offset, prev_viewport)) = offscreen_stack.pop()
-                    // else {
-                    //     log::error!("EndOffscreenPass: stack underflow");
-                    //     continue;
-                    // };
-
-                    // current_view = Some(prev_view);
-                    // current_offscreen_offset = prev_offset;
-                    // current_viewport = prev_viewport;
-
-                    // // 从 scissor_stack 弹出离屏纹理的尺寸
-                    // scissor_stack.pop();
 
                     state.pop_offscreen_state();
 
