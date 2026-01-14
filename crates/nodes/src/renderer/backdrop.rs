@@ -145,11 +145,24 @@ impl Renderer for BackdropRenderer {
 
         let backdrop = node.as_any_mut().downcast_mut::<Backdrop>().unwrap();
 
-        let rect = backdrop
+        let bounds = backdrop
             .base()
             .bounds()
-            .transform(backdrop.base().global_transform())
-            .into_rect();
+            .transform(backdrop.base().global_transform());
+
+        let bounds = bounds.clamp(
+            0.,
+            0.,
+            payload.stage_logical_size.0 as f32,
+            payload.stage_logical_size.1 as f32,
+        );
+
+        if bounds.max_x() <= bounds.min_x() || bounds.max_y() <= bounds.min_y() {
+            backdrop.rect = None;
+            return;
+        }
+
+        let rect = bounds.into_rect();
 
         let (_, _, width, height) = calculate_surface_physical_coordinates(
             &rect,
