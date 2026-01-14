@@ -34,6 +34,8 @@ impl Renderer for ClipRenderer {
         _render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     ) {
+        // Calculate clip rect.
+        // Cannot use node.bounds() since we need to limit to our width/height.
         let rect = calculate_bounding_box(
             node,
             payload.stage_logical_size.0,
