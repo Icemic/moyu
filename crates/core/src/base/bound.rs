@@ -3,6 +3,8 @@ use std::ops::{Deref, DerefMut};
 use bytemuck::Zeroable;
 use glam::{Vec4, vec3a, vec4};
 
+use crate::base::Rect;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Zeroable)]
 pub struct Bound {
@@ -71,6 +73,10 @@ impl Bound {
 
         Self::new(min_x, min_y, max_x, max_y)
     }
+
+    pub fn into_rect(&self) -> Rect {
+        self.into()
+    }
 }
 
 impl Default for Bound {
@@ -90,5 +96,27 @@ impl Deref for Bound {
 impl DerefMut for Bound {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.vec4
+    }
+}
+
+impl From<Rect> for Bound {
+    fn from(rect: Rect) -> Self {
+        Self::new(
+            rect.x(),
+            rect.y(),
+            rect.x() + rect.width(),
+            rect.y() + rect.height(),
+        )
+    }
+}
+
+impl From<&Rect> for Bound {
+    fn from(rect: &Rect) -> Self {
+        Self::new(
+            rect.x(),
+            rect.y(),
+            rect.x() + rect.width(),
+            rect.y() + rect.height(),
+        )
     }
 }
