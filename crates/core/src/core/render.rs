@@ -16,6 +16,7 @@ use winit::window::Window;
 use crate::base::*;
 use crate::core::NodeMap;
 use crate::core::render_command::RenderCommand;
+use crate::core::render_state::RenderState;
 use crate::surface::create_wgpu_surface;
 use crate::traits::*;
 use crate::utils::coordinates::{
@@ -409,10 +410,11 @@ impl Graphics {
         fn begin_main_render_pass<'a>(
             encoder: &'a mut wgpu::CommandEncoder,
             view: &'a wgpu::TextureView,
+            viewport: [f32; 4],
             clear_color: wgpu::Color,
             clear: bool,
         ) -> wgpu::RenderPass<'static> {
-            encoder
+            let mut pass = encoder
                 .begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Render Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -431,7 +433,11 @@ impl Graphics {
                     depth_stencil_attachment: None,
                     ..Default::default()
                 })
-                .forget_lifetime()
+                .forget_lifetime();
+
+            pass.set_viewport(viewport[0], viewport[1], viewport[2], viewport[3], 0.0, 1.0);
+
+            pass
         }
 
         let mut staging_belt = self.staging_belt.borrow_mut();
@@ -439,10 +445,14 @@ impl Graphics {
         let mut current_pass: Option<wgpu::RenderPass> = None;
 
         // Execute commands
-        let mut scissor_stack = vec![];
-        let mut offscreen_stack: Vec<wgpu::TextureView> = Vec::new();
-        let mut current_view = None;
-        let mut current_format = None;
+        // let mut scissor_stack = vec![];
+        // let mut offscreen_stack: Vec<(wgpu::TextureView, (u32, u32), [f32; 4])> = Vec::new();
+        // let mut current_offscreen_offset = (0u32, 0u32);
+        // let mut current_viewport = [0.0f32, 0.0, 0.0, 0.0];
+        // let mut current_view = None;
+        // let mut current_format = None;
+
+        let mut state = RenderState::default();
 
         let mut encoder = None;
 
@@ -568,21 +578,32 @@ impl Graphics {
                         continue;
                     }
 
-                    scissor_stack.push([0, 0, v.texture().width(), v.texture().height()]);
+                    // scissor_stack.push([0, 0, v.texture().width(), v.texture().height()]);
 
                     output = Some(o);
-                    current_format = Some(v.texture().format());
-                    current_view = Some(v);
+                    // current_format = Some(v.texture().format());
+                    // current_view = Some(v);
                     surface_logical_size = surface;
                     stage_logical_size = stage;
                     scale_factor = scale;
+
+                    // offscreen_stack.clear();
+                    // current_offscreen_offset = (0, 0);
+                    // current_viewport = [0.0, 0.0, surface.0 * scale, surface.1 * scale];
+
+                    state.reset(
+                        [0, 0, v.texture().width(), v.texture().height()],
+                        surface.0 * scale,
+                        surface.1 * scale,
+                        v,
+                    );
 
                     // Reset all filter renderers' frame-local state
                     filter_registry.reset_all_frames();
                 }
                 RenderCommand::EndFrame { timestamp: _ } => {
                     draw_count = 0;
-                    scissor_stack.pop();
+                    // scissor_stack.pop();
 
                     drop(current_pass.take());
 
@@ -705,7 +726,8 @@ impl Graphics {
                     if need_create_pass {
                         current_pass = Some(begin_main_render_pass(
                             &mut encoder.as_mut().unwrap(),
-                            &current_view.as_ref().cloned().unwrap(),
+                            &state.get_current_view().unwrap(),
+                            state.get_current_viewport(),
                             color,
                             false,
                         ));
@@ -717,7 +739,7 @@ impl Graphics {
                         render_pass.set_bind_group(0, &self.mvp_bind_group, &[]);
                     }
 
-                    if let Some(rect) = scissor_stack.last() {
+                    if let Some(rect) = state.get_current_scissor_rect() {
                         let w = rect[2].max(1);
                         let h = rect[3].max(1);
                         render_pass.set_scissor_rect(rect[0], rect[1], w, h);
@@ -748,7 +770,8 @@ impl Graphics {
                     if current_pass.is_none() {
                         current_pass = Some(begin_main_render_pass(
                             &mut encoder.as_mut().unwrap(),
-                            &current_view.as_ref().cloned().unwrap(),
+                            &state.get_current_view().unwrap(),
+                            state.get_current_viewport(),
                             color,
                             false,
                         ));
@@ -768,31 +791,42 @@ impl Graphics {
                         scale_factor,
                     );
 
-                    let current = scissor_stack.last().unwrap();
-                    let new_x = x.max(current[0]);
-                    let new_y = y.max(current[1]);
-                    let new_right = (x + w).min(current[0] + current[2]);
-                    let new_bottom = (y + h).min(current[1] + current[3]);
+                    // 转换为相对于当前视图的坐标
+                    // let x = (x as i32 - current_offscreen_offset.0 as i32) as i32;
+                    // let y = (y as i32 - current_offscreen_offset.1 as i32) as i32;
 
-                    let new_w = new_right.saturating_sub(new_x);
-                    let new_h = new_bottom.saturating_sub(new_y);
+                    // let current = scissor_stack.last().unwrap();
+                    // let new_x = x.max(current[0] as i32);
+                    // let new_y = y.max(current[1] as i32);
+                    // let new_right = (x + w as i32).min((current[0] + current[2]) as i32);
+                    // let new_bottom = (y + h as i32).min((current[1] + current[3]) as i32);
 
-                    if new_w > 0 && new_h > 0 {
-                        scissor_stack.push([new_x, new_y, new_w, new_h]);
-                        render_pass.set_scissor_rect(new_x, new_y, new_w, new_h);
-                    } else {
-                        scissor_stack.push([new_x, new_y, 0, 0]);
-                        render_pass.set_scissor_rect(0, 0, 1, 1);
-                    }
+                    // let new_w = (new_right - new_x).max(0) as u32;
+                    // let new_h = (new_bottom - new_y).max(0) as u32;
+                    // let new_x = new_x.max(0) as u32;
+                    // let new_y = new_y.max(0) as u32;
+
+                    // if new_w > 0 && new_h > 0 {
+                    //     scissor_stack.push([new_x, new_y, new_w, new_h]);
+                    //     render_pass.set_scissor_rect(new_x, new_y, new_w, new_h);
+                    // } else {
+                    //     scissor_stack.push([new_x, new_y, 0, 0]);
+                    //     render_pass.set_scissor_rect(0, 0, 1, 1);
+                    // }
+
+                    let rect = state.push_scissor_rect(x as i32, y as i32, w as i32, h as i32);
+                    render_pass.set_scissor_rect(rect.0, rect.1, rect.2, rect.3);
                 }
                 RenderCommand::EndClip => {
-                    scissor_stack.pop();
-                    if let Some(rect) = scissor_stack.last() {
+                    // scissor_stack.pop();
+                    state.pop_scissor_rect();
+                    if let Some(rect) = state.get_current_scissor_rect() {
                         // 确保有活动的 pass
                         if current_pass.is_none() {
                             current_pass = Some(begin_main_render_pass(
                                 &mut encoder.as_mut().unwrap(),
-                                &current_view.as_ref().cloned().unwrap(),
+                                &state.get_current_view().unwrap(),
+                                state.get_current_viewport(),
                                 color,
                                 false,
                             ));
@@ -914,7 +948,7 @@ impl Graphics {
                             width,
                             height,
                             scale * scale_factor,
-                            current_format.unwrap(),
+                            state.get_current_format().unwrap(),
                             &mut self.texture_pool.borrow_mut(),
                             timestamp,
                         );
@@ -969,21 +1003,49 @@ impl Graphics {
                         scale_factor,
                     );
 
-                    // 保存当前视图和 offscreen 纹理引用到栈
-                    offscreen_stack.push(current_view.as_ref().cloned().unwrap().clone());
+                    // // 保存当前视图、偏移和视口到栈
+                    // offscreen_stack.push((
+                    //     current_view.as_ref().cloned().unwrap().clone(),
+                    //     current_offscreen_offset,
+                    //     current_viewport,
+                    // ));
 
-                    // 将离屏纹理的尺寸压入 scissor_stack
-                    scissor_stack.push([0, 0, w, h]);
+                    // // 更新为新的离屏状态
+                    // current_offscreen_offset = (px, py);
+                    // current_viewport = [
+                    //     -(px as f32),
+                    //     -(py as f32),
+                    //     surface_logical_size.0 * scale_factor,
+                    //     surface_logical_size.1 * scale_factor,
+                    // ];
 
-                    // 更新当前视图为离屏目标
-                    current_view = Some(offscreen_view.clone());
+                    // // 将离屏纹理的尺寸压入 scissor_stack
+                    // scissor_stack.push([0, 0, w, h]);
+
+                    // // 更新当前视图为离屏目标
+                    // current_view = Some(offscreen_view.clone());
+
+                    state.push_offscreen_state(
+                        [0, 0, w, h],
+                        (px, py),
+                        [
+                            -(px as f32),
+                            -(py as f32),
+                            surface_logical_size.0 * scale_factor,
+                            surface_logical_size.1 * scale_factor,
+                        ],
+                        offscreen_view.clone(),
+                    );
+
                     // 开始新的 pass（清屏）
                     current_pass = Some(begin_main_render_pass(
                         &mut encoder.as_mut().unwrap(),
-                        &current_view.as_ref().cloned().unwrap(),
+                        &state.get_current_view().unwrap(),
+                        state.get_current_viewport(),
                         wgpu::Color::TRANSPARENT,
                         true,
                     ));
+
                     current_pass
                         .as_mut()
                         .unwrap()
@@ -999,16 +1061,21 @@ impl Graphics {
                         drop(pass);
                     }
 
-                    // 从栈中恢复之前的视图和纹理信息
-                    let Some(prev_view) = offscreen_stack.pop() else {
-                        log::error!("EndOffscreenPass: stack underflow");
-                        continue;
-                    };
+                    // // 从栈中恢复之前的视图和纹理信息
+                    // let Some((prev_view, prev_offset, prev_viewport)) = offscreen_stack.pop()
+                    // else {
+                    //     log::error!("EndOffscreenPass: stack underflow");
+                    //     continue;
+                    // };
 
-                    current_view = Some(prev_view);
+                    // current_view = Some(prev_view);
+                    // current_offscreen_offset = prev_offset;
+                    // current_viewport = prev_viewport;
 
-                    // 从 scissor_stack 弹出离屏纹理的尺寸
-                    scissor_stack.pop();
+                    // // 从 scissor_stack 弹出离屏纹理的尺寸
+                    // scissor_stack.pop();
+
+                    state.pop_offscreen_state();
 
                     let (scale, tx, ty) = get_scale_and_translate(
                         stage_logical_size.0,
@@ -1037,7 +1104,7 @@ impl Graphics {
                             w,
                             h,
                             scale * scale_factor,
-                            current_format.unwrap(),
+                            state.get_current_format().unwrap(),
                             &mut self.texture_pool.borrow_mut(),
                             timestamp,
                         );
@@ -1066,10 +1133,12 @@ impl Graphics {
                     // 重新开始主 pass
                     current_pass = Some(begin_main_render_pass(
                         &mut encoder.as_mut().unwrap(),
-                        &current_view.as_ref().cloned().unwrap(),
+                        &state.get_current_view().unwrap(),
+                        state.get_current_viewport(),
                         color,
                         false,
                     ));
+
                     current_pass
                         .as_mut()
                         .unwrap()
