@@ -29,32 +29,24 @@ where
 }
 
 /// walk through all node-like ones from top to bottom with enter and leave callbacks
-pub fn walk_nodes_enter_leave<E, L>(root_node: &dyn Node, enter: &mut E, leave: &mut L) -> bool
+pub fn walk_nodes_enter_leave<E, L, R>(root_node: &dyn Node, enter: &mut E, leave: &mut L)
 where
-    E: FnMut(NodeLock, &dyn Node) -> bool,
-    L: FnMut(NodeLock, &dyn Node),
+    E: FnMut(NodeLock, &dyn Node) -> R,
+    L: FnMut(NodeLock, &dyn Node, R),
 {
     let children = root_node.base().children();
     for child in children.iter() {
-        let should_end = enter(child.clone(), root_node);
-
-        if should_end {
-            return true;
-        }
+        let r = enter(child.clone(), root_node);
 
         {
             let child_ref = child.read();
             if !child_ref.base().children().is_empty() && child_ref.base().visible() {
-                let should_end = walk_nodes_enter_leave(&*child_ref, enter, leave);
-                if should_end {
-                    return true;
-                }
+                walk_nodes_enter_leave(&*child_ref, enter, leave);
             }
         }
 
-        leave(child.clone(), root_node);
+        leave(child.clone(), root_node, r);
     }
-    false
 }
 
 /// walk through all node-like ones from bottom to top,

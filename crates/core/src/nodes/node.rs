@@ -46,6 +46,8 @@ pub struct NodeBase {
     cursor: MoyuCursor,
     /// AABB bounds of the node, relative to itself
     bounds: Bound,
+    /// AABB bounds of the node, relative to global(stage)
+    global_bounds: Bound,
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
@@ -83,6 +85,7 @@ impl NodeBase {
             interactive: true,
             cursor: MoyuCursor::default(),
             bounds: Bound::default(),
+            global_bounds: Bound::default(),
 
             _update_id: 0,
             _current_update_id: 0,
@@ -188,6 +191,11 @@ impl NodeBase {
     #[inline]
     pub fn bounds(&self) -> &Bound {
         &self.bounds
+    }
+
+    #[inline]
+    pub fn global_bounds(&self) -> &Bound {
+        &self.global_bounds
     }
 
     #[inline]
@@ -460,6 +468,7 @@ impl NodeBase {
             bounds = bounds.union(&child_bounds);
         }
         self.bounds = bounds;
+        self.global_bounds = bounds.transform(&self.global_transform);
     }
 
     #[inline]

@@ -47,6 +47,13 @@ impl Bound {
         x >= self.min_x() && x <= self.max_x() && y >= self.min_y() && y <= self.max_y()
     }
 
+    pub fn intersects(&self, other: &Self) -> bool {
+        !(self.max_x() < other.min_x()
+            || self.min_x() > other.max_x()
+            || self.max_y() < other.min_y()
+            || self.min_y() > other.max_y())
+    }
+
     pub fn union(&self, other: &Self) -> Self {
         let min_x = self.min_x().min(other.min_x());
         let min_y = self.min_y().min(other.min_y());
