@@ -9,4 +9,6 @@ applyTo: '**'
 - Be wise about performance implications when making changes.
 - Decline changes and provide detailed explanations when requirements are contradictory.
 - Read the codebase before making changes to avoid creating duplicate content.
-- You will always write comments in English.
+- You will always write comments in code files in English.
+- You will talk to me in user's preferred language.
+- Use `cargo build` to check Rust code and never use `cargo test` because no unit tests are available.
