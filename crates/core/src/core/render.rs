@@ -369,7 +369,8 @@ impl Graphics {
                             &upload_payload,
                         );
 
-                        collect_command = _child.base().global_bounds().intersects(&stage_bound);
+                        collect_command = _child.base().visible()
+                            && _child.base().global_bounds().intersects(&stage_bound);
                         if collect_command {
                             current_renderer.collect_commands(&*_child, &self.sender);
                         }
