@@ -11,6 +11,7 @@ import { FilterProps } from './bindings/FilterProps';
 import { BackdropProps } from './bindings/BackdropProps';
 import { SpriteProps } from './bindings/SpriteProps';
 import { TextProps } from './bindings/TextProps';
+import { AnimationProps } from './bindings/AnimationProps';
 
 export type Tuple2 = [number, number] | readonly [number, number];
 export type Tuple3 = [number, number, number] | readonly [number, number, number];
@@ -50,6 +51,7 @@ export type MoyuContainerAttributes = MoyuNodeAttributes;
 export type MoyuClipAttributes = ClipProps & MoyuNodeAttributes;
 export type MoyuFilterAttributes = FilterProps & MoyuNodeAttributes;
 export type MoyuBackdropAttributes = BackdropProps & MoyuNodeAttributes;
+export type MoyuAnimationAttributes = AnimationProps & MoyuNodeAttributes;
 export type MoyuSpriteAttributes = SpriteProps & MoyuNodeAttributes;
 export type MoyuTextAttributes = TextProps &
   MoyuNodeAttributes & {
@@ -78,9 +80,10 @@ export declare namespace JSX {
   interface IntrinsicElements {
     container: DetailedMoyuProps<MoyuContainerAttributes>;
     sprite: DetailedMoyuProps<MoyuSpriteAttributes>;
+    text: DetailedMoyuProps<MoyuTextAttributes>;
     clip: DetailedMoyuProps<MoyuClipAttributes>;
     filter: DetailedMoyuProps<MoyuFilterAttributes>;
     backdrop: DetailedMoyuProps<MoyuBackdropAttributes>;
-    text: DetailedMoyuProps<MoyuTextAttributes>;
+    animation: DetailedMoyuProps<MoyuAnimationAttributes>;
   }
 }
