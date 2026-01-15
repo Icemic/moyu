@@ -1,6 +1,6 @@
 mod loaders;
 pub mod types;
-mod utils;
+pub mod utils;
 
 use dashmap::DashMap;
 use moyu_pal::dir::assets_dir;
