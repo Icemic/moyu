@@ -5,9 +5,11 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use wgpu::Buffer;
 
+use moyu_core::apply_patch;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js};
+use moyu_core::utils::patch::Patch;
 use moyu_resource::types::AssetId;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -85,17 +87,17 @@ impl Sprite {
 
 impl Focusable for Sprite {}
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
 #[ts(export, optional_fields)]
 pub struct SpriteProps {
-    pub src: Option<String>,
-    pub mode: Option<SpriteMode>,
-    pub area: Option<[f32; 4]>,
-    pub bounds: Option<[f32; 4]>,
-    pub nine_slice_mode: Option<NineSliceMode>,
-    pub target_width: Option<u32>,
-    pub target_height: Option<u32>,
+    pub src: Patch<String>,
+    pub mode: Patch<SpriteMode>,
+    pub area: Patch<[f32; 4]>,
+    pub bounds: Patch<[f32; 4]>,
+    pub nine_slice_mode: Patch<NineSliceMode>,
+    pub target_width: Patch<u32>,
+    pub target_height: Patch<u32>,
 }
 
 impl Node for Sprite {
@@ -116,44 +118,42 @@ impl Node for Sprite {
         let props: SpriteProps = from_js(props).unwrap();
 
         // set pending change to next_texture_id, avoid texture loading in render (may cause flash)
-        if let Some(src) = props.src {
+        apply_patch!(props.src => |src| {
             self.src = Some(src);
             self.next_src = self.src.clone();
-        }
+        }, String::new());
 
-        if let Some(mode) = props.mode {
+        apply_patch!(props.mode => |mode| {
             self.mode = mode;
             // reset size when mode changed, those values will be recalculated in render
             self.base_mut().set_size(0, 0);
-        }
+        }, SpriteMode::default());
 
-        if let Some(area) = props.area {
+        apply_patch!(props.area => |area| {
             self.area = area;
             // clean base node size, and re-assign it in renderer
             self.base_mut().set_size(0, 0);
-        }
+        }, [0., 0., 1., 1.]);
 
-        if let Some(bounds) = props.bounds {
-            self.bounds = bounds;
-        }
+        apply_patch!(props.bounds => self.bounds, [0., 0., 0., 0.]);
 
-        if let Some(nine_slice_mode) = props.nine_slice_mode {
+        apply_patch!(props.nine_slice_mode => |nine_slice_mode| {
             self.nine_slice_mode = nine_slice_mode;
             // clean base node size, and re-assign it in renderer
             self.base_mut().set_size(0, 0);
-        }
+        }, NineSliceMode::default());
 
-        if let Some(target_width) = props.target_width {
+        apply_patch!(props.target_width => |target_width| {
             self.target_width = target_width;
             // clean base node size, and re-assign it in renderer
             self.base_mut().set_size(0, 0);
-        }
+        }, 0);
 
-        if let Some(target_height) = props.target_height {
+        apply_patch!(props.target_height => |target_height| {
             self.target_height = target_height;
             // clean base node size, and re-assign it in renderer
             self.base_mut().set_size(0, 0);
-        }
+        }, 0);
 
         // force update vertices
         self.base_mut().pend_update();

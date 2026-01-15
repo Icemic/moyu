@@ -10,10 +10,12 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use wgpu::Buffer;
 
+use moyu_core::apply_patch;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Command, NodeEventSource};
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js, to_js};
+use moyu_core::utils::patch::Patch;
 
 use crate::events::TextEvent;
 
@@ -103,78 +105,46 @@ impl Focusable for Text {}
  * FIXME: But `#[serde(flatten)]` works not quite well when there are more than one `#[serde(flatten)]` in a struct.
  * So we do it manually.
  */
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
 #[ts(export, optional_fields)]
 pub struct TextProps {
-    pub text: Option<String>,
-    pub print_mode: Option<TextPrintMode>,
-    pub print_speed: Option<f64>,
+    pub text: Patch<String>,
+    pub print_mode: Patch<TextPrintMode>,
+    pub print_speed: Patch<f64>,
 
     /* layout styles */
     /// the writing direction of the text in the box,
     /// only `Horizontal` (right-to-left) or `Vertical` (top-to-bottom) is valid.
     #[ts(type = "'horizontal' | 'vertical'", optional)]
-    pub direction: Option<LayoutDirection>,
+    pub direction: Patch<LayoutDirection>,
     /// the width of box.
-    pub box_width: Option<f64>,
+    pub box_width: Patch<f64>,
     /// the height of box.
-    pub box_height: Option<f64>,
+    pub box_height: Patch<f64>,
     /// the size of the glyph grid which each character be fit to, usually equals to `font_size`.
-    pub glyph_grid_size: Option<f64>,
+    pub glyph_grid_size: Patch<f64>,
 
     /* text styles */
-    pub font_size: Option<f64>,
+    pub font_size: Patch<f64>,
     #[ts(type = "string", optional)]
-    pub fill_color: Option<Color>,
-    pub line_height: Option<f64>,
-    pub indent: Option<f64>,
+    pub fill_color: Patch<Color>,
+    pub line_height: Patch<f64>,
+    pub indent: Patch<f64>,
 
-    pub stroke: Option<bool>,
-    pub shadow: Option<bool>,
-
-    #[ts(type = "string", optional)]
-    pub stroke_color: Option<Color>,
-    pub stroke_width: Option<f32>,
+    pub stroke: Patch<bool>,
+    pub shadow: Patch<bool>,
 
     #[ts(type = "string", optional)]
-    pub shadow_color: Option<Color>,
-    pub shadow_offset_x: Option<f32>,
-    pub shadow_offset_y: Option<f32>,
-    pub shadow_blur: Option<f32>,
-    pub shadow_width: Option<f32>,
-}
+    pub stroke_color: Patch<Color>,
+    pub stroke_width: Patch<f32>,
 
-impl Default for TextProps {
-    fn default() -> Self {
-        let layout_style_default: LayoutStyle = LayoutStyle::default();
-        let text_style_default: TextStyle = TextStyle::default();
-        let stroke_style_default: StrokeStyle = StrokeStyle::default();
-        let shadow_style_default: ShadowStyle = ShadowStyle::default();
-
-        Self {
-            text: None,
-            print_mode: None,
-            print_speed: None,
-            direction: Some(layout_style_default.direction),
-            box_width: Some(layout_style_default.box_width),
-            box_height: Some(layout_style_default.box_height),
-            glyph_grid_size: Some(layout_style_default.glyph_grid_size),
-            font_size: Some(text_style_default.font_size),
-            fill_color: Some(text_style_default.fill_color),
-            line_height: Some(text_style_default.line_height),
-            indent: Some(text_style_default.indent),
-            stroke: Some(false),
-            shadow: Some(false),
-            stroke_color: Some(stroke_style_default.stroke_color),
-            stroke_width: Some(stroke_style_default.stroke_width),
-            shadow_color: Some(shadow_style_default.shadow_color),
-            shadow_offset_x: Some(shadow_style_default.shadow_offset_x),
-            shadow_offset_y: Some(shadow_style_default.shadow_offset_y),
-            shadow_blur: Some(shadow_style_default.shadow_blur),
-            shadow_width: Some(shadow_style_default.shadow_width),
-        }
-    }
+    #[ts(type = "string", optional)]
+    pub shadow_color: Patch<Color>,
+    pub shadow_offset_x: Patch<f32>,
+    pub shadow_offset_y: Patch<f32>,
+    pub shadow_blur: Patch<f32>,
+    pub shadow_width: Patch<f32>,
 }
 
 impl Node for Text {
@@ -200,119 +170,93 @@ impl Node for Text {
             }
         };
 
-        if let Some(text) = props.text {
-            let prev_text = self.text.clone();
+        match props.text {
+            Patch::Set(text) => {
+                let prev_text = self.text.clone();
 
-            if !prev_text.is_empty() && text.starts_with(&prev_text) {
-                let (_, cur) = text.split_at(prev_text.len());
-                self.segments.push(Segment {
-                    id: Some(SegmentId::Lite(self.segments.len() as u32)),
-                    content: Cow::Owned(cur.to_owned()),
-                });
-            } else {
-                self.current_range_index = 0;
-                self.segments = vec![Segment {
-                    id: Some(SegmentId::Lite(0)),
-                    content: Cow::Owned(text.clone()),
-                }];
-            };
+                if !prev_text.is_empty() && text.starts_with(&prev_text) {
+                    let (_, cur) = text.split_at(prev_text.len());
+                    self.segments.push(Segment {
+                        id: Some(SegmentId::Lite(self.segments.len() as u32)),
+                        content: Cow::Owned(cur.to_owned()),
+                    });
+                } else {
+                    self.current_range_index = 0;
+                    self.segments = vec![Segment {
+                        id: Some(SegmentId::Lite(0)),
+                        content: Cow::Owned(text.clone()),
+                    }];
+                };
 
-            self.text = text;
+                self.text = text;
 
-            if self.print_start_time.is_none() {
-                // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
-                self.print_start_time = Some(0.);
+                if self.print_start_time.is_none() {
+                    // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
+                    self.print_start_time = Some(0.);
+                }
             }
+            Patch::Reset => {
+                self.text = "".to_string();
+                self.segments = vec![];
+                self.current_range_index = 0;
+                self.print_start_time = None;
+            }
+            Patch::Missing => {}
         }
 
-        if let Some(print_mode) = props.print_mode {
-            self.print_mode = print_mode;
+        match props.print_mode {
+            Patch::Set(print_mode) => self.print_mode = print_mode,
+            Patch::Reset => self.print_mode = TextPrintMode::default(),
+            Patch::Missing => {}
         }
 
-        if let Some(print_speed) = props.print_speed {
-            self.print_speed = print_speed;
-        }
-
-        if let Some(direction) = props.direction {
-            self.layout_style.direction = direction;
-        }
-
-        if let Some(box_width) = props.box_width {
-            self.layout_style.box_width = box_width;
-        }
-
-        if let Some(box_height) = props.box_height {
-            self.layout_style.box_height = box_height;
-        }
-
-        if let Some(glyph_grid_size) = props.glyph_grid_size {
-            self.layout_style.glyph_grid_size = glyph_grid_size;
-        }
-
-        if let Some(font_size) = props.font_size {
-            self.text_style.font_size = font_size;
-        }
-
-        if let Some(fill_color) = props.fill_color {
-            self.text_style.fill_color = fill_color;
-        }
-
-        if let Some(line_height) = props.line_height {
-            self.text_style.line_height = line_height;
-        }
-
-        if let Some(indent) = props.indent {
-            self.text_style.indent = indent;
-        }
+        apply_patch!(props.print_speed => self.print_speed, 2.0);
+        apply_patch!(props.direction => self.layout_style.direction, LayoutDirection::default());
+        apply_patch!(props.box_width => self.layout_style.box_width, LayoutStyle::default().box_width);
+        apply_patch!(props.box_height => self.layout_style.box_height, LayoutStyle::default().box_height);
+        apply_patch!(props.glyph_grid_size => self.layout_style.glyph_grid_size, LayoutStyle::default().glyph_grid_size);
+        apply_patch!(props.font_size => self.text_style.font_size, TextStyle::default().font_size);
+        apply_patch!(props.fill_color => self.text_style.fill_color, TextStyle::default().fill_color);
+        apply_patch!(props.line_height => self.text_style.line_height, TextStyle::default().line_height);
+        apply_patch!(props.indent => self.text_style.indent, TextStyle::default().indent);
 
         // stroke and shadow style must be updated after switch turn on, otherwise it will be default value.
 
-        if let Some(stroke) = props.stroke {
-            if stroke {
-                self.text_style.stroke = Some(StrokeStyle::default());
-            } else {
-                self.text_style.stroke = None;
+        match props.stroke {
+            Patch::Set(stroke) => {
+                if stroke {
+                    self.text_style.stroke = Some(StrokeStyle::default());
+                } else {
+                    self.text_style.stroke = None;
+                }
             }
+            Patch::Reset => self.text_style.stroke = None,
+            Patch::Missing => {}
         }
 
-        if let Some(shadow) = props.shadow {
-            if shadow {
-                self.text_style.shadow = Some(ShadowStyle::default());
-            } else {
-                self.text_style.shadow = None;
+        match props.shadow {
+            Patch::Set(shadow) => {
+                if shadow {
+                    self.text_style.shadow = Some(ShadowStyle::default());
+                } else {
+                    self.text_style.shadow = None;
+                }
             }
+            Patch::Reset => self.text_style.shadow = None,
+            Patch::Missing => {}
         }
 
         if let Some(stroke) = self.text_style.stroke.as_mut() {
-            if let Some(stroke_color) = props.stroke_color {
-                stroke.stroke_color = stroke_color;
-            }
-
-            if let Some(stroke_width) = props.stroke_width {
-                stroke.stroke_width = stroke_width;
-            }
+            apply_patch!(props.stroke_color => stroke.stroke_color, StrokeStyle::default().stroke_color);
+            apply_patch!(props.stroke_width => stroke.stroke_width, StrokeStyle::default().stroke_width);
         }
 
         if let Some(shadow) = self.text_style.shadow.as_mut() {
-            if let Some(shadow_color) = props.shadow_color {
-                shadow.shadow_color = shadow_color;
-            }
-
-            if let Some(shadow_offset_x) = props.shadow_offset_x {
-                shadow.shadow_offset_x = shadow_offset_x;
-            }
-
-            if let Some(shadow_offset_y) = props.shadow_offset_y {
-                shadow.shadow_offset_y = shadow_offset_y;
-            }
-
-            if let Some(shadow_blur) = props.shadow_blur {
-                shadow.shadow_blur = shadow_blur;
-            }
-
-            if let Some(shadow_width) = props.shadow_width {
-                shadow.shadow_width = shadow_width;
-            }
+            apply_patch!(props.shadow_color => shadow.shadow_color, ShadowStyle::default().shadow_color);
+            apply_patch!(props.shadow_offset_x => shadow.shadow_offset_x, ShadowStyle::default().shadow_offset_x);
+            apply_patch!(props.shadow_offset_y => shadow.shadow_offset_y, ShadowStyle::default().shadow_offset_y);
+            apply_patch!(props.shadow_blur => shadow.shadow_blur, ShadowStyle::default().shadow_blur);
+            apply_patch!(props.shadow_width => shadow.shadow_width, ShadowStyle::default().shadow_width);
         }
 
         // force update vertices

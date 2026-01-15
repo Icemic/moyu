@@ -4,11 +4,13 @@ use csscolorparser::Color;
 use log::warn;
 use ts_rs::TS;
 
+use crate::apply_patch;
 use crate::base::*;
 use crate::core::NodeLock;
 use crate::events::NodeEvent;
 use crate::utils::convert::{JSValue, from_js};
 use crate::utils::dispatch_event::dispatch_event;
+use crate::utils::patch::Patch;
 
 pub static mut NODE_ID: u32 = 0;
 
@@ -333,73 +335,23 @@ impl NodeBase {
             }
         };
 
-        if let Some(label) = props.label {
-            self.label = label;
-        }
-
-        if let Some(x) = props.x {
-            self.set_x(x);
-        }
-
-        if let Some(y) = props.y {
-            self.set_y(y);
-        }
-
-        if let Some(v) = props.scale {
-            self.set_scale(v, v);
-        }
-
-        if let Some(x) = props.scale_x {
-            self.set_scale_x(x);
-        }
-
-        if let Some(y) = props.scale_y {
-            self.set_scale_y(y);
-        }
-
-        if let Some(v) = props.rotation {
-            self.set_rotation(v);
-        }
-
-        if let Some(v) = props.skew {
-            self.set_skew(v, v);
-        }
-
-        if let Some(x) = props.skew_x {
-            self.set_skew_x(x);
-        }
-
-        if let Some(y) = props.skew_y {
-            self.set_skew_y(y);
-        }
-
-        if let Some(point) = props.anchor {
-            self.set_anchor(point[0], point[1]);
-        }
-
-        if let Some(point) = props.pivot {
-            self.set_pivot(point[0], point[1]);
-        }
-
-        if let Some(visible) = props.visible {
-            self.set_visible(visible);
-        }
-
-        if let Some(tint) = props.tint {
-            self.set_tint(tint);
-        }
-
-        if let Some(opacity) = props.opacity {
-            self.set_opacity(opacity);
-        }
-
-        if let Some(interactive) = props.interactive {
-            self.set_interactive(interactive);
-        }
-
-        if let Some(cursor) = props.cursor {
-            self.set_cursor(cursor);
-        }
+        apply_patch!(props.label => self.label, String::new());
+        apply_patch!(props.x => |v| self.set_x(v), 0.0);
+        apply_patch!(props.y => |v| self.set_y(v), 0.0);
+        apply_patch!(props.scale => |v| self.set_scale(v, v), 1.0);
+        apply_patch!(props.scale_x => |v| self.set_scale_x(v), 1.0);
+        apply_patch!(props.scale_y => |v| self.set_scale_y(v), 1.0);
+        apply_patch!(props.rotation => |v| self.set_rotation(v), 0.0);
+        apply_patch!(props.skew => |v| self.set_skew(v, v), 0.0);
+        apply_patch!(props.skew_x => |v| self.set_skew_x(v), 0.0);
+        apply_patch!(props.skew_y => |v| self.set_skew_y(v), 0.0);
+        apply_patch!(props.anchor => |point| self.set_anchor(point[0], point[1]), [0.0, 0.0]);
+        apply_patch!(props.pivot => |point| self.set_pivot(point[0], point[1]), [0.0, 0.0]);
+        apply_patch!(props.visible => |v| self.set_visible(v), true);
+        apply_patch!(props.tint => |v| self.set_tint(v), Color::new(1.0, 1.0, 1.0, 1.0));
+        apply_patch!(props.opacity => |v| self.set_opacity(v), 1.0);
+        apply_patch!(props.interactive => |v| self.set_interactive(v), true);
+        apply_patch!(props.cursor => |v| self.set_cursor(v), MoyuCursor::default());
     }
 
     #[inline]
@@ -532,28 +484,28 @@ impl NodeBase {
 }
 
 use serde::{Deserialize, Serialize};
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
 #[ts(export, optional_fields)]
 pub struct NodeProps {
-    pub label: Option<String>,
-    pub anchor: Option<[f32; 2]>,
-    pub pivot: Option<[f32; 2]>,
-    pub x: Option<f32>,
-    pub y: Option<f32>,
-    pub scale: Option<f32>,
-    pub scale_x: Option<f32>,
-    pub scale_y: Option<f32>,
-    pub rotation: Option<f32>,
-    pub skew: Option<f32>,
-    pub skew_x: Option<f32>,
-    pub skew_y: Option<f32>,
-    pub visible: Option<bool>,
+    pub label: Patch<String>,
+    pub anchor: Patch<[f32; 2]>,
+    pub pivot: Patch<[f32; 2]>,
+    pub x: Patch<f32>,
+    pub y: Patch<f32>,
+    pub scale: Patch<f32>,
+    pub scale_x: Patch<f32>,
+    pub scale_y: Patch<f32>,
+    pub rotation: Patch<f32>,
+    pub skew: Patch<f32>,
+    pub skew_x: Patch<f32>,
+    pub skew_y: Patch<f32>,
+    pub visible: Patch<bool>,
     #[ts(type = "string", optional)]
-    pub tint: Option<Color>,
-    pub opacity: Option<f32>,
-    pub interactive: Option<bool>,
-    pub cursor: Option<MoyuCursor>,
+    pub tint: Patch<Color>,
+    pub opacity: Patch<f32>,
+    pub interactive: Patch<bool>,
+    pub cursor: Patch<MoyuCursor>,
 }
 
 impl Drop for NodeBase {

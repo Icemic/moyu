@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking
 
 - Introduce dynamic dispatching for Node trait to reduce boilerplate code when creating new nodes.
+- Introduce `Patch<T>` type for node properties to support partial updates and default values in a more ergonomic way.
 
 ### Added
 
