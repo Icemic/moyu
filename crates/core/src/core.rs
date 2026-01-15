@@ -119,7 +119,7 @@ impl Core {
 
         // create root node
         let root_node = Container::new("Root Node".to_string());
-        let root_node = Arc::new(RwLock::new(Box::new(root_node) as Box<dyn Node>));
+        let root_node = root_node.into_node_lock();
 
         let node_map: NodeMap = Default::default();
         node_map.insert(0, root_node);
