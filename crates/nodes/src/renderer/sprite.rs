@@ -49,11 +49,11 @@ impl VertexDesc for SpriteInstance {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct QuadVertex {
+pub struct SpriteVertex {
     pub position: [f32; 2],
 }
 
-impl VertexDesc for QuadVertex {
+impl VertexDesc for SpriteVertex {
     fn attribs() -> &'static [wgpu::VertexAttribute] {
         static ATTRIBS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![
             0 => Float32x2,
@@ -190,7 +190,7 @@ impl SpriteRenderer {
             vertex: VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[QuadVertex::desc(), SpriteInstance::desc()],
+                buffers: &[SpriteVertex::desc(), SpriteInstance::desc()],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {
@@ -236,16 +236,16 @@ impl SpriteRenderer {
         });
 
         let quad_vertices = [
-            QuadVertex {
+            SpriteVertex {
                 position: [0.0, 0.0],
             },
-            QuadVertex {
+            SpriteVertex {
                 position: [0.0, 1.0],
             },
-            QuadVertex {
+            SpriteVertex {
                 position: [1.0, 1.0],
             },
-            QuadVertex {
+            SpriteVertex {
                 position: [1.0, 0.0],
             },
         ];
