@@ -3,7 +3,7 @@ import type { NineSliceMode } from './NineSliceMode';
 import type { SpriteMode } from './SpriteMode';
 
 export type SpriteProps = {
-  src?: string;
+  src: string | null;
   mode?: SpriteMode;
   area?: [number, number, number, number];
   bounds?: [number, number, number, number];

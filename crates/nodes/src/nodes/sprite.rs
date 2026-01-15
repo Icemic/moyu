@@ -91,6 +91,7 @@ impl Focusable for Sprite {}
 #[serde(rename_all = "camelCase", default)]
 #[ts(export, optional_fields)]
 pub struct SpriteProps {
+    #[ts(optional = false)]
     pub src: Patch<String>,
     pub mode: Patch<SpriteMode>,
     pub area: Patch<[f32; 4]>,

@@ -105,6 +105,7 @@ impl Focusable for Animation {}
 #[serde(rename_all = "camelCase", default)]
 #[ts(export, optional_fields)]
 pub struct AnimationProps {
+    #[ts(optional = false)]
     pub src: Patch<String>,
     pub area: Patch<[f32; 4]>,
     pub format: Patch<AnimationFormat>,
