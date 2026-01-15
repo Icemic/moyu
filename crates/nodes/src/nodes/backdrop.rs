@@ -1,3 +1,4 @@
+use anyhow::Result;
 use moyu_core::base::Rect;
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
@@ -75,6 +76,14 @@ pub struct BackdropProps {
 }
 
 impl Node for Backdrop {
+    fn create_instance(label: Option<String>) -> Result<Box<dyn Node>>
+    where
+        Self: Sized,
+    {
+        let label = label.unwrap_or_default();
+        Ok(Box::new(Self::new(label)))
+    }
+
     #[inline]
     fn node_type(&self) -> &'static str {
         "backdrop"

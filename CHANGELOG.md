@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- Introduce dynamic dispatching for Node trait to reduce boilerplate code when creating new nodes.
+
 ### Added
 
 - Now every node has a `bounds` property representing its axis-aligned bounding box in local coordinates.

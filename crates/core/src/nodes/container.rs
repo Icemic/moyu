@@ -1,3 +1,4 @@
+use anyhow::Result;
 use moyu_macros::Node;
 
 use crate::traits::{Node, NodeBaseTrait};
@@ -19,6 +20,14 @@ impl Container {
 }
 
 impl Node for Container {
+    fn create_instance(label: Option<String>) -> Result<Box<dyn Node>>
+    where
+        Self: Sized,
+    {
+        let label = label.unwrap_or_default();
+        Ok(Box::new(Self::new(label)))
+    }
+
     #[inline]
     fn node_type(&self) -> &'static str {
         "node"

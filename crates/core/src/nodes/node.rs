@@ -423,7 +423,7 @@ impl NodeBase {
         let index = self.children.iter().position(|item| {
             let l = item.read();
             let r = before_child.read();
-            *l == *r
+            l.as_ref() == r.as_ref()
         });
         if index.is_none() {
             warn!(
@@ -438,7 +438,7 @@ impl NodeBase {
         if let Some(index) = self.children.iter().position(|item| {
             let l = item.read();
             let r = child.read();
-            *l == *r
+            l.as_ref() == r.as_ref()
         }) {
             return Some(self.children.remove(index));
         }
