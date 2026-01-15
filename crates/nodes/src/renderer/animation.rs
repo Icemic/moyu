@@ -330,15 +330,6 @@ impl Renderer for AnimationRenderer {
                 }
             }
 
-            // if node.working_frames.is_none() {
-            //     // TODO: reset states
-
-            //     // initialize working_frames
-            //     if let Some(frames) = node.frames.as_ref() {
-            //         node.working_frames = Some(FrameIterator(frames.0.into_iter()));
-            //     }
-            // }
-
             if let Some(frames) = node.frames.as_mut() {
                 let mut next_frame = node.next_frame.take();
                 let mut current_frame: Option<(f64, image::ImageBuffer<image::Rgba<u8>, Vec<u8>>)> =
