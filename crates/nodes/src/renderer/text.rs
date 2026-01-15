@@ -629,10 +629,6 @@ impl Renderer for TextRenderer {
     fn finish(&self) {}
 
     fn collect_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender) {
-        if !node.base().visible() {
-            return;
-        }
-
         let node = node
             .as_any()
             .downcast_ref::<Text>()

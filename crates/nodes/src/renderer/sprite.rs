@@ -575,10 +575,6 @@ impl Renderer for SpriteRenderer {
     fn finish(&self) {}
 
     fn collect_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender) {
-        if !node.base().visible() {
-            return;
-        }
-
         let mut bind_group = None;
         let mut instance_buffer = None;
         let mut instance_count = 0;
