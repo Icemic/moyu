@@ -17,7 +17,7 @@ use moyu_macros::moyu_bindgen;
 use moyu_nodes::nodes::Text;
 #[cfg(feature = "video")]
 use moyu_nodes::nodes::Video;
-use moyu_nodes::nodes::{Backdrop, Clip, Filter, Sprite};
+use moyu_nodes::nodes::{Animation, Backdrop, Clip, Filter, Sprite};
 use moyu_pal::sync::RwLock;
 #[cfg(native)]
 use moyu_runtime::quickjs_rusty::{JSContext, RawJSValue};
@@ -73,6 +73,11 @@ pub fn create_instance(
         }
         "backdrop" => {
             let n = Backdrop::new(label);
+            node_id = *n.base().id();
+            node = Arc::new(RwLock::new(n));
+        }
+        "animation" => {
+            let n = Animation::new(label);
             node_id = *n.base().id();
             node = Arc::new(RwLock::new(n));
         }

@@ -14,7 +14,8 @@ use moyu_core::winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 #[cfg(any(desktop, web))]
 use moyu_gamepad::GamepadPlugin;
 use moyu_nodes::renderer::{
-    BackdropRenderer, ClipRenderer, OffscreenPassRenderer, SpriteRenderer, TextRenderer,
+    AnimationRenderer, BackdropRenderer, ClipRenderer, OffscreenPassRenderer, SpriteRenderer,
+    TextRenderer,
 };
 use moyu_pal::config::get_engine_config;
 use moyu_pal::platform;
@@ -129,6 +130,7 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                     let clip_renderer = ClipRenderer::new(&device, &config);
                     let filter_renderer = OffscreenPassRenderer::new(&device, &config);
                     let backdrop_renderer = BackdropRenderer::new(&device, &config);
+                    let animation_renderer = AnimationRenderer::new(&device, &config);
 
                     text_renderer.init_huozi_from_env();
 
@@ -137,6 +139,7 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                     graphics.register_renderer("clip", Box::new(clip_renderer));
                     graphics.register_renderer("filter", Box::new(filter_renderer));
                     graphics.register_renderer("backdrop", Box::new(backdrop_renderer));
+                    graphics.register_renderer("animation", Box::new(animation_renderer));
                 }
 
                 let core = get_core().clone();

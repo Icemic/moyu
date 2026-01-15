@@ -15,12 +15,14 @@ video = ["dep:ffmpeg-rs"]
 yuv_sprite = []
 
 [dependencies]
+reiterator = "0.3.0"
 weak-table = "0.3.2"
 
 anyhow = {workspace = true}
 arc-swap = {workspace = true}
 bytemuck = {workspace = true}
 glam = {workspace = true}
+image = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
 ts-rs = {workspace = true}
