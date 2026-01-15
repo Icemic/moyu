@@ -97,4 +97,8 @@ impl Node for Backdrop {
 
         self.base_mut().pend_update();
     }
+
+    fn as_focusable(&self) -> Option<&dyn Focusable> {
+        Some(self)
+    }
 }

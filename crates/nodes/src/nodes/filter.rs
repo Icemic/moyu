@@ -70,8 +70,6 @@ impl Focusable for Filter {}
 #[ts(export, optional_fields)]
 pub struct FilterProps {
     pub filters: Option<Vec<FilterKind>>,
-    // pub width: Option<u32>,
-    // pub height: Option<u32>,
 }
 
 impl Node for Filter {
@@ -87,14 +85,10 @@ impl Node for Filter {
             self.filters = filters;
         }
 
-        // if let Some(width) = props.width {
-        //     self.base_mut().set_width(width);
-        // }
-
-        // if let Some(height) = props.height {
-        //     self.base_mut().set_height(height);
-        // }
-
         self.base_mut().pend_update();
+    }
+
+    fn as_focusable(&self) -> Option<&dyn Focusable> {
+        Some(self)
     }
 }
