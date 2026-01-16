@@ -70,6 +70,8 @@ pub enum RenderCommand {
         instance_buffer: Option<Buffer>,
         /// 绘制索引数/顶点数
         count: u32,
+        /// 实例数 (默认为 1)
+        instance_count: u32,
     },
 
     /// 裁剪指令

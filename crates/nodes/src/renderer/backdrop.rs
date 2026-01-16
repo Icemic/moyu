@@ -331,6 +331,7 @@ impl Renderer for BackdropRenderer {
                 index_buffer: None,
                 instance_buffer: None,
                 count: 6,
+                instance_count: 1,
             })
             .unwrap();
     }

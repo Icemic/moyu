@@ -648,6 +648,7 @@ impl Renderer for TextRenderer {
                     index_buffer: Some(index_buffer.clone()),
                     instance_buffer: None,
                     count: num_indices,
+                    instance_count: 1,
                 })
                 .unwrap();
         }

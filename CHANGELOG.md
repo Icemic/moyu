@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhance rect calculation for `Clip` and `Backdrop` nodes.
 - `Filter` node uses bounds size to allocate offscreen texture instead of full canvas size.
 - Fix rendering crash when bounds of `Backdrop` node out of canvas.
+- Wrong instance count in RenderCommand for instanced drawing.
 
 ### Optimized
 
