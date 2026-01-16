@@ -5,7 +5,6 @@ use moyu_resource::types::AssetKind;
 
 pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
     use moyu_nodes::nodes::*;
-    use moyu_pal::sync::RwLock;
 
     let Some(graphics) = core.graphics() else {
         return;
@@ -20,7 +19,7 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
         );
 
         n.next_texture_id.store(Some(asset_id));
-        Arc::new(RwLock::new(Box::new(n) as Box<dyn Node>))
+        n.into_node_lock()
     };
 
     let node = {
@@ -31,7 +30,7 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
             include_bytes!("../static/logo.png").to_vec(),
         );
         n.next_texture_id.store(Some(asset_id));
-        Arc::new(RwLock::new(Box::new(n) as Box<dyn Node>))
+        n.into_node_lock()
     };
 
     // create sprite and load texture

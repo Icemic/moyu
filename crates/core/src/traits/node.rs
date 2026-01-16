@@ -1,6 +1,8 @@
+use std::sync::Arc;
 use std::{any::Any, fmt::Debug};
 
 use anyhow::Result;
+use moyu_pal::sync::RwLock;
 
 use crate::nodes::NodeBase;
 use crate::utils::convert::JSValue;
@@ -12,6 +14,13 @@ pub trait Node: NodeBaseTrait + Debug + Send + Sync {
     fn create_instance(label: Option<String>) -> Result<Box<dyn Node>>
     where
         Self: Sized;
+
+    fn into_node_lock(self) -> crate::core::NodeLock
+    where
+        Self: Sized + 'static,
+    {
+        Arc::new(RwLock::new(Box::new(self) as Box<dyn Node>))
+    }
 
     /// node type identifier
     fn node_type(&self) -> &'static str;
