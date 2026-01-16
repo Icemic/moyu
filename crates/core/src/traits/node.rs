@@ -1,5 +1,7 @@
 use std::{any::Any, fmt::Debug};
 
+use anyhow::Result;
+
 use crate::nodes::NodeBase;
 use crate::utils::convert::JSValue;
 
@@ -7,6 +9,10 @@ use super::Command;
 use super::Focusable;
 
 pub trait Node: NodeBaseTrait + Debug + Send + Sync {
+    fn create_instance(label: Option<String>) -> Result<Box<dyn Node>>
+    where
+        Self: Sized;
+
     /// node type identifier
     fn node_type(&self) -> &'static str;
 

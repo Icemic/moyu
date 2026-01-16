@@ -5,19 +5,12 @@ use log::{debug, warn};
 #[cfg(web)]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use moyu_core::core::{NodeLock, NodeMap, NodeRef, get_core};
-use moyu_core::nodes::Container;
-use moyu_core::traits::NodeBaseTrait;
+use moyu_core::core::{NodeMap, NodeRef, get_core};
 use moyu_core::utils::convert::JSValue;
 #[cfg(native)]
 use moyu_core::utils::convert::{from_js, to_js};
 #[cfg(native)]
 use moyu_macros::moyu_bindgen;
-#[cfg(feature = "text")]
-use moyu_nodes::nodes::Text;
-#[cfg(feature = "video")]
-use moyu_nodes::nodes::Video;
-use moyu_nodes::nodes::{Animation, Backdrop, Clip, Filter, Sprite};
 use moyu_pal::sync::RwLock;
 #[cfg(native)]
 use moyu_runtime::quickjs_rusty::{JSContext, RawJSValue};
@@ -46,57 +39,12 @@ pub fn create_instance(
     let core = get_core();
     let node_map = core.node_map();
 
-    let label = label.unwrap_or_default();
+    let node = core
+        .create_node_instance(&node_type, label)
+        .map_err(|e| e.to_string())?;
 
-    let node_id;
-    let node: NodeLock;
-    match node_type.as_str() {
-        "container" => {
-            let n = Container::new(label);
-            node_id = *n.base().id();
-            node = Arc::new(RwLock::new(n));
-        }
-        "sprite" => {
-            let n = Sprite::new(label);
-            node_id = *n.base().id();
-            node = Arc::new(RwLock::new(n));
-        }
-        "clip" => {
-            let n = Clip::new(label);
-            node_id = *n.base().id();
-            node = Arc::new(RwLock::new(n));
-        }
-        "filter" => {
-            let n = Filter::new(label);
-            node_id = *n.base().id();
-            node = Arc::new(RwLock::new(n));
-        }
-        "backdrop" => {
-            let n = Backdrop::new(label);
-            node_id = *n.base().id();
-            node = Arc::new(RwLock::new(n));
-        }
-        "animation" => {
-            let n = Animation::new(label);
-            node_id = *n.base().id();
-            node = Arc::new(RwLock::new(n));
-        }
-        #[cfg(feature = "video")]
-        "video" => {
-            let n = Video::new(label);
-            node_id = *n.base().id();
-            node = Arc::new(RwLock::new(n));
-        }
-        #[cfg(feature = "text")]
-        "text" => {
-            let n = Text::new(label, "");
-            node_id = *n.base().id();
-            node = Arc::new(RwLock::new(n));
-        }
-        _ => {
-            return Err(format!("Unknown nodeType '{}'", node_type));
-        }
-    };
+    let node_id = *node.base().id();
+    let node = Arc::new(RwLock::new(node));
 
     node_map.insert(node_id, node.clone());
 

@@ -8,6 +8,7 @@ pub mod render_command;
 mod render_state;
 pub mod texture_pool;
 
+use anyhow::Result;
 use arc_swap::{ArcSwap, ArcSwapOption};
 use dashmap::DashMap;
 use dashmap::mapref::one::Ref;
@@ -28,9 +29,10 @@ use crate::{nodes::Container, traits::*};
 
 pub use self::global::*;
 
-pub type NodeLock = Arc<RwLock<dyn Node>>;
+pub type NodeLock = Arc<RwLock<Box<dyn Node>>>;
 pub type NodeMap = Arc<DashMap<u32, NodeLock>>;
 pub type NodeRef<'a> = Ref<'a, u32, NodeLock>;
+pub type NodeFactory = Box<dyn Fn(Option<String>) -> Result<Box<dyn Node>> + Send + Sync>;
 pub type PluginLock = Arc<Mutex<dyn Plugin>>;
 pub type PluginRef<'a> = Ref<'a, String, PluginLock>;
 
@@ -41,7 +43,8 @@ pub struct Core {
     pub(crate) graphics_thread:
         ArcSwapOption<(std::thread::JoinHandle<()>, std::thread::JoinHandle<()>)>,
 
-    plugins: DashMap<String, PluginLock>,
+    pub(crate) node_factories: DashMap<String, NodeFactory>,
+    pub(crate) plugins: DashMap<String, PluginLock>,
 
     /// timer from program start
     pub instant: Instant,
@@ -116,7 +119,7 @@ impl Core {
 
         // create root node
         let root_node = Container::new("Root Node".to_string());
-        let root_node = Arc::new(RwLock::new(root_node));
+        let root_node = Arc::new(RwLock::new(Box::new(root_node) as Box<dyn Node>));
 
         let node_map: NodeMap = Default::default();
         node_map.insert(0, root_node);
@@ -131,6 +134,7 @@ impl Core {
             #[cfg(native)]
             graphics_thread: ArcSwapOption::empty(),
 
+            node_factories: DashMap::new(),
             plugins: DashMap::new(),
 
             instant: Instant::now(),
@@ -147,6 +151,23 @@ impl Core {
             surface_size,
             stage_size,
             stage_transform,
+        }
+    }
+
+    pub fn register_node_type<T: Node + 'static>(&self, type_name: &str) {
+        let factory = Box::new(|label: Option<String>| T::create_instance(label));
+        self.node_factories.insert(type_name.to_string(), factory);
+    }
+
+    pub fn create_node_instance(
+        &self,
+        type_name: &str,
+        label: Option<String>,
+    ) -> Result<Box<dyn Node>> {
+        if let Some(factory) = self.node_factories.get(type_name) {
+            factory(label)
+        } else {
+            Err(anyhow::anyhow!("Unknown node type: {}", type_name))
         }
     }
 

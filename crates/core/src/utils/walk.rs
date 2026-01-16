@@ -19,7 +19,7 @@ where
         let child = child.read();
 
         if !child.base().children().is_empty() && child.base().visible() {
-            let should_end = walk_nodes_top_bottom(&*child, func);
+            let should_end = walk_nodes_top_bottom(child.as_ref(), func);
             if should_end {
                 return true;
             }
@@ -41,7 +41,7 @@ where
         {
             let child_ref = child.read();
             if !child_ref.base().children().is_empty() && child_ref.base().visible() {
-                walk_nodes_enter_leave(&*child_ref, enter, leave);
+                walk_nodes_enter_leave(child_ref.as_ref(), enter, leave);
             }
         }
 
@@ -79,7 +79,7 @@ where
                     .collect::<Vec<_>>();
 
                 let should_end =
-                    walk_nodes_bottom_top(&*child, func, &parent_ids, only_interactive);
+                    walk_nodes_bottom_top(child.as_ref(), func, &parent_ids, only_interactive);
                 if should_end {
                     return true;
                 }

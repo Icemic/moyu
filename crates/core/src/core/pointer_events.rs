@@ -297,7 +297,7 @@ impl Core {
             ) {
                 let node_ref = node.node.read();
                 let (x, y) = get_local_logical_position(
-                    &*node_ref,
+                    node_ref.as_ref(),
                     pointer_state.location.client_x as f32,
                     pointer_state.location.client_y as f32,
                 );
@@ -325,7 +325,7 @@ impl Core {
 
                         let node_ref = last_hover_node.node.read();
                         let (x, y) = get_local_logical_position(
-                            &*node_ref,
+                            node_ref.as_ref(),
                             pointer_state.location.client_x as f32,
                             pointer_state.location.client_y as f32,
                         );
@@ -373,7 +373,7 @@ impl Core {
         if let Some(last_hover_node) = last_hover_node {
             let node_ref = last_hover_node.node.read();
             let (x, y) = get_local_logical_position(
-                &*node_ref,
+                node_ref.as_ref(),
                 pointer_state.location.client_x as f32,
                 pointer_state.location.client_y as f32,
             );

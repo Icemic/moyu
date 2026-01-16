@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
+use anyhow::Result;
 use arc_swap::ArcSwapOption;
 use image::{Frames, RgbaImage};
 use moyu_core::nodes::NodeBase;
@@ -108,6 +109,14 @@ pub struct AnimationProps {
 }
 
 impl Node for Animation {
+    fn create_instance(label: Option<String>) -> Result<Box<dyn Node>>
+    where
+        Self: Sized,
+    {
+        let label = label.unwrap_or_default();
+        Ok(Box::new(Self::new(label)))
+    }
+
     #[inline]
     fn node_type(&self) -> &'static str {
         "animation"

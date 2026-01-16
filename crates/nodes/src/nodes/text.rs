@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use anyhow::Result;
 use csscolorparser::Color;
 use huozi::glyph_vertices::GlyphVertices;
 use huozi::layout::{LayoutDirection, LayoutStyle, SegmentGlyphSpan};
@@ -177,6 +178,14 @@ impl Default for TextProps {
 }
 
 impl Node for Text {
+    fn create_instance(label: Option<String>) -> Result<Box<dyn Node>>
+    where
+        Self: Sized,
+    {
+        let label = label.unwrap_or_default();
+        Ok(Box::new(Self::new(label, "")))
+    }
+
     #[inline]
     fn node_type(&self) -> &'static str {
         "text"

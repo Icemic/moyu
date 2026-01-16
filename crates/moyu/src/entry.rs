@@ -3,6 +3,7 @@ use std::sync::Arc;
 use moyu_audio::AudioManager;
 use moyu_core::core::{Core, get_core, set_core, try_get_core};
 use moyu_core::events::GameEvent;
+use moyu_core::nodes::Container;
 use moyu_core::plugins::SystemPlugin;
 use moyu_core::setup;
 use moyu_core::surface::create_window;
@@ -13,6 +14,7 @@ use moyu_core::winit::event::WindowEvent;
 use moyu_core::winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 #[cfg(any(desktop, web))]
 use moyu_gamepad::GamepadPlugin;
+use moyu_nodes::nodes::{Animation, Backdrop, Clip, Filter, Sprite, Text};
 use moyu_nodes::renderer::{
     AnimationRenderer, BackdropRenderer, ClipRenderer, OffscreenPassRenderer, SpriteRenderer,
     TextRenderer,
@@ -121,6 +123,15 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
             }
             ApplicationInitEvent::Plugin => {
                 let core = get_core();
+
+                core.register_node_type::<Container>("container");
+                core.register_node_type::<Sprite>("sprite");
+                core.register_node_type::<Text>("text");
+                core.register_node_type::<Clip>("clip");
+                core.register_node_type::<Filter>("filter");
+                core.register_node_type::<Backdrop>("backdrop");
+                core.register_node_type::<Animation>("animation");
+
                 if let Some(graphics) = core.graphics() {
                     let device = graphics.device();
                     let config = graphics.config().lock().clone();

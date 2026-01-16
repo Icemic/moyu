@@ -29,12 +29,12 @@ pub fn hit_test<'a>(
     let mut focused_node = None;
 
     walk_nodes_bottom_top(
-        &*root_node,
+        root_node.as_ref(),
         &mut |child, _, parent_ids| {
             let child_ref = child.read();
 
             let (local_logical_x, local_logical_y) =
-                get_local_logical_position(&*child_ref, global_logical_x, global_logical_y);
+                get_local_logical_position(child_ref.as_ref(), global_logical_x, global_logical_y);
 
             let hit = match child_ref.as_focusable() {
                 Some(focusable) => {
