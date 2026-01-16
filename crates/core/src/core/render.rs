@@ -716,6 +716,7 @@ impl Graphics {
                     index_buffer,
                     instance_buffer,
                     count,
+                    instance_count,
                 } => {
                     // 确保有活动的 pass
                     let need_create_pass = current_pass.is_none();
@@ -756,9 +757,9 @@ impl Graphics {
                     if let Some(index_buffer) = index_buffer {
                         render_pass
                             .set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-                        render_pass.draw_indexed(0..count, 0, 0..1);
+                        render_pass.draw_indexed(0..count, 0, 0..instance_count);
                     } else {
-                        render_pass.draw(0..count, 0..1);
+                        render_pass.draw(0..count, 0..instance_count);
                     }
                 }
                 RenderCommand::BeginClip { rect } => {

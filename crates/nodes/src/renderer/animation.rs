@@ -428,6 +428,7 @@ impl Renderer for AnimationRenderer {
                     index_buffer: Some(self.index_buffer.clone()),
                     instance_buffer: None,
                     count: QUAD_INDICES_COUNT,
+                    instance_count: 1,
                 })
                 .unwrap();
         }

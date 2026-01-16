@@ -601,7 +601,8 @@ impl Renderer for SpriteRenderer {
                     vertex_buffer: Some(self.quad_buffer.clone()),
                     index_buffer: Some(self.index_buffer.clone()),
                     instance_buffer: Some(instance_buffer),
-                    count: 6 * instance_count,
+                    count: 6,
+                    instance_count,
                 })
                 .unwrap();
         }
