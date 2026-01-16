@@ -90,10 +90,13 @@ core/src/
 
 提供常用的节点类型：
 
+- `Container` - 容器节点
 - `Sprite` - 图片精灵，支持普通模式和九宫格模式
 - `Text` - 文本渲染
-- `Video` - 视频播放
-- `YuvSprite` - YUV 格式视频帧渲染
+- `Animation` - 帧动画节点
+- `Clip` - 裁剪节点
+- `Filter` - 滤镜节点
+- `Backdrop` - 背景滤镜节点
 
 #### `moyu_runtime` - JS 运行时
 
