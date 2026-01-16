@@ -93,10 +93,14 @@ pub(super) fn ws_connect(
                     while let Some(msg) = read.next().await {
                         match msg {
                             Ok(Message::Text(text)) => {
-                                dispatch_ws_event(id, "message", Some(WsData::Text(text)));
+                                dispatch_ws_event(
+                                    id,
+                                    "message",
+                                    Some(WsData::Text(text.to_string())),
+                                );
                             }
                             Ok(Message::Binary(bin)) => {
-                                dispatch_ws_event(id, "message", Some(WsData::Binary(bin)));
+                                dispatch_ws_event(id, "message", Some(WsData::Binary(bin.into())));
                             }
                             Ok(Message::Close(frame)) => {
                                 let (code, reason) = frame
@@ -157,7 +161,7 @@ pub(super) fn ws_send(context: *mut JSContext, args: &[RawJSValue]) -> Result<Op
     let data = &args[1];
 
     let msg = if data.is_string() {
-        Message::Text(data.to_string().unwrap())
+        Message::Text(data.to_string().unwrap().into())
     } else if data.is_array_buffer() {
         // Handle ArrayBuffer
         unsafe {
@@ -168,7 +172,7 @@ pub(super) fn ws_send(context: *mut JSContext, args: &[RawJSValue]) -> Result<Op
                 return Err(anyhow!("Failed to get ArrayBuffer data"));
             }
             let slice = std::slice::from_raw_parts(ptr, len as usize);
-            Message::Binary(slice.to_vec())
+            Message::Binary(slice.into())
         }
     } else {
         return Err(anyhow!("ws_send data must be a string or ArrayBuffer"));
