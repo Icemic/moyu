@@ -3,4 +3,5 @@ pub mod coordinates;
 pub mod dispatch_event;
 pub mod fps_meter;
 pub mod hit_test;
+pub mod patch;
 pub mod walk;

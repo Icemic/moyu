@@ -3,10 +3,12 @@ use moyu_core::base::Rect;
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 
+use moyu_core::apply_patch;
 use moyu_core::core::render_command::FilterKind;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js};
+use moyu_core::utils::patch::Patch;
 use ts_rs::TS;
 
 #[derive(Debug, Node)]
@@ -66,11 +68,11 @@ impl Filter {
 
 impl Focusable for Filter {}
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
 #[ts(export, optional_fields)]
 pub struct FilterProps {
-    pub filters: Option<Vec<FilterKind>>,
+    pub filters: Patch<Vec<FilterKind>>,
 }
 
 impl Node for Filter {
@@ -89,11 +91,7 @@ impl Node for Filter {
 
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: FilterProps = from_js(props).unwrap();
-
-        if let Some(filters) = props.filters {
-            self.filters = filters;
-        }
-
+        apply_patch!(props.filters => self.filters, Vec::new());
         self.base_mut().pend_update();
     }
 

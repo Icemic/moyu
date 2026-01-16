@@ -5,9 +5,11 @@ use std::sync::Arc;
 use anyhow::Result;
 use arc_swap::ArcSwapOption;
 use image::{Frames, RgbaImage};
+use moyu_core::apply_patch;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js};
+use moyu_core::utils::patch::Patch;
 use moyu_macros::Node;
 use reiterator::Reiterator;
 use serde::{Deserialize, Serialize};
@@ -99,13 +101,13 @@ impl Animation {
 
 impl Focusable for Animation {}
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
 #[ts(export, optional_fields)]
 pub struct AnimationProps {
-    pub src: Option<String>,
-    pub area: Option<[f32; 4]>,
-    pub format: Option<AnimationFormat>,
+    pub src: Patch<String>,
+    pub area: Patch<[f32; 4]>,
+    pub format: Patch<AnimationFormat>,
 }
 
 impl Node for Animation {
@@ -126,20 +128,18 @@ impl Node for Animation {
         let props: AnimationProps = from_js(props).unwrap();
 
         // set pending change to next_texture_id, avoid texture loading in render (may cause flash)
-        if let Some(src) = props.src {
+        apply_patch!(props.src => |src| {
             self.src = Some(src);
             self.next_src = self.src.clone();
-        }
+        }, String::new());
 
-        if let Some(area) = props.area {
+        apply_patch!(props.area => |area| {
             self.area = area;
             // clean base node size, and re-assign it in renderer
             self.base_mut().set_size(0, 0);
-        }
+        }, [0.0, 0.0, 1.0, 1.0]);
 
-        if let Some(format) = props.format {
-            self.format = format;
-        }
+        apply_patch!(props.format => self.format, AnimationFormat::default());
 
         self.base_mut().pend_update();
     }

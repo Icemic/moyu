@@ -159,19 +159,33 @@ const hostConfig: HostConfig<
 
   commitUpdate(instance, type, prevProps, nextProps, _internalHandle) {
     // console.debug('commitUpdate: ', type, JSON.stringify(_updatePayload));
-    const { label, children, ...props } = nextProps;
-    const changedProps = omitBy(props, (value, key) => prevProps[key] === value);
+    const { label: _oldLabel, children: _oldChildren, ...oldProps } = prevProps;
+    const { label, children, ...newProps } = nextProps;
+
+    const changedProps: Record<string, any> = {};
+
+    // Check for changed or new props
+    for (const key in newProps) {
+      if ((newProps as any)[key] !== (oldProps as any)[key]) {
+        changedProps[key] = (newProps as any)[key];
+      }
+    }
+
+    // Check for removed props
+    for (const key in oldProps) {
+      if (!(key in newProps)) {
+        changedProps[key] = null;
+      }
+    }
+
+    // Handle label especially if it's reactive
+    if (label !== _oldLabel) {
+      changedProps.label = label ?? null;
+    }
 
     if (Object.keys(changedProps).length) {
       instance.updateProps(changedProps);
     }
-
-    // if (shallowEq(prevProps, nextProps) && allChildrenAreMemoized(instance)) {
-    //   return;
-    // }
-    // bustBranchMemoization(instance);
-    // instance.props = nextProps;
-    // instance.label = nextProps.label;
   },
 
   commitTextUpdate: (_textInstance: TextInstance, _oldText: string, _newText: string) => {
@@ -290,17 +304,4 @@ export function createRoot(options?: RootOptions) {
       return MoyuRenderer.updateContainer(reactElement, rootElement, null, callback);
     },
   };
-}
-
-function omitBy<T extends Record<string, any>>(
-  object: T,
-  predicate: (value: T[keyof T], key: keyof T) => boolean,
-): Partial<T> {
-  const result: Partial<T> = {};
-  for (const key of Object.keys(object) as (keyof T)[]) {
-    if (!predicate(object[key], key)) {
-      result[key] = object[key];
-    }
-  }
-  return result;
 }
