@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use csscolorparser::Color;
 use log::warn;
 use ts_rs::TS;
@@ -420,11 +422,10 @@ impl NodeBase {
 
     #[inline]
     pub fn insert_child_before(&mut self, before_child: NodeLock, child: NodeLock) {
-        let index = self.children.iter().position(|item| {
-            let l = item.read();
-            let r = before_child.read();
-            l.as_ref() == r.as_ref()
-        });
+        let index = self
+            .children
+            .iter()
+            .position(|item| Arc::ptr_eq(item, &before_child));
         if index.is_none() {
             warn!(
                 "Cannot insert child before another one because the another child does not present in current children."
@@ -435,11 +436,11 @@ impl NodeBase {
 
     #[inline]
     pub fn remove_child(&mut self, child: NodeLock) -> Option<NodeLock> {
-        if let Some(index) = self.children.iter().position(|item| {
-            let l = item.read();
-            let r = child.read();
-            l.as_ref() == r.as_ref()
-        }) {
+        if let Some(index) = self
+            .children
+            .iter()
+            .position(|item| Arc::ptr_eq(item, &child))
+        {
             return Some(self.children.remove(index));
         }
         None
