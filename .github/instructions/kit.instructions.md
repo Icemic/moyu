@@ -122,8 +122,6 @@ function AnimatedSprite() {
 | ------------- | ---------- | -------------------------------------------- |
 | `<container>` | 容器节点   | 基础变换属性                                 |
 | `<sprite>`    | 图片精灵   | `src`, `area`, `mode`, `bounds`              |
-| `<yuvsprite>` | YUV 视频帧 | `area`                                       |
-| `<video>`     | 视频播放   | `src`, `autoplay`                            |
 | `<text>`      | 文本渲染   | `text`, `fontSize`, `fillColor`, `printMode` |
 
 ### 通用节点属性 (MoyuNodeAttributes)
