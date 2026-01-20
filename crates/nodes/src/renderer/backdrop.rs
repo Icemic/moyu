@@ -147,7 +147,7 @@ impl Renderer for BackdropRenderer {
 
         let bounds = backdrop
             .base()
-            .bounds()
+            .content_bounds()
             .transform(backdrop.base().global_transform());
 
         let bounds = bounds.clamp(
