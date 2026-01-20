@@ -32,7 +32,6 @@ debug = 1
 # rustc-wrapper = "/usr/local/bin/sccache"
 
 [env]
-FFMPEG_DIR = {value = "3rdparty/ffmpeg", relative = true}
 TS_RS_EXPORT_DIR = {value = "packages/kit/src/bindings", relative = true}
 
 [alias]

@@ -9,10 +9,7 @@ version = "0.8.0"
 
 [features]
 default = []
-
 text = ["dep:huozi", "dep:csscolorparser"]
-video = ["dep:ffmpeg-rs"]
-yuv_sprite = []
 
 [dependencies]
 reiterator = "0.3.0"
@@ -34,7 +31,6 @@ moyu_pal = {workspace = true}
 moyu_resource = {workspace = true}
 
 # optional for features
-ffmpeg-rs = {version = "5.2.1", optional = true}
 huozi = {workspace = true, optional = true}
 
 csscolorparser = {workspace = true, optional = true}
