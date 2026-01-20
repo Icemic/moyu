@@ -145,12 +145,7 @@ impl Renderer for OffscreenPassRenderer {
     ) {
         let filter = node.as_any_mut().downcast_mut::<Filter>().unwrap();
 
-        // Calculate the bounding box of the node by transforming its local bounds
-        // to stage logical coordinates and clipping to stage dimensions.
-        let bounds = filter
-            .base()
-            .content_bounds()
-            .transform(filter.base().global_transform());
+        let bounds = filter.base().global_content_bounds();
 
         let bounds = bounds.clamp(
             0.0,

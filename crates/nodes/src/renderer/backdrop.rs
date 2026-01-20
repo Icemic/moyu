@@ -145,10 +145,7 @@ impl Renderer for BackdropRenderer {
 
         let backdrop = node.as_any_mut().downcast_mut::<Backdrop>().unwrap();
 
-        let bounds = backdrop
-            .base()
-            .content_bounds()
-            .transform(backdrop.base().global_transform());
+        let bounds = backdrop.base().global_content_bounds();
 
         let bounds = bounds.clamp(
             0.,
