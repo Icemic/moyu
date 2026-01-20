@@ -436,17 +436,8 @@ impl NodeBase {
             let skew_x = self.skew.x;
             let skew_y = self.skew.y;
 
-            let bounds = &self.content_bounds;
-
-            let pivot_x = bounds.min_x() + self.pivot.x * bounds.width();
-            let pivot_y = bounds.min_y() + self.pivot.y * bounds.height();
-            // FIXME:
-            // Cannot use parent_bounds to calculate anchor, because anchor will in turn affect
-            // the calculation of parent_bounds, eventually forming a non-converging loop.
-            //
-            // However, using self width/height is not perfect either, because children may
-            // overflow the parent bounds, causing anchor misplacement.
-            //
+            let pivot_x = self.pivot.x * self.width as f32;
+            let pivot_y = self.pivot.y * self.height as f32;
             let anchor_x = self.anchor.x * parent.width as f32;
             let anchor_y = self.anchor.y * parent.height as f32;
 
