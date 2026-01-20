@@ -9,9 +9,7 @@ version = "0.8.0"
 
 [features]
 default = []
-
 text = []
-video = []
 
 [dependencies]
 anyhow = {workspace = true}

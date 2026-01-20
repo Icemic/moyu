@@ -15,9 +15,7 @@ release = true
 
 [features]
 default = ["text"]
-
 text = ["moyu_nodes/text", "moyu_ops/text"]
-video = ["moyu_nodes/video"]
 
 [[bin]]
 name = "moyu"
