@@ -423,7 +423,7 @@ impl Renderer for TextRenderer {
                         || node.base_mut().height() != &total_height
                     {
                         node.base_mut().set_size(total_width, total_height);
-                        node.base_mut().calculate_bounds();
+                        node.base_mut().calculate_content_bounds();
 
                         // current transform matrix is not right because the size is not updated yet
                         // so we have to skip this tick until the next one when the transform matrix is updated

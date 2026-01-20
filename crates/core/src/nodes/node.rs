@@ -49,9 +49,9 @@ pub struct NodeBase {
     /// cursor style
     cursor: MoyuCursor,
     /// AABB bounds of the node, relative to itself
-    bounds: Bound,
+    content_bounds: Bound,
     /// AABB bounds of the node, relative to global(stage)
-    global_bounds: Bound,
+    global_content_bounds: Bound,
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
@@ -88,8 +88,8 @@ impl NodeBase {
             global_opacity: 1.0,
             interactive: true,
             cursor: MoyuCursor::default(),
-            bounds: Bound::default(),
-            global_bounds: Bound::default(),
+            content_bounds: Bound::default(),
+            global_content_bounds: Bound::default(),
 
             _update_id: 0,
             _current_update_id: 0,
@@ -193,13 +193,13 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn bounds(&self) -> &Bound {
-        &self.bounds
+    pub fn content_bounds(&self) -> &Bound {
+        &self.content_bounds
     }
 
     #[inline]
-    pub fn global_bounds(&self) -> &Bound {
-        &self.global_bounds
+    pub fn global_content_bounds(&self) -> &Bound {
+        &self.global_content_bounds
     }
 
     #[inline]
@@ -411,17 +411,18 @@ impl NodeBase {
         self.set_translate(x, y);
     }
 
-    #[inline]
-    pub fn calculate_bounds(&mut self) {
+    pub fn calculate_content_bounds(&mut self) {
         let mut bounds = Bound::new(0.0, 0.0, self.width as f32, self.height as f32);
         for child in &self.children {
             let child_read = child.read();
             let child_base = child_read.base();
-            let child_bounds = child_base.bounds().transform(child_base.transform());
+            let child_bounds = child_base
+                .content_bounds()
+                .transform(child_base.transform());
             bounds = bounds.union(&child_bounds);
         }
-        self.bounds = bounds;
-        self.global_bounds = bounds.transform(&self.global_transform);
+        self.content_bounds = bounds;
+        self.global_content_bounds = bounds.transform(&self.global_transform);
     }
 
     #[inline]
@@ -435,7 +436,7 @@ impl NodeBase {
             let skew_x = self.skew.x;
             let skew_y = self.skew.y;
 
-            let bounds = &self.bounds;
+            let bounds = &self.content_bounds;
 
             let pivot_x = bounds.min_x() + self.pivot.x * bounds.width();
             let pivot_y = bounds.min_y() + self.pivot.y * bounds.height();

@@ -370,7 +370,10 @@ impl Graphics {
                         );
 
                         collect_command = _child.base().visible()
-                            && _child.base().global_bounds().intersects(&stage_bound);
+                            && _child
+                                .base()
+                                .global_content_bounds()
+                                .intersects(&stage_bound);
                         if collect_command {
                             current_renderer.collect_commands(_child.as_ref(), &self.sender);
                         }
@@ -381,7 +384,7 @@ impl Graphics {
                 &mut |child, _, collect_command| {
                     {
                         let mut _child = child.write();
-                        _child.base_mut().calculate_bounds();
+                        _child.base_mut().calculate_content_bounds();
                     }
 
                     let _child = child.read();
@@ -395,7 +398,7 @@ impl Graphics {
                 },
             );
 
-            root_node.with_upgraded(|n| n.base_mut().calculate_bounds());
+            root_node.with_upgraded(|n| n.base_mut().calculate_content_bounds());
         }
 
         self.sender

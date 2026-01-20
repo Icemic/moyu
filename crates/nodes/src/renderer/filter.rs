@@ -149,7 +149,7 @@ impl Renderer for OffscreenPassRenderer {
         // to stage logical coordinates and clipping to stage dimensions.
         let bounds = filter
             .base()
-            .bounds()
+            .content_bounds()
             .transform(filter.base().global_transform());
 
         let bounds = bounds.clamp(
