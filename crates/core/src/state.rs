@@ -6,10 +6,11 @@ use crate::utils::hit_test::HitTestTarget;
 #[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct PointerLocation {
-    pub client_x: u32,
-    pub client_y: u32,
-    pub screen_x: u32,
-    pub screen_y: u32,
+    pub valid: bool,
+    pub client_x: i32,
+    pub client_y: i32,
+    pub screen_x: i32,
+    pub screen_y: i32,
     pub offset_x: f32,
     pub offset_y: f32,
 }

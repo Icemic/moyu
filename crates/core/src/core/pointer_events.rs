@@ -6,7 +6,7 @@ use winit::window::{CursorIcon, Window};
 use crate::base::*;
 use crate::core::FocusablePayload;
 use crate::events::{MouseEvent, MouseEventKind, TouchEvent, TouchEventKind};
-use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerLocation, PointerState};
+use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerState};
 use crate::utils::dispatch_event::dispatch_event;
 use crate::utils::hit_test::{get_local_logical_position, hit_test};
 
@@ -255,16 +255,11 @@ impl Core {
         let stage_logical_x = (global_logical_x - translate_x) / scale;
         let stage_logical_y = (global_logical_y - translate_y) / scale;
 
-        let location = PointerLocation {
-            client_x: stage_logical_x.round() as u32,
-            client_y: stage_logical_y.round() as u32,
-            screen_x: screen_logical_x.round() as u32,
-            screen_y: screen_logical_y.round() as u32,
-            offset_x: 0.,
-            offset_y: 0.,
-        };
-
-        pointer_state.location = location;
+        pointer_state.location.valid = true;
+        pointer_state.location.client_x = stage_logical_x.round() as i32;
+        pointer_state.location.client_y = stage_logical_y.round() as i32;
+        pointer_state.location.screen_x = screen_logical_x.round() as i32;
+        pointer_state.location.screen_y = screen_logical_y.round() as i32;
     }
 
     pub(super) fn handle_pointer_hover(&self, identifier: i32, refresh_hover_node: bool) {
@@ -287,7 +282,7 @@ impl Core {
 
         let last_hover_node = &mut pointer_state.current_target;
 
-        if refresh_hover_node {
+        if refresh_hover_node && pointer_state.location.valid {
             // get node under pointer
             if let Some(node) = hit_test(
                 &self.root_node(),
