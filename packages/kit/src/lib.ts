@@ -7,5 +7,6 @@ export * from './events';
 export type * from './node';
 export * from './utils';
 export * from './commands';
+export * from './runtime-globals';
 
 export { moyu };
