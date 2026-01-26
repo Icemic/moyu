@@ -16,7 +16,7 @@
     "@storybook/addon-docs": "^10.1.4",
     "@storybook/addon-onboarding": "^10.1.4",
     "@storybook/react-vite": "^10.1.4",
-    "@types/node": "20",
+    "@types/node": ">=24",
     "esbuild": "^0.25.2",
     "esbuild-register": "^3.6.0",
     "eslint": "^9.2.0",
