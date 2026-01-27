@@ -1090,6 +1090,7 @@ __metadata:
     react: "npm:^19.2.1"
     react-reconciler: "npm:^0.33.0"
     typescript: "npm:^5.9.3"
+    valtio: "npm:^2.1.7"
   peerDependencies:
     react: ^19.2.1
   languageName: unknown
@@ -6138,6 +6139,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"proxy-compare@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "proxy-compare@npm:3.0.1"
+  checksum: 10c0/1e3631ef32603d4de263860ce02d84b48384dce9b62238b2148b3c58a4e4ec5b06644615dcc196a339f73b9695443317099d55a9173e02ce8492088c9330c00b
+  languageName: node
+  linkType: hard
+
 "punycode@npm:^2.1.0":
   version: 2.1.1
   resolution: "punycode@npm:2.1.1"
@@ -7657,6 +7665,23 @@ __metadata:
   bin:
     uuid: dist/bin/uuid
   checksum: 10c0/bcbb807a917d374a49f475fae2e87fdca7da5e5530820ef53f65ba1d12131bd81a92ecf259cc7ce317cbe0f289e7d79fdfebcef9bfa3087c8c8a2fa304c9be54
+  languageName: node
+  linkType: hard
+
+"valtio@npm:^2.1.7":
+  version: 2.3.0
+  resolution: "valtio@npm:2.3.0"
+  dependencies:
+    proxy-compare: "npm:^3.0.1"
+  peerDependencies:
+    "@types/react": ">=18.0.0"
+    react: ">=18.0.0"
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    react:
+      optional: true
+  checksum: 10c0/4376bfbf7ca906ef1e3254b28f1bd39a10af3829c8558661c22cac988c39cef6c152a3df4abcd5d08dd028a1993aa93d682fee433fee4e71e7b0b1b25eef9ce8
   languageName: node
   linkType: hard
 
