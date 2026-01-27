@@ -13,9 +13,9 @@ import { SpriteProps } from './bindings/SpriteProps';
 import { TextProps } from './bindings/TextProps';
 import { AnimationProps } from './bindings/AnimationProps';
 
-export type Tuple2 = [number, number] | readonly [number, number];
-export type Tuple3 = [number, number, number] | readonly [number, number, number];
-export type Tuple4 = [number, number, number, number] | readonly [number, number, number, number];
+export type Tuple2 = [number, number];
+export type Tuple3 = [number, number, number];
+export type Tuple4 = [number, number, number, number];
 
 export type DetailedMoyuProps<E extends MoyuNodeAttributes> = ClassAttributes<Node> & E;
 
