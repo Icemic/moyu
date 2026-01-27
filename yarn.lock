@@ -1086,7 +1086,7 @@ __metadata:
     "@react-spring/shared": "npm:^10.0.3"
     "@types/node": "npm:>=24.10.1"
     "@types/react": "npm:^19.2.7"
-    "@types/react-reconciler": "npm:^0.32.3"
+    "@types/react-reconciler": "npm:^0.33.0"
     react: "npm:^19.2.1"
     react-reconciler: "npm:^0.33.0"
     typescript: "npm:^5.9.3"
@@ -1950,12 +1950,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/react-reconciler@npm:^0.32.3":
-  version: 0.32.3
-  resolution: "@types/react-reconciler@npm:0.32.3"
+"@types/react-reconciler@npm:^0.33.0":
+  version: 0.33.0
+  resolution: "@types/react-reconciler@npm:0.33.0"
   peerDependencies:
     "@types/react": "*"
-  checksum: 10c0/8d6485c6da3aa6d84b5c320c4cf9737e67511cd6c7ebfb7252ec032fd1cfb0515d3a2c06054491603c6ab040202694ff5ad125cd840e1da9e76d7447cef53dff
+  checksum: 10c0/190c203d93c0df9a42fabd693ce059dbdf6c53e15eb14502d9e5b946c981231c5846b867de15522ff61368e9218a8508a9db5476f3e47b5d664bbb2c84b31ac7
   languageName: node
   linkType: hard
 
