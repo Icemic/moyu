@@ -3,8 +3,13 @@
   "version": "0.1.0",
   "description": "Software Development Kit of Moyu Visual Novel Engine",
   "main": "dist/lib.js",
-  "module": "src/lib.ts",
+  "module": "dist/lib.js",
   "types": "dist/lib.d.ts",
+  "files": [
+    "dist",
+    "jsx-runtime.d.ts",
+    "LICENSE.txt"
+  ],
   "scripts": {
     "dev": "tsc --outDir ./dist -w -p tsconfig.build.json",
     "prepack": "tsc --outDir ./dist -p tsconfig.build.json",
