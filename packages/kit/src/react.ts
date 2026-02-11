@@ -6,6 +6,12 @@ import { DefaultEventPriority, NoEventPriority } from 'react-reconciler/constant
 import type { DetailedMoyuProps, MoyuNodeAttributes } from './declaration';
 import { Node } from './node';
 
+declare const process: {
+  env: {
+    NODE_ENV: string;
+  };
+};
+
 type Type = string;
 type Props = DetailedMoyuProps<MoyuNodeAttributes>;
 type Container = Node;
