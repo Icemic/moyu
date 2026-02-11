@@ -1091,6 +1091,7 @@ __metadata:
     react-reconciler: "npm:^0.33.0"
     typescript: "npm:^5.9.3"
     valtio: "npm:^2.1.7"
+    zod: "npm:^4.2.0"
   peerDependencies:
     react: ^19.2.1
   languageName: unknown
@@ -8070,5 +8071,12 @@ __metadata:
   version: 0.1.0
   resolution: "yocto-queue@npm:0.1.0"
   checksum: 10c0/dceb44c28578b31641e13695d200d34ec4ab3966a5729814d5445b194933c096b7ced71494ce53a0e8820685d1d010df8b2422e5bf2cdea7e469d97ffbea306f
+  languageName: node
+  linkType: hard
+
+"zod@npm:^4.2.0":
+  version: 4.3.6
+  resolution: "zod@npm:4.3.6"
+  checksum: 10c0/860d25a81ab41d33aa25f8d0d07b091a04acb426e605f396227a796e9e800c44723ed96d0f53a512b57be3d1520f45bf69c0cb3b378a232a00787a2609625307
   languageName: node
   linkType: hard

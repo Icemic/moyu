@@ -9,5 +9,6 @@ export * from './utils';
 export * from './commands';
 export * from './runtime-globals';
 export * from './components/navigation';
+export * from './hooks';
 
 export { moyu };
