@@ -38,7 +38,7 @@ export type TextLineHandler = (text: TextLine, control: GameControl) => void;
 // Skip state — independent valtio proxy (not serialized with game saves)
 // ---------------------------------------------------------------------------
 
-const SKIP_INTERVAL_MS = 50;
+const SKIP_INTERVAL_MS = 5;
 
 /** Reactive skip state. Actors read via useIsSkipping(). */
 export const skipState = proxy({ active: false });
