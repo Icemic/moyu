@@ -97,11 +97,11 @@ impl AudioManager {
             .insert(name.to_string(), Arc::new(Mutex::new(Audio::new())));
     }
 
-    pub fn remove_audio(&mut self, name: &str) {
+    pub fn remove_audio(&mut self, name: &str, fade_time: Option<u32>) {
         if let Some(audio) = self.audios.remove(name) {
             let mut audio = audio.lock();
             if audio.played()
-                && let Err(err) = audio.stop(Some(0))
+                && let Err(err) = audio.stop(fade_time)
             {
                 warn!("Failed to stop audio {}: {}", name, err);
             }
@@ -218,6 +218,7 @@ pub enum AudioCommand {
     },
     Release {
         name: String,
+        fade_time: Option<u32>,
     },
     Play {
         name: String,
@@ -278,8 +279,8 @@ impl Command for AudioManager {
                 let promise = create_promise(fut)?;
                 return Ok(Some(promise));
             }
-            AudioCommand::Release { name } => {
-                self.remove_audio(&name);
+            AudioCommand::Release { name, fade_time } => {
+                self.remove_audio(&name, fade_time);
             }
             AudioCommand::Play { name, fade_time } => {
                 let audio = self.get_audio(&name)?;
