@@ -57,6 +57,24 @@ impl RuntimeExecutor for ScenarioExecutor {
         Ok(false)
     }
 
+    fn eval_condition(
+        &mut self,
+        _ctx: &RuntimeContext,
+        condition: &str,
+    ) -> sixu::error::Result<bool> {
+        if condition == "true" {
+            return Ok(true);
+        } else if condition == "false" {
+            return Ok(false);
+        }
+
+        log::warn!(
+            "Condition evaluation not implemented, returning false for condition: {}",
+            condition
+        );
+        Ok(false)
+    }
+
     fn eval_script(
         &mut self,
         _ctx: &mut RuntimeContext,
