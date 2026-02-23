@@ -1,6 +1,6 @@
 {
   "name": "@momoyu-ink/kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Software Development Kit of Moyu Visual Novel Engine",
   "main": "dist/lib.js",
   "module": "dist/lib.js",
@@ -17,7 +17,7 @@
     "watch": "tsc --outDir ./dist -w -p tsconfig.build.json"
   },
   "author": "Icemic <bingfeng.web@gmail.com>",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "engines": {
     "node": ">=22"
   },
