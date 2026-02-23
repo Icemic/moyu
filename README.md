@@ -12,26 +12,26 @@
 
 面向现代视觉小说开发，基于 Rust 核心与 JS/React 开发范式，为创作者提供从快速原型到深度定制的渐进式体验。
 
-## ✨ 核心特性
+## 核心特性
 
-### 🌐 全平台覆盖
+### 全平台覆盖
 
 - 完整跨平台支持：Windows/macOS/Linux/Android/iOS/Web
 - WebGPU 图形后端：支持切换 Vulkan/Metal/DX12/OpenGL
 - 主机平台支持（TODO）
 
-### ⚡ 分层架构，各取所长
+### 分层架构，各取所长
 
 - **Rust 底层**：资源管理/图形渲染/音频系统/原生插件
 - **JavaScript 上层**：React 组件化/剧情逻辑/动画编排
 
-### 🛠️ 现代化开发
+### 现代化开发
 
 - CLI 工具快速初始化模板
 - 热重载与可视化调试（当前仅支持 Web）
 - TypeScript 类型支持
 
-## 🚀 快速开始
+## 快速开始
 
 ### 安装 CLI
 
@@ -65,7 +65,7 @@ moyu run
 yarn dev
 ```
 
-## 🎯 设计原则
+## 设计原则
 
 ### 渐进式复杂度
 
@@ -79,16 +79,16 @@ yarn dev
 - 异步 I/O 多线程调度
 - Rust 内存安全保证
 
-## 🏠 加入社区
+## 加入社区
 
 我们欢迎各类创作者加入社区（链接在开头）：
 
-- 🎮 游戏创作者
-- ⚡ Rust 工程师
-- 🔮 Web 工程师
+- 游戏创作者
+- Rust 工程师
+- Web 工程师
 - ...
 
-## 🤝 参与贡献
+## 参与贡献
 
 欢迎以下类型贡献：
 
@@ -101,9 +101,9 @@ yarn dev
 
 阅读 [贡献指南](CONTRIBUTING.md) 开始参与。
 
-## 📜 开源许可
+## 开源许可
 
-MPL-2.0 协议 | 自由使用 ✅ 商业友好 💼
+MPL-2.0 协议 | 自由使用 商业友好
 
 This project, unless otherwise specified, is subject to the terms of the Mozilla Public License, v. 2.0, as described in each `Cargo.toml` or `package.json` file. For more details, see the [LICENSE](LICENSE.txt) file.
 
