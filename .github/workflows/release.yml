@@ -108,7 +108,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-${{ matrix.arch }}-${{ steps.version.outputs.version }}
-          path: "*.tar.zst"
+          path: '*.tar.zst'
           retention-days: 30
 
   release:
@@ -138,15 +138,40 @@ jobs:
             
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "is_tag=true" >> $GITHUB_OUTPUT
+
+            # Determine channel: versions containing "-" are prerelease
+            if [[ "$VERSION" == *"-"* ]]; then
+              echo "channel=prerelease" >> $GITHUB_OUTPUT
+              echo "display_version=v$VERSION" >> $GITHUB_OUTPUT
+              echo "r2_tag=v$VERSION" >> $GITHUB_OUTPUT
+            else
+              echo "channel=stable" >> $GITHUB_OUTPUT
+              echo "display_version=v$VERSION" >> $GITHUB_OUTPUT
+              echo "r2_tag=v$VERSION" >> $GITHUB_OUTPUT
+            fi
           else
+            SHORT_SHA="${GITHUB_SHA::7}"
             echo "version=dev" >> $GITHUB_OUTPUT
             echo "is_tag=false" >> $GITHUB_OUTPUT
+            echo "channel=dev" >> $GITHUB_OUTPUT
+            echo "display_version=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
+            echo "r2_tag=dev" >> $GITHUB_OUTPUT
           fi
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: Generate release metadata
+        run: |
+          node scripts/release/update-release-metadata.mjs \
+            --version "${{ steps.version.outputs.display_version }}" \
+            --channel "${{ steps.version.outputs.channel }}" \
+            --tag "${{ steps.version.outputs.r2_tag }}" \
+            --artifacts-dir "./artifacts" \
+            --cdn-base-url "${{ secrets.CDN_PUBLIC_URL || 'https://cdn.example.com' }}" \
+            --output-dir "./metadata"
 
       - name: Delete existing dev release
         if: steps.version.outputs.is_tag == 'false'
@@ -189,7 +214,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG_NAME="${{ steps.version.outputs.is_tag == 'true' && format('v{0}', steps.version.outputs.version) || 'dev' }}"
-          
+
           # Upload all artifacts
           for dir in artifacts/*/; do
             if [ -d "$dir" ]; then
@@ -200,5 +225,128 @@ jobs:
               done
             fi
           done
+
+          # Upload release.json
+          gh release upload "$TAG_NAME" "./metadata/release.json" --clobber --repo ${{ github.repository }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-cdn:
+    name: Deploy to CDN (R2)
+    needs: build
+    runs-on: ubuntu-latest
+    # Ensure only one deploy-cdn job runs at a time to prevent versions.json race conditions
+    concurrency:
+      group: deploy-cdn
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+            
+            if [[ ! "$VERSION" =~ ^[a-zA-Z0-9._+-]+$ ]]; then
+              echo "Error: Invalid version format '$VERSION'. Only letters, numbers, and -.+_ are allowed."
+              exit 1
+            fi
+            
+            if [[ "$VERSION" == *"-"* ]]; then
+              echo "channel=prerelease" >> $GITHUB_OUTPUT
+              echo "display_version=v$VERSION" >> $GITHUB_OUTPUT
+              echo "r2_tag=v$VERSION" >> $GITHUB_OUTPUT
+            else
+              echo "channel=stable" >> $GITHUB_OUTPUT
+              echo "display_version=v$VERSION" >> $GITHUB_OUTPUT
+              echo "r2_tag=v$VERSION" >> $GITHUB_OUTPUT
+            fi
+          else
+            SHORT_SHA="${GITHUB_SHA::7}"
+            echo "channel=dev" >> $GITHUB_OUTPUT
+            echo "display_version=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
+            echo "r2_tag=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Download existing versions.json from R2
+        continue-on-error: true
+        run: |
+          aws s3 cp \
+            "s3://${{ secrets.R2_BUCKET_NAME }}/releases/versions.json" \
+            ./existing-versions.json
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_ENDPOINT_URL: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+
+      - name: Generate release metadata
+        run: |
+          EXTRA_ARGS=""
+          if [ -f ./existing-versions.json ]; then
+            EXTRA_ARGS="--existing-versions ./existing-versions.json"
+          fi
+
+          node scripts/release/update-release-metadata.mjs \
+            --version "${{ steps.version.outputs.display_version }}" \
+            --channel "${{ steps.version.outputs.channel }}" \
+            --tag "${{ steps.version.outputs.r2_tag }}" \
+            --artifacts-dir "./artifacts" \
+            --cdn-base-url "${{ secrets.CDN_PUBLIC_URL || 'https://cdn.example.com' }}" \
+            --output-dir "./metadata" \
+            $EXTRA_ARGS
+
+      - name: Upload artifacts to R2
+        run: |
+          R2_TAG="${{ steps.version.outputs.r2_tag }}"
+          BUCKET="${{ secrets.R2_BUCKET_NAME }}"
+
+          for dir in artifacts/*/; do
+            if [ -d "$dir" ]; then
+              # Extract asset_key from directory name by removing the last hyphen segment (the version)
+              dirname=$(basename "$dir")
+              asset_key="${dirname%-*}"
+
+              for file in "$dir"*.tar.zst; do
+                if [ -f "$file" ]; then
+                  echo "Uploading $file -> releases/${R2_TAG}/${asset_key}.tar.zst"
+                  aws s3 cp "$file" "s3://${BUCKET}/releases/${R2_TAG}/${asset_key}.tar.zst"
+                fi
+              done
+            fi
+          done
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_ENDPOINT_URL: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+
+      - name: Upload release.json to R2
+        run: |
+          R2_TAG="${{ steps.version.outputs.r2_tag }}"
+          BUCKET="${{ secrets.R2_BUCKET_NAME }}"
+          aws s3 cp ./metadata/release.json "s3://${BUCKET}/releases/${R2_TAG}/release.json" --cache-control "no-cache, max-age=0"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_ENDPOINT_URL: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+
+      - name: Upload versions.json to R2
+        run: |
+          BUCKET="${{ secrets.R2_BUCKET_NAME }}"
+          aws s3 cp ./metadata/versions.json "s3://${BUCKET}/releases/versions.json" --cache-control "no-cache, max-age=0"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_ENDPOINT_URL: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
