@@ -235,6 +235,7 @@ jobs:
     name: Deploy to CDN (R2)
     needs: build
     runs-on: ubuntu-latest
+    environment: production
     # Ensure only one deploy-cdn job runs at a time to prevent versions.json race conditions
     concurrency:
       group: deploy-cdn
