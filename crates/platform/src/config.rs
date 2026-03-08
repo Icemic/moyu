@@ -84,7 +84,13 @@ impl Default for MoyuConfig {
 
 pub async fn setup() {
     #[cfg(native)]
-    let mut entry = "./index.json".to_string();
+    let mut entry = {
+        let args: Vec<String> = std::env::args().collect();
+        args.windows(2)
+            .find(|w| w[0] == "--entry")
+            .map(|w| w[1].clone())
+            .unwrap_or_else(|| "./index.json".to_string())
+    };
 
     #[cfg(web)]
     let mut entry = web_sys::window()
