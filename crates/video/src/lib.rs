@@ -1,4 +1,4 @@
-mod audio_output;
+mod audio_playback;
 mod demuxer;
 mod player;
 mod types;

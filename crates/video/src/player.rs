@@ -7,7 +7,12 @@ use arc_swap::ArcSwapOption;
 use symphonia::core::audio::{AudioBufferRef, Signal};
 use symphonia::core::conv::IntoSample;
 
-use crate::audio_output::{AudioClock, AudioOutput, AudioRingBuffer};
+use crate::audio_playback::clock::AudioClock;
+#[cfg(native)]
+use crate::audio_playback::native::AudioOutput;
+use crate::audio_playback::ring_buffer::AudioRingBuffer;
+#[cfg(web)]
+use crate::audio_playback::web::WebAudioOutput;
 use crate::decoder::{self, VideoDecoder};
 use crate::demuxer::{Demuxer, TrackKind};
 use crate::types::*;
@@ -40,7 +45,10 @@ pub struct VideoPlayer {
     demuxer: Option<Demuxer>,
     video_decoder: Option<Box<dyn VideoDecoder>>,
     audio_decoder: Option<Box<dyn symphonia::core::codecs::Decoder>>,
+    #[cfg(not(target_arch = "wasm32"))]
     audio_output: Option<AudioOutput>,
+    #[cfg(target_arch = "wasm32")]
+    web_audio_output: Option<WebAudioOutput>,
     audio_ring_buffer: Option<AudioRingBuffer>,
     audio_resampler: AudioResampler,
     audio_spill_buffer: Vec<f32>,
@@ -101,7 +109,10 @@ impl VideoPlayer {
             demuxer: None,
             video_decoder: None,
             audio_decoder: None,
+            #[cfg(not(target_arch = "wasm32"))]
             audio_output: None,
+            #[cfg(target_arch = "wasm32")]
+            web_audio_output: None,
             audio_ring_buffer: None,
             audio_resampler: AudioResampler::new(),
             audio_spill_buffer: Vec::new(),
@@ -168,21 +179,42 @@ impl VideoPlayer {
                     let channels = params.channels.map(|c| c.count() as u16).unwrap_or(2);
 
                     let ring_buffer = AudioRingBuffer::new(AUDIO_RING_BUFFER_SIZE);
-                    let reader = ring_buffer.reader();
-
                     let clock = self.audio_clock.clone();
-                    match AudioOutput::new(sample_rate, channels, reader, clock) {
-                        Ok(output) => {
-                            self.device_sample_rate = output.sample_rate;
-                            self.device_channels = output.channels;
-                            self.audio_output = Some(output);
-                            self.audio_ring_buffer = Some(ring_buffer);
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        let reader = ring_buffer.reader();
+                        match AudioOutput::new(sample_rate, channels, reader, clock) {
+                            Ok(output) => {
+                                self.device_sample_rate = output.sample_rate;
+                                self.device_channels = output.channels;
+                                self.audio_output = Some(output);
+                                self.audio_ring_buffer = Some(ring_buffer);
+                            }
+                            Err(e) => {
+                                log::warn!(
+                                    "Failed to create audio output: {}, video will play without audio",
+                                    e
+                                );
+                            }
                         }
-                        Err(e) => {
-                            log::warn!(
-                                "Failed to create audio output: {}, video will play without audio",
-                                e
-                            );
+                    }
+
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        match WebAudioOutput::new(sample_rate, channels, clock) {
+                            Ok(output) => {
+                                self.device_sample_rate = output.sample_rate;
+                                self.device_channels = output.channels;
+                                self.web_audio_output = Some(output);
+                                self.audio_ring_buffer = Some(ring_buffer);
+                            }
+                            Err(e) => {
+                                log::warn!(
+                                    "Failed to create web audio output: {}, video will play without audio",
+                                    e
+                                );
+                            }
                         }
                     }
                 }
@@ -212,7 +244,13 @@ impl VideoPlayer {
                 self.audio_clock.set_playing(true);
                 self.eof.store(false, Ordering::Relaxed);
 
+                #[cfg(not(target_arch = "wasm32"))]
                 if let Some(ref mut output) = self.audio_output {
+                    output.resume().ok();
+                }
+                #[cfg(target_arch = "wasm32")]
+                if let Some(ref mut output) = self.web_audio_output {
+                    output.reset_schedule();
                     output.resume().ok();
                 }
 
@@ -232,7 +270,12 @@ impl VideoPlayer {
     pub fn pause(&mut self) -> Result<()> {
         if self.state == PlaybackState::Playing {
             self.audio_clock.set_playing(false);
+            #[cfg(not(target_arch = "wasm32"))]
             if let Some(ref output) = self.audio_output {
+                output.pause().ok();
+            }
+            #[cfg(target_arch = "wasm32")]
+            if let Some(ref output) = self.web_audio_output {
                 output.pause().ok();
             }
             self.state = PlaybackState::Paused;
@@ -244,7 +287,13 @@ impl VideoPlayer {
     pub fn resume(&mut self) -> Result<()> {
         if self.state == PlaybackState::Paused {
             self.audio_clock.set_playing(true);
+            #[cfg(not(target_arch = "wasm32"))]
             if let Some(ref output) = self.audio_output {
+                output.resume().ok();
+            }
+            #[cfg(target_arch = "wasm32")]
+            if let Some(ref mut output) = self.web_audio_output {
+                output.reset_schedule();
                 output.resume().ok();
             }
             self.last_tick_time = None;
@@ -265,7 +314,12 @@ impl VideoPlayer {
         self.eof.store(false, Ordering::Relaxed);
         self.demux_exhausted = false;
 
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(ref output) = self.audio_output {
+            output.pause().ok();
+        }
+        #[cfg(target_arch = "wasm32")]
+        if let Some(ref output) = self.web_audio_output {
             output.pause().ok();
         }
 
@@ -286,6 +340,10 @@ impl VideoPlayer {
         }
         self.audio_resampler.reset();
         self.audio_spill_buffer.clear();
+        #[cfg(target_arch = "wasm32")]
+        if let Some(ref mut wa) = self.web_audio_output {
+            wa.reset_schedule();
+        }
     }
 
     /// Seek to a specific time in seconds.
@@ -323,6 +381,11 @@ impl VideoPlayer {
             .set_position_us((time_secs * 1_000_000.0) as i64);
         self.eof.store(false, Ordering::Relaxed);
         self.demux_exhausted = false;
+
+        #[cfg(target_arch = "wasm32")]
+        if let Some(ref mut wa) = self.web_audio_output {
+            wa.reset_schedule();
+        }
 
         if was_playing {
             self.audio_clock.set_playing(true);
@@ -386,7 +449,12 @@ impl VideoPlayer {
         let now = moyu_pal::time::Instant::now();
 
         // If no audio output, advance clock based on real wall time
-        if self.audio_output.is_none() && self.audio_clock.is_playing() {
+        #[cfg(not(target_arch = "wasm32"))]
+        let has_audio_output = self.audio_output.is_some();
+        #[cfg(target_arch = "wasm32")]
+        let has_audio_output = self.web_audio_output.is_some();
+
+        if !has_audio_output && self.audio_clock.is_playing() {
             if let Some(last) = self.last_tick_time {
                 let delta_us = now.duration_since(last).as_micros() as i64;
                 // Cap delta at 100ms to avoid jumps after stalls
@@ -395,12 +463,6 @@ impl VideoPlayer {
             }
         }
         self.last_tick_time = Some(now);
-
-        // The audio clock is the single source of truth for A/V sync.
-        // On native it advances on the audio thread; on web it advances
-        // in the ScriptProcessorNode callback. Either way, position_us()
-        // reflects how much audio the device has consumed.
-        let current_time_us = self.audio_clock.position_us();
 
         // Drain any video frames that arrived asynchronously since the last tick.
         // This is essential for the web backend where WebCodecs decodes via callbacks
@@ -449,6 +511,15 @@ impl VideoPlayer {
             self.eof.store(true, Ordering::Relaxed);
             self.drain_video_decoder();
         }
+
+        // On web, push decoded audio from the ring buffer into the Web Audio graph.
+        #[cfg(target_arch = "wasm32")]
+        if let (Some(wa), Some(ring)) = (&mut self.web_audio_output, &mut self.audio_ring_buffer) {
+            wa.pump(ring);
+        }
+
+        // Re-read the clock after pump() may have advanced it on web.
+        let current_time_us = self.audio_clock.position_us();
 
         // Select the best frame for the current time
         self.select_frame(current_time_us);
