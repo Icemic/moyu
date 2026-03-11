@@ -14,11 +14,11 @@ web = []
 
 [dependencies]
 kira = "0.11"
-symphonia = {version = "0.5", default-features = false}
 
 anyhow = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
+symphonia = {workspace = true}
 ts-rs = {workspace = true}
 
 moyu_core = {workspace = true, features = ["js_runtime"]}

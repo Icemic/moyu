@@ -32,6 +32,7 @@ quickjs-rusty = "0.11"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 sixu = "0.9"
+symphonia = {version = "0.5", default-features = false, features = ["isomp4", "mkv", "vorbis"]}
 tokio = "1"
 ts-rs = {version = "11.1", features = ["serde-json-impl"]}
 wasm-bindgen = {version = "0.2", default-features = false}
