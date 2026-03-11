@@ -1,0 +1,60 @@
+[package]
+authors = ["Icemic <bingfeng.web@gmail.com>"]
+description = "Video playback for Moyu engine."
+edition = "2024"
+license = "MPL-2.0"
+name = "moyu_video"
+repository = "https://github.com/DeepSpaceMill/moyu"
+version = "0.8.0"
+
+[features]
+default = []
+
+[dependencies]
+anyhow = {workspace = true}
+arc-swap = {workspace = true}
+log = {workspace = true}
+symphonia = {workspace = true}
+
+moyu_pal = {workspace = true}
+cpal = "0.16"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+libloading = "0.8"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+wasm-bindgen = {workspace = true}
+wasm-bindgen-futures = {workspace = true}
+web-sys = {workspace = true, features = [
+  "VideoDecoder",
+  "VideoDecoderConfig",
+  "VideoDecoderInit",
+  "EncodedVideoChunk",
+  "EncodedVideoChunkInit",
+  "EncodedVideoChunkType",
+  "DomRectInit",
+  "DomRectReadOnly",
+  "PlaneLayout",
+  "VideoFrame",
+  "VideoFrameCopyToOptions",
+  "VideoPixelFormat",
+  "VideoColorSpace",
+  "AudioDecoder",
+  "AudioDecoderConfig",
+  "AudioDecoderInit",
+  "EncodedAudioChunk",
+  "EncodedAudioChunkInit",
+  "EncodedAudioChunkType",
+  "AudioData",
+  "AudioContext",
+  "AudioBuffer",
+  "AudioBufferSourceNode",
+  "AudioDestinationNode",
+  "GainNode",
+  "GainOptions",
+  "BaseAudioContext",
+]}
+
+[build-dependencies]
+cfg_aliases = {workspace = true}
