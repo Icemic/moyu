@@ -4,10 +4,13 @@ use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use anyhow::{Result, anyhow};
 
 /// Audio clock for A/V synchronization.
-/// Updated by the audio output callback as samples are consumed.
+///
+/// Tracks how much audio has been consumed by the output device callback.
+/// The design follows the same principle as Kira: keep it simple, let the
+/// OS / browser handle scheduling, and don't try to outsmart the platform.
 #[derive(Debug, Clone)]
 pub struct AudioClock {
-    /// Current playback position in microseconds
+    /// Cumulative audio time consumed by the output callback, in microseconds.
     position_us: Arc<AtomicI64>,
     /// Whether audio is actively playing
     playing: Arc<AtomicBool>,
@@ -21,17 +24,17 @@ impl AudioClock {
         }
     }
 
-    /// Get current playback position in microseconds
+    /// Get current playback position in microseconds (how much audio the device consumed).
     pub fn position_us(&self) -> i64 {
         self.position_us.load(Ordering::Relaxed)
     }
 
-    /// Set the playback position in microseconds
+    /// Set the playback position in microseconds.
     pub fn set_position_us(&self, us: i64) {
         self.position_us.store(us, Ordering::Relaxed);
     }
 
-    /// Advance the clock by the given number of microseconds
+    /// Advance the clock by the given number of microseconds.
     pub fn advance_us(&self, delta_us: i64) {
         self.position_us.fetch_add(delta_us, Ordering::Relaxed);
     }
@@ -84,27 +87,7 @@ impl AudioRingBuffer {
         to_write
     }
 
-    // pub fn read(&self, output: &mut [f32]) -> usize {
-    //     let read = self.read_pos.load(Ordering::Relaxed);
-    //     let write = self.write_pos.load(Ordering::Acquire);
-    //     let available = if write >= read {
-    //         write - read
-    //     } else {
-    //         self.capacity - read + write
-    //     };
-    //     let to_read = output.len().min(available);
-
-    //     for i in 0..to_read {
-    //         let idx = (read + i) % self.capacity;
-    //         output[i] = self.buffer[idx];
-    //     }
-
-    //     self.read_pos
-    //         .store((read + to_read) % self.capacity, Ordering::Release);
-    //     to_read
-    // }
-
-    /// Returns the number of samples currently held in the buffer.    
+    /// Returns the number of samples currently held in the buffer.
     pub fn filled_samples(&self) -> usize {
         let read = self.read_pos.load(Ordering::Relaxed);
         let write = self.write_pos.load(Ordering::Acquire);
@@ -124,7 +107,7 @@ impl AudioRingBuffer {
         self.write_pos.store(0, Ordering::Release);
     }
 
-    /// Create a reader handle that can be sent to the audio callback thread
+    /// Create a reader handle that can be sent to the audio callback thread.
     pub fn reader(&self) -> AudioRingBufferReader {
         AudioRingBufferReader {
             buffer_ptr: self.buffer.as_ptr(),
@@ -178,20 +161,9 @@ impl AudioRingBufferReader {
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
-#[cfg(target_arch = "wasm32")]
-const AUDIO_PREBUFFER_START_MS: usize = 500;
-#[cfg(target_arch = "wasm32")]
-const AUDIO_PREBUFFER_RESUME_MS: usize = 120;
-
-#[cfg(not(target_arch = "wasm32"))]
-const AUDIO_PREBUFFER_START_MS: usize = 200;
-#[cfg(not(target_arch = "wasm32"))]
-const AUDIO_PREBUFFER_RESUME_MS: usize = 60;
-
 pub struct AudioOutput {
     stream: cpal::Stream,
     pub clock: AudioClock,
-    primed: Arc<AtomicBool>,
     /// Actual device sample rate (may differ from source)
     pub sample_rate: u32,
     /// Actual device channel count (may differ from source)
@@ -217,78 +189,44 @@ impl AudioOutput {
             .default_output_device()
             .ok_or_else(|| anyhow!("No audio output device available"))?;
 
-        // Query the device's default output config instead of forcing our own
+        // Use device's preferred config, same approach as Kira.
         let default_config = device
             .default_output_config()
             .map_err(|e| anyhow!("Failed to get default output config: {}", e))?;
 
         let actual_sample_rate = default_config.sample_rate().0;
         let actual_channels = default_config.channels();
-
-        let config = cpal::StreamConfig {
-            channels: actual_channels,
-            sample_rate: cpal::SampleRate(actual_sample_rate),
-            buffer_size: cpal::BufferSize::Default,
-        };
+        let config = default_config.config();
 
         log::info!(
             "Audio output: requested {}Hz {}ch, device {}Hz {}ch",
             requested_sample_rate,
             requested_channels,
             actual_sample_rate,
-            actual_channels
+            actual_channels,
         );
 
         let clock_clone = clock.clone();
         let us_per_sample = 1_000_000.0 / actual_sample_rate as f64;
         let ch = actual_channels as usize;
-        let prebuffer_start_samples =
-            ((actual_sample_rate as usize * ch * AUDIO_PREBUFFER_START_MS) / 1000).max(ch * 512);
-        let prebuffer_resume_samples =
-            ((actual_sample_rate as usize * ch * AUDIO_PREBUFFER_RESUME_MS) / 1000).max(ch * 128);
-        let primed = Arc::new(AtomicBool::new(false));
-        let primed_clone = primed.clone();
 
         let stream = device
             .build_output_stream(
                 &config,
                 move |data: &mut [f32], _| {
                     if !clock_clone.is_playing() {
-                        primed_clone.store(false, Ordering::Relaxed);
                         data.fill(0.0);
                         return;
                     }
-
-                    let available_samples = reader.available_samples();
-
-                    if !primed_clone.load(Ordering::Relaxed)
-                        && available_samples < prebuffer_start_samples
-                    {
-                        data.fill(0.0);
-                        return;
-                    }
-
-                    if primed_clone.load(Ordering::Relaxed)
-                        && available_samples < prebuffer_resume_samples
-                    {
-                        primed_clone.store(false, Ordering::Relaxed);
-                        data.fill(0.0);
-                        return;
-                    }
-
-                    primed_clone.store(true, Ordering::Relaxed);
 
                     let read = reader.read(data);
 
-                    // Fill remaining with silence
+                    // Fill remaining with silence (underrun — no drama, just silence).
                     if read < data.len() {
                         data[read..].fill(0.0);
-                        if read == 0 {
-                            primed_clone.store(false, Ordering::Relaxed);
-                        }
                     }
 
-                    // Advance clock by samples consumed
+                    // Advance clock only for samples actually consumed from the buffer.
                     let frames = read / ch;
                     let delta_us = (frames as f64 * us_per_sample) as i64;
                     clock_clone.advance_us(delta_us);
@@ -307,7 +245,6 @@ impl AudioOutput {
         Ok(Self {
             stream,
             clock,
-            primed,
             sample_rate: actual_sample_rate,
             channels: actual_channels,
         })
@@ -315,7 +252,6 @@ impl AudioOutput {
 
     pub fn pause(&self) -> Result<()> {
         self.clock.set_playing(false);
-        self.primed.store(false, Ordering::Relaxed);
         self.stream
             .pause()
             .map_err(|e| anyhow!("Failed to pause audio: {}", e))
@@ -323,7 +259,6 @@ impl AudioOutput {
 
     pub fn resume(&self) -> Result<()> {
         self.clock.set_playing(true);
-        self.primed.store(false, Ordering::Relaxed);
         self.stream
             .play()
             .map_err(|e| anyhow!("Failed to resume audio: {}", e))

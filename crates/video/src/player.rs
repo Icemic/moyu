@@ -14,17 +14,10 @@ use crate::types::*;
 
 /// Maximum number of decoded video frames to buffer
 const MAX_VIDEO_BUFFER: usize = 5;
-/// Audio ring buffer size (about 2s at 48kHz stereo)
-const AUDIO_RING_BUFFER_SIZE: usize = 48000 * 2 * 2;
-/// Keep at least this much queued audio before we stop prioritizing audio decode.
-const AUDIO_DECODE_LOW_WATERMARK_DIVISOR: usize = 4;
-/// Allow spill buffering up to roughly half of the ring buffer before pausing decode.
-const AUDIO_SPILL_BUFFER_LIMIT: usize = AUDIO_RING_BUFFER_SIZE / 2;
-/// When audio is hungry, allow some extra video packets in flight so demuxing can reach more audio.
-const MAX_VIDEO_BUFFER_WHEN_AUDIO_HUNGRY: usize = MAX_VIDEO_BUFFER + 12;
-/// Process a larger packet batch while recovering audio to reduce underruns in browsers.
-const MAX_PACKET_BATCH_WHEN_AUDIO_HUNGRY: usize = 96;
-const MAX_PACKET_BATCH_NORMAL: usize = 10;
+/// Audio ring buffer size (~3s at 48kHz stereo — generous to absorb web jitter)
+const AUDIO_RING_BUFFER_SIZE: usize = 48000 * 2 * 3;
+/// Maximum demux packets to process per tick
+const MAX_PACKET_BATCH: usize = 10;
 
 /// Video player that orchestrates demuxing, decoding, and A/V synchronization.
 pub struct VideoPlayer {
@@ -390,18 +383,23 @@ impl VideoPlayer {
             return;
         }
 
+        let now = moyu_pal::time::Instant::now();
+
         // If no audio output, advance clock based on real wall time
         if self.audio_output.is_none() && self.audio_clock.is_playing() {
-            let now = moyu_pal::time::Instant::now();
             if let Some(last) = self.last_tick_time {
                 let delta_us = now.duration_since(last).as_micros() as i64;
                 // Cap delta at 100ms to avoid jumps after stalls
                 let clamped = delta_us.min(100_000);
                 self.audio_clock.advance_us(clamped);
             }
-            self.last_tick_time = Some(now);
         }
+        self.last_tick_time = Some(now);
 
+        // The audio clock is the single source of truth for A/V sync.
+        // On native it advances on the audio thread; on web it advances
+        // in the ScriptProcessorNode callback. Either way, position_us()
+        // reflects how much audio the device has consumed.
         let current_time_us = self.audio_clock.position_us();
 
         // Drain any video frames that arrived asynchronously since the last tick.
@@ -420,42 +418,28 @@ impl VideoPlayer {
             }
         }
 
-        // Decode more packets if video buffer is low and audio ring buffer has room.
-        // When video is absent or failing (video buffer stays empty), the audio ring
-        // buffer fill level acts as the sole backpressure signal to prevent decoding
-        // audio faster than it can be consumed, which would cause ring buffer overflow
-        // and audible skipping.
-        let queued_audio_samples = self
+        // Determine whether we need more data.
+        let audio_has_room = self
             .audio_ring_buffer
             .as_ref()
-            .map(|rb| rb.filled_samples())
-            .unwrap_or(0)
-            + self.audio_spill_buffer.len();
-        let audio_ring_full = self
-            .audio_ring_buffer
-            .as_ref()
-            .map(|rb| queued_audio_samples > rb.capacity() * 3 / 4)
-            .unwrap_or(false);
-        let audio_needs_decode = self
-            .audio_ring_buffer
-            .as_ref()
-            .map(|rb| queued_audio_samples < rb.capacity() / AUDIO_DECODE_LOW_WATERMARK_DIVISOR)
-            .unwrap_or(false);
+            .map(|rb| {
+                let filled = rb.filled_samples() + self.audio_spill_buffer.len();
+                filled < rb.capacity() * 3 / 4
+            })
+            .unwrap_or(true);
         let video_needs_decode = self.video_buffer.len() < MAX_VIDEO_BUFFER;
-        // Also don't decode if we have a lot in the spill buffer
-        let allow_audio_decode = self.audio_spill_buffer.len() < AUDIO_SPILL_BUFFER_LIMIT && !audio_ring_full;
 
-        if !audio_needs_decode && video_needs_decode && !self.pending_video_packets.is_empty() {
+        // Decode deferred video packets first if we have capacity.
+        if video_needs_decode && !self.pending_video_packets.is_empty() {
             self.decode_pending_video_packets();
         }
 
-        let need_more = (video_needs_decode || audio_needs_decode)
-            && allow_audio_decode
+        let need_more = (video_needs_decode || audio_has_room)
             && !self.eof.load(Ordering::Relaxed)
             && !self.demux_exhausted;
 
         if need_more {
-            self.decode_packets(video_needs_decode, audio_needs_decode);
+            self.decode_packets();
         }
 
         if self.demux_exhausted
@@ -492,34 +476,15 @@ impl VideoPlayer {
     }
 
     /// Decode a batch of packets from the demuxer.
-    fn decode_packets(&mut self, video_needs_decode: bool, audio_needs_decode: bool) {
+    fn decode_packets(&mut self) {
         // Process up to N packets per tick to avoid blocking the render thread.
-        // We collect packets first, then process them to avoid borrow conflicts.
         let mut packets = Vec::new();
         let mut hit_eof = false;
-        let max_video_buffer = if audio_needs_decode {
-            MAX_VIDEO_BUFFER_WHEN_AUDIO_HUNGRY
-        } else {
-            MAX_VIDEO_BUFFER
-        };
-        let max_packet_batch = if audio_needs_decode {
-            MAX_PACKET_BATCH_WHEN_AUDIO_HUNGRY
-        } else {
-            MAX_PACKET_BATCH_NORMAL
-        };
-        let mut buffered_video_packets = 0usize;
 
         if let Some(demuxer) = self.demuxer.as_mut() {
-            for _ in 0..max_packet_batch {
-                if self.video_buffer.len() + buffered_video_packets >= max_video_buffer {
-                    break;
-                }
-
+            for _ in 0..MAX_PACKET_BATCH {
                 match demuxer.next_packet() {
                     Ok(Some((kind, packet))) => {
-                        if kind == TrackKind::Video {
-                            buffered_video_packets += 1;
-                        }
                         packets.push((kind, packet));
                     }
                     Ok(None) => {
@@ -535,24 +500,21 @@ impl VideoPlayer {
             }
         }
 
-        // Process audio first so the output callback can refill sooner when browsers
-        // schedule larger or more jittery audio pulls.
+        // Decode audio first so the ring buffer is fed before the next callback.
         for (kind, packet) in packets.iter() {
             if *kind == TrackKind::Audio {
                 self.decode_audio_packet(packet);
             }
         }
 
+        // Decode video; defer if buffer is full.
         for (kind, packet) in packets {
-            match kind {
-                TrackKind::Video => {
-                    if audio_needs_decode {
-                        self.pending_video_packets.push_back(packet);
-                    } else if video_needs_decode {
-                        self.decode_video_packet(&packet)
-                    }
+            if kind == TrackKind::Video {
+                if self.video_buffer.len() < MAX_VIDEO_BUFFER {
+                    self.decode_video_packet(&packet);
+                } else {
+                    self.pending_video_packets.push_back(packet);
                 }
-                TrackKind::Audio => {}
             }
         }
 
@@ -717,10 +679,18 @@ impl VideoPlayer {
                 };
 
                 if !scaled.is_empty() {
-                    let written = ring_buffer.write(&scaled);
-                    if written < scaled.len() {
-                        self.audio_spill_buffer
-                            .extend_from_slice(&scaled[written..]);
+                    if !self.audio_spill_buffer.is_empty() {
+                        self.audio_spill_buffer.extend_from_slice(&scaled);
+                        let written = ring_buffer.write(&self.audio_spill_buffer);
+                        if written > 0 {
+                            self.audio_spill_buffer.drain(0..written);
+                        }
+                    } else {
+                        let written = ring_buffer.write(&scaled);
+                        if written < scaled.len() {
+                            self.audio_spill_buffer
+                                .extend_from_slice(&scaled[written..]);
+                        }
                     }
                 }
             }
