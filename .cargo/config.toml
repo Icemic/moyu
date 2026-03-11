@@ -21,7 +21,7 @@ rustflags = []
 
 [target.wasm32-unknown-unknown]
 linker = "rust-lld"
-rustflags = ["-C", "target-feature=+simd128"]
+rustflags = ["-C", "target-feature=+simd128", "--cfg", "web_sys_unstable_apis"]
 
 # Optional: Uncommenting the following improves compile times, but reduces the amount of debug info to 'line number tables only'
 # In most cases the gains are negligible, but if you are on macos and have slow compile times you should see significant gains.

@@ -5,6 +5,7 @@ mod filter;
 mod sprite;
 #[cfg(feature = "text")]
 mod text;
+mod video;
 
 pub use animation::*;
 pub use backdrop::*;
@@ -13,3 +14,4 @@ pub use filter::*;
 pub use sprite::*;
 #[cfg(feature = "text")]
 pub use text::*;
+pub use video::*;

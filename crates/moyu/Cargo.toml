@@ -40,6 +40,7 @@ moyu_ops = {workspace = true}
 moyu_pal = {workspace = true}
 moyu_resource = {workspace = true}
 moyu_scenario = {workspace = true}
+moyu_video = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 mimalloc = "0.1.47"

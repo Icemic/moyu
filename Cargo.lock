@@ -2070,6 +2070,7 @@ dependencies = [
  "moyu_resource",
  "moyu_runtime",
  "moyu_scenario",
+ "moyu_video",
  "spin_sleep_util",
  "tokio",
  "wasm-bindgen",
@@ -2164,6 +2165,7 @@ dependencies = [
  "moyu_macros",
  "moyu_pal",
  "moyu_resource",
+ "moyu_video",
  "reiterator",
  "serde",
  "ts-rs",
@@ -2273,6 +2275,24 @@ dependencies = [
  "sixu",
  "ts-rs",
  "zip",
+]
+
+[[package]]
+name = "moyu_video"
+version = "0.8.0"
+dependencies = [
+ "anyhow",
+ "arc-swap",
+ "cfg_aliases",
+ "cpal",
+ "js-sys",
+ "libloading",
+ "log",
+ "moyu_pal",
+ "symphonia",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

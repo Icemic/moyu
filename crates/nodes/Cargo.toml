@@ -29,6 +29,7 @@ moyu_core = {workspace = true}
 moyu_macros = {workspace = true}
 moyu_pal = {workspace = true}
 moyu_resource = {workspace = true}
+moyu_video = {workspace = true}
 
 # optional for features
 huozi = {workspace = true, optional = true}
