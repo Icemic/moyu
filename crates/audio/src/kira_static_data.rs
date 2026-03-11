@@ -20,7 +20,7 @@ use symphonia::core::{
     sample::Sample,
 };
 
-use crate::symphonia::get_codec;
+use moyu_pal::symphonia::get_codec;
 
 pub fn from_boxed_media_source(
     media_source: Box<dyn MediaSource>,

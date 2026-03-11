@@ -3,6 +3,7 @@ pub mod dir;
 pub mod fs;
 pub mod logger;
 pub mod platform;
+pub mod symphonia;
 pub mod sync;
 pub mod task;
 pub mod time;

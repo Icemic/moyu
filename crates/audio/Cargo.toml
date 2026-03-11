@@ -14,12 +14,10 @@ web = []
 
 [dependencies]
 kira = "0.11"
-lazy_static = "1.5"
 symphonia = {version = "0.5", default-features = false}
 
 anyhow = {workspace = true}
 log = {workspace = true}
-opus = {workspace = true}
 serde = {workspace = true}
 ts-rs = {workspace = true}
 
