@@ -12,6 +12,7 @@ import { BackdropProps } from './bindings/BackdropProps';
 import { SpriteProps } from './bindings/SpriteProps';
 import { TextProps } from './bindings/TextProps';
 import { AnimationProps } from './bindings/AnimationProps';
+import { VideoProps } from './bindings/VideoProps';
 
 export type Tuple2 = [number, number];
 export type Tuple3 = [number, number, number];
@@ -52,6 +53,11 @@ export type MoyuClipAttributes = ClipProps & MoyuNodeAttributes;
 export type MoyuFilterAttributes = FilterProps & MoyuNodeAttributes;
 export type MoyuBackdropAttributes = BackdropProps & MoyuNodeAttributes;
 export type MoyuAnimationAttributes = AnimationProps & MoyuNodeAttributes;
+export type MoyuVideoAttributes = VideoProps &
+  MoyuNodeAttributes & {
+    onEnded?: () => void;
+    onStateChange?: (state: string) => void;
+  };
 export type MoyuSpriteAttributes = SpriteProps & MoyuNodeAttributes;
 export type MoyuTextAttributes = TextProps &
   MoyuNodeAttributes & {
@@ -85,5 +91,6 @@ export declare namespace JSX {
     filter: DetailedMoyuProps<MoyuFilterAttributes>;
     backdrop: DetailedMoyuProps<MoyuBackdropAttributes>;
     animation: DetailedMoyuProps<MoyuAnimationAttributes>;
+    video: DetailedMoyuProps<MoyuVideoAttributes>;
   }
 }
