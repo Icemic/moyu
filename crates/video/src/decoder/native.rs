@@ -286,7 +286,7 @@ impl VideoDecoder for NativeDecoder {
                             Vec::new(),
                         ]
                     }
-                    PixelFormat::Rgba | PixelFormat::Bgra => unreachable!(),
+                    PixelFormat::Rgba | PixelFormat::Bgra | PixelFormat::External => unreachable!(),
                 };
 
                 Ok((
@@ -302,6 +302,8 @@ impl VideoDecoder for NativeDecoder {
                         height: h,
                         format,
                         pts_us: frame.pts,
+                        #[cfg(web)]
+                        external_frame: None,
                     }),
                 ))
             }

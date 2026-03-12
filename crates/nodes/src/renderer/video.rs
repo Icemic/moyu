@@ -199,6 +199,15 @@ impl VideoRenderer {
         let chroma_width = (width + 1) / 2;
         let chroma_height = (height + 1) / 2;
 
+        let y_usage = match format {
+            PixelFormat::External => {
+                TextureUsages::TEXTURE_BINDING
+                    | TextureUsages::COPY_DST
+                    | TextureUsages::RENDER_ATTACHMENT
+            }
+            _ => TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+        };
+
         let (y_format, u_format, y_width, y_height, u_width, u_height, v_width, v_height) =
             match format {
                 PixelFormat::I420 => (
@@ -231,6 +240,16 @@ impl VideoRenderer {
                     1,
                     1,
                 ),
+                PixelFormat::External => (
+                    TextureFormat::Rgba8Unorm,
+                    TextureFormat::R8Unorm,
+                    width,
+                    height,
+                    1,
+                    1,
+                    1,
+                    1,
+                ),
             };
 
         let tex_y = device.create_texture(&TextureDescriptor {
@@ -244,7 +263,7 @@ impl VideoRenderer {
             sample_count: 1,
             dimension: TextureDimension::D2,
             format: y_format,
-            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+            usage: y_usage,
             view_formats: &[],
         });
 
@@ -308,6 +327,7 @@ impl VideoRenderer {
                         PixelFormat::Nv12 => self.params_buffer_nv12.as_entire_binding(),
                         PixelFormat::Rgba => self.params_buffer_rgba.as_entire_binding(),
                         PixelFormat::Bgra => self.params_buffer_bgra.as_entire_binding(),
+                        PixelFormat::External => self.params_buffer_rgba.as_entire_binding(),
                     },
                 },
             ],
@@ -466,6 +486,57 @@ impl VideoRenderer {
                         depth_or_array_layers: 1,
                     },
                 );
+            }
+            PixelFormat::External => {
+                #[cfg(web)]
+                {
+                    let Some(video_frame) = frame.external_frame() else {
+                        log::warn!("External video frame is missing its VideoFrame handle");
+                        return;
+                    };
+
+                    let video_frame = match video_frame.clone() {
+                        Ok(video_frame) => video_frame,
+                        Err(err) => {
+                            log::warn!("Failed to clone VideoFrame for GPU upload: {:?}", err);
+                            return;
+                        }
+                    };
+
+                    let source = CopyExternalImageSourceInfo {
+                        source: ExternalImageSource::VideoFrame(video_frame),
+                        origin: Origin2d::ZERO,
+                        flip_y: false,
+                    };
+
+                    queue.copy_external_image_to_texture(
+                        &source,
+                        CopyExternalImageDestInfo {
+                            texture: node.view_y.as_ref().unwrap().texture(),
+                            mip_level: 0,
+                            origin: Origin3d::ZERO,
+                            aspect: TextureAspect::All,
+                            color_space: PredefinedColorSpace::Srgb,
+                            premultiplied_alpha: false,
+                        },
+                        Extent3d {
+                            width,
+                            height,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+
+                    // The queue captures the source image at submission time; close the
+                    // temporary clone immediately so the browser doesn't GC it later.
+                    if let ExternalImageSource::VideoFrame(video_frame) = source.source {
+                        video_frame.close();
+                    }
+                }
+
+                #[cfg(not(web))]
+                {
+                    log::warn!("External video frame upload is only available on web targets");
+                }
             }
         }
     }

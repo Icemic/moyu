@@ -31,6 +31,7 @@ pub struct WebDecoder {
     flush_completed: Rc<Cell<bool>>,
     /// Cache the first successful WebCodecs copy strategy and reuse it for subsequent frames.
     copy_strategy: Rc<RefCell<Option<CachedCopyStrategy>>>,
+    use_external_frames: bool,
     eof_sent: bool,
 }
 
@@ -41,8 +42,13 @@ unsafe impl Send for WebDecoder {}
 impl WebDecoder {
     fn configure_decoder(decoder: &WasmVideoDecoder, codec_string: &'static str) -> Result<()> {
         let config = VideoDecoderConfig::new(codec_string);
-        config.set_optimize_for_latency(true);
-        config.set_hardware_acceleration(HardwareAcceleration::PreferSoftware);
+        if is_firefox() {
+            config.set_optimize_for_latency(true);
+            config.set_hardware_acceleration(HardwareAcceleration::PreferSoftware);
+        } else {
+            config.set_optimize_for_latency(false);
+            config.set_hardware_acceleration(HardwareAcceleration::PreferHardware);
+        }
         decoder
             .configure(&config)
             .map_err(|e| anyhow!("Failed to configure WebCodecs VideoDecoder: {:?}", e))
@@ -52,12 +58,20 @@ impl WebDecoder {
         let (frame_tx, frame_rx) = mpsc::channel::<DecodedFrame>();
         let flush_completed = Rc::new(Cell::new(true));
         let copy_strategy = Rc::new(RefCell::new(None));
+        let use_external_frames = should_use_external_frames();
 
         let tx_clone = frame_tx.clone();
         let copy_strategy_clone = copy_strategy.clone();
         let output_callback = Closure::wrap(Box::new(move |frame: VideoFrame| {
             let tx = tx_clone.clone();
             let copy_strategy = copy_strategy_clone.clone();
+
+            if use_external_frames {
+                let decoded = extract_external_frame(frame);
+                let _ = tx.send(decoded);
+                return;
+            }
+
             wasm_bindgen_futures::spawn_local(async move {
                 if let Some(decoded) = extract_frame_data(&frame, &copy_strategy).await {
                     let _ = tx.send(decoded);
@@ -98,6 +112,7 @@ impl WebDecoder {
             needs_key_chunk: true,
             flush_completed,
             copy_strategy,
+            use_external_frames,
             eof_sent: false,
         })
     }
@@ -188,10 +203,39 @@ impl VideoDecoder for WebDecoder {
         self.eof_sent = false;
         self.needs_key_chunk = true;
         self.flush_completed.set(true);
-        *self.copy_strategy.borrow_mut() = None;
+        if !self.use_external_frames {
+            *self.copy_strategy.borrow_mut() = None;
+        }
         // Drain any pending frames
         while self.frame_rx.try_recv().is_ok() {}
     }
+}
+
+fn is_firefox() -> bool {
+    web_sys::window()
+        .map(|window| window.navigator())
+        .and_then(|navigator| navigator.user_agent().ok())
+        .map(|ua| ua.contains("Firefox/"))
+        .unwrap_or(false)
+}
+
+fn should_use_external_frames() -> bool {
+    if is_firefox() {
+        log::info!("WebCodecs external frame upload disabled for Firefox; falling back to copyTo");
+        return false;
+    }
+
+    true
+}
+
+fn extract_external_frame(frame: VideoFrame) -> DecodedFrame {
+    let extract_start_ms = perf_now_ms();
+    let timestamp = frame.timestamp().unwrap_or(0.0) as i64;
+    let width = frame.display_width();
+    let height = frame.display_height();
+    let total_ms = perf_now_ms() - extract_start_ms;
+
+    DecodedFrame::with_external_frame(frame, width, height, timestamp)
 }
 
 /// Extract pixel data from a WebCodecs VideoFrame.
@@ -314,6 +358,7 @@ async fn extract_frame_data(
         height,
         format,
         pts_us: timestamp,
+        external_frame: None,
     })
 }
 
@@ -416,6 +461,7 @@ fn compact_plane_layouts(
                 stride: 0,
             },
         ],
+        PixelFormat::External => unreachable!("external frames do not use copyTo plane layouts"),
     }
 }
 
@@ -425,6 +471,7 @@ fn copy_to_format(pixel_format: PixelFormat) -> &'static str {
         PixelFormat::Nv12 => "NV12",
         PixelFormat::Rgba => "RGBA",
         PixelFormat::Bgra => "BGRA",
+        PixelFormat::External => unreachable!("external frames do not use copyTo format strings"),
     }
 }
 
@@ -660,6 +707,7 @@ async fn copy_frame_data_with_options(
             planes[0] = slice_plane(&buffer, layout, height as usize)?;
             strides[0] = stride.max(width * 4);
         }
+        PixelFormat::External => unreachable!("external frames do not use copied planes"),
     }
 
     Ok(CopiedFrameData {
