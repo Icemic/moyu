@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Now every node has a `bounds` property representing its axis-aligned bounding box in local coordinates.
 - Catch uncaptured wgpu errors and show a fatal error message before exiting.
+- Add `<video>` node for video playback, supporting common video formats on all platforms via the `moyu-video` crate.
 
 ### Fixed
 
