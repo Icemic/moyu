@@ -1,16 +1,16 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::mpsc;
 
 use anyhow::{Result, anyhow};
-use js_sys::{Array, Uint8Array};
+use js_sys::{Array, Date, Uint8Array};
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    DomRectInit, EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, PlaneLayout,
-    VideoDecoder as WasmVideoDecoder, VideoDecoderConfig, VideoDecoderInit, VideoFrame,
-    VideoFrameCopyToOptions,
+    DomRectInit, EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType,
+    HardwareAcceleration, PlaneLayout, VideoDecoder as WasmVideoDecoder, VideoDecoderConfig,
+    VideoDecoderInit, VideoFrame, VideoFrameCopyToOptions,
 };
 
 use crate::types::{DecodeStatus, DecodedFrame, PixelFormat, VideoCodec};
@@ -29,6 +29,8 @@ pub struct WebDecoder {
     needs_key_chunk: bool,
     /// flush() resolves asynchronously, so EOF cannot be reported until it completes.
     flush_completed: Rc<Cell<bool>>,
+    /// Cache the first successful WebCodecs copy strategy and reuse it for subsequent frames.
+    copy_strategy: Rc<RefCell<Option<CachedCopyStrategy>>>,
     eof_sent: bool,
 }
 
@@ -39,6 +41,8 @@ unsafe impl Send for WebDecoder {}
 impl WebDecoder {
     fn configure_decoder(decoder: &WasmVideoDecoder, codec_string: &'static str) -> Result<()> {
         let config = VideoDecoderConfig::new(codec_string);
+        config.set_optimize_for_latency(true);
+        config.set_hardware_acceleration(HardwareAcceleration::PreferSoftware);
         decoder
             .configure(&config)
             .map_err(|e| anyhow!("Failed to configure WebCodecs VideoDecoder: {:?}", e))
@@ -47,12 +51,15 @@ impl WebDecoder {
     pub fn new(codec: VideoCodec, _thread_count: i32) -> Result<Self> {
         let (frame_tx, frame_rx) = mpsc::channel::<DecodedFrame>();
         let flush_completed = Rc::new(Cell::new(true));
+        let copy_strategy = Rc::new(RefCell::new(None));
 
         let tx_clone = frame_tx.clone();
+        let copy_strategy_clone = copy_strategy.clone();
         let output_callback = Closure::wrap(Box::new(move |frame: VideoFrame| {
             let tx = tx_clone.clone();
+            let copy_strategy = copy_strategy_clone.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                if let Some(decoded) = extract_frame_data(&frame).await {
+                if let Some(decoded) = extract_frame_data(&frame, &copy_strategy).await {
                     let _ = tx.send(decoded);
                 }
                 frame.close();
@@ -90,6 +97,7 @@ impl WebDecoder {
             _frame_tx: frame_tx,
             needs_key_chunk: true,
             flush_completed,
+            copy_strategy,
             eof_sent: false,
         })
     }
@@ -180,53 +188,131 @@ impl VideoDecoder for WebDecoder {
         self.eof_sent = false;
         self.needs_key_chunk = true;
         self.flush_completed.set(true);
+        *self.copy_strategy.borrow_mut() = None;
         // Drain any pending frames
         while self.frame_rx.try_recv().is_ok() {}
     }
 }
 
 /// Extract pixel data from a WebCodecs VideoFrame.
-async fn extract_frame_data(frame: &VideoFrame) -> Option<DecodedFrame> {
+async fn extract_frame_data(
+    frame: &VideoFrame,
+    copy_strategy: &RefCell<Option<CachedCopyStrategy>>,
+) -> Option<DecodedFrame> {
+    let extract_start_ms = perf_now_ms();
     let timestamp = frame.timestamp().unwrap_or(0.0) as i64;
 
-    let copied = match copy_frame_data(frame, false).await {
-        Ok(copied) => copied,
-        Err(err) => {
-            log::warn!(
-                "WebCodecs copyTo(visibleRect) failed: {:?}; frame_format={:?}, coded={}x{}, display={}x{}, visible={:?}",
-                err,
-                frame.format(),
-                frame.coded_width(),
-                frame.coded_height(),
-                frame.display_width(),
-                frame.display_height(),
-                frame
-                    .visible_rect()
-                    .map(|rect| (rect.x(), rect.y(), rect.width(), rect.height()))
-            );
+    let cached_strategy = *copy_strategy.borrow();
+    let (copied, profile_path, profile_attempts, profile_copy_ms, profile_strategy) = if let Some(
+        strategy,
+    ) =
+        cached_strategy
+    {
+        match copy_frame_data_with_strategy(frame, strategy).await {
+            Ok(result) => (result.copied, "cached", 1, result.copy_ms, result.strategy),
+            Err(err) => {
+                log::debug!(
+                    "Cached WebCodecs copy strategy failed, retrying probe: {:?}; strategy={:?}; frame_format={:?}",
+                    err,
+                    strategy,
+                    frame.format()
+                );
+                *copy_strategy.borrow_mut() = None;
 
-            match copy_frame_data(frame, true).await {
-                Ok(copied) => copied,
-                Err(fallback_err) => {
-                    log::warn!(
-                        "WebCodecs copyTo(codedRect) also failed: {:?}; frame_format={:?}, coded={}x{}",
-                        fallback_err,
-                        frame.format(),
-                        frame.coded_width(),
-                        frame.coded_height()
-                    );
-                    return None;
+                match probe_copy_frame_data(frame).await {
+                    Ok(result) => {
+                        *copy_strategy.borrow_mut() = Some(result.strategy);
+                        (
+                            result.copied,
+                            "reprobe",
+                            result.attempts,
+                            result.copy_ms,
+                            result.strategy,
+                        )
+                    }
+                    Err(probe_err) => {
+                        log::warn!(
+                            "WebCodecs copyTo failed after retry: {:?}; frame_format={:?}, coded={}x{}, display={}x{}, visible={:?}",
+                            probe_err,
+                            frame.format(),
+                            frame.coded_width(),
+                            frame.coded_height(),
+                            frame.display_width(),
+                            frame.display_height(),
+                            frame.visible_rect().map(|rect| (
+                                rect.x(),
+                                rect.y(),
+                                rect.width(),
+                                rect.height()
+                            ))
+                        );
+                        return None;
+                    }
                 }
+            }
+        }
+    } else {
+        match probe_copy_frame_data(frame).await {
+            Ok(result) => {
+                *copy_strategy.borrow_mut() = Some(result.strategy);
+                (
+                    result.copied,
+                    "probe",
+                    result.attempts,
+                    result.copy_ms,
+                    result.strategy,
+                )
+            }
+            Err(err) => {
+                log::warn!(
+                    "WebCodecs copyTo probe failed: {:?}; frame_format={:?}, coded={}x{}, display={}x{}, visible={:?}",
+                    err,
+                    frame.format(),
+                    frame.coded_width(),
+                    frame.coded_height(),
+                    frame.display_width(),
+                    frame.display_height(),
+                    frame.visible_rect().map(|rect| (
+                        rect.x(),
+                        rect.y(),
+                        rect.width(),
+                        rect.height()
+                    ))
+                );
+                return None;
             }
         }
     };
 
+    let extract_total_ms = perf_now_ms() - extract_start_ms;
+
+    let CopiedFrameData {
+        planes,
+        strides,
+        width,
+        height,
+        format,
+    } = copied;
+
+    log::debug!(
+        "WebCodecs frame profile: pts_us={}, {}x{}, format={:?}, path={}, strategy={:?}, attempts={}, copy_ms={:.3}, total_ms={:.3}",
+        timestamp,
+        width,
+        height,
+        format,
+        profile_path,
+        profile_strategy,
+        profile_attempts,
+        profile_copy_ms,
+        extract_total_ms,
+    );
+
     Some(DecodedFrame {
-        planes: [copied.planes[0].clone(), Vec::new(), Vec::new()],
-        strides: [copied.strides[0], 0, 0],
-        width: copied.width,
-        height: copied.height,
-        format: copied.format,
+        planes,
+        strides,
+        width,
+        height,
+        format,
         pts_us: timestamp,
     })
 }
@@ -239,10 +325,30 @@ struct CopiedFrameData {
     format: PixelFormat,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum CopyLayoutMode {
     Explicit,
     Returned,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct CachedCopyStrategy {
+    pixel_format: PixelFormat,
+    layout_mode: CopyLayoutMode,
+    use_coded_rect: bool,
+}
+
+struct CopyProbeResult {
+    copied: CopiedFrameData,
+    strategy: CachedCopyStrategy,
+    attempts: u32,
+    copy_ms: f64,
+}
+
+struct CopyExecutionResult {
+    copied: CopiedFrameData,
+    strategy: CachedCopyStrategy,
+    copy_ms: f64,
 }
 
 #[derive(Clone, Copy)]
@@ -375,11 +481,58 @@ fn slice_plane(
     Ok(buffer[layout.offset..end].to_vec())
 }
 
-async fn copy_frame_data(
+fn perf_now_ms() -> f64 {
+    Date::now()
+}
+
+async fn probe_copy_frame_data(
     frame: &VideoFrame,
-    use_coded_rect: bool,
-) -> std::result::Result<CopiedFrameData, JsValue> {
-    let (width, height, base_options) = if use_coded_rect {
+) -> std::result::Result<CopyProbeResult, JsValue> {
+    let strategies = [
+        PixelFormat::Nv12,
+        PixelFormat::I420,
+        PixelFormat::Rgba,
+        PixelFormat::Bgra,
+    ];
+
+    let mut last_error = None;
+    let mut attempts = 0;
+
+    for use_coded_rect in [false, true] {
+        for pixel_format in strategies {
+            for layout_mode in [CopyLayoutMode::Explicit, CopyLayoutMode::Returned] {
+                attempts += 1;
+                let strategy = CachedCopyStrategy {
+                    pixel_format,
+                    layout_mode,
+                    use_coded_rect,
+                };
+
+                match copy_frame_data_with_strategy(frame, strategy).await {
+                    Ok(result) => {
+                        return Ok(CopyProbeResult {
+                            copied: result.copied,
+                            strategy: result.strategy,
+                            attempts,
+                            copy_ms: result.copy_ms,
+                        });
+                    }
+                    Err(err) => {
+                        last_error = Some(err);
+                    }
+                }
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| JsValue::from_str("VideoFrame copyTo failed")))
+}
+
+async fn copy_frame_data_with_strategy(
+    frame: &VideoFrame,
+    strategy: CachedCopyStrategy,
+) -> std::result::Result<CopyExecutionResult, JsValue> {
+    let (width, height, base_options) = if strategy.use_coded_rect {
         let coded_rect = frame
             .coded_rect()
             .ok_or_else(|| JsValue::from_str("VideoFrame has no codedRect"))?;
@@ -406,40 +559,31 @@ async fn copy_frame_data(
         (width, height, Some(VideoFrameCopyToOptions::new()))
     };
 
-    let strategies = [PixelFormat::Rgba, PixelFormat::Bgra];
-
-    let mut last_error = None;
-
-    for pixel_format in strategies {
-        let compact_layouts = compact_plane_layouts(pixel_format, width, height);
-        for layout_mode in [CopyLayoutMode::Explicit, CopyLayoutMode::Returned] {
-            let options = base_options.clone().unwrap_or_default();
-            options.set_format(copy_to_format(pixel_format));
-            if matches!(layout_mode, CopyLayoutMode::Explicit) {
-                let layout_array = plane_layout_array(compact_layouts, pixel_format);
-                options.set_layout(layout_array.as_ref());
-            }
-
-            match copy_frame_data_with_options(
-                frame,
-                pixel_format,
-                width,
-                height,
-                &options,
-                layout_mode,
-                compact_layouts,
-            )
-            .await
-            {
-                Ok(copied) => return Ok(copied),
-                Err(err) => {
-                    last_error = Some(err);
-                }
-            }
-        }
+    let compact_layouts = compact_plane_layouts(strategy.pixel_format, width, height);
+    let options = base_options.clone().unwrap_or_default();
+    options.set_format(copy_to_format(strategy.pixel_format));
+    if matches!(strategy.layout_mode, CopyLayoutMode::Explicit) {
+        let layout_array = plane_layout_array(compact_layouts, strategy.pixel_format);
+        options.set_layout(layout_array.as_ref());
     }
 
-    Err(last_error.unwrap_or_else(|| JsValue::from_str("VideoFrame copyTo failed")))
+    let copy_start_ms = perf_now_ms();
+    let copied = copy_frame_data_with_options(
+        frame,
+        strategy.pixel_format,
+        width,
+        height,
+        &options,
+        strategy.layout_mode,
+        compact_layouts,
+    )
+    .await?;
+
+    Ok(CopyExecutionResult {
+        copied,
+        strategy,
+        copy_ms: perf_now_ms() - copy_start_ms,
+    })
 }
 
 async fn copy_frame_data_with_options(

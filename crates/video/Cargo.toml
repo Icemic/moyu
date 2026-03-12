@@ -30,6 +30,7 @@ web-sys = {workspace = true, features = [
   "VideoDecoder",
   "VideoDecoderConfig",
   "VideoDecoderInit",
+  "HardwareAcceleration",
   "EncodedVideoChunk",
   "EncodedVideoChunkInit",
   "EncodedVideoChunkType",
