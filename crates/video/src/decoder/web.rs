@@ -233,7 +233,6 @@ fn extract_external_frame(frame: VideoFrame) -> DecodedFrame {
     let timestamp = frame.timestamp().unwrap_or(0.0) as i64;
     let width = frame.display_width();
     let height = frame.display_height();
-    let total_ms = perf_now_ms() - extract_start_ms;
 
     DecodedFrame::with_external_frame(frame, width, height, timestamp)
 }

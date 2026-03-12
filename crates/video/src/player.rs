@@ -275,7 +275,7 @@ impl VideoPlayer {
                 output.pause().ok();
             }
             #[cfg(target_arch = "wasm32")]
-            if let Some(ref output) = self.web_audio_output {
+            if let Some(ref mut output) = self.web_audio_output {
                 output.pause().ok();
             }
             self.state = PlaybackState::Paused;
@@ -319,7 +319,7 @@ impl VideoPlayer {
             output.pause().ok();
         }
         #[cfg(target_arch = "wasm32")]
-        if let Some(ref output) = self.web_audio_output {
+        if let Some(ref mut output) = self.web_audio_output {
             output.pause().ok();
         }
 

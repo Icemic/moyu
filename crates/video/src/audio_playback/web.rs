@@ -42,6 +42,8 @@ pub struct WebAudioOutput {
     ctx_time_origin: f64,
     /// Our logical clock position (µs) at `ctx_time_origin`.
     clock_origin_us: i64,
+    /// Pending source nodes already scheduled on the AudioContext timeline.
+    scheduled_sources: Vec<(AudioBufferSourceNode, f64)>,
 }
 
 // Safety: WASM is single-threaded; AudioContext / GainNode (JsValue) are only
@@ -81,6 +83,7 @@ impl WebAudioOutput {
             started: false,
             ctx_time_origin: 0.0,
             clock_origin_us: 0,
+            scheduled_sources: Vec::new(),
         })
     }
 
@@ -95,6 +98,9 @@ impl WebAudioOutput {
         let ch = self.channels as usize;
         let current_time = self.ctx.current_time();
 
+        self.scheduled_sources
+            .retain(|(_, end_time)| *end_time > current_time);
+
         // On the very first pump (or after a resume) align the schedule cursor
         // to "now" and record the time-origin pair for clock derivation.
         if !self.started {
@@ -104,9 +110,25 @@ impl WebAudioOutput {
             self.started = true;
         }
 
-        // If next_schedule_time fell behind current_time (e.g. tab was
-        // backgrounded), snap forward.
+        // If the scheduling cursor fell behind wall clock, audio output has already
+        // underrun. This commonly happens when the tab is backgrounded and the main
+        // thread stops calling pump(). In that case, the media clock must freeze at
+        // the last scheduled audio boundary instead of jumping forward by the whole
+        // wall-clock gap, otherwise video selection will think playback kept running.
         if self.next_schedule_time < current_time {
+            let scheduled_tail_us = self.clock_origin_us
+                + ((self.next_schedule_time - self.ctx_time_origin) * 1_000_000.0) as i64;
+
+            if current_time - self.next_schedule_time > 0.050 {
+                log::info!(
+                    "WebAudioOutput schedule underrun detected: gap_ms={:.3}, freezing media clock at pts_us={}",
+                    (current_time - self.next_schedule_time) * 1_000.0,
+                    scheduled_tail_us,
+                );
+            }
+
+            self.clock_origin_us = scheduled_tail_us;
+            self.ctx_time_origin = current_time;
             self.next_schedule_time = current_time;
         }
 
@@ -157,31 +179,45 @@ impl WebAudioOutput {
                 .start_with_when(self.next_schedule_time)
                 .expect("source.start failed");
 
-            self.next_schedule_time += frames as f64 / sr;
+            let end_time = self.next_schedule_time + frames as f64 / sr;
+            self.scheduled_sources.push((source, end_time));
+            self.next_schedule_time = end_time;
         }
 
-        // Derive our clock position from AudioContext.currentTime — the
-        // hardware-backed audio timer.  This replaces per-chunk accumulation
-        // which drifted because gaps (when pump() was called late) were lost.
-        let elapsed_s = current_time - self.ctx_time_origin;
+        // Derive the media clock from the audible portion of the schedule.
+        // `current_time` can continue to advance while the main thread is paused,
+        // but media playback cannot advance past the last scheduled buffer tail.
+        let audible_time = current_time.min(self.next_schedule_time);
+        let elapsed_s = audible_time - self.ctx_time_origin;
         self.clock
             .set_position_us(self.clock_origin_us + (elapsed_s * 1_000_000.0) as i64);
     }
 
-    pub fn pause(&self) -> Result<()> {
+    pub fn pause(&mut self) -> Result<()> {
         self.clock.set_playing(false);
+        self.stop_scheduled_sources();
+        self.reset_schedule();
         let _ = self.ctx.suspend();
         Ok(())
     }
 
-    pub fn resume(&self) -> Result<()> {
+    pub fn resume(&mut self) -> Result<()> {
         self.clock.set_playing(true);
         let _ = self.ctx.resume();
         Ok(())
     }
 
     pub fn reset_schedule(&mut self) {
+        self.stop_scheduled_sources();
         self.started = false;
         self.next_schedule_time = 0.0;
+        self.ctx_time_origin = 0.0;
+        self.clock_origin_us = self.clock.position_us();
+    }
+
+    fn stop_scheduled_sources(&mut self) {
+        for (source, _) in self.scheduled_sources.drain(..) {
+            let _ = source.stop();
+        }
     }
 }
