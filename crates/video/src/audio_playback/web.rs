@@ -37,6 +37,11 @@ pub struct WebAudioOutput {
     next_schedule_time: f64,
     /// Whether we have started scheduling (first pump after play/resume).
     started: bool,
+    /// AudioContext.currentTime when the current playback segment began.
+    /// Used to derive our clock from the hardware audio timer.
+    ctx_time_origin: f64,
+    /// Our logical clock position (µs) at `ctx_time_origin`.
+    clock_origin_us: i64,
 }
 
 // Safety: WASM is single-threaded; AudioContext / GainNode (JsValue) are only
@@ -74,6 +79,8 @@ impl WebAudioOutput {
             channels,
             next_schedule_time: 0.0,
             started: false,
+            ctx_time_origin: 0.0,
+            clock_origin_us: 0,
         })
     }
 
@@ -89,8 +96,10 @@ impl WebAudioOutput {
         let current_time = self.ctx.current_time();
 
         // On the very first pump (or after a resume) align the schedule cursor
-        // to "now" so we don't try to schedule into the past.
+        // to "now" and record the time-origin pair for clock derivation.
         if !self.started {
+            self.ctx_time_origin = current_time;
+            self.clock_origin_us = self.clock.position_us();
             self.next_schedule_time = current_time;
             self.started = true;
         }
@@ -119,10 +128,7 @@ impl WebAudioOutput {
                 break;
             }
 
-            // Advance the clock by what we just scheduled.
             let frames = read / ch;
-            let delta_us = (frames as f64 / sr * 1_000_000.0) as i64;
-            self.clock.advance_us(delta_us);
 
             // Create an AudioBuffer and de-interleave into per-channel arrays.
             let audio_buffer = self
@@ -153,6 +159,13 @@ impl WebAudioOutput {
 
             self.next_schedule_time += frames as f64 / sr;
         }
+
+        // Derive our clock position from AudioContext.currentTime — the
+        // hardware-backed audio timer.  This replaces per-chunk accumulation
+        // which drifted because gaps (when pump() was called late) were lost.
+        let elapsed_s = current_time - self.ctx_time_origin;
+        self.clock
+            .set_position_us(self.clock_origin_us + (elapsed_s * 1_000_000.0) as i64);
     }
 
     pub fn pause(&self) -> Result<()> {
