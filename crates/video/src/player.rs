@@ -776,13 +776,28 @@ impl VideoPlayer {
         let mut best: Option<Arc<DecodedFrame>> = None;
 
         // Pop all frames that are at or before the current time
+        // let mut skipped = -1;
+        // let mut missed = true;
         while let Some(front) = self.video_buffer.front() {
             if front.pts_us <= current_time_us {
                 best = self.video_buffer.pop_front();
+                // skipped += 1;
             } else {
+                // missed = false;
                 break;
             }
         }
+
+        // if skipped > 0 {
+        //     log::warn!("skpped {} frames", skipped);
+        // }
+
+        // if missed {
+        //     log::warn!(
+        //         "missed video frame at {} ms",
+        //         current_time_us as f64 / 1_000.0
+        //     );
+        // }
 
         if let Some(frame) = best {
             self.current_frame.store(Some(frame));
