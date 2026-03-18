@@ -46,7 +46,7 @@ impl AudioOutput {
             .default_output_config()
             .map_err(|e| anyhow!("Failed to get default output config: {}", e))?;
 
-        let actual_sample_rate = default_config.sample_rate().0;
+        let actual_sample_rate = default_config.sample_rate();
         let actual_channels = default_config.channels();
         let config = default_config.config();
 

@@ -25,7 +25,7 @@ bytemuck = {version = "1.24", features = ["derive"]}
 cfg_aliases = "0.2.1"
 csscolorparser = {version = "0.8", features = ["serde"]}
 dashmap = "6.1.0"
-glam = {version = "0.30", features = ["bytemuck"]}
+glam = {version = "0.32", features = ["bytemuck"]}
 huozi = "0.16"
 image = {version = "0.25", default-features = false, features = ["bmp", "jpeg", "png", "webp"]}
 log = "0.4"
