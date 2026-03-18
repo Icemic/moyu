@@ -10,7 +10,7 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     DomRectInit, EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType,
     HardwareAcceleration, PlaneLayout, VideoDecoder as WasmVideoDecoder, VideoDecoderConfig,
-    VideoDecoderInit, VideoFrame, VideoFrameCopyToOptions,
+    VideoDecoderInit, VideoFrame, VideoFrameCopyToOptions, VideoPixelFormat,
 };
 
 use crate::types::{DecodeStatus, DecodedFrame, PixelFormat, VideoCodec};
@@ -149,7 +149,7 @@ impl VideoDecoder for WebDecoder {
 
         // WebCodecs expects timestamp in microseconds.
         // After configure() / flush(), the first successfully queued packet must be a key chunk.
-        let init = EncodedVideoChunkInit::new(&js_data, pts as f64, chunk_type);
+        let init = EncodedVideoChunkInit::new(&js_data, pts as i32, chunk_type);
 
         let chunk = EncodedVideoChunk::new(&init)
             .map_err(|e| anyhow!("Failed to create EncodedVideoChunk: {:?}", e))?;
@@ -464,32 +464,35 @@ fn compact_plane_layouts(
     }
 }
 
-fn copy_to_format(pixel_format: PixelFormat) -> &'static str {
+fn copy_to_format(pixel_format: PixelFormat) -> VideoPixelFormat {
     match pixel_format {
-        PixelFormat::I420 => "I420",
-        PixelFormat::Nv12 => "NV12",
-        PixelFormat::Rgba => "RGBA",
-        PixelFormat::Bgra => "BGRA",
+        PixelFormat::I420 => VideoPixelFormat::I420,
+        PixelFormat::Nv12 => VideoPixelFormat::Nv12,
+        PixelFormat::Rgba => VideoPixelFormat::Rgba,
+        PixelFormat::Bgra => VideoPixelFormat::Bgra,
         PixelFormat::External => unreachable!("external frames do not use copyTo format strings"),
     }
 }
 
-fn plane_layout_array(layouts: [PlaneLayoutInfo; 3], pixel_format: PixelFormat) -> Array {
-    let result = Array::new();
-    result.push(&PlaneLayout::new(
+fn plane_layout_array(
+    layouts: [PlaneLayoutInfo; 3],
+    pixel_format: PixelFormat,
+) -> Vec<PlaneLayout> {
+    let mut result = vec![];
+    result.push(PlaneLayout::new(
         layouts[0].offset as u32,
         layouts[0].stride,
     ));
 
     if matches!(pixel_format, PixelFormat::I420 | PixelFormat::Nv12) {
-        result.push(&PlaneLayout::new(
+        result.push(PlaneLayout::new(
             layouts[1].offset as u32,
             layouts[1].stride,
         ));
     }
 
     if pixel_format == PixelFormat::I420 {
-        result.push(&PlaneLayout::new(
+        result.push(PlaneLayout::new(
             layouts[2].offset as u32,
             layouts[2].stride,
         ));
