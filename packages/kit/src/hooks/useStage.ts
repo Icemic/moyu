@@ -60,7 +60,7 @@ export function createStage() {
   const skipCallbacks: Array<() => void> = [];
   const interruptCallbacks: Array<() => boolean> = [];
   const skipBlockers: Array<() => boolean> = [];
-  const beforeHandleCommandCallbacks: Array<() => void> = [];
+  const beforeHandleCommandCallbacks: Array<(upcomingCommand: ResolvedCommandLine) => void> = [];
 
   // --- registration functions ---
 
@@ -183,7 +183,7 @@ export function createStage() {
   }
 
   /** Add a callback to be invoked before handling each command. */
-  function addBeforeHandleCommandCallback(cb: () => void): () => void {
+  function addBeforeHandleCommandCallback(cb: (upcomingCommand: ResolvedCommandLine) => void): () => void {
     beforeHandleCommandCallbacks.push(cb);
     return () => {
       const idx = beforeHandleCommandCallbacks.indexOf(cb);
@@ -291,10 +291,9 @@ export function createStage() {
 
   /** Dispatch a scenariocommandline event. */
   function dispatchCommand(e: ResolvedCommandLine) {
-    // execute beforeHandleCommand callbacks
     for (const cb of beforeHandleCommandCallbacks) {
       try {
-        cb();
+        cb(e);
       } catch (err) {
         console.error('Error in beforeHandleCommand callback:', err);
       }
@@ -456,9 +455,10 @@ export function useSkipBlocker(callback: () => boolean) {
 
 /**
  * Register a callback to be invoked before handling each command.
+ * The callback receives the upcoming command object, allowing conditional logic.
  * Automatically removed on unmount.
  */
-export function useBeforeHandleCommandCallback(callback: () => void) {
+export function useBeforeHandleCommandCallback(callback: (upcomingCommand: ResolvedCommandLine) => void) {
   const stage = useStageContext();
   useEffect(() => {
     return stage.addBeforeHandleCommandCallback(callback);
