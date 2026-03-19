@@ -1,0 +1,33 @@
+{
+  "name": "@momoyu-ink/cli",
+  "version": "0.1.0",
+  "description": "CLI toolchain for the Moyu Visual Novel Engine",
+  "type": "module",
+  "license": "MPL-2.0",
+  "bin": {
+    "moyu": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@zip.js/zip.js": "^2.8.23",
+    "citty": "^0.2.1",
+    "consola": "^3.4.2",
+    "jiti": "^2.4.2",
+    "picocolors": "^1.1.1",
+    "tar": "^7.4.3"
+  },
+  "devDependencies": {
+    "@types/node": ">=24",
+    "tsup": "^8.4.0",
+    "typescript": "^5.9.3"
+  }
+}
