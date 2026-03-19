@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch"
+    "dev": "tsup --watch",
+    "prepublishOnly": "tsup"
   },
   "engines": {
     "node": ">=22.0.0"
