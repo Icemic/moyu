@@ -93,6 +93,12 @@ impl QuickVM {
             null_mut(),
         );
 
+        // Default is 1MB. Debug builds have unoptimized QuickJS C frames
+        // that are significantly larger, so complex JS (e.g. react-spring
+        // color string interpolation) can exhaust the budget.
+        context.set_max_stack_size(4 * 1024 * 1024);
+        context.update_stack_top();
+
         context
             .set_host_promise_rejection_tracker(Some(host_promise_rejection_tracker), null_mut());
 
