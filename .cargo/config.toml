@@ -17,7 +17,7 @@ rustflags = []
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"
-rustflags = []
+rustflags = ["-Clink-arg=/STACK:8388608"]
 
 [target.wasm32-unknown-unknown]
 linker = "rust-lld"
