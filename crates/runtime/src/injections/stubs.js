@@ -3,6 +3,7 @@
  * in the runtime environment.
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 (function () {
   globalThis.addEventListener = function (type, listener, options) {
     console.debug('addEventListener called with type =', type);
@@ -13,6 +14,9 @@
     // No-op implementation
   };
   globalThis.__moyu_receive_event = function (events) {
+    // No-op implementation
+  };
+  globalThis.__moyu_eval_sandbox = function (code) {
     // No-op implementation
   };
 })();

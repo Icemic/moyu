@@ -1864,9 +1864,9 @@ dependencies = [
 
 [[package]]
 name = "libquickjs-ng-sys"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "436b527c4fde99d61bf099c1c28367b48d920c3064b4523bc6066e2841c22a37"
+checksum = "3d289f362bc9d4266183ec55d3bed47a43e1e3edb06e5e73117903d77b897a25"
 dependencies = [
  "bindgen",
  "cc",
@@ -2114,6 +2114,7 @@ dependencies = [
  "moyu_runtime",
  "serde",
  "serde-wasm-bindgen",
+ "serde_json",
  "ts-rs",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -3173,9 +3174,9 @@ dependencies = [
 
 [[package]]
 name = "quickjs-rusty"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9d26549f79c4eec7ced08077a8cc290bb73d25ed1b66ef2f602fc81e4659e86"
+checksum = "04fb1d8380044f05d62eba00512639362732d384df3c840b2f84ff7432bc0fc9"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3615,9 +3616,9 @@ checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
 
 [[package]]
 name = "sixu"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ceec531c820d3b08c21e87a7037e33c1fb778951e0fe22b60e701fb171ba0182"
+checksum = "2945f7c3e2b00dddca7f692c857dd537238122f4788e040ebcf3157c7ebeb646"
 dependencies = [
  "anyhow",
  "arc-swap",

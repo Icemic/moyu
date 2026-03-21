@@ -1,6 +1,7 @@
 mod commands;
 mod executor;
 mod types;
+mod utils;
 
 use std::io::{Cursor, Read, Write};
 use std::sync::Arc;
@@ -17,16 +18,19 @@ use moyu_core::traits::PluginBaseTrait;
 use moyu_core::traits::{Command, Plugin, PluginEventSource};
 use moyu_core::utils::convert::{JSValue, create_promise, to_js};
 use moyu_macros::Plugin;
+use moyu_pal::dir::assets_dir;
 use moyu_pal::fs::{
-    read_from_appdata, readdir_from_appdata, remove_from_appdata, write_to_appdata,
+    read, read_from_appdata, readdir_from_appdata, remove_from_appdata, write_to_appdata,
 };
 use moyu_pal::sync::Mutex;
 use moyu_pal::sync::mpsc::{Receiver, Sender};
-use sixu::runtime::Runtime;
+use sixu::format::RValue;
+use sixu::runtime::{Runtime, StepResult};
 use zip::write::SimpleFileOptions;
 
 use crate::executor::ScenarioExecutor;
 use crate::types::{GameData, ScenarioEvent, WaitingState};
+use crate::utils::convert_to_literal;
 
 const METADATA_VERSION: u32 = 1;
 const ZIP_COMMENT: &str = "MOYU\0";
@@ -97,8 +101,18 @@ impl ScenarioPlugin {
         let runtime = self.runtime.clone();
         let name = name.to_string();
         let future = async move {
+            let asset_full_path = assets_dir()
+                .join(&format!("scenario/{}.sixu", name))
+                .map_err(|e| {
+                    anyhow::anyhow!(
+                        "Failed to construct asset path for scenario {}: {}",
+                        name,
+                        e
+                    )
+                })?;
+            let data = read(&asset_full_path).await?;
             let mut runtime = runtime.lock();
-            runtime.load_story(&name).await?;
+            runtime.provide_story_data(&name, data)?;
             Ok::<(), anyhow::Error>(())
         };
 
@@ -384,13 +398,73 @@ impl ScenarioPlugin {
         let runtime = self.runtime.clone();
         let disable_next_line = self.disable_next_line.clone();
         let future = async move {
-            let mut runtime = runtime.lock();
-            runtime.next().await?;
+            match run_step_loop(&runtime).await {
+                Ok(_) => log::info!("Scenario execution finished"),
+                Err(err) => log::error!("Error during scenario execution: {}", err),
+            }
             disable_next_line.store(false, Ordering::Relaxed);
             Ok::<(), anyhow::Error>(())
         };
 
         create_promise(future)
+    }
+}
+
+/// Run the step/resume loop for scenario execution.
+///
+/// Acquires the runtime lock only for each `step()` call and releases it
+/// before performing async operations (eval_in_sandbox), preventing deadlocks
+/// when JS callbacks (e.g. setVariable) re-enter the scenario plugin.
+async fn run_step_loop(
+    runtime: &Arc<Mutex<Runtime<ScenarioExecutor>>>,
+) -> std::result::Result<(), anyhow::Error> {
+    use moyu_core::utils::eval_in_sandbox::eval_in_sandbox;
+    use moyu_pal::dir::assets_dir;
+
+    loop {
+        // Acquire lock, run one synchronous step, then release lock
+        let step_result = {
+            let mut rt = runtime.lock();
+            rt.step().map_err(anyhow::Error::from)
+        }; // lock released here
+
+        match step_result? {
+            StepResult::Done => return Ok(()),
+            StepResult::NeedsCondition(condition) => {
+                // Evaluate condition outside the lock
+                let ret = eval_in_sandbox(format!("Boolean({})", condition)).await?;
+                let result = ret.as_bool().unwrap_or(false);
+                // Re-acquire lock to provide result
+                let mut rt = runtime.lock();
+                rt.resume_condition(result);
+            }
+            StepResult::NeedsScript(script) => {
+                // Evaluate script outside the lock
+                let ret = eval_in_sandbox(format!("(() => {{ {} }})()", script)).await?;
+                let literal = convert_to_literal(ret);
+                // Re-acquire lock to provide result
+                let mut rt = runtime.lock();
+                rt.resume_script(Some(RValue::Literal(literal)), true);
+            }
+            StepResult::NeedsStoryFile(story_name) => {
+                // Load story file outside the lock
+                let asset_full_path = assets_dir()
+                    .join(&format!("scenario/{}.sixu", story_name))
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to construct asset path for scenario {}: {}",
+                            story_name,
+                            e
+                        )
+                    })?;
+                let data = moyu_pal::fs::read(&asset_full_path).await?;
+                log::info!("Loaded scenario from file: {}", asset_full_path);
+                // Re-acquire lock to provide data
+                let mut rt = runtime.lock();
+                rt.provide_story_data(&story_name, data)
+                    .map_err(anyhow::Error::from)?;
+            }
+        }
     }
 }
 
@@ -402,8 +476,7 @@ impl Plugin for ScenarioPlugin {
 
                 let runtime = self.runtime.clone();
                 moyu_pal::task::spawn(async move {
-                    let mut runtime = runtime.lock();
-                    if let Err(err) = runtime.next().await {
+                    if let Err(err) = run_step_loop(&runtime).await {
                         log::error!("Error during scenario execution after wait: {}", err);
                     }
                 });

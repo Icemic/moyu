@@ -1,6 +1,7 @@
 pub mod convert;
 pub mod coordinates;
 pub mod dispatch_event;
+pub mod eval_in_sandbox;
 pub mod fps_meter;
 pub mod hit_test;
 pub mod patch;
