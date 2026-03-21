@@ -1,5 +1,6 @@
 export * from './react';
 import * as moyu from './moyu';
+import './sandbox';
 export { executeNodeCommand, executePluginCommand } from './moyu';
 export * from './spring';
 export type * from './declaration';

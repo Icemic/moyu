@@ -15,6 +15,8 @@ declare global {
 
   // eslint-disable-next-line no-var
   var __moyu_receive_event: (event: MoyuEvent) => void;
+  // eslint-disable-next-line no-var
+  var __moyu_eval_sandbox: (code: string) => any;
 }
 
 export function createInstance(nodeType: string, label: string | undefined, props: Record<string, any>) {
