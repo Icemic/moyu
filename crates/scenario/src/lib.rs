@@ -398,10 +398,7 @@ impl ScenarioPlugin {
         let runtime = self.runtime.clone();
         let disable_next_line = self.disable_next_line.clone();
         let future = async move {
-            match run_step_loop(&runtime).await {
-                Ok(_) => log::info!("Scenario execution finished"),
-                Err(err) => log::error!("Error during scenario execution: {}", err),
-            }
+            run_step_loop(&runtime).await?;
             disable_next_line.store(false, Ordering::Relaxed);
             Ok::<(), anyhow::Error>(())
         };
