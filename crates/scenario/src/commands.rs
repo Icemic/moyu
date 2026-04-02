@@ -45,7 +45,8 @@ enum ScenarioCommand {
     /// Set the waiting time before the next line is parsed
     SetWaiting {
         /// waiting time in milliseconds
-        time: u32,
+        /// use f64 to avoid conversion issues with JavaScript numbers
+        time: f64,
         /// whether the waiting can be skipped by user input
         skippable: bool,
     },
@@ -145,7 +146,7 @@ impl Command for ScenarioPlugin {
                 return self.next_line().map(Some);
             }
             ScenarioCommand::SetWaiting { time, skippable } => {
-                self.set_waiting(time, skippable);
+                self.set_waiting(time as u32, skippable);
                 return Ok(None);
             }
 
