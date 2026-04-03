@@ -10,4 +10,5 @@ export type SystemCommand =
   | { subCommand: 'getWindowInnerSize' }
   | { subCommand: 'getStageSize' }
   | { subCommand: 'takeSnapshot'; width?: number; height?: number; keepAspectRatio?: boolean }
+  | { subCommand: 'getParams' }
   | { subCommand: 'quit' };

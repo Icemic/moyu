@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use arc_swap::ArcSwapOption;
 use moyu_macros::Plugin;
-use moyu_pal::config::WindowState;
+use moyu_pal::config::{WindowState, get_engine_config};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -70,6 +70,7 @@ pub enum SystemCommand {
         height: Option<u32>,
         keep_aspect_ratio: Option<bool>,
     },
+    GetParams,
     Quit,
 }
 
@@ -158,6 +159,9 @@ impl Command for SystemPlugin {
                     let promise = create_promise(fut)?;
                     return Ok(Some(promise));
                 }
+            }
+            SystemCommand::GetParams => {
+                return Ok(Some(to_js(&get_engine_config().params)?));
             }
             SystemCommand::Quit => {
                 self.core.quit();
