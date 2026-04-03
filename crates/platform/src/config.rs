@@ -56,6 +56,9 @@ pub struct MoyuConfig {
     pub show_fps: bool,
     pub enable_gamepads: bool,
     pub skip_splash: bool,
+    /// Custom parameters that can be accessed in the engine.
+    /// The content is not interpreted by the platform, it's just passed to the engine as-is.
+    pub params: String,
 }
 
 impl Default for MoyuConfig {
@@ -78,18 +81,23 @@ impl Default for MoyuConfig {
             show_fps: false,
             enable_gamepads: false,
             skip_splash: false,
+            params: String::new(),
         }
     }
 }
 
 pub async fn setup() {
     #[cfg(native)]
+    let mut args = pico_args::Arguments::from_env();
+
+    #[cfg(native)]
     let mut entry = {
-        let args: Vec<String> = std::env::args().collect();
-        args.windows(2)
-            .find(|w| w[0] == "--entry")
-            .map(|w| w[1].clone())
-            .unwrap_or_else(|| "./index.json".to_string())
+        args.opt_value_from_str("--entry")
+            .unwrap()
+            .unwrap_or_else(|| {
+                log::info!("No --entry argument provided, defaulting to ./index.json");
+                "./index.json".to_string()
+            })
     };
 
     #[cfg(web)]
@@ -121,6 +129,20 @@ pub async fn setup() {
                 }
 
                 config.entry = Some(entry);
+
+                #[cfg(native)]
+                if let Some(params) = args.opt_value_from_str("--params").unwrap() {
+                    config.params = params;
+                }
+
+                #[cfg(web)]
+                if let Some(params) = web_sys::window()
+                    .unwrap()
+                    .get("__moyu_params")
+                    .map(|v| v.as_string().unwrap())
+                {
+                    config.params = params;
+                }
 
                 MOYU_ENV.set(config).unwrap();
                 break;
