@@ -230,7 +230,7 @@ fn should_use_external_frames() -> bool {
 
 fn extract_external_frame(frame: VideoFrame) -> DecodedFrame {
     let extract_start_ms = perf_now_ms();
-    let timestamp = frame.timestamp().unwrap_or(0.0) as i64;
+    let timestamp = frame.timestamp() as i64;
     let width = frame.display_width();
     let height = frame.display_height();
 
@@ -243,7 +243,7 @@ async fn extract_frame_data(
     copy_strategy: &RefCell<Option<CachedCopyStrategy>>,
 ) -> Option<DecodedFrame> {
     let extract_start_ms = perf_now_ms();
-    let timestamp = frame.timestamp().unwrap_or(0.0) as i64;
+    let timestamp = frame.timestamp() as i64;
 
     let cached_strategy = *copy_strategy.borrow();
     let (copied, profile_path, profile_attempts, profile_copy_ms, profile_strategy) = if let Some(
