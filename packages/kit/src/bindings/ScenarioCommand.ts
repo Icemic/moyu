@@ -23,6 +23,7 @@ export type ScenarioCommand =
       subCommand: 'setWaiting';
       /**
        * waiting time in milliseconds
+       * use f64 to avoid conversion issues with JavaScript numbers
        */
       time: number;
       /**
