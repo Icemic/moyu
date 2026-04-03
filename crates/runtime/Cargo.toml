@@ -8,7 +8,7 @@ version = "0.8.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow = {workspace = true}
-ehttp = { version = "0.6", features = ["native-async"] }
+ehttp = { version = "0.7.1", features = ["native-async"] }
 futures-util = "0.3"
 log = {workspace = true}
 quickjs-rusty = {workspace = true}
