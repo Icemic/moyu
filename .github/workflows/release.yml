@@ -155,7 +155,7 @@ jobs:
             echo "is_tag=false" >> $GITHUB_OUTPUT
             echo "channel=dev" >> $GITHUB_OUTPUT
             echo "display_version=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
-            echo "r2_tag=dev" >> $GITHUB_OUTPUT
+            echo "r2_tag=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
           fi
 
       - name: Download all artifacts
@@ -270,7 +270,7 @@ jobs:
             SHORT_SHA="${GITHUB_SHA::7}"
             echo "channel=dev" >> $GITHUB_OUTPUT
             echo "display_version=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
-            echo "r2_tag=dev" >> $GITHUB_OUTPUT
+            echo "r2_tag=dev-$SHORT_SHA" >> $GITHUB_OUTPUT
           fi
 
       - name: Download all artifacts
