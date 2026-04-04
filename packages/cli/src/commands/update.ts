@@ -62,18 +62,18 @@ export default defineCommand({
     }
 
     // 6. Determine platforms to download:
-    //    Use the same platforms as the current active version, or fall back to detectPlatform().
-    let targetPlatforms: string[];
+    //    Always include the current native platform and web-universal by default,
+    //    while preserving any extra platforms already downloaded for the active version.
+    const targetPlatformSet = new Set<string>([detectPlatform(), 'web-universal']);
     if (meta.active) {
       const activeDownload = meta.downloads[meta.active.version];
-      if (activeDownload && Object.keys(activeDownload.platforms).length > 0) {
-        targetPlatforms = Object.keys(activeDownload.platforms);
-      } else {
-        targetPlatforms = [detectPlatform()];
+      if (activeDownload) {
+        for (const platform of Object.keys(activeDownload.platforms)) {
+          targetPlatformSet.add(platform);
+        }
       }
-    } else {
-      targetPlatforms = [detectPlatform()];
     }
+    const targetPlatforms = [...targetPlatformSet];
 
     // 7. Check if already up to date
     const existingDownload = meta.downloads[targetVersion];
