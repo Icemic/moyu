@@ -170,7 +170,6 @@ jobs:
             --channel "${{ steps.version.outputs.channel }}" \
             --tag "${{ steps.version.outputs.r2_tag }}" \
             --artifacts-dir "./artifacts" \
-            --cdn-base-url "${{ secrets.CDN_PUBLIC_URL || 'https://cdn.example.com' }}" \
             --output-dir "./metadata"
 
       - name: Delete existing dev release

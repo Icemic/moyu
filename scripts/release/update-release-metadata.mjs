@@ -12,8 +12,8 @@
  *     --channel <channel>            # "stable" | "prerelease" | "dev"
  *     --tag <tag>                    # R2 directory name, e.g. "v0.8.0" or "dev"
  *     --artifacts-dir <path>         # directory containing build artifact subdirs
- *     --cdn-base-url <url>           # e.g. "https://cdn.momoyu.ink" (no trailing /)
  *     --output-dir <path>            # where to write release.json & versions.json
+ *     [--cdn-base-url <url>]         # e.g. "https://cdn.momoyu.ink" (no trailing /)
  *     [--existing-versions <path>]   # path to previous versions.json (optional)
  *
  * No external dependencies – only Node.js built-ins.
@@ -47,7 +47,7 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv);
 
-const REQUIRED = ['version', 'channel', 'tag', 'artifacts-dir', 'cdn-base-url', 'output-dir'];
+const REQUIRED = ['version', 'channel', 'tag', 'artifacts-dir', 'output-dir'];
 for (const key of REQUIRED) {
   if (!args[key]) {
     console.error(`Missing required argument: --${key}`);
@@ -59,7 +59,7 @@ const VERSION = args['version'];
 const CHANNEL = args['channel'];
 const TAG = args['tag'];
 const ARTIFACTS_DIR = resolve(args['artifacts-dir']);
-const CDN_BASE = args['cdn-base-url'].replace(/\/+$/, '');
+const CDN_BASE = args['cdn-base-url'] ? args['cdn-base-url'].replace(/\/+$/, '') : null;
 const OUTPUT_DIR = resolve(args['output-dir']);
 const EXISTING_VERSIONS = args['existing-versions'] ? resolve(args['existing-versions']) : null;
 
@@ -147,8 +147,11 @@ function main() {
   for (const art of artifacts) {
     const hash = sha256(art.filePath);
     const size = statSync(art.filePath).size;
-    const url = `${CDN_BASE}/releases/${TAG}/${art.filename}`;
-    assets[art.assetKey] = { filename: art.filename, url, sha256: hash, size };
+    const asset = { filename: art.filename, sha256: hash, size };
+    if (CDN_BASE) {
+      asset.url = `${CDN_BASE}/releases/${TAG}/${art.filename}`;
+    }
+    assets[art.assetKey] = asset;
     console.log(`  ${art.assetKey}: ${art.filename} (${size} bytes, sha256=${hash.slice(0, 12)}...)`);
   }
 
@@ -198,11 +201,14 @@ function main() {
     assets: {},
   };
   for (const [key, asset] of Object.entries(assets)) {
-    versionEntry.assets[key] = {
-      url: asset.url,
+    const assetEntry = {
       sha256: asset.sha256,
       size: asset.size,
     };
+    if (asset.url) {
+      assetEntry.url = asset.url;
+    }
+    versionEntry.assets[key] = assetEntry;
   }
 
   if (CHANNEL === 'dev') {
