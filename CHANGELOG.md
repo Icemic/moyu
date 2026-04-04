@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-04
+
 ### Breaking
 
 - Introduce dynamic dispatching for Node trait to reduce boilerplate code when creating new nodes.
@@ -17,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Now every node has a `bounds` property representing its axis-aligned bounding box in local coordinates.
 - Catch uncaptured wgpu errors and show a fatal error message before exiting.
 - Add `<video>` node for video playback, supporting common video formats on all platforms via the `moyu-video` crate.
+- Add sandboxed eval and incremental runner for scenario script, allowing dynamic code execution.
+- Add custom parameters to MoyuConfig for engine access
 
 ### Fixed
 
@@ -26,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix rendering crash when bounds of `Backdrop` node out of canvas.
 - Wrong instance count in RenderCommand for instanced drawing.
 - Crash when scenario parsing failed.
+- Increase the maximum stack size of QuickJS runtime to avoid stack overflow in complex scenarios.
+- Change SetWaiting time type to f64 for better JS compatibility
 
 ### Optimized
 
