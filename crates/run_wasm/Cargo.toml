@@ -3,7 +3,7 @@ authors = ["Lucas Kent <rubickent@gmail.com>", "Icemic <bingfeng.web@gmail.com>"
 edition = "2024"
 license = "MIT"
 name = "run-wasm"
-version = "0.1.0"
+version.workspace = true
 
 [package.metadata.release]
 release = false

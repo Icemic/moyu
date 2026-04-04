@@ -5,7 +5,7 @@ edition = "2024"
 license = "MPL-2.0"
 name = "moyu_pal"
 repository = "https://github.com/DeepSpaceMill/moyu"
-version = "0.8.0"
+version.workspace = true
 
 [dependencies]
 dirs = "6.0"

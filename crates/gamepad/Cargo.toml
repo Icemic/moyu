@@ -5,7 +5,7 @@ edition = "2024"
 license = "MPL-2.0"
 name = "moyu_gamepad"
 repository = "https://github.com/DeepSpaceMill/moyu"
-version = "0.8.0"
+version.workspace = true
 
 [dependencies]
 anyhow = {workspace = true}
