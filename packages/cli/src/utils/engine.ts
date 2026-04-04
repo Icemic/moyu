@@ -57,21 +57,26 @@ export interface Asset {
   size: number;
 }
 
-/** Local metadata stored at `.moyu/engine/meta.json` */
-export interface Meta {
-  version: string;
+/** Platform download record within a versioned download entry. */
+export interface PlatformDownload {
+  sha256: string;
+  downloadedAt: string;
+}
+
+/** A single downloaded version entry. */
+export interface DownloadedVersion {
   channel: string;
   publishedAt: string;
-  native: {
-    platform: string;
-    url: string;
-    sha256: string;
-  };
-  web: {
-    url: string;
-    sha256: string;
+  platforms: Record<string, PlatformDownload>;
+}
+
+/** Local metadata stored at `.moyu/engine/meta.json` */
+export interface Meta {
+  active: {
+    version: string;
+    channel: string;
   } | null;
-  downloadedAt: string;
+  downloads: Record<string, DownloadedVersion>;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,6 +136,14 @@ export function detectPlatform(): string {
   process.exit(1);
 }
 
+/**
+ * Same as `detectPlatform` but returns `null` instead of exiting
+ * when the current platform is unsupported.
+ */
+export function tryDetectPlatform(): string | null {
+  return PLATFORM_MAP[process.platform]?.[process.arch] ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Metadata
 // ---------------------------------------------------------------------------
@@ -149,6 +162,16 @@ export async function saveMeta(metaFile: string, meta: Meta): Promise<void> {
   await writeFile(metaFile, JSON.stringify(meta, null, 2) + '\n');
 }
 
+function fetchNoCache(input: string): Promise<Response> {
+  return fetch(input, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, max-age=0',
+      Pragma: 'no-cache',
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Remote fetch
 // ---------------------------------------------------------------------------
@@ -158,7 +181,7 @@ export async function saveMeta(metaFile: string, meta: Meta): Promise<void> {
  * Validates `schema_version` before returning.
  */
 export async function fetchVersionsJson(cdnUrl: string): Promise<VersionsJson> {
-  const res = await fetch(cdnUrl);
+  const res = await fetchNoCache(cdnUrl);
   if (!res.ok) {
     throw new Error(`Failed to fetch versions.json: HTTP ${res.status} ${res.statusText}`);
   }
@@ -192,7 +215,7 @@ export async function downloadAndExtract(url: string, destDir: string, expectedS
   const tmpFile = join(tmpdir(), `moyu-engine-${Date.now()}.tar.zst`);
 
   try {
-    const res = await fetch(url);
+    const res = await fetchNoCache(url);
     if (!res.ok || !res.body) {
       throw new Error(`Download failed: HTTP ${res.status} ${res.statusText}`);
     }

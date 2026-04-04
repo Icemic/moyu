@@ -12,8 +12,8 @@ import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 import { defineCommand } from 'citty';
 import consola from 'consola';
-import { loadMeta } from '../utils/engine.js';
-import { metaFile, nativeDir, requireProjectRoot, webDir } from '../utils/project.js';
+import { detectPlatform, loadMeta } from '../utils/engine.js';
+import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
 
 export default defineCommand({
   meta: {
@@ -40,15 +40,15 @@ export default defineCommand({
   run: async ({ args }) => {
     const projectRoot = requireProjectRoot();
     const metaPath = metaFile(projectRoot);
-    const nativePath = nativeDir(projectRoot);
-    const webPath = webDir(projectRoot);
 
-    // Ensure engine is downloaded
+    // Ensure engine is downloaded and active
     const meta = await loadMeta(metaPath);
-    if (!meta) {
-      consola.error('Engine is not downloaded yet. Run "moyu update" first.');
+    if (!meta?.active) {
+      consola.error('No active engine version. Run "moyu download" first.');
       process.exit(1);
     }
+
+    const activeVersion = meta.active.version;
 
     const mode = args.web ? 'web' : 'native';
     const port = Number.parseInt(args.port, 10);
@@ -58,8 +58,11 @@ export default defineCommand({
     }
 
     if (mode === 'native') {
+      const currentPlatform = detectPlatform();
+      const nativePath = platformDir(projectRoot, activeVersion, currentPlatform);
       runNative(projectRoot, nativePath);
     } else {
+      const webPath = platformDir(projectRoot, activeVersion, 'web-universal');
       await runWeb(projectRoot, webPath, port);
     }
   },
@@ -76,7 +79,7 @@ function runNative(projectRoot: string, nativePath: string): void {
   if (!existsSync(enginePath)) {
     consola.error(
       `Engine binary not found at ${enginePath}\n` +
-        'The engine files may be corrupted. Run "moyu update" to re-download.',
+        'The engine files may be corrupted. Run "moyu download" to re-download.',
     );
     process.exit(1);
   }
@@ -176,13 +179,13 @@ function resolveFilePath(urlPath: string, webPath: string, projectRoot: string):
 
 async function runWeb(projectRoot: string, webPath: string, port: number): Promise<void> {
   if (!existsSync(webPath)) {
-    consola.error('Web engine assets not found. Run "moyu update" first.');
+    consola.error('Web engine assets not found. Run "moyu download" to download web-universal platform.');
     process.exit(1);
   }
 
   const entries = await readdir(webPath);
   if (entries.length === 0) {
-    consola.error('Web engine directory is empty. Run "moyu update" to re-download.');
+    consola.error('Web engine directory is empty. Run "moyu download" to re-download.');
     process.exit(1);
   }
 

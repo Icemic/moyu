@@ -23,12 +23,18 @@ const main = defineCommand({
   },
   subCommands: {
     init: () => import('./commands/init.js').then((m) => m.default),
+    download: () => import('./commands/download.js').then((m) => m.default),
     update: () => import('./commands/update.js').then((m) => m.default),
+    switch: () => import('./commands/switch.js').then((m) => m.default),
     run: () => import('./commands/run.js').then((m) => m.default),
     pack: () => import('./commands/pack.js').then((m) => m.default),
     schema: () => import('./commands/schema.js').then((m) => m.default),
   },
 });
+
+function isPromptCancelledError(err: unknown): boolean {
+  return err instanceof Error && err.name === 'ConsolaPromptCancelledError';
+}
 
 runMain(main)
   .then(async () => {
@@ -39,6 +45,11 @@ runMain(main)
     }
   })
   .catch((err) => {
+    if (isPromptCancelledError(err)) {
+      consola.info('Cancelled.');
+      process.exit(0);
+    }
+
     consola.error(err);
     process.exit(1);
   });

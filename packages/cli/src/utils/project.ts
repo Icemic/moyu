@@ -9,6 +9,18 @@ import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import consola from 'consola';
 
+const SAFE_ENGINE_PATH_SEGMENT = /^[A-Za-z0-9._+-]+$/;
+
+function assertSafeEnginePathSegment(value: string, label: string): string {
+  if (!SAFE_ENGINE_PATH_SEGMENT.test(value) || value === '.' || value === '..') {
+    throw new Error(
+      `Invalid ${label} "${value}". Engine path segments may only contain letters, numbers, dot, underscore, plus, and hyphen.`,
+    );
+  }
+
+  return value;
+}
+
 /**
  * Walk up from `startDir` (defaults to `process.cwd()`) until a directory
  * containing `index.json` is found. Returns the absolute path to that
@@ -57,10 +69,10 @@ export function metaFile(projectRoot: string): string {
   return join(engineDir(projectRoot), 'meta.json');
 }
 
-export function nativeDir(projectRoot: string): string {
-  return join(engineDir(projectRoot), 'native');
+export function versionDir(projectRoot: string, version: string): string {
+  return join(engineDir(projectRoot), assertSafeEnginePathSegment(version, 'version'));
 }
 
-export function webDir(projectRoot: string): string {
-  return join(engineDir(projectRoot), 'web');
+export function platformDir(projectRoot: string, version: string, platform: string): string {
+  return join(versionDir(projectRoot, version), assertSafeEnginePathSegment(platform, 'platform'));
 }

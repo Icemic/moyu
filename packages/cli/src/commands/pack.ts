@@ -2,7 +2,7 @@
  * Engine pack command.
  *
  * Packages game assets and engine files for distribution.
- * Supports Windows (native), Linux (native), and Web targets.
+ * Target platforms use CDN asset keys (e.g. windows-amd64, linux-amd64, web-universal).
  */
 
 import { ZipWriter, configure } from '@zip.js/zip.js';
@@ -13,23 +13,24 @@ import { basename, join, resolve } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import { defineCommand } from 'citty';
 import consola from 'consola';
-import { formatBytes } from '../utils/engine.js';
-import { nativeDir, requireProjectRoot, webDir } from '../utils/project.js';
+import { formatBytes, loadMeta } from '../utils/engine.js';
+import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
 
 // Disable web workers – not available in Node.js
 configure({ useWebWorkers: false });
 
 // ---------------------------------------------------------------------------
-// Types
+// Constants
 // ---------------------------------------------------------------------------
 
-type Target = 'windows' | 'linux' | 'web';
-
-const SUPPORTED_TARGETS = new Set<string>(['windows', 'linux', 'web']);
+const WEB_PLATFORM = 'web-universal';
 
 const NATIVE_EXECUTABLES: Record<string, string> = {
-  windows: 'moyu.exe',
-  linux: 'moyu',
+  'windows-amd64': 'moyu.exe',
+  'linux-amd64': 'moyu',
+  'linux-aarch64': 'moyu',
+  'macos-amd64': 'moyu',
+  'macos-aarch64': 'moyu',
 };
 
 // ---------------------------------------------------------------------------
@@ -44,7 +45,7 @@ export default defineCommand({
   args: {
     target: {
       type: 'string',
-      description: 'Target platform: windows, linux, or web',
+      description: 'Target platform (e.g. windows-amd64, linux-amd64, web-universal)',
       required: true,
     },
     compress: {
@@ -59,17 +60,35 @@ export default defineCommand({
   },
   run: async ({ args }) => {
     const projectRoot = requireProjectRoot();
-    const nativePath = nativeDir(projectRoot);
-    const webPath = webDir(projectRoot);
+    const metaPath = metaFile(projectRoot);
 
-    if (!SUPPORTED_TARGETS.has(args.target)) {
+    // Load metadata to resolve active version
+    const meta = await loadMeta(metaPath);
+    if (!meta?.active) {
+      consola.error('No active engine version. Run "moyu download" first.');
+      process.exit(1);
+    }
+
+    const activeVersion = meta.active.version;
+    const target = args.target;
+    const isWeb = target === WEB_PLATFORM;
+
+    // Validate target
+    if (!isWeb && !NATIVE_EXECUTABLES[target]) {
+      const supported = [...Object.keys(NATIVE_EXECUTABLES), WEB_PLATFORM].join(', ');
+      consola.error(`Unsupported target: "${target}".\nSupported targets: ${supported}`);
+      process.exit(1);
+    }
+
+    const targetPath = platformDir(projectRoot, activeVersion, target);
+    if (!existsSync(targetPath)) {
       consola.error(
-        `Unsupported target: "${args.target}".\n` + `Supported targets: ${[...SUPPORTED_TARGETS].join(', ')}`,
+        `Platform "${target}" not downloaded for version ${activeVersion}.\n` +
+        'Run "moyu download" to download it.',
       );
       process.exit(1);
     }
 
-    const target = args.target as Target;
     const compress = args.compress;
     const tmpPackDir = join(projectRoot, '.moyu', 'tmp-pack');
 
@@ -79,6 +98,7 @@ export default defineCommand({
       : join(projectRoot, '.moyu', 'release', dateString);
 
     consola.info(`Target: ${target}`);
+    consola.info(`Engine version: ${activeVersion}`);
     consola.info(`Compress: ${compress}`);
     consola.info(`Output: ${outputDir}`);
 
@@ -98,10 +118,10 @@ export default defineCommand({
     await copyBundleJs(projectRoot, tmpPackDir);
 
     // 4. Copy platform-specific files
-    if (target === 'web') {
-      await copyWebEngine(projectRoot, webPath, tmpPackDir);
+    if (isWeb) {
+      await copyWebEngine(projectRoot, targetPath, tmpPackDir);
     } else {
-      await copyNativeEngine(target, nativePath, tmpPackDir);
+      await copyNativeEngine(target, targetPath, tmpPackDir);
     }
 
     // 5. Output
@@ -196,12 +216,12 @@ async function copyIndexJson(projectRoot: string, tmpPackDir: string): Promise<v
   await cp(indexJson, join(tmpPackDir, 'index.json'));
 }
 
-async function copyNativeEngine(target: 'windows' | 'linux', nativePath: string, tmpPackDir: string): Promise<void> {
+async function copyNativeEngine(target: string, targetPath: string, tmpPackDir: string): Promise<void> {
   const exeName = NATIVE_EXECUTABLES[target];
-  const exePath = join(nativePath, exeName);
+  const exePath = join(targetPath, exeName);
 
   if (!existsSync(exePath)) {
-    consola.error(`Engine executable not found: ${exePath}\n` + 'Run "moyu update" to download engine files.');
+    consola.error(`Engine executable not found: ${exePath}\n` + 'Run "moyu download" to download engine files.');
     process.exit(1);
   }
 
@@ -211,7 +231,7 @@ async function copyNativeEngine(target: 'windows' | 'linux', nativePath: string,
 
 async function copyWebEngine(projectRoot: string, webPath: string, tmpPackDir: string): Promise<void> {
   if (!existsSync(webPath)) {
-    consola.error('Web engine directory not found. Run "moyu update" first.');
+    consola.error('Web engine directory not found. Run "moyu download" to download web-universal platform.');
     process.exit(1);
   }
 

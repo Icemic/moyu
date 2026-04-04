@@ -30,12 +30,13 @@ export default defineCommand({
     consola.log(pc.dim('Create a new visual novel project\n'));
 
     // Step 1: Project name
-    let projectName = args.name as string | undefined;
+    let projectName = args.name;
     if (!projectName) {
       projectName = (await consola.prompt('Project name:', {
         type: 'text',
         placeholder: 'my-visual-novel',
         default: 'my-visual-novel',
+        cancel: 'symbol',
       })) as string;
 
       if (typeof projectName === 'symbol') {
@@ -60,6 +61,7 @@ export default defineCommand({
     // Step 2: Template selection
     const template = (await consola.prompt('Select a template:', {
       type: 'select',
+      cancel: 'symbol',
       options: [
         { label: 'Basic', value: 'basic', hint: 'Minimal starter template' },
         { label: 'Advanced', value: 'advanced', hint: 'With save/load, settings, and gallery' },
@@ -82,6 +84,7 @@ export default defineCommand({
     const confirmed = await consola.prompt('Create project?', {
       type: 'confirm',
       initial: true,
+      cancel: 'symbol',
     });
 
     if (!confirmed || typeof confirmed === 'symbol') {
