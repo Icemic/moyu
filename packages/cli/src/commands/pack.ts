@@ -40,6 +40,7 @@ const NATIVE_EXECUTABLES: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 interface FrameworkConfig {
+  name?: string;
   title?: string;
   description?: string;
   author?: string;
@@ -49,6 +50,7 @@ interface FrameworkConfig {
 }
 
 interface FrameworkMeta {
+  name: string;
   title: string;
   description: string;
   author: string;
@@ -164,6 +166,8 @@ export default defineCommand({
     await copyBundleJs(projectRoot, tmpPackDir);
     if (frameworkMode) {
       await copyCommandsSchema(projectRoot, tmpPackDir);
+      await copyIndexHtml(projectRoot, tmpPackDir);
+      await copyIndexPreviewHtml(projectRoot, tmpPackDir);
       await writeFrameworkMeta(tmpPackDir, frameworkConfig!);
     }
 
@@ -317,6 +321,25 @@ async function copyIndexJson(projectRoot: string, tmpPackDir: string): Promise<v
   await cp(indexJson, join(tmpPackDir, 'index.json'));
 }
 
+async function copyIndexHtml(projectRoot: string, tmpPackDir: string): Promise<void> {
+  const indexHtml = join(projectRoot, 'index.html');
+  if (!existsSync(indexHtml)) {
+    consola.error('index.html not found in project root.');
+    process.exit(1);
+  }
+  consola.info('Copying index.html...');
+  await cp(indexHtml, join(tmpPackDir, 'index.html'));
+}
+
+async function copyIndexPreviewHtml(projectRoot: string, tmpPackDir: string): Promise<void> {
+  const previewHtml = join(projectRoot, 'index-preview.html');
+  if (!existsSync(previewHtml)) {
+    return;
+  }
+  consola.info('Copying index-preview.html...');
+  await cp(previewHtml, join(tmpPackDir, 'index-preview.html'));
+}
+
 async function copyCommandsSchema(projectRoot: string, tmpPackDir: string): Promise<void> {
   const schemaPath = join(projectRoot, 'commands.schema.json');
   if (!existsSync(schemaPath)) {
@@ -413,6 +436,12 @@ async function loadFrameworkConfig(projectRoot: string): Promise<FrameworkConfig
 }
 
 function loadFrameworkMeta(config: FrameworkConfig): FrameworkMeta {
+  const name = config.name?.trim();
+  if (!name) {
+    consola.error('Missing required "name" field in framework.json.');
+    process.exit(1);
+  }
+
   const title = config.title?.trim();
   if (!title) {
     consola.error('Missing required "title" field in framework.json.');
@@ -439,6 +468,7 @@ function loadFrameworkMeta(config: FrameworkConfig): FrameworkMeta {
 
   const email = config.email?.trim();
   return {
+    name,
     title,
     description,
     author,
