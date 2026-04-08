@@ -9,7 +9,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_PROFILE_RELEASE_STRIP: true
 
 jobs:
   build:
@@ -73,8 +72,10 @@ jobs:
           cargo install wasm-pack --version 0.13.1
 
       - name: Build Binary
-        run: cargo build --verbose --release
         if: matrix.wasm == false
+        env:
+          CARGO_PROFILE_RELEASE_STRIP: true
+        run: cargo build --release
 
       - name: Build Web
         run: |
