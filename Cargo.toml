@@ -45,7 +45,7 @@ web-sys = "0.3"
 web-time = "1.1"
 wgpu = {version = "27.0", features = ["fragile-send-sync-non-atomic-wasm", "webgl"]}
 winit = "0.30"
-zip = {version = "5.1", default-features = false, features = ["zstd"]}
+zip = {version = "8.5.1", default-features = false, features = ["zstd"]}
 
 opus = {version = "0.3", git = "https://github.com/Icemic/opus-rs", branch = "dev"}
 
