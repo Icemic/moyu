@@ -1,11 +1,13 @@
 use log::error;
 use winit::dpi::PhysicalPosition;
-use winit::event::{ElementState, TouchPhase, WindowEvent};
+use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent};
 use winit::window::{CursorIcon, Window};
 
 use crate::base::*;
 use crate::core::FocusablePayload;
-use crate::events::{MouseEvent, MouseEventKind, TouchEvent, TouchEventKind};
+use crate::events::{
+    MouseEvent, MouseEventKind, TouchEvent, TouchEventKind, WheelEvent, WheelEventDeltaMode,
+};
 use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerState};
 use crate::utils::dispatch_event::dispatch_event;
 use crate::utils::hit_test::{get_local_logical_position, hit_test};
@@ -214,6 +216,42 @@ impl Core {
                                 bubble_target_ids,
                                 location,
                                 identifier: touch.id as u32,
+                            });
+                        }
+                    }
+                }
+                true
+            }
+            WindowEvent::MouseWheel {
+                delta, phase: _, ..
+            } => {
+                get_pointer_state!(self, pointer_state, MOUSE_IDENTIFIER, true);
+
+                if let Some(last_hover_node) = &pointer_state.current_target {
+                    let target_id = *last_hover_node.node.read().base().id();
+                    let bubble_target_ids = last_hover_node.parent_ids.clone();
+
+                    match delta {
+                        MouseScrollDelta::LineDelta(x, y) => {
+                            dispatch_event(WheelEvent {
+                                kind: "wheel".to_string(),
+                                target_id,
+                                bubble_target_ids,
+                                delta_x: *x as f64,
+                                delta_y: *y as f64,
+                                delta_z: 0.0,
+                                delta_mode: WheelEventDeltaMode::Line,
+                            });
+                        }
+                        MouseScrollDelta::PixelDelta(pos) => {
+                            dispatch_event(WheelEvent {
+                                kind: "wheel".to_string(),
+                                target_id,
+                                bubble_target_ids,
+                                delta_x: pos.x,
+                                delta_y: pos.y,
+                                delta_z: 0.0,
+                                delta_mode: WheelEventDeltaMode::Pixel,
                             });
                         }
                     }

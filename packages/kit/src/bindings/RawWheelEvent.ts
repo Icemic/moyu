@@ -2,6 +2,7 @@
 import type { WheelEventDeltaMode } from './WheelEventDeltaMode';
 
 export type RawWheelEvent = {
+  kind: string;
   targetId: number;
   bubbleTargetIds: Array<number>;
   deltaX: number;

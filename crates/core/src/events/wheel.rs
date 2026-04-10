@@ -15,6 +15,7 @@ pub enum WheelEventDeltaMode {
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename = "RawWheelEvent")]
 pub struct WheelEvent {
+    pub kind: String,
     pub target_id: u32,
     pub bubble_target_ids: Vec<u32>,
     pub delta_x: f64,

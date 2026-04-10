@@ -4,6 +4,7 @@ export * from './events/keyboard';
 export * from './events/listener';
 export * from './events/mouse';
 export * from './events/touch';
+export * from './events/wheel';
 
 export * from './bindings/AnimationFrameCallbackEvent';
 export * from './bindings/BeforeUnloadEvent';

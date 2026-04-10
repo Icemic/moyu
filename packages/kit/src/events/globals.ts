@@ -3,15 +3,17 @@ import { CustomEvent } from '../bindings/CustomEvent';
 import { NodeEvent } from '../bindings/NodeEvent';
 import { RawMouseEvent } from '../bindings/RawMouseEvent';
 import { RawTouchEvent } from '../bindings/RawTouchEvent';
+import { RawWheelEvent } from '../bindings/RawWheelEvent';
 import { STATE } from '../state';
 import { createBubbleEvent, MoyuEvent } from './base';
 import { MouseEvent } from './mouse';
 import { TouchEvent } from './touch';
+import { WheelEvent } from './wheel';
 
 export const globalEventListeners: Record<string, ((event: any) => void)[]> = {};
 export const globalRequestAnimationFrameListeners: FrameRequestCallback[] = [];
 
-const BUBBLE_EVENT_NAMES = ['mouseevent', 'touchevent', 'keyboardevent'];
+const BUBBLE_EVENT_NAMES = ['mouseevent', 'touchevent', 'keyboardevent', 'wheelevent'];
 
 globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
   const { name, body } = raw_event;
@@ -56,8 +58,8 @@ globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
   }
 };
 
-function handleBubbleEvent(name: string, body: RawMouseEvent | RawTouchEvent) {
-  const event: MouseEvent | TouchEvent = createBubbleEvent(body, body.targetId);
+function handleBubbleEvent(name: string, body: RawMouseEvent | RawTouchEvent | RawWheelEvent) {
+  const event: MouseEvent | TouchEvent | WheelEvent = createBubbleEvent(body, body.targetId);
 
   const { kind, bubbleTargetIds } = body;
 
@@ -69,7 +71,7 @@ function handleBubbleEvent(name: string, body: RawMouseEvent | RawTouchEvent) {
       return;
     }
 
-    if (['mouseevent', 'keyboardevent'].includes(name)) {
+    if (['mouseevent', 'keyboardevent', 'wheelevent'].includes(name)) {
       node?.listeners?.[`on${kind}`]?.(event);
       while (event.bubbles && bubbleTargetIds.length) {
         // biome-ignore lint/style/noNonNullAssertion: we are sure that the array is not empty, it is a bug of biomejs
