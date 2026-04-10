@@ -41,6 +41,9 @@ export type ScenarioCommand =
   | { subCommand: 'getPermanentVariables' }
   | { subCommand: 'clearPermanentVariables' }
   | { subCommand: 'saveGame'; name: string; extra?: JsonValue }
+  | { subCommand: 'record'; meta: { [key in string]?: JsonValue } }
+  | { subCommand: 'getRecords'; offset?: number; limit?: number }
+  | { subCommand: 'jumpToRecord'; recordId: string }
   | {
       subCommand: 'loadGame';
       name: string;

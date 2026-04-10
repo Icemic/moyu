@@ -3,6 +3,7 @@ mod executor;
 mod types;
 mod utils;
 
+use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -24,15 +25,23 @@ use moyu_pal::fs::{
 };
 use moyu_pal::sync::Mutex;
 use moyu_pal::sync::mpsc::{Receiver, Sender};
+use sixu::BlockFingerprint;
+use sixu::format::Block;
 use sixu::format::RValue;
-use sixu::runtime::{Runtime, StepResult};
+use sixu::runtime::{ExecutionState, Runtime, StepResult};
 use zip::write::SimpleFileOptions;
 
 use crate::executor::ScenarioExecutor;
-use crate::types::{GameData, ScenarioEvent, WaitingState};
-use crate::utils::convert_to_literal;
+use crate::types::{
+    BacklogState, GameData, RuntimeSnapshot, SavedExecutionState, ScenarioEvent, ScenarioRecord,
+    WaitingState,
+};
+use crate::utils::{
+    convert_to_literal, next_record_id, prune_backlog_blocks, snapshot_blocks, timestamp_millis,
+};
 
-const METADATA_VERSION: u32 = 1;
+const METADATA_VERSION: u32 = 2;
+const MAX_RECORDS: usize = 50;
 const ZIP_COMMENT: &str = "MOYU\0";
 
 #[derive(Plugin)]
@@ -43,6 +52,7 @@ pub struct ScenarioPlugin {
     pub sender: Sender<ScenarioEvent>,
     /// Receive channel for execution results
     pub receiver: Receiver<ScenarioEvent>,
+    backlog: Arc<Mutex<BacklogState>>,
     waiting: Option<WaitingState>,
     /// Disable reacting to next line requests
     disable_next_line: Arc<AtomicBool>,
@@ -63,6 +73,7 @@ impl ScenarioPlugin {
             runtime: Arc::new(Mutex::new(runtime)),
             sender,
             receiver,
+            backlog: Arc::new(Mutex::new(BacklogState::default())),
             waiting: Default::default(),
             disable_next_line: Arc::new(AtomicBool::new(false)),
         }
@@ -90,6 +101,182 @@ impl ScenarioPlugin {
         log::info!("global data loaded");
 
         Ok(())
+    }
+
+    fn clear_backlog(&self) {
+        let mut backlog = self.backlog.lock();
+        backlog.records.clear();
+        backlog.blocks.clear();
+        backlog.next_record_serial = 0;
+    }
+
+    fn create_runtime_snapshot(
+        &self,
+    ) -> Result<(RuntimeSnapshot, HashMap<BlockFingerprint, Block>)> {
+        let runtime = self.runtime.lock();
+        let context = runtime.context();
+
+        let mut blocks = HashMap::new();
+        let stack = context
+            .stack()
+            .iter()
+            .map(|state| {
+                let fingerprint = state.block.fingerprint();
+                blocks
+                    .entry(fingerprint)
+                    .or_insert_with(|| state.block.clone());
+
+                SavedExecutionState {
+                    story: state.story.clone(),
+                    paragraph: state.paragraph.clone(),
+                    block_fingerprint: fingerprint,
+                    index: state.index,
+                    is_loop_body: state.is_loop_body,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        Ok((
+            RuntimeSnapshot {
+                stack,
+                variables: serde_json::Value::from(context.archive_variables().clone()),
+            },
+            blocks,
+        ))
+    }
+
+    fn restore_runtime_snapshot(
+        runtime: &Arc<Mutex<Runtime<ScenarioExecutor>>>,
+        snapshot: &RuntimeSnapshot,
+        blocks: &HashMap<BlockFingerprint, Block>,
+    ) -> Result<()> {
+        let stack = snapshot
+            .stack
+            .iter()
+            .map(|state| {
+                let block = blocks
+                    .get(&state.block_fingerprint)
+                    .cloned()
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Block fingerprint {} not found in backlog block pool",
+                            state.block_fingerprint.to_hex()
+                        )
+                    })?;
+
+                Ok(ExecutionState {
+                    story: state.story.clone(),
+                    paragraph: state.paragraph.clone(),
+                    block,
+                    index: state.index,
+                    is_loop_body: state.is_loop_body,
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let mut runtime = runtime.lock();
+        let context = runtime.context_mut();
+        *context.stack_mut() = stack;
+        *context.archive_variables_mut() = snapshot.variables.clone().into();
+
+        Ok(())
+    }
+
+    fn build_game_data(&self) -> Result<GameData> {
+        let (current_state, current_state_blocks) = self.create_runtime_snapshot()?;
+        let (records, backlog_blocks) = {
+            let backlog = self.backlog.lock();
+            (backlog.records.clone(), backlog.blocks.clone())
+        };
+
+        let mut referenced = records
+            .iter()
+            .flat_map(|record| snapshot_blocks(&record.snapshot))
+            .collect::<HashSet<_>>();
+        referenced.extend(snapshot_blocks(&current_state));
+
+        let mut blocks = backlog_blocks
+            .into_iter()
+            .filter(|(fingerprint, _)| referenced.contains(fingerprint))
+            .collect::<HashMap<_, _>>();
+        blocks.extend(current_state_blocks);
+
+        Ok(GameData {
+            current_state,
+            records,
+            blocks,
+        })
+    }
+
+    fn record(&mut self, meta: HashMap<String, serde_json::Value>) -> Result<JSValue> {
+        let (snapshot, blocks) = self.create_runtime_snapshot()?;
+
+        let mut backlog = self.backlog.lock();
+        backlog.blocks.extend(blocks);
+
+        let id = next_record_id(&mut backlog)?;
+        let created_at = timestamp_millis()?;
+
+        backlog.records.push(ScenarioRecord {
+            id: id.clone(),
+            created_at,
+            meta,
+            snapshot,
+        });
+
+        if backlog.records.len() > MAX_RECORDS {
+            backlog.records.remove(0);
+        }
+
+        prune_backlog_blocks(&mut backlog);
+
+        to_js(&id)
+    }
+
+    fn get_records(&self, offset: Option<usize>, limit: Option<usize>) -> Result<JSValue> {
+        let backlog = self.backlog.lock();
+        let offset = offset.unwrap_or(0);
+
+        let iter = backlog.records.iter().rev().skip(offset);
+        let records = match limit {
+            Some(limit) => iter.take(limit).collect::<Vec<_>>(),
+            None => iter.collect::<Vec<_>>(),
+        };
+
+        let infos = records
+            .into_iter()
+            .map(|record| record.get_info())
+            .collect::<Vec<_>>();
+
+        to_js(&infos)
+    }
+
+    fn jump_to_record(&mut self, record_id: &str) -> Result<JSValue> {
+        let (snapshot, blocks) = {
+            let mut backlog = self.backlog.lock();
+            let Some(index) = backlog
+                .records
+                .iter()
+                .position(|record| record.id == record_id)
+            else {
+                return to_js(&false);
+            };
+
+            backlog.records.truncate(index + 1);
+            prune_backlog_blocks(&mut backlog);
+
+            let snapshot = backlog
+                .records
+                .last()
+                .map(|record| record.snapshot.clone())
+                .ok_or_else(|| anyhow::anyhow!("Target backlog record missing after truncate"))?;
+
+            (snapshot, backlog.blocks.clone())
+        };
+
+        Self::restore_runtime_snapshot(&self.runtime, &snapshot, &blocks)?;
+
+        to_js(&true)
     }
 
     fn add_story(&self, name: &str) -> Result<JSValue> {
@@ -169,6 +356,7 @@ impl ScenarioPlugin {
     fn load_save_data_from_file(&mut self, name: &str) -> Result<JSValue> {
         let path = format!("saves/{}.sav", name);
         let runtime = self.runtime.clone();
+        let backlog = self.backlog.clone();
         let future = async move {
             let Some(data) = read_from_appdata(&path).await? else {
                 log::info!("No save data found for {}", path);
@@ -185,12 +373,19 @@ impl ScenarioPlugin {
 
             let data: GameData = serde_json::from_reader(game_data)?;
 
-            // Update the runtime's context
+            let GameData {
+                current_state,
+                records,
+                blocks,
+            } = data;
+
+            ScenarioPlugin::restore_runtime_snapshot(&runtime, &current_state, &blocks)?;
+
             {
-                let mut runtime = runtime.lock();
-                let context = runtime.context_mut();
-                *context.stack_mut() = data.stack;
-                *context.archive_variables_mut() = data.variables.into();
+                let mut backlog = backlog.lock();
+                backlog.records = records;
+                backlog.blocks = blocks;
+                backlog.next_record_serial = backlog.records.len() as u64;
             }
 
             log::info!("Loaded game data from file: {}", path);
@@ -213,14 +408,7 @@ impl ScenarioPlugin {
         let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Zstd);
 
         {
-            let runtime = self.runtime.lock();
-            let stack = runtime.context().stack().clone();
-            let game_vars = runtime.context().archive_variables();
-
-            let game_data = serde_json::to_vec_pretty(&GameData {
-                stack,
-                variables: game_vars.clone().into(),
-            })?;
+            let game_data = serde_json::to_vec_pretty(&self.build_game_data()?)?;
 
             zip.start_file("game_data.json", options)?;
             zip.write_all(&game_data)?;
@@ -269,7 +457,7 @@ impl ScenarioPlugin {
         }
 
         // set identifier to detect if this is a MOYU save file
-        zip.set_comment(ZIP_COMMENT);
+        let _ = zip.set_comment(ZIP_COMMENT);
 
         let zip_data = zip.finish()?.into_inner();
 

@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use moyu_core::traits::Event;
 use serde::{Deserialize, Serialize};
+use sixu::BlockFingerprint;
+use sixu::format::Block;
 use sixu::format::{ResolvedCommandLine, ResolvedSystemCallLine};
-use sixu::runtime::ExecutionState;
 use ts_rs::TS;
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -37,12 +40,62 @@ impl Event for ScenarioEvent {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct BacklogState {
+    pub records: Vec<ScenarioRecord>,
+    pub blocks: HashMap<BlockFingerprint, Block>,
+    pub next_record_serial: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SavedExecutionState {
+    pub story: String,
+    pub paragraph: String,
+    pub block_fingerprint: BlockFingerprint,
+    pub index: usize,
+    pub is_loop_body: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RuntimeSnapshot {
+    pub stack: Vec<SavedExecutionState>,
+    pub variables: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScenarioRecord {
+    pub id: String,
+    pub created_at: u64,
+    pub meta: HashMap<String, serde_json::Value>,
+    pub snapshot: RuntimeSnapshot,
+}
+
+impl ScenarioRecord {
+    pub fn get_info(&self) -> ScenarioRecordInfo {
+        ScenarioRecordInfo {
+            id: self.id.clone(),
+            created_at: self.created_at,
+            meta: self.meta.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenarioRecordInfo {
+    pub id: String,
+    pub created_at: u64,
+    pub meta: HashMap<String, serde_json::Value>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameData {
-    /// The current execution state stack
-    pub stack: Vec<ExecutionState>,
-    /// Variables for the current game session
-    pub variables: serde_json::Value,
+    /// The current exact runtime state.
+    pub current_state: RuntimeSnapshot,
+    /// Backlog records in chronological order.
+    pub records: Vec<ScenarioRecord>,
+    /// Shared block pool referenced by all snapshots.
+    pub blocks: HashMap<BlockFingerprint, Block>,
 }
 
 pub struct WaitingState {

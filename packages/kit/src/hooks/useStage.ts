@@ -3,6 +3,7 @@ import { proxy, useSnapshot } from 'valtio';
 import { nextLine, setWaiting } from './useScenario';
 import { ZodType } from 'zod';
 import { addEventListener, ResolvedCommandLine, TextLine } from '../events';
+import { executePluginCommand } from '../moyu';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,6 +19,8 @@ export interface GameControl {
   nextLine(): void;
   /** Mark this dispatch cycle as unskippable. If skipping, hold() will stop skip instead of advancing. */
   unskippable(): void;
+  /** Record the current runtime snapshot for backlog usage. */
+  record(meta: Record<string, any>): string;
 }
 
 export interface ScenarioCommandBaseType {
@@ -266,6 +269,18 @@ export function createStage() {
       },
       unskippable() {
         unskippableFlag = true;
+      },
+      record(meta: Record<string, any>) {
+        const result = executePluginCommand('scenario', {
+          subCommand: 'record',
+          meta,
+        });
+
+        if (result && typeof (result as PromiseLike<string>).then === 'function') {
+          throw new Error('Scenario record command unexpectedly returned a Promise');
+        }
+
+        return result as string;
       },
     };
     return { control, wasHandled: () => handled };

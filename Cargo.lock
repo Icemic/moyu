@@ -3666,9 +3666,9 @@ checksum = "b2aa850e253778c88a04c3d7323b043aeda9d3e30d5971937c1855769763678e"
 
 [[package]]
 name = "sixu"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b9ae8a6449601ba0ed90da8a6ebbe83ee0ab688db480f673c1bcfea415c5eb9"
+checksum = "236d46f41921b2de9c45cbf109fcbac7146c88e202cef5854b9d74c396851045"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -3680,6 +3680,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "ts-rs",
+ "twox-hash",
 ]
 
 [[package]]
@@ -4229,6 +4230,12 @@ dependencies = [
  "thiserror 2.0.18",
  "utf-8",
 ]
+
+[[package]]
+name = "twox-hash"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
 
 [[package]]
 name = "typed-path"

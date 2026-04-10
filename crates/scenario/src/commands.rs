@@ -89,6 +89,19 @@ enum ScenarioCommand {
         name: String,
         extra: Option<serde_json::Value>,
     },
+    /// record the current runtime snapshot for backlog usage
+    Record {
+        meta: HashMap<String, serde_json::Value>,
+    },
+    /// get backlog records in reverse chronological order
+    GetRecords {
+        offset: Option<usize>,
+        limit: Option<usize>,
+    },
+    /// jump to a specific backlog record and truncate future history
+    JumpToRecord {
+        record_id: String,
+    },
     /// load a saved game session from disk
     LoadGame {
         name: String,
@@ -135,11 +148,13 @@ impl Command for ScenarioPlugin {
             ScenarioCommand::StartStory { name, entry } => {
                 log::info!("start story: {}", name);
                 self.runtime.lock().start(&name, entry.as_deref())?;
+                self.clear_backlog();
                 return Ok(None);
             }
             ScenarioCommand::TerminateStory => {
                 log::info!("terminate story");
                 self.runtime.lock().terminate()?;
+                self.clear_backlog();
                 return Ok(None);
             }
             ScenarioCommand::NextLine => {
@@ -237,6 +252,15 @@ impl Command for ScenarioPlugin {
             ScenarioCommand::SaveGame { name, extra } => {
                 return self.save_game_data_to_file(&name, extra).map(Some);
             }
+            ScenarioCommand::Record { meta } => {
+                return self.record(meta).map(Some);
+            }
+            ScenarioCommand::GetRecords { offset, limit } => {
+                return self.get_records(offset, limit).map(Some);
+            }
+            ScenarioCommand::JumpToRecord { record_id } => {
+                return self.jump_to_record(&record_id).map(Some);
+            }
             ScenarioCommand::LoadGame { name, overwrite } => {
                 if !overwrite && !self.runtime.lock().context().stack().is_empty() {
                     return Err(anyhow::anyhow!("Current game session is not empty"));
@@ -248,6 +272,8 @@ impl Command for ScenarioPlugin {
                 let ctx = runtime.context_mut();
                 ctx.stack_mut().clear();
                 ctx.archive_variables_mut().as_object_mut()?.clear();
+                drop(runtime);
+                self.clear_backlog();
                 return Ok(None);
             }
             ScenarioCommand::RemoveGame { name } => {

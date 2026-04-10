@@ -1,4 +1,10 @@
+use std::collections::HashSet;
+
+use anyhow::Result;
+use sixu::BlockFingerprint;
 use sixu::format::Literal;
+
+use crate::types::{BacklogState, RuntimeSnapshot};
 
 pub(crate) fn convert_to_literal(value: serde_json::Value) -> Literal {
     match value {
@@ -26,4 +32,40 @@ pub(crate) fn convert_to_literal(value: serde_json::Value) -> Literal {
             Literal::Object(converted_map)
         }
     }
+}
+
+pub(crate) fn timestamp_millis() -> Result<u64> {
+    let millis = moyu_pal::time::SystemTime::now()
+        .duration_since(moyu_pal::time::SystemTime::UNIX_EPOCH)?
+        .as_millis();
+
+    Ok(u64::try_from(millis).unwrap_or(u64::MAX))
+}
+pub(crate) fn next_record_id(backlog: &mut BacklogState) -> Result<String> {
+    let id = format!(
+        "record-{}-{}",
+        timestamp_millis()?,
+        backlog.next_record_serial
+    );
+    backlog.next_record_serial += 1;
+    Ok(id)
+}
+pub(crate) fn snapshot_blocks(snapshot: &RuntimeSnapshot) -> HashSet<BlockFingerprint> {
+    snapshot
+        .stack
+        .iter()
+        .map(|state| state.block_fingerprint)
+        .collect()
+}
+
+pub(crate) fn prune_backlog_blocks(backlog: &mut BacklogState) {
+    let referenced = backlog
+        .records
+        .iter()
+        .flat_map(|record| snapshot_blocks(&record.snapshot))
+        .collect::<HashSet<_>>();
+
+    backlog
+        .blocks
+        .retain(|fingerprint, _| referenced.contains(fingerprint));
 }
