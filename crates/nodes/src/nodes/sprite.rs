@@ -97,8 +97,8 @@ pub struct SpriteProps {
     pub area: Patch<[f32; 4]>,
     pub bounds: Patch<[f32; 4]>,
     pub nine_slice_mode: Patch<NineSliceMode>,
-    pub target_width: Patch<u32>,
-    pub target_height: Patch<u32>,
+    pub target_width: Patch<f32>,
+    pub target_height: Patch<f32>,
 }
 
 impl Node for Sprite {
@@ -145,13 +145,13 @@ impl Node for Sprite {
         }, NineSliceMode::default());
 
         apply_patch!(props.target_width => |target_width| {
-            self.target_width = target_width;
+            self.target_width = target_width as u32;
             // clean base node size, and re-assign it in renderer
             self.base_mut().set_size(0, 0);
         }, 0);
 
         apply_patch!(props.target_height => |target_height| {
-            self.target_height = target_height;
+            self.target_height = target_height as u32;
             // clean base node size, and re-assign it in renderer
             self.base_mut().set_size(0, 0);
         }, 0);
