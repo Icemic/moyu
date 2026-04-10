@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use ts_rs::TS;
+use ts_rs::{Config, TS};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Patch<T> {
@@ -89,29 +89,31 @@ impl<T: TS + 'static> TS for Patch<T> {
 
     const IS_OPTION: bool = true;
 
-    fn decl() -> String {
-        <Option<T> as TS>::decl()
+    fn decl(cfg: &Config) -> String {
+        <Option<T> as TS>::decl(cfg)
     }
 
-    fn decl_concrete() -> String {
-        <Option<T> as TS>::decl_concrete()
+    fn decl_concrete(cfg: &Config) -> String {
+        <Option<T> as TS>::decl_concrete(cfg)
     }
 
-    fn name() -> String {
-        <Option<T> as TS>::name()
+    fn name(cfg: &Config) -> String {
+        <Option<T> as TS>::name(cfg)
     }
 
-    fn inline() -> String {
-        <Option<T> as TS>::inline()
+    fn inline(cfg: &Config) -> String {
+        <Option<T> as TS>::inline(cfg)
     }
 
-    fn inline_flattened() -> String {
-        <Option<T> as TS>::inline_flattened()
+    fn inline_flattened(cfg: &Config) -> String {
+        <Option<T> as TS>::inline_flattened(cfg)
     }
 
-    fn dependencies() -> Vec<ts_rs::Dependency> {
-        <Option<T> as TS>::dependencies()
+    fn dependencies(cfg: &Config) -> Vec<ts_rs::Dependency> {
+        <Option<T> as TS>::dependencies(cfg)
     }
 }
 
-impl<T> ts_rs::IsOption for Patch<T> {}
+impl<T> ts_rs::IsOption for Patch<T> {
+    type Inner = T;
+}

@@ -33,15 +33,15 @@ export type ScenarioCommand =
     }
   | { subCommand: 'setVariable'; name: string; value: JsonValue }
   | { subCommand: 'getVariable'; name: string }
-  | { subCommand: 'setVariables'; variables: { [key in string]?: JsonValue } }
+  | { subCommand: 'setVariables'; variables: { [key in string]: JsonValue } }
   | { subCommand: 'getVariables' }
   | { subCommand: 'setPermanentVariable'; key: string; value: JsonValue }
   | { subCommand: 'getPermanentVariable'; key: string }
-  | { subCommand: 'setPermanentVariables'; variables: { [key in string]?: JsonValue } }
+  | { subCommand: 'setPermanentVariables'; variables: { [key in string]: JsonValue } }
   | { subCommand: 'getPermanentVariables' }
   | { subCommand: 'clearPermanentVariables' }
   | { subCommand: 'saveGame'; name: string; extra?: JsonValue }
-  | { subCommand: 'record'; meta: { [key in string]?: JsonValue } }
+  | { subCommand: 'record'; meta: { [key in string]: JsonValue } }
   | { subCommand: 'getRecords'; offset?: number; limit?: number }
   | { subCommand: 'jumpToRecord'; recordId: string }
   | {
