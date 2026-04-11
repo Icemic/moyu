@@ -6,7 +6,7 @@ use std::time::Duration;
 use anyhow::Result;
 use kira::sound::static_sound::StaticSoundSettings;
 use kira::sound::{EndPosition, PlaybackPosition, Region};
-use kira::{AudioManagerSettings, Decibels, DefaultBackend, Panning, StartTime, Tweenable};
+use kira::{AudioManagerSettings, DefaultBackend, Panning, StartTime};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +21,7 @@ use ts_rs::TS;
 
 use crate::audio::{Audio, AudioLoadingState};
 use crate::kira_static_data::from_boxed_media_source;
+use crate::utils::linear_volume;
 
 /// Settings for audio playback, including delay, start position, volume, etc.
 #[derive(Debug, Serialize, Deserialize)]
@@ -158,12 +159,7 @@ impl AudioManager {
                         EndPosition::Custom(PlaybackPosition::Seconds(end))
                     },
                 }),
-                volume: Decibels::interpolate(
-                    Decibels::SILENCE,
-                    Decibels::IDENTITY,
-                    settings.volume,
-                )
-                .into(),
+                volume: linear_volume(settings.volume).into(),
                 playback_rate: settings.playback_rate.into(),
                 panning: Panning::from(settings.panning as f32).into(),
                 ..Default::default()

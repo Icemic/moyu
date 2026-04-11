@@ -4,6 +4,8 @@ use anyhow::{Result, anyhow};
 use kira::sound::static_sound::{StaticSoundData, StaticSoundHandle};
 use kira::*;
 
+use crate::utils::linear_volume;
+
 pub struct Audio {
     pub(crate) sound: Option<StaticSoundData>,
     pub(crate) handle: Option<StaticSoundHandle>,
@@ -63,14 +65,8 @@ impl Audio {
                     return Err(e.into());
                 }
             };
-            handle.set_volume(
-                Decibels::interpolate(Decibels::SILENCE, Decibels::IDENTITY, 0.0),
-                tween(Some(0)),
-            );
-            handle.set_volume(
-                Decibels::interpolate(Decibels::SILENCE, Decibels::IDENTITY, self.volume),
-                tween(fade_time),
-            );
+            handle.set_volume(linear_volume(0.0), tween(Some(0)));
+            handle.set_volume(linear_volume(self.volume), tween(fade_time));
 
             if let Some(callback) = on_stopped {
                 handle.on_stopped(callback);
@@ -112,10 +108,7 @@ impl Audio {
     pub fn set_volume(&mut self, volume: f64, fade_time: Option<u32>) -> Result<()> {
         self.volume = volume;
         self.handle().map(|handle| {
-            handle.set_volume(
-                Decibels::interpolate(Decibels::SILENCE, Decibels::IDENTITY, volume),
-                tween(fade_time),
-            );
+            handle.set_volume(linear_volume(volume), tween(fade_time));
         })
     }
 

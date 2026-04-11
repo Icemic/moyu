@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 1. Change `target_width` and `target_height` in `sprite` node from `Patch<u32>` to `Patch<f32>`
 2. Enhance auto ticket management with pending state handling and barrier association
+3. Make audio volume to be linear to match user expectation
 
 ## [0.10.0] - 2026-04-04
 
