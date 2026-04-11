@@ -47,6 +47,7 @@ wgpu = {version = "27.0", features = ["fragile-send-sync-non-atomic-wasm", "webg
 winit = "0.30"
 zip = {version = "8.5.1", default-features = false, features = ["zstd"]}
 
+kira = {version = "0.12", git = "https://github.com/Icemic/kira", branch = "stopped_callback"}
 opus = {version = "0.3", git = "https://github.com/Icemic/opus-rs", branch = "dev"}
 
 moyu_audio = {path = "crates/audio"}

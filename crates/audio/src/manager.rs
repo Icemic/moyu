@@ -177,7 +177,7 @@ impl AudioManager {
             // audio will play automatically by default, so if auto_play is false, stop it
             if settings.auto_play {
                 let mut manager = manager.lock();
-                audio.play(&mut manager, settings.fade_time)?;
+                audio.play(&mut manager, settings.fade_time, None)?;
             }
 
             Ok(())
@@ -223,6 +223,7 @@ pub enum AudioCommand {
     Play {
         name: String,
         fade_time: Option<u32>,
+        wait_for_end: Option<bool>,
     },
     Stop {
         name: String,
@@ -282,13 +283,34 @@ impl Command for AudioManager {
             AudioCommand::Release { name, fade_time } => {
                 self.remove_audio(&name, fade_time);
             }
-            AudioCommand::Play { name, fade_time } => {
+            AudioCommand::Play {
+                name,
+                fade_time,
+                wait_for_end,
+            } => {
                 let audio = self.get_audio(&name)?;
                 let mut audio = audio.lock();
                 // ignore the error if audio is not playing or not loaded
                 let _ = audio.stop(fade_time);
                 let mut manager = self.manager.lock();
-                audio.play(&mut manager, fade_time)?;
+
+                if wait_for_end.unwrap_or(false) {
+                    let (sender, receiver) = moyu_pal::sync::oneshot::channel();
+                    audio.play(
+                        &mut manager,
+                        fade_time,
+                        Some(Box::new(|| {
+                            let _ = sender.send(());
+                        })),
+                    )?;
+                    let promise = create_promise(async move {
+                        receiver.await?;
+                        Ok(())
+                    })?;
+                    return Ok(Some(promise));
+                } else {
+                    audio.play(&mut manager, fade_time, None)?;
+                }
             }
             AudioCommand::Stop { name, fade_time } => {
                 let audio = self.get_audio(&name)?;

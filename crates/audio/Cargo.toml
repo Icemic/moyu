@@ -13,9 +13,8 @@ desktop = []
 web = []
 
 [dependencies]
-kira = "0.12"
-
 anyhow = {workspace = true}
+kira = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
 symphonia = {workspace = true}

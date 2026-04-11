@@ -48,7 +48,12 @@ impl Audio {
         self.handle.is_some()
     }
 
-    pub fn play(&mut self, manager: &mut AudioManager, fade_time: Option<u32>) -> Result<()> {
+    pub fn play(
+        &mut self,
+        manager: &mut AudioManager,
+        fade_time: Option<u32>,
+        on_stopped: Option<Box<dyn FnOnce() + Send>>,
+    ) -> Result<()> {
         if let Some(ref sound_data) = self.sound {
             let mut handle = match manager.play(sound_data.clone()) {
                 Ok(handle) => handle,
@@ -66,7 +71,13 @@ impl Audio {
                 Decibels::interpolate(Decibels::SILENCE, Decibels::IDENTITY, self.volume),
                 tween(fade_time),
             );
+
+            if let Some(callback) = on_stopped {
+                handle.on_stopped(callback);
+            }
+
             self.handle = Some(handle);
+
             Ok(())
         } else {
             Err(anyhow!("No sound data available to play"))
