@@ -55,6 +55,7 @@ interface AutoTicketRecord {
   tailMs: number;
   doneAt: number | null;
   canceled: boolean;
+  barrierId: number | null;
 }
 
 interface AutoBarrier {
@@ -265,6 +266,7 @@ export function createStage() {
   let _autoCollectFrame: number | null = null;
   let _autoBarrierSeq = 0;
   let _autoTicketSeq = 0;
+  const _pendingAutoTickets = new Map<number, AutoTicketRecord>();
 
   function clearAutoResumeTimer() {
     if (_autoResumeTimer !== null) {
@@ -284,6 +286,10 @@ export function createStage() {
     clearAutoCollectFrame();
     clearAutoResumeTimer();
     _autoBarrier = null;
+  }
+
+  function clearPendingAutoTickets() {
+    _pendingAutoTickets.clear();
   }
 
   function getActiveAutoBarrier(barrierId: number): AutoBarrier | null {
@@ -346,26 +352,80 @@ export function createStage() {
     });
   }
 
-  function markAutoTicketDone(barrierId: number, ticketId: number) {
-    const barrier = getActiveAutoBarrier(barrierId);
-    if (barrier === null || barrier.settled) return;
-
-    const ticket = barrier.tickets.get(ticketId);
-    if (ticket === undefined || ticket.canceled || ticket.doneAt !== null) return;
+  function markAutoTicketDone(ticket: AutoTicketRecord) {
+    if (ticket.canceled || ticket.doneAt !== null) return;
 
     ticket.doneAt = Date.now();
+
+    if (ticket.barrierId === null) return;
+
+    const barrier = getActiveAutoBarrier(ticket.barrierId);
+    if (barrier === null || barrier.settled) return;
+
     trySettleAutoBarrier(barrier);
   }
 
-  function cancelAutoTicket(barrierId: number, ticketId: number) {
-    const barrier = getActiveAutoBarrier(barrierId);
-    if (barrier === null || barrier.settled) return;
-
-    const ticket = barrier.tickets.get(ticketId);
-    if (ticket === undefined || ticket.canceled) return;
+  function cancelAutoTicket(ticket: AutoTicketRecord) {
+    if (ticket.canceled) return;
 
     ticket.canceled = true;
+
+    if (ticket.barrierId === null) {
+      _pendingAutoTickets.delete(ticket.id);
+      return;
+    }
+
+    const barrier = getActiveAutoBarrier(ticket.barrierId);
+    if (barrier === null || barrier.settled) return;
+
     trySettleAutoBarrier(barrier);
+  }
+
+  function createAutoTicketHandle(ticket: AutoTicketRecord): AutoTicketHandle {
+    return {
+      done() {
+        markAutoTicketDone(ticket);
+      },
+      cancel() {
+        cancelAutoTicket(ticket);
+      },
+    };
+  }
+
+  function schedulePendingAutoTicketExpiry(ticketId: number) {
+    queueMicrotask(() => {
+      requestAnimationFrame(() => {
+        _pendingAutoTickets.delete(ticketId);
+      });
+    });
+  }
+
+  function createPendingAutoTicket(options?: AutoTicketOptions): AutoTicketHandle {
+    const ticketId = ++_autoTicketSeq;
+    const ticket: AutoTicketRecord = {
+      id: ticketId,
+      label: options?.label,
+      tailMs: options?.tailMs ?? autoRuntime.defaultTailMs,
+      doneAt: null,
+      canceled: false,
+      barrierId: null,
+    };
+
+    _pendingAutoTickets.set(ticketId, ticket);
+    schedulePendingAutoTicketExpiry(ticketId);
+
+    return createAutoTicketHandle(ticket);
+  }
+
+  function adoptPendingAutoTickets(barrier: AutoBarrier) {
+    for (const [ticketId, ticket] of _pendingAutoTickets) {
+      _pendingAutoTickets.delete(ticketId);
+
+      if (ticket.canceled) continue;
+
+      ticket.barrierId = barrier.id;
+      barrier.tickets.set(ticketId, ticket);
+    }
   }
 
   function openAutoBarrier(reason: AutoBarrierReason, fallbackMs: number) {
@@ -383,33 +443,37 @@ export function createStage() {
       settled: false,
     };
 
+    adoptPendingAutoTickets(_autoBarrier);
+
     scheduleAutoCollectionClose(_autoBarrier.id);
   }
 
   function issueAutoTicket(options?: AutoTicketOptions): AutoTicketHandle | null {
-    if (!autoState.active || _autoBarrier === null || !_autoBarrier.collecting || _autoBarrier.settled) {
+    if (!autoState.active) {
       return null;
     }
 
-    const barrierId = _autoBarrier.id;
-    const ticketId = ++_autoTicketSeq;
+    if (_autoBarrier === null) {
+      return createPendingAutoTicket(options);
+    }
 
-    _autoBarrier.tickets.set(ticketId, {
+    if (!_autoBarrier.collecting || _autoBarrier.settled) {
+      return null;
+    }
+
+    const ticketId = ++_autoTicketSeq;
+    const ticket: AutoTicketRecord = {
       id: ticketId,
       label: options?.label,
       tailMs: options?.tailMs ?? autoRuntime.defaultTailMs,
       doneAt: null,
       canceled: false,
-    });
-
-    return {
-      done() {
-        markAutoTicketDone(barrierId, ticketId);
-      },
-      cancel() {
-        cancelAutoTicket(barrierId, ticketId);
-      },
+      barrierId: _autoBarrier.id,
     };
+
+    _autoBarrier.tickets.set(ticketId, ticket);
+
+    return createAutoTicketHandle(ticket);
   }
 
   /** Schedule a delayed nextLine() call for the auto. */
@@ -477,6 +541,7 @@ export function createStage() {
       _autoTimer = null;
     }
     clearAutoBarrier();
+    clearPendingAutoTickets();
   }
 
   function isAutoing(): boolean {
