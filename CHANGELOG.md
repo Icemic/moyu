@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+1. Add wheel event handling and update related types
+2. Implement backlog management with record, getRecords, and jumpToRecord commands
+3. Add auto mode management with ticketing and barrier handling
+4. Enhance audio plugin's `play` function to support `onStopped` callback and add `waitForEnd` option
+
+### Fixed
+
+1. Change `target_width` and `target_height` in `sprite` node from `Patch<u32>` to `Patch<f32>`
+2. Enhance auto ticket management with pending state handling and barrier association
+
 ## [0.10.0] - 2026-04-04
 
 ### Breaking
