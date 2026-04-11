@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, createElement } from 'react';
+import { createContext, useContext, useEffect, createElement, useCallback } from 'react';
 import { proxy, useSnapshot } from 'valtio';
 import { nextLine, setWaiting } from './useScenario';
 import { ZodType } from 'zod';
@@ -37,18 +37,70 @@ export type CommandHandler<T extends ScenarioCommandBaseType = ScenarioCommandBa
 /** Text line handler function. */
 export type TextLineHandler = (text: TextLine, control: GameControl) => void;
 
+type AutoBarrierReason = 'hold' | 'wait';
+
+export interface AutoTicketOptions {
+  label?: string;
+  tailMs?: number;
+}
+
+export interface AutoTicketHandle {
+  done(): void;
+  cancel(): void;
+}
+
+interface AutoTicketRecord {
+  id: number;
+  label?: string;
+  tailMs: number;
+  doneAt: number | null;
+  canceled: boolean;
+}
+
+interface AutoBarrier {
+  id: number;
+  reason: AutoBarrierReason;
+  collecting: boolean;
+  openedAt: number;
+  fallbackReadyAt: number;
+  tickets: Map<number, AutoTicketRecord>;
+  settled: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Skip state — independent valtio proxy (not serialized with game saves)
 // ---------------------------------------------------------------------------
 
 const SKIP_INTERVAL_MS = 5;
 
+const autoRuntime = {
+  defaultTailMs: 0,
+};
+
 /** Reactive skip state. Actors read via useIsSkipping(). */
 export const skipState = proxy({ active: false });
+
+/** Reactive auto state. Actors read via useIsAutoing(). */
+export const autoState = proxy({ active: false });
 
 /** Reactively returns whether skip (Ctrl fast-forward) is active. */
 export function useIsSkipping(): boolean {
   return useSnapshot(skipState).active;
+}
+
+/** Reactively returns whether auto mode is active. */
+export function useIsAutoing(): boolean {
+  return useSnapshot(autoState).active;
+}
+
+/** Set the default tail delay in milliseconds for newly created auto tickets. */
+export function setDefaultAutoTailMs(ms: number): void {
+  if (!Number.isFinite(ms)) {
+    autoRuntime.defaultTailMs = 0;
+    return;
+  }
+
+  autoRuntime.defaultTailMs = Math.max(0, ms);
 }
 
 // ---------------------------------------------------------------------------
@@ -63,9 +115,19 @@ export function createStage() {
   const skipCallbacks: Array<() => void> = [];
   const interruptCallbacks: Array<() => boolean> = [];
   const skipBlockers: Array<() => boolean> = [];
+  const autoBlockers: Array<() => boolean> = [];
   const beforeHandleCommandCallbacks: Array<(upcomingCommand: ResolvedCommandLine) => void> = [];
 
   // --- registration functions ---
+
+  /** Push `item` to `registry` and return a function that removes it. */
+  function addToRegistry<T>(registry: T[], item: T): () => void {
+    registry.push(item);
+    return () => {
+      const idx = registry.indexOf(item);
+      if (idx !== -1) registry.splice(idx, 1);
+    };
+  }
 
   /**
    * Register command schema.
@@ -112,11 +174,7 @@ export function createStage() {
    * Returns an unregister function.
    */
   function registerTextLine(handler: TextLineHandler): () => void {
-    textLineHandlers.push(handler);
-    return () => {
-      const idx = textLineHandlers.indexOf(handler);
-      if (idx !== -1) textLineHandlers.splice(idx, 1);
-    };
+    return addToRegistry(textLineHandlers, handler);
   }
 
   /**
@@ -124,11 +182,7 @@ export function createStage() {
    * Returns a remove function.
    */
   function addSkipCallback(cb: () => void): () => void {
-    skipCallbacks.push(cb);
-    return () => {
-      const idx = skipCallbacks.indexOf(cb);
-      if (idx !== -1) skipCallbacks.splice(idx, 1);
-    };
+    return addToRegistry(skipCallbacks, cb);
   }
 
   /**
@@ -137,11 +191,7 @@ export function createStage() {
    * Returns a remove function.
    */
   function addInterruptCallback(cb: () => boolean): () => void {
-    interruptCallbacks.push(cb);
-    return () => {
-      const idx = interruptCallbacks.indexOf(cb);
-      if (idx !== -1) interruptCallbacks.splice(idx, 1);
-    };
+    return addToRegistry(interruptCallbacks, cb);
   }
 
   /**
@@ -166,11 +216,7 @@ export function createStage() {
    * Returns a remove function.
    */
   function addSkipBlocker(cb: () => boolean): () => void {
-    skipBlockers.push(cb);
-    return () => {
-      const idx = skipBlockers.indexOf(cb);
-      if (idx !== -1) skipBlockers.splice(idx, 1);
-    };
+    return addToRegistry(skipBlockers, cb);
   }
 
   /** Returns true if any registered skip blocker is active. */
@@ -185,21 +231,205 @@ export function createStage() {
     return false;
   }
 
+  /**
+   * Add an auto blocker callback. Return `true` from the callback to block auto mode.
+   * Returns a remove function.
+   */
+  function addAutoBlocker(cb: () => boolean): () => void {
+    return addToRegistry(autoBlockers, cb);
+  }
+
+  /** Returns true if any registered auto blocker is active. */
+  function isAnyAutoBlockerActive(): boolean {
+    for (const cb of autoBlockers) {
+      try {
+        if (cb()) return true;
+      } catch (err) {
+        console.error('Error in auto blocker callback:', err);
+      }
+    }
+    return false;
+  }
+
   /** Add a callback to be invoked before handling each command. */
   function addBeforeHandleCommandCallback(cb: (upcomingCommand: ResolvedCommandLine) => void): () => void {
-    beforeHandleCommandCallbacks.push(cb);
-    return () => {
-      const idx = beforeHandleCommandCallbacks.indexOf(cb);
-      if (idx !== -1) beforeHandleCommandCallbacks.splice(idx, 1);
-    };
+    return addToRegistry(beforeHandleCommandCallbacks, cb);
   }
 
   // --- skip (Ctrl fast-forward) management ---
 
   let _skipTimer: ReturnType<typeof setTimeout> | null = null;
+  let _autoTimer: ReturnType<typeof setTimeout> | null = null;
+  let _autoBarrier: AutoBarrier | null = null;
+  let _autoResumeTimer: ReturnType<typeof setTimeout> | null = null;
+  let _autoCollectFrame: number | null = null;
+  let _autoBarrierSeq = 0;
+  let _autoTicketSeq = 0;
+
+  function clearAutoResumeTimer() {
+    if (_autoResumeTimer !== null) {
+      clearTimeout(_autoResumeTimer);
+      _autoResumeTimer = null;
+    }
+  }
+
+  function clearAutoCollectFrame() {
+    if (_autoCollectFrame !== null) {
+      cancelAnimationFrame(_autoCollectFrame);
+      _autoCollectFrame = null;
+    }
+  }
+
+  function clearAutoBarrier() {
+    clearAutoCollectFrame();
+    clearAutoResumeTimer();
+    _autoBarrier = null;
+  }
+
+  function getActiveAutoBarrier(barrierId: number): AutoBarrier | null {
+    if (_autoBarrier === null || _autoBarrier.id !== barrierId) {
+      return null;
+    }
+
+    return _autoBarrier;
+  }
+
+  function scheduleAutoResume(barrierId: number, delayMs: number) {
+    clearAutoResumeTimer();
+
+    const safeDelayMs = Number.isFinite(delayMs) ? Math.max(0, delayMs) : 0;
+
+    _autoResumeTimer = setTimeout(() => {
+      _autoResumeTimer = null;
+
+      if (!autoState.active) return;
+      if (_autoBarrier === null || _autoBarrier.id !== barrierId) return;
+
+      _autoBarrier = null;
+      void nextLine();
+    }, safeDelayMs);
+  }
+
+  function trySettleAutoBarrier(barrier: AutoBarrier) {
+    if (barrier.collecting || barrier.settled) return;
+
+    const activeTickets = [...barrier.tickets.values()].filter((ticket) => !ticket.canceled);
+    const hasPending = activeTickets.some((ticket) => ticket.doneAt === null);
+    if (hasPending) return;
+
+    const latestTicketReadyAt = activeTickets.reduce((maxReadyAt, ticket) => {
+      const ticketReadyAt = (ticket.doneAt ?? barrier.openedAt) + ticket.tailMs;
+      return Math.max(maxReadyAt, ticketReadyAt);
+    }, barrier.fallbackReadyAt);
+
+    barrier.settled = true;
+    scheduleAutoResume(barrier.id, latestTicketReadyAt - Date.now());
+  }
+
+  function closeAutoCollection(barrierId: number) {
+    const barrier = getActiveAutoBarrier(barrierId);
+    if (barrier === null || barrier.settled) return;
+
+    barrier.collecting = false;
+    trySettleAutoBarrier(barrier);
+  }
+
+  function scheduleAutoCollectionClose(barrierId: number) {
+    queueMicrotask(() => {
+      const barrier = getActiveAutoBarrier(barrierId);
+      if (barrier === null || barrier.settled) return;
+
+      _autoCollectFrame = requestAnimationFrame(() => {
+        _autoCollectFrame = null;
+        closeAutoCollection(barrierId);
+      });
+    });
+  }
+
+  function markAutoTicketDone(barrierId: number, ticketId: number) {
+    const barrier = getActiveAutoBarrier(barrierId);
+    if (barrier === null || barrier.settled) return;
+
+    const ticket = barrier.tickets.get(ticketId);
+    if (ticket === undefined || ticket.canceled || ticket.doneAt !== null) return;
+
+    ticket.doneAt = Date.now();
+    trySettleAutoBarrier(barrier);
+  }
+
+  function cancelAutoTicket(barrierId: number, ticketId: number) {
+    const barrier = getActiveAutoBarrier(barrierId);
+    if (barrier === null || barrier.settled) return;
+
+    const ticket = barrier.tickets.get(ticketId);
+    if (ticket === undefined || ticket.canceled) return;
+
+    ticket.canceled = true;
+    trySettleAutoBarrier(barrier);
+  }
+
+  function openAutoBarrier(reason: AutoBarrierReason, fallbackMs: number) {
+    const safeFallbackMs = Number.isFinite(fallbackMs) ? Math.max(0, fallbackMs) : 0;
+
+    clearAutoBarrier();
+
+    _autoBarrier = {
+      id: ++_autoBarrierSeq,
+      reason,
+      collecting: true,
+      openedAt: Date.now(),
+      fallbackReadyAt: Date.now() + safeFallbackMs,
+      tickets: new Map(),
+      settled: false,
+    };
+
+    scheduleAutoCollectionClose(_autoBarrier.id);
+  }
+
+  function issueAutoTicket(options?: AutoTicketOptions): AutoTicketHandle | null {
+    if (!autoState.active || _autoBarrier === null || !_autoBarrier.collecting || _autoBarrier.settled) {
+      return null;
+    }
+
+    const barrierId = _autoBarrier.id;
+    const ticketId = ++_autoTicketSeq;
+
+    _autoBarrier.tickets.set(ticketId, {
+      id: ticketId,
+      label: options?.label,
+      tailMs: options?.tailMs ?? autoRuntime.defaultTailMs,
+      doneAt: null,
+      canceled: false,
+    });
+
+    return {
+      done() {
+        markAutoTicketDone(barrierId, ticketId);
+      },
+      cancel() {
+        cancelAutoTicket(barrierId, ticketId);
+      },
+    };
+  }
+
+  /** Schedule a delayed nextLine() call for the auto. */
+  function scheduleAutoNextLine() {
+    if (_autoTimer !== null) clearTimeout(_autoTimer);
+    _autoTimer = setTimeout(() => {
+      _autoTimer = null;
+      if (!autoState.active) return;
+      if (isAnyAutoBlockerActive()) {
+        stopAuto();
+        return;
+      }
+      if (_autoBarrier === null) {
+        void nextLine();
+      }
+    }, autoRuntime.defaultTailMs);
+  }
 
   /** Schedule a delayed nextLine() call for the skip chain. */
-  function scheduleNextLine() {
+  function scheduleSkipNextLine() {
     if (_skipTimer !== null) clearTimeout(_skipTimer);
     _skipTimer = setTimeout(() => {
       _skipTimer = null;
@@ -214,7 +444,7 @@ export function createStage() {
     skipState.active = true;
     invokeSkipCallbacks(); // finish current animations
     tryInterrupt(); // finish current printing
-    scheduleNextLine(); // kick off the chain
+    scheduleSkipNextLine(); // kick off the chain
   }
 
   /** Exit skip mode. Called when Ctrl is released, window blurs, or Stage unmounts. */
@@ -232,6 +462,27 @@ export function createStage() {
     return skipState.active;
   }
 
+  function startAuto() {
+    if (autoState.active) return;
+    if (isAnyAutoBlockerActive()) return;
+    autoState.active = true;
+    tryInterrupt(); // finish current printing
+    scheduleAutoNextLine(); // kick off the chain
+  }
+
+  function stopAuto() {
+    autoState.active = false;
+    if (_autoTimer !== null) {
+      clearTimeout(_autoTimer);
+      _autoTimer = null;
+    }
+    clearAutoBarrier();
+  }
+
+  function isAutoing(): boolean {
+    return autoState.active;
+  }
+
   // --- internal helpers ---
 
   /** Build a one-shot GameControl for a single dispatch cycle. */
@@ -245,7 +496,14 @@ export function createStage() {
         if (skipState.active) {
           // Skip mode: finish residual animations and continue the chain
           invokeSkipCallbacks();
-          scheduleNextLine();
+          scheduleSkipNextLine();
+        } else if (autoState.active) {
+          if (isAnyAutoBlockerActive()) {
+            stopAuto();
+            setWaiting(time, skippable);
+          } else {
+            openAutoBarrier('wait', time);
+          }
         } else {
           setWaiting(time, skippable);
         }
@@ -256,10 +514,16 @@ export function createStage() {
           if (isAnyBlockerActive()) {
             stopSkip();
           } else {
-            scheduleNextLine();
+            scheduleSkipNextLine();
           }
         } else if (skipState.active && unskippableFlag) {
           stopSkip();
+        } else if (autoState.active) {
+          if (isAnyAutoBlockerActive()) {
+            stopAuto();
+          } else {
+            openAutoBarrier('hold', 0);
+          }
         }
         // When not skipping: do nothing (normal hold behavior)
       },
@@ -390,11 +654,16 @@ export function createStage() {
     addSkipCallback,
     addInterruptCallback,
     addSkipBlocker,
+    addAutoBlocker,
     addBeforeHandleCommandCallback,
+    issueAutoTicket,
     tryInterrupt,
     startSkip,
     stopSkip,
     isSkipping,
+    startAuto,
+    stopAuto,
+    isAutoing,
     bindEvents,
   };
 }
@@ -466,6 +735,33 @@ export function useSkipBlocker(callback: () => boolean) {
   useEffect(() => {
     return stage.addSkipBlocker(callback);
   }, [stage, callback]);
+}
+
+/**
+ * Register an auto blocker callback. Return `true` to block auto mode.
+ * Automatically removed on unmount.
+ *
+ * NOTE: `callback` must be a stable reference (wrap with `useCallback`).
+ */
+export function useAutoBlocker(callback: () => boolean) {
+  const stage = useStageContext();
+  useEffect(() => {
+    return stage.addAutoBlocker(callback);
+  }, [stage, callback]);
+}
+
+/**
+ * Get a function that issues an auto ticket for the current active barrier.
+ * Returns `null` when auto is inactive or the collection window has closed.
+ */
+export function useAutoTicket() {
+  const stage = useStageContext();
+  return useCallback(
+    (options?: AutoTicketOptions) => {
+      return stage.issueAutoTicket(options);
+    },
+    [stage],
+  );
 }
 
 /**
