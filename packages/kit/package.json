@@ -12,8 +12,8 @@
   ],
   "scripts": {
     "dev": "tsc --outDir ./dist -w -p tsconfig.build.json",
-    "prepack": "tsc --outDir ./dist -p tsconfig.build.json",
-    "build": "tsc --outDir ./dist -p tsconfig.build.json",
+    "prepack": "rimraf ./dist && tsc --outDir ./dist -p tsconfig.build.json",
+    "build": "rimraf ./dist && tsc --outDir ./dist -p tsconfig.build.json",
     "watch": "tsc --outDir ./dist -w -p tsconfig.build.json"
   },
   "author": "Icemic <bingfeng.web@gmail.com>",
@@ -38,6 +38,7 @@
     "@types/react": "^19.2.7",
     "@types/react-reconciler": "^0.33.0",
     "react": "^19.2.1",
+    "rimraf": "^6.1.2",
     "typescript": "^5.9.3"
   },
   "publishConfig": {
