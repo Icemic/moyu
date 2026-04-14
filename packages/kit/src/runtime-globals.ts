@@ -45,8 +45,10 @@ declare global {
     warn(...data: any[]): void;
   }
 
+  // eslint-disable-next-line no-var
   var console: Console;
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   type TimerHandler = string | Function;
 
   function clearInterval(id: number | undefined): void;
@@ -67,4 +69,7 @@ declare global {
   function cancelAnimationFrame(handle: number): void;
   /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/DedicatedWorkerGlobalScope/requestAnimationFrame) */
   function requestAnimationFrame(callback: FrameRequestCallback): number;
+
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/queueMicrotask) */
+  function queueMicrotask(callback: () => void): void;
 }
