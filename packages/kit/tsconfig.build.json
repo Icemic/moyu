@@ -2,7 +2,8 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "lib": ["ESNext"],
-    "types": []
+    "types": [],
+    "sourceMap": false
   },
   "include": ["src"],
   "exclude": ["dist"]
