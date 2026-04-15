@@ -11,5 +11,6 @@ export * from './commands';
 export * from './runtime-globals';
 export * from './components/navigation';
 export * from './hooks';
+export * from './zod-patch';
 
 export { moyu };
