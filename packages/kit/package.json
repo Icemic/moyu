@@ -1,6 +1,6 @@
 {
   "name": "@momoyu-ink/kit",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Software Development Kit of Moyu Visual Novel Engine",
   "main": "dist/lib.js",
   "module": "dist/lib.js",
