@@ -72,7 +72,7 @@ interface AutoBarrier {
 // Skip state — independent valtio proxy (not serialized with game saves)
 // ---------------------------------------------------------------------------
 
-const SKIP_INTERVAL_MS = 5;
+const SKIP_INTERVAL_MS = 80;
 
 const autoRuntime = {
   defaultTailMs: 0,
