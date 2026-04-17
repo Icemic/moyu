@@ -1,5 +1,7 @@
-import React, { createContext, useContext } from 'react';
-import { proxy, Snapshot, useSnapshot } from 'valtio';
+/** biome-ignore-all lint/suspicious/noExplicitAny: too tight for this file */
+import React from 'react';
+import { createContext, useContext } from 'react';
+import { proxy, type Snapshot, useSnapshot } from 'valtio';
 
 // ============================================================================
 // React Contexts for Parameters

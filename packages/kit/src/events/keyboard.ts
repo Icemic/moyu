@@ -1,4 +1,4 @@
-import { KeyboardEventKind } from '../bindings/KeyboardEventKind';
+import type { KeyboardEventKind } from '../bindings/KeyboardEventKind';
 import type { BubbleEvent } from './base';
 
 /**

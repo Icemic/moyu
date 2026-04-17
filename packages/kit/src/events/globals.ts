@@ -1,16 +1,16 @@
-import { AnimationFrameCallbackEvent } from '../bindings/AnimationFrameCallbackEvent';
-import { CustomEvent } from '../bindings/CustomEvent';
-import { NodeEvent } from '../bindings/NodeEvent';
-import { RawMouseEvent } from '../bindings/RawMouseEvent';
-import { RawTouchEvent } from '../bindings/RawTouchEvent';
-import { RawWheelEvent } from '../bindings/RawWheelEvent';
+import type { AnimationFrameCallbackEvent } from '../bindings/AnimationFrameCallbackEvent';
+import type { CustomEvent } from '../bindings/CustomEvent';
+import type { NodeEvent } from '../bindings/NodeEvent';
+import type { RawMouseEvent } from '../bindings/RawMouseEvent';
+import type { RawTouchEvent } from '../bindings/RawTouchEvent';
+import type { RawWheelEvent } from '../bindings/RawWheelEvent';
 import { STATE } from '../state';
-import { createBubbleEvent, MoyuEvent } from './base';
-import { MouseEvent } from './mouse';
-import { TouchEvent } from './touch';
-import { WheelEvent } from './wheel';
+import { createBubbleEvent, type MoyuEvent } from './base';
+import type { MouseEvent } from './mouse';
+import type { TouchEvent } from './touch';
+import type { WheelEvent } from './wheel';
 
-export const globalEventListeners: Record<string, ((event: any) => void)[]> = {};
+export const globalEventListeners: Record<string, ((event: unknown) => void)[]> = {};
 export const globalRequestAnimationFrameListeners: FrameRequestCallback[] = [];
 
 const BUBBLE_EVENT_NAMES = ['mouseevent', 'touchevent', 'keyboardevent', 'wheelevent'];
@@ -51,7 +51,7 @@ globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
         return;
       }
       default: {
-        globalEventListeners[name]?.forEach((listener) => listener(body));
+        globalEventListeners[name]?.forEach((listener) => void listener(body));
         return;
       }
     }
@@ -126,6 +126,7 @@ function handleBubbleEvent(name: string, body: RawMouseEvent | RawTouchEvent | R
   }
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: it's ok
 if ((globalThis as any).__moyu_native) {
   // detect if it is running in browser, if not, polyfill requestAnimationFrame
   globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {

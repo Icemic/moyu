@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: original react code */
 import React from 'react';
 import type { Component, ReactElement } from 'react';
 import Reconciler from 'react-reconciler';
@@ -81,7 +82,7 @@ const hostConfig: HostConfig<
    * return true if needs `commitMount`
    * @required
    */
-  finalizeInitialChildren(parentInstance, _type, _props, _rootContainerInstance, _hostContext) {
+  finalizeInitialChildren(_parentInstance, _type, _props, _rootContainerInstance, _hostContext) {
     // console.debug('finalizeInitialChildren', parentInstance);
     return true;
   },
@@ -110,7 +111,7 @@ const hostConfig: HostConfig<
     return null;
   },
 
-  resetAfterCommit(container) {
+  resetAfterCommit(_container) {
     // console.debug('resetAfterCommit');
     // TODO: this is not necessary in continuous rendering
     // container.redraw();
@@ -158,12 +159,12 @@ const hostConfig: HostConfig<
     // console.debug('finalizeContainerChildren');
   },
 
-  commitMount(instance, type, props, internalInstanceHandle) {
+  commitMount(_instance, _type, _props, _internalInstanceHandle) {
     // if finalizeInitialChildren = true
     // console.debug('commitMount');
   },
 
-  commitUpdate(instance, type, prevProps, nextProps, _internalHandle) {
+  commitUpdate(instance, _type, prevProps, nextProps, _internalHandle) {
     // console.debug('commitUpdate: ', type, JSON.stringify(_updatePayload));
     const { label: _oldLabel, children: _oldChildren, ...oldProps } = prevProps;
     const { label, children, ...newProps } = nextProps;
@@ -198,11 +199,11 @@ const hostConfig: HostConfig<
     //  textInstance.instance = newText;
   },
 
-  clearContainer: (container) => {
+  clearContainer: (_container) => {
     // console.error('clearContainer not implement');
     // container.children.splice(0);
   },
-  getInstanceFromNode(node: any): Reconciler.Fiber | null | undefined {
+  getInstanceFromNode(_node: any): Reconciler.Fiber | null | undefined {
     console.error('getInstanceFromNode not implement');
     throw new Error('Function not implemented.');
   },
@@ -214,16 +215,16 @@ const hostConfig: HostConfig<
     console.error('afterActiveInstanceBlur not implement');
     // throw new Error('Function not implemented.');
   },
-  prepareScopeUpdate: (scopeInstance: any, instance: any): void => {
+  prepareScopeUpdate: (_scopeInstance: any, _instance: any): void => {
     console.error('prepareScopeUpdate not implement');
     // throw new Error('Function not implemented.');
   },
-  getInstanceFromScope: (scopeInstance: any): Node | null => {
+  getInstanceFromScope: (_scopeInstance: any): Node | null => {
     console.error('getInstanceFromScope not implement');
     // throw new Error('Function not implemented.');
     return null;
   },
-  detachDeletedInstance: (node: Node): void => {
+  detachDeletedInstance: (_node: Node): void => {
     // node will be destroyed by the engine
     // just do nothing here
   },

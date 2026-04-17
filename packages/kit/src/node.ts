@@ -1,4 +1,4 @@
-import { Command } from './commands';
+import type { Command } from './commands';
 import type { BubbleEvent } from './events/base';
 import * as moyu from './moyu';
 import { STATE } from './state';
@@ -35,7 +35,7 @@ export class Node {
     moyu.addChild(this.nodeId, child.nodeId);
   }
 
-  public insertChild(index: number, child: Node) {
+  public insertChild(_index: number, child: Node) {
     moyu.insertChild(this.nodeId, 0, child.nodeId);
   }
 

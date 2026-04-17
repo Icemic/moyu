@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, createElement, useCallback } from 'react';
 import { proxy, useSnapshot } from 'valtio';
 import { nextLine, setWaiting } from './useScenario';
-import { ZodType } from 'zod';
-import { addEventListener, ResolvedCommandLine, TextLine } from '../events';
+import type { ZodType } from 'zod';
+import { addEventListener, type ResolvedCommandLine, type TextLine } from '../events';
 import { executePluginCommand } from '../moyu';
 
 // ---------------------------------------------------------------------------

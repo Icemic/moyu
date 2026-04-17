@@ -1,4 +1,4 @@
-import { TouchEventKind } from '../bindings/TouchEventKind';
+import type { TouchEventKind } from '../bindings/TouchEventKind';
 import type { BubbleEvent } from './base';
 
 export interface TouchEvent extends BubbleEvent {

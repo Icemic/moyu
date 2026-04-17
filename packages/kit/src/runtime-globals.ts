@@ -61,9 +61,7 @@ declare global {
 
   type DOMHighResTimeStamp = number;
 
-  interface FrameRequestCallback {
-    (time: DOMHighResTimeStamp): void;
-  }
+  type FrameRequestCallback = (time: DOMHighResTimeStamp) => void
 
   /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/DedicatedWorkerGlobalScope/cancelAnimationFrame) */
   function cancelAnimationFrame(handle: number): void;

@@ -1,9 +1,9 @@
-import { AudioCommand } from './bindings/AudioCommand';
-import { GamepadCommand } from './bindings/GamepadCommand';
-import { ScenarioCommand } from './bindings/ScenarioCommand';
-import { SystemCommand } from './bindings/SystemCommand';
-import { TextCommand } from './bindings/TextCommand';
-import { MakeNullOptional } from './utils';
+import type { AudioCommand } from './bindings/AudioCommand';
+import type { GamepadCommand } from './bindings/GamepadCommand';
+import type { ScenarioCommand } from './bindings/ScenarioCommand';
+import type { SystemCommand } from './bindings/SystemCommand';
+import type { TextCommand } from './bindings/TextCommand';
+import type { MakeNullOptional } from './utils';
 
 type _Command = AudioCommand | TextCommand | GamepadCommand | ScenarioCommand | SystemCommand;
 

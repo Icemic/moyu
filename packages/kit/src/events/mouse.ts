@@ -1,4 +1,4 @@
-import { MouseEventKind } from '../bindings/MouseEventKind';
+import type { MouseEventKind } from '../bindings/MouseEventKind';
 import type { BubbleEvent } from './base';
 
 export interface MouseEvent extends BubbleEvent {
