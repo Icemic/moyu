@@ -1299,6 +1299,7 @@ __metadata:
     react: "npm:^19.2.1"
     react-reconciler: "npm:^0.33.0"
     rimraf: "npm:^6.1.2"
+    tsup: "npm:^8.4.0"
     typescript: "npm:^5.9.3"
     valtio: "npm:^2.1.7"
     zod: "npm:^4.2.0"

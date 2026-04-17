@@ -13,4 +13,7 @@ export * from './components/navigation';
 export * from './hooks';
 export * from './zod-patch';
 
+// esbuild only support re-export from root module
+export * from '@react-spring/core';
+
 export { moyu };

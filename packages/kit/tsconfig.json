@@ -6,6 +6,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "@momoyu-ink/kit"
   },
-  "include": ["src", "stories"],
+  "include": ["src", "stories", "tsup.config.ts"],
   "exclude": ["dist"]
 }

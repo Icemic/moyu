@@ -1,20 +1,40 @@
 {
   "name": "@momoyu-ink/kit",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Software Development Kit of Moyu Visual Novel Engine",
-  "main": "dist/lib.js",
-  "module": "dist/lib.js",
+  "main": "dist/lib.cjs",
+  "module": "dist/lib.mjs",
   "types": "dist/lib.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/lib.d.ts",
+      "import": "./dist/lib.mjs",
+      "require": "./dist/lib.cjs",
+      "default": "./dist/lib.mjs"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "import": "./dist/jsx-runtime.mjs",
+      "require": "./dist/jsx-runtime.cjs",
+      "default": "./dist/jsx-runtime.mjs"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-dev-runtime.d.ts",
+      "import": "./dist/jsx-dev-runtime.mjs",
+      "require": "./dist/jsx-dev-runtime.cjs",
+      "default": "./dist/jsx-dev-runtime.mjs"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
-    "jsx-runtime.d.ts",
     "LICENSE.txt"
   ],
   "scripts": {
-    "dev": "tsc --outDir ./dist -w -p tsconfig.build.json",
-    "prepack": "rimraf ./dist && tsc --outDir ./dist -p tsconfig.build.json",
-    "build": "rimraf ./dist && tsc --outDir ./dist -p tsconfig.build.json",
-    "watch": "tsc --outDir ./dist -w -p tsconfig.build.json"
+    "dev": "tsup --watch",
+    "prepack": "tsup",
+    "build": "tsup",
+    "watch": "tsup --watch"
   },
   "author": "Icemic <bingfeng.web@gmail.com>",
   "homepage": "https://momoyu.ink",
@@ -40,6 +60,7 @@
     "@types/react-reconciler": "^0.33.0",
     "react": "^19.2.1",
     "rimraf": "^6.1.2",
+    "tsup": "^8.4.0",
     "typescript": "^5.9.3"
   },
   "publishConfig": {

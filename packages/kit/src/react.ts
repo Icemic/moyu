@@ -2,7 +2,7 @@ import React from 'react';
 import type { Component, ReactElement } from 'react';
 import Reconciler from 'react-reconciler';
 import type { BaseErrorInfo, HostConfig } from 'react-reconciler';
-import { DefaultEventPriority, NoEventPriority } from 'react-reconciler/constants';
+import { DefaultEventPriority, NoEventPriority } from 'react-reconciler/constants.js';
 import type { DetailedMoyuProps, MoyuNodeAttributes } from './declaration';
 import { Node } from './node';
 
