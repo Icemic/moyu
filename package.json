@@ -6,9 +6,7 @@
   "scripts": {
     "dev": "yarn workspaces foreach -Aip run dev",
     "build": "yarn workspaces foreach -At run build",
-    "generate:bindings": "rimraf packages/kit/src/bindings && cargo test export_bindings --workspace && eslint --fix 'packages/kit/src/bindings/**/*.ts'",
-    "storybook": "storybook dev -p 6006 --no-open",
-    "build-storybook": "storybook build"
+    "generate:bindings": "rimraf packages/kit/src/bindings && cargo test export_bindings --workspace && eslint --fix 'packages/kit/src/bindings/**/*.ts'"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
@@ -16,7 +14,6 @@
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "rimraf": "^6.1.2",
-    "storybook": "^10.1.4",
     "typescript": "^5.5.4"
   },
   "resolutions": {
