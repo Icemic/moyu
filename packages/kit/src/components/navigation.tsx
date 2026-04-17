@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { proxy, useSnapshot } from 'valtio';
+import { proxy, Snapshot, useSnapshot } from 'valtio';
 
 // ============================================================================
 // React Contexts for Parameters
@@ -148,7 +148,7 @@ export interface OverlayInfo {
   id: string; // Unique ID
 }
 
-interface NavigationState {
+export interface NavigationState {
   currentPage: string;
   pageParams: Record<string, Record<string, any>>;
   overlayStack: OverlayInfo[];
@@ -383,6 +383,15 @@ export function getNavigator<
  * Hook to get the navigator instance in components
  */
 export const useNavigation = getNavigator;
+
+/**
+ * Reactively read the global navigation state.
+ * This keeps the Valtio proxy encapsulated inside kit so consumers don't need
+ * to touch the internal `_state` field directly.
+ */
+export function useNavigationState(): Snapshot<NavigationState> {
+  return useSnapshot(getNavigator()._state);
+}
 
 /**
  * Get navigation parameters for current component
