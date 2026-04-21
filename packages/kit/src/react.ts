@@ -2,7 +2,7 @@
 import React from 'react';
 import type { Component, ReactElement } from 'react';
 import Reconciler from 'react-reconciler';
-import type { BaseErrorInfo, HostConfig } from 'react-reconciler';
+import type { HostConfig } from 'react-reconciler';
 import { DefaultEventPriority, NoEventPriority } from 'react-reconciler/constants.js';
 import type { DetailedMoyuProps, MoyuNodeAttributes } from './declaration';
 import { Node } from './node';
@@ -257,20 +257,32 @@ const hostConfig: HostConfig<
   waitForCommitToBeReady: () => null,
 };
 
-export const MoyuRenderer = Reconciler(hostConfig);
+export interface RootErrorInfo {
+  componentStack?: string;
+}
+
+export interface RootUncaughtErrorInfo extends RootErrorInfo {
+  errorBoundary?: Component;
+}
+
+export interface RootHandle {
+  render(reactElement: ReactElement, callback?: (() => void) | null): void;
+}
 
 export interface RootOptions {
   /**
    * Prefix for `useId`.
    */
   identifierPrefix?: string;
-  onUncaughtError: (error: Error, info: BaseErrorInfo & { errorBoundary?: Component }) => void;
-  onCaughtError: (error: Error, info: BaseErrorInfo) => void;
-  onRecoverableError: (error: Error, info: BaseErrorInfo) => void;
+  onUncaughtError: (error: Error, info: RootUncaughtErrorInfo) => void;
+  onCaughtError: (error: Error, info: RootErrorInfo) => void;
+  onRecoverableError: (error: Error, info: RootErrorInfo) => void;
   onDefaultTransitionIndicator: () => void;
 }
 
-export function createRoot(options?: RootOptions) {
+const MoyuRenderer = Reconciler(hostConfig);
+
+export function createRoot(options?: RootOptions): RootHandle {
   const rootNode = Node.rootNode();
   const rootElement = MoyuRenderer.createContainer(
     rootNode,
@@ -306,8 +318,7 @@ export function createRoot(options?: RootOptions) {
 
   return {
     render: (reactElement: ReactElement, callback?: (() => void) | null) => {
-      // update the root Container
-      return MoyuRenderer.updateContainer(reactElement, rootElement, null, callback);
+      MoyuRenderer.updateContainer(reactElement, rootElement, null, callback);
     },
   };
 }
