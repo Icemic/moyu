@@ -42,7 +42,7 @@
 | 组件       | 技术                                        | 用途                       |
 | ---------- | ------------------------------------------- | -------------------------- |
 | 图形渲染   | `wgpu` + `winit`                            | 跨平台 WebGPU 图形后端     |
-| JS 运行时  | QuickJS（`quickjs-rusty`）                  | 受限的 JavaScript 执行环境 |
+| JS 运行时  | QuickJS（native） / 浏览器 JavaScript 运行时（web） | native 侧受限脚本执行，web 侧直接运行入口模块 |
 | 音频系统   | `kira` + `symphonia` + `opus`               | 音频播放与解码             |
 | 视频解码   | `symphonia`（容器）+ `libloading`（native）/ `WebCodecs`（web） | 视频播放（见 `crates/video`）                   |
 | 音频输出（视频）   | `cpal`（native，仅 `moyu_video` 内部） | 视频内嵌音轨的独立输出            |
@@ -102,9 +102,23 @@ crates/
 ```
 packages/
 ├── kit/           # @momoyu-ink/kit — React SDK，见 packages/kit/AGENTS.md
-├── cli/           # @momoyu-ink/cli — moyu 命令行（init / run / pack / schema / download / switch / update）
+├── cli/           # @momoyu-ink/cli — 项目初始化、引擎下载/切换、调试运行、打包与 schema 生成命令行
 └── bunnymark/     # 基于 kit + rspack 的性能基准 demo（依赖 @momoyu-ink/kit）
 ```
+
+### `@momoyu-ink/cli`
+
+CLI 主要用于项目脚手架、引擎资产管理和调试 / 打包流程，当前子命令包括：
+
+- `init` — 初始化 Moyu 项目目录与基础配置
+- `download` — 下载指定 channel / version / platform 的引擎资产
+- `update` — 在当前 channel 内升级到最新引擎版本，并复用当前项目已下载的平台集合
+- `switch` — 切换项目当前激活的已下载引擎版本
+- `run` — 以 native 或 web 调试方式运行项目
+- `pack` — 使用已下载的引擎资产和项目内容进行打包
+- `schema` — 从项目的 Zod 命令定义生成 JSON Schema
+
+具体参数、交互式提示和边界行为请直接查看 `packages/cli/src/commands/*.ts`。
 
 ---
 
@@ -148,7 +162,7 @@ core/src/
 
 ### `moyu_runtime` — JS 运行时
 
-封装 QuickJS VM 本身（仅 `#[cfg(not(wasm))]`）：
+封装 native 平台的 QuickJS VM（仅 `#[cfg(not(wasm))]`）：
 
 - `QuickVM`（`vm.rs`） — VM 实例与生命周期
 - `console`（`console.rs`） — 控制台 API
@@ -167,7 +181,7 @@ core/src/
 - `update_props`
 - `execute_node_command` / `execute_plugin_command`（在 `crates/ops/src/lib.rs` 中注册为 `__moyu_pushCommand` / `__moyu_executeNodeCommand` / `__moyu_executePluginCommand`，并拼装成 JS 端的 `moyu` 全局对象）
 
-另外 `spawn.rs` 提供 `spawn_runtime_with_core`，在 native 平台启动 JS runtime 线程。
+另外 `spawn.rs` 提供 `spawn_runtime_with_core`：native 分支负责初始化 QuickJS VM 并执行入口脚本；web 分支则把入口模块注入浏览器文档，并在脚本加载完成后触发 `on_load`。
 
 ### `moyu_pal`（`moyu_platform`）— 平台抽象层
 

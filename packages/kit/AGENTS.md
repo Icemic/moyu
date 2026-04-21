@@ -70,7 +70,7 @@ packages/kit/src/
 **重要规则：**
 
 - `bindings/` 由 `yarn generate:bindings`（运行 `cargo test export_bindings --workspace`）自动生成，**禁止手工修改**。修改对应的 Rust 结构体后必须重新生成。
-- `lib.ts` 通过 `export * from '@react-spring/core'` 重新导出 react-spring 根模块（esbuild 只能从根模块 re-export）。
+- `lib.ts` 会同时重新导出 `./spring` 与 `@react-spring/core`，并通过 package exports 暴露 ESM / CJS 双入口；改动打包或导出配置时要同时检查 `tsup.config.ts` 与 `package.json`。
 
 ---
 
@@ -174,36 +174,46 @@ const springs = useSpring({
 
 ### 5. Stage & Scenario（`hooks/useStage.ts` + `hooks/useScenario.ts`）
 
-Stage 是剧情驱动 UI 的核心抽象：命令调度 + 流程控制 + 自动/跳过 ticket。
+Stage 是剧情驱动 UI 的核心抽象：命令调度、流程控制、skip / auto 状态，以及自动模式下的 barrier / ticket 协调。
 
-**核心 API：**
+**常用 API：**
 
-- `createStage()` — 创建 stage 单例（模块级）
-- `StageContextProvider` — 包裹 stage 下的 actor
-- `useScenario(stories, startName?, entryName?, goNextOnLoad = false)` — 加载并管理剧情生命周期
-- `nextLine()` / `setWaiting(time, skippable)` — 纯函数（非 hook），供 handler 使用
-- `useSkipCallback(fn)` / `useInterruptCallback(fn)` — 注册跳过 / 打断回调
-- `useAutoTicket()` — 发放自动模式完成 ticket
-- `useIsSkipping()` / `useIsAutoing()` — 读取当前模式
+- `createStage()` — 创建 stage 实例，负责注册命令处理器、文本处理器和模式控制逻辑
+- `StageContextProvider` / `useStageContext()` — 在 actor 树中共享同一个 stage
+- `useScenario(stories, startName?, entryName?, goNextOnLoad = false)` — 加载剧情并接管生命周期
+- `nextLine()` / `setWaiting(time, skippable)` — 直接调用 scenario 插件推进或进入等待
+- `useSkipCallback(fn)` / `useInterruptCallback(fn)` — 注册 skip 收尾逻辑和用户点击打断逻辑
+- `useSkipBlocker(fn)` / `useAutoBlocker(fn)` — 返回 `true` 时阻止 skip / auto 启动或继续
+- `useBeforeHandleCommandCallback(fn)` — 在每条 `scenariocommandline` 分发前执行
+- `useAutoTicket()` — 为当前 auto barrier 发放完成 ticket
+- `useIsSkipping()` / `useIsAutoing()` — 读取 `skipState` / `autoState` 的响应式快照
+- `setDefaultAutoTailMs(ms)` — 设置 auto 模式默认尾延迟，用于 fallback 或新 ticket 的 `tailMs`
 
 **GameControl**（传给命令 handler）：
 
 | 方法 | 作用 |
 |------|------|
-| `control.hold()` | 暂停直到用户操作 |
-| `control.setWaiting(ms, skippable)` | 定时等待 |
+| `control.hold()` | 暂停直到用户操作；在 auto 模式下会打开 `hold` barrier |
+| `control.setWaiting(ms, skippable)` | 定时等待；在 auto 模式下会打开 `wait` barrier |
 | `control.nextLine()` | 立即推进 |
-| `control.unskippable()` | 本次不可跳过 |
-| `control.record(meta)` | 写入 backlog |
+| `control.unskippable()` | 将本次 dispatch 标记为不可跳过 |
+| `control.record(meta)` | 记录当前运行时快照到 backlog，并返回 record id |
 
-`useScenario` 内部维护一个带 refcount 的 session，`cleanup` 时将 session 标为待销毁并延迟发送 `terminateStory`（见 `disposeScenarioSession` / `releaseScenarioSession`）。设计目标是对 React Fast Refresh 的瞬时 remount 具弹性：短时间内相同参数的 remount 会复用 live session，仅在参数变化或最终卸载时才会真正 `terminateStory`。
+**实现要点：**
+
+- Stage 当前只封装 `scenariocommandline` 和 `scenariotext` 两类事件；`ResolvedSystemCallLine` 虽然从 `events.ts` 导出，但若要处理 system call，需要自己显式监听对应事件。
+- auto 模式下，`hold()` / `setWaiting()` 不会直接把控制权交给普通等待逻辑，而是打开一个 barrier。只有当 barrier 的 ticket 全部 `done()` / `cancel()`，并且各自 `tailMs` 都结算完成后，Stage 才会恢复 `nextLine()`。
+- `useAutoTicket()` 允许 actor 参与 auto barrier 协调。若 ticket 在 barrier 打开前的短暂采集窗口内创建，Stage 会先把它放入 pending 集合，再在下一个 barrier 打开时收编，解决语音等副作用早于文本 barrier 注册的问题。
+- skip / auto blocker 用于表达“当前流程禁止模式继续”的业务条件，适合选项菜单、模态交互等必须等待用户操作的场景。
+
+`useScenario` 内部维护一个带 session key 的 refcount session。key 由 `stories`、`startName`、`entryName`、`goNextOnLoad` 共同决定；相同 key 的瞬时 remount 会复用同一个 live session。cleanup 时只会减少 `refCount`，真正的 `terminateStory` 会被排入串行生命周期队列，并推迟到下一个宏任务，这样 Fast Refresh 之类的短暂卸载不会重置剧情；只有 key 变化或最终卸载时，旧 session 才会被终止。
 
 ### 6. 导航（`components/navigation.tsx`）
 
 Stack 风格导航，区分 **pages**（全屏）和 **overlays**（模态）：
 
 ```typescript
-import { createStackNavigator, createStaticNavigation } from '@momoyu-ink/kit';
+import { createStackNavigator, createStaticNavigation, RegisterNavigator } from '@momoyu-ink/kit';
 
 const navigator = createStackNavigator({
   pages: { title: TitlePage, stage: StagePage },
@@ -212,15 +222,24 @@ const navigator = createStackNavigator({
 });
 
 export const Navigation = createStaticNavigation(navigator);
+
+declare module '@momoyu-ink/kit' {
+  interface RootNavigatorList extends RegisterNavigator<typeof navigator> {}
+}
 ```
 
 - `useNavigation()` / `getNavigator()` — 组件内/外部导航
 - `useNavigationParams<T>()` — 读取当前页面/overlay 参数
-- 通过 module augmentation 扩展 `RegisterNavigator` / `RootNavigatorList` 以获得类型安全
+- 通过 module augmentation 扩展公开模块 `@momoyu-ink/kit` 中的 `RootNavigatorList`，不要去扩展内部相对路径模块
 
 ### 7. Sandbox（`sandbox.ts`）
 
-为剧本脚本提供变量 Proxy（`ARCHIVE` / `GLOBAL`），底层通过 `scenario` 插件的 `getVariable` / `setVariable` 命令访问，对用户代码透明。
+Sandbox 为剧本表达式提供受控求值环境：
+
+- `ARCHIVE` 代理到 scenario 插件的普通变量（`getVariable` / `setVariable`）
+- `GLOBAL` 代理到 scenario 插件的永久变量（`getPermanentVariable` / `setPermanentVariable`）
+- `__moyu_eval_sandbox` 会在代理作用域里执行表达式，保留 JS 内建全局的透传
+- 在 sandbox 内部，`window` 和 `globalThis` 都会指向 sandbox proxy 自身，而不是浏览器真实全局对象；编写表达式或运行时辅助逻辑时不能假设它们等同于宿主环境
 
 ### 8. Bindings（`bindings/`）
 
@@ -371,18 +390,14 @@ yarn dev                 # watch 模式
 
 ---
 
-## 依赖说明
+## 技术选型概览
 
-| 依赖                   | 版本       | 用途                 |
-| ---------------------- | ---------- | -------------------- |
-| `react`                | ^19.2.1    | UI 框架（peer）      |
-| `react-reconciler`     | ^0.33.0    | 自定义渲染器         |
-| `@react-spring/core`   | ^10.0.3    | 动画核心             |
-| `@react-spring/animated` | ^10.0.3  | animated 原语        |
-| `@react-spring/rafz`   | ^10.0.3    | RAF 调度             |
-| `@react-spring/shared` | ^10.0.3    | 共享工具             |
-| `valtio`               | ^2.1.7     | 状态管理（sandbox / stage） |
-| `zod`                  | ^4.2.0     | schema 定义          |
+- **React 19 + react-reconciler**：提供自定义渲染器基础，负责把 React 树映射到 Moyu 节点树。
+- **react-spring**：提供 `animated.<element>`、spring host 和时间调度能力，用于声明式动画与交互动画。
+- **valtio**：用于 Stage 的 skip / auto 响应式状态，以及与 sandbox / 运行时协作的轻量状态读取。
+- **zod**：用于命令 schema、运行时解析和上层项目中的命令验证。
+
+具体版本、导出格式和构建细节以 `package.json`、`tsup.config.ts` 与源码为准。
 
 ---
 
@@ -394,5 +409,5 @@ yarn dev                 # watch 模式
 4. **类型安全**：充分利用 bindings 与 TS 类型系统。
 5. **性能**：避免在渲染循环/事件回调中进行大量分配或同步计算。
 6. **bindings 只读**：一切类型变更走 Rust + `yarn generate:bindings`。
-7. **HMR 与 scenario**：`useScenario` 用 refcount + 延时 dispose 实现 HMR 弹性；参数不变的瞬时 remount 会复用 session，不会重置剧情。仅当参数变化或最终卸载时才会 `terminateStory`。
+7. **HMR 与 scenario**：`useScenario` 依赖 session key、refcount 和串行生命周期队列实现 HMR 弹性；相同 key 的瞬时 remount 会复用 live session，只有 key 变化或最终卸载时才会真正 `terminateStory`。
 8. **CJS/ESM 分发**：改动打包配置前确认消费者（框架、SDK 用户）不会因运行时重复化（如 valtio）而失效。
