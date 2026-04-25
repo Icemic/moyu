@@ -101,7 +101,7 @@ export function setDefaultAutoTailMs(ms: number): void {
     return;
   }
 
-  autoRuntime.defaultTailMs = Math.max(0, ms);
+  autoRuntime.defaultTailMs = Math.max(0, ms << 0);
 }
 
 // ---------------------------------------------------------------------------
