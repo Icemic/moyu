@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "yarn workspaces foreach -Aip run dev",
     "build": "yarn workspaces foreach -At run build",
-    "generate:bindings": "rimraf packages/kit/src/bindings && cargo test export_bindings --workspace && eslint --fix 'packages/kit/src/bindings/**/*.ts'"
+    "generate:bindings": "rimraf packages/kit/src/bindings && cargo test export_bindings --workspace && biome format --fix 'packages/kit/src/bindings/'"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
