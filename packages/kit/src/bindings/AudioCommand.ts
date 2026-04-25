@@ -9,6 +9,7 @@ export type AudioCommand =
   | { subCommand: 'pause'; name: string; fadeTime?: number }
   | { subCommand: 'resume'; name: string; fadeTime?: number }
   | { subCommand: 'setVolume'; name: string; volume: number; fadeTime?: number }
+  | { subCommand: 'setGlobalVolume'; name: string; volume: number }
   | { subCommand: 'seekBy'; name: string; time: number }
   | { subCommand: 'seekTo'; name: string; time: number }
   | { subCommand: 'setPlaybackRate'; name: string; rate: number }
