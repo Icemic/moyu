@@ -22,7 +22,7 @@ import { extract as tarExtract } from 'tar';
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_CDN_URL = 'https://cdn.momoyu.ink/releases/versions.json';
-export const DEFAULT_CHANNEL = 'dev';
+export const DEFAULT_CHANNEL = 'stable';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -185,7 +185,7 @@ export async function fetchVersionsJson(cdnUrl: string): Promise<VersionsJson> {
   if (!res.ok) {
     throw new Error(`Failed to fetch versions.json: HTTP ${res.status} ${res.statusText}`);
   }
-  const data: VersionsJson = await res.json();
+  const data = (await res.json()) as VersionsJson;
   if (data.schema_version !== 2) {
     throw new Error(
       `Unsupported versions.json schema_version: ${data.schema_version} (expected 2). ` +
