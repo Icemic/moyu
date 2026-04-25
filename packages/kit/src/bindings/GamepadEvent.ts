@@ -4,5 +4,8 @@ import type { GamepadButton } from './GamepadButton';
 
 export type GamepadEvent =
   | { gamepad: Gamepad }
+  | { gamepad: Gamepad }
+  | { gamepad: Gamepad; button: GamepadButton }
+  | { gamepad: Gamepad; button: GamepadButton }
   | { gamepad: Gamepad; button: GamepadButton }
   | { gamepad: Gamepad; axis: number; value: number };
