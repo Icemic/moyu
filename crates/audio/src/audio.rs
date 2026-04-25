@@ -54,6 +54,7 @@ impl Audio {
         &mut self,
         manager: &mut AudioManager,
         fade_time: Option<u32>,
+        global_volume: f64,
         on_stopped: Option<Box<dyn FnOnce() + Send>>,
     ) -> Result<()> {
         if let Some(ref sound_data) = self.sound {
@@ -66,7 +67,7 @@ impl Audio {
                 }
             };
             handle.set_volume(linear_volume(0.0), tween(Some(0)));
-            handle.set_volume(linear_volume(self.volume), tween(fade_time));
+            handle.set_volume(linear_volume(self.volume * global_volume), tween(fade_time));
 
             if let Some(callback) = on_stopped {
                 handle.on_stopped(callback);
@@ -105,10 +106,15 @@ impl Audio {
         Ok(())
     }
 
-    pub fn set_volume(&mut self, volume: f64, fade_time: Option<u32>) -> Result<()> {
+    pub fn set_volume(
+        &mut self,
+        volume: f64,
+        global_volume: f64,
+        fade_time: Option<u32>,
+    ) -> Result<()> {
         self.volume = volume;
         self.handle().map(|handle| {
-            handle.set_volume(linear_volume(volume), tween(fade_time));
+            handle.set_volume(linear_volume(volume * global_volume), tween(fade_time));
         })
     }
 

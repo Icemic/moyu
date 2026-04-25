@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
+use std::sync::LazyLock;
+use std::sync::Mutex as StdMutex;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -22,6 +24,27 @@ use ts_rs::TS;
 use crate::audio::{Audio, AudioLoadingState};
 use crate::kira_static_data::from_boxed_media_source;
 use crate::utils::linear_volume;
+
+// The audio plugin is instantiated once for the app lifetime, so module-level
+// global volumes remain a single source of truth for async load/play paths.
+static GLOBAL_VOLUMES: LazyLock<StdMutex<HashMap<String, f64>>> =
+    LazyLock::new(|| StdMutex::new(HashMap::new()));
+
+fn get_global_volume(name: &str) -> f64 {
+    GLOBAL_VOLUMES
+        .lock()
+        .unwrap()
+        .get(name)
+        .copied()
+        .unwrap_or(1.0)
+}
+
+fn set_global_volume(name: &str, volume: f64) {
+    GLOBAL_VOLUMES
+        .lock()
+        .unwrap()
+        .insert(name.to_string(), volume);
+}
 
 /// Settings for audio playback, including delay, start position, volume, etc.
 #[derive(Debug, Serialize, Deserialize)]
@@ -119,8 +142,9 @@ impl AudioManager {
     ) -> Result<impl Future<Output = Result<()>> + 'static> {
         debug!("audio will load from {}", src);
 
-        self.create_audio(&name);
+        self.create_audio(name);
         let audio = self.get_audio(name)?;
+        let audio_name = name.to_string();
         let manager = self.manager.clone();
         let asset_full_path = assets_dir().join(src)?;
 
@@ -170,10 +194,11 @@ impl AudioManager {
             audio.loading_state = AudioLoadingState::Loaded;
             audio.volume = settings.volume;
 
-            // audio will play automatically by default, so if auto_play is false, stop it
+            // Auto-play after loading when requested.
             if settings.auto_play {
+                let global_volume = get_global_volume(&audio_name);
                 let mut manager = manager.lock();
-                audio.play(&mut manager, settings.fade_time, None)?;
+                audio.play(&mut manager, settings.fade_time, global_volume, None)?;
             }
 
             Ok(())
@@ -238,6 +263,10 @@ pub enum AudioCommand {
         volume: f64,
         fade_time: Option<u32>,
     },
+    SetGlobalVolume {
+        name: String,
+        volume: f64,
+    },
     SeekBy {
         name: String,
         time: f64,
@@ -284,6 +313,7 @@ impl Command for AudioManager {
                 fade_time,
                 wait_for_end,
             } => {
+                let global_volume = get_global_volume(&name);
                 let audio = self.get_audio(&name)?;
                 let mut audio = audio.lock();
                 // ignore the error if audio is not playing or not loaded
@@ -295,6 +325,7 @@ impl Command for AudioManager {
                     audio.play(
                         &mut manager,
                         fade_time,
+                        global_volume,
                         Some(Box::new(|| {
                             let _ = sender.send(());
                         })),
@@ -305,7 +336,7 @@ impl Command for AudioManager {
                     })?;
                     return Ok(Some(promise));
                 } else {
-                    audio.play(&mut manager, fade_time, None)?;
+                    audio.play(&mut manager, fade_time, global_volume, None)?;
                 }
             }
             AudioCommand::Stop { name, fade_time } => {
@@ -325,8 +356,21 @@ impl Command for AudioManager {
                 volume,
                 fade_time,
             } => {
+                let global_volume = get_global_volume(&name);
                 let audio = self.get_audio(&name)?;
-                audio.lock().set_volume(volume, fade_time)?;
+                audio.lock().set_volume(volume, global_volume, fade_time)?;
+            }
+            AudioCommand::SetGlobalVolume { name, volume } => {
+                let clamped = volume.clamp(0.0, 1.0);
+                set_global_volume(&name, clamped);
+
+                if let Some(audio) = self.audios.get(&name) {
+                    let mut audio = audio.lock();
+                    if audio.played() {
+                        let own_volume = audio.volume;
+                        audio.set_volume(own_volume, clamped, None)?;
+                    }
+                }
             }
             AudioCommand::SeekBy { name, time } => {
                 let audio = self.get_audio(&name)?;
