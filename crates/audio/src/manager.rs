@@ -24,26 +24,51 @@ use ts_rs::TS;
 use crate::audio::{Audio, AudioLoadingState};
 use crate::kira_static_data::from_boxed_media_source;
 use crate::utils::linear_volume;
+use crate::wildcard::{is_wildcard, wildcard_match};
 
 // The audio plugin is instantiated once for the app lifetime, so module-level
 // global volumes remain a single source of truth for async load/play paths.
-static GLOBAL_VOLUMES: LazyLock<StdMutex<HashMap<String, f64>>> =
-    LazyLock::new(|| StdMutex::new(HashMap::new()));
+enum GlobalVolumeRule {
+    Exact(String, f64),
+    Wildcard(String, f64),
+}
+
+static GLOBAL_VOLUMES: LazyLock<StdMutex<Vec<GlobalVolumeRule>>> =
+    LazyLock::new(|| StdMutex::new(Vec::new()));
 
 fn get_global_volume(name: &str) -> f64 {
-    GLOBAL_VOLUMES
-        .lock()
-        .unwrap()
-        .get(name)
-        .copied()
-        .unwrap_or(1.0)
+    let rules = GLOBAL_VOLUMES.lock().unwrap();
+    let mut matched_wildcard = None;
+
+    for rule in rules.iter().rev() {
+        match rule {
+            GlobalVolumeRule::Exact(rule_name, volume) if rule_name == name => return *volume,
+            GlobalVolumeRule::Wildcard(pattern, volume)
+                if matched_wildcard.is_none() && wildcard_match(pattern, name) =>
+            {
+                matched_wildcard = Some(*volume);
+            }
+            _ => {}
+        }
+    }
+
+    matched_wildcard.unwrap_or(1.0)
 }
 
 fn set_global_volume(name: &str, volume: f64) {
-    GLOBAL_VOLUMES
-        .lock()
-        .unwrap()
-        .insert(name.to_string(), volume);
+    let mut rules = GLOBAL_VOLUMES.lock().unwrap();
+
+    if is_wildcard(name) {
+        rules.retain(
+            |rule| !matches!(rule, GlobalVolumeRule::Wildcard(pattern, _) if pattern == name),
+        );
+        rules.push(GlobalVolumeRule::Wildcard(name.to_string(), volume));
+    } else {
+        rules.retain(
+            |rule| !matches!(rule, GlobalVolumeRule::Exact(rule_name, _) if rule_name == name),
+        );
+        rules.push(GlobalVolumeRule::Exact(name.to_string(), volume));
+    }
 }
 
 /// Settings for audio playback, including delay, start position, volume, etc.
@@ -112,26 +137,46 @@ impl AudioManager {
         })
     }
 
-    pub fn create_audio(&mut self, name: &str) {
+    pub fn create_audio(&mut self, name: &str) -> Result<Arc<Mutex<Audio>>> {
+        if is_wildcard(name) {
+            return Err(anyhow::anyhow!(
+                "Audio name {} cannot be a wildcard pattern",
+                name
+            ));
+        }
+
         if let Some(old) = self.audios.remove(name) {
             warn!("Audio {} already exists, stopping it", name);
             old.lock().stop(None).ok();
         }
-        self.audios
-            .insert(name.to_string(), Arc::new(Mutex::new(Audio::new())));
+
+        let audio = Arc::new(Mutex::new(Audio::new()));
+        self.audios.insert(name.to_string(), audio.clone());
+
+        Ok(audio)
     }
 
-    pub fn remove_audio(&mut self, name: &str, fade_time: Option<u32>) {
-        if let Some(audio) = self.audios.remove(name) {
-            let mut audio = audio.lock();
-            if audio.played()
-                && let Err(err) = audio.stop(fade_time)
-            {
-                warn!("Failed to stop audio {}: {}", name, err);
+    pub fn remove_audio(&mut self, name: &str, fade_time: Option<u32>) -> Result<()> {
+        let audio_names = self
+            .get_audios(name)?
+            .into_iter()
+            .map(|(audio_name, _)| audio_name)
+            .collect::<Vec<_>>();
+
+        for audio_name in audio_names {
+            if let Some(audio) = self.audios.remove(&audio_name) {
+                let mut audio = audio.lock();
+                if audio.played()
+                    && let Err(err) = audio.stop(fade_time)
+                {
+                    warn!("Failed to stop audio {}: {}", audio_name, err);
+                }
+            } else {
+                return Err(anyhow::anyhow!("Audio {} not found", audio_name));
             }
-        } else {
-            warn!("Audio {} not found", name);
         }
+
+        Ok(())
     }
 
     pub fn load_audio(
@@ -142,8 +187,7 @@ impl AudioManager {
     ) -> Result<impl Future<Output = Result<()>> + 'static> {
         debug!("audio will load from {}", src);
 
-        self.create_audio(name);
-        let audio = self.get_audio(name)?;
+        let audio = self.create_audio(name)?;
         let audio_name = name.to_string();
         let manager = self.manager.clone();
         let asset_full_path = assets_dir().join(src)?;
@@ -205,11 +249,28 @@ impl AudioManager {
         });
     }
 
-    pub fn get_audio(&self, name: &str) -> Result<Arc<Mutex<Audio>>> {
-        self.audios
-            .get(name)
-            .cloned()
-            .ok_or(anyhow::anyhow!("Audio {} not found", name))
+    pub fn get_audios(&self, name: &str) -> Result<Vec<(String, Arc<Mutex<Audio>>)>> {
+        if !is_wildcard(name) {
+            return self
+                .audios
+                .get(name)
+                .cloned()
+                .map(|audio| vec![(name.to_string(), audio)])
+                .ok_or(anyhow::anyhow!("Audio {} not found", name));
+        }
+
+        let matched = self
+            .audios
+            .iter()
+            .filter(|(audio_name, _)| wildcard_match(name, audio_name))
+            .map(|(audio_name, audio)| (audio_name.clone(), audio.clone()))
+            .collect::<Vec<_>>();
+
+        if matched.is_empty() {
+            return Err(anyhow::anyhow!("Audio {} not found", name));
+        }
+
+        Ok(matched)
     }
 }
 
@@ -306,91 +367,129 @@ impl Command for AudioManager {
                 return Ok(Some(promise));
             }
             AudioCommand::Release { name, fade_time } => {
-                self.remove_audio(&name, fade_time);
+                self.remove_audio(&name, fade_time)?;
             }
             AudioCommand::Play {
                 name,
                 fade_time,
                 wait_for_end,
             } => {
-                let global_volume = get_global_volume(&name);
-                let audio = self.get_audio(&name)?;
-                let mut audio = audio.lock();
-                // ignore the error if audio is not playing or not loaded
-                let _ = audio.stop(fade_time);
+                let matched_audios = self.get_audios(&name)?;
                 let mut manager = self.manager.lock();
 
                 if wait_for_end.unwrap_or(false) {
-                    let (sender, receiver) = moyu_pal::sync::oneshot::channel();
-                    audio.play(
-                        &mut manager,
-                        fade_time,
-                        global_volume,
-                        Some(Box::new(|| {
-                            let _ = sender.send(());
-                        })),
-                    )?;
+                    let mut receivers = Vec::with_capacity(matched_audios.len());
+                    for (audio_name, audio) in matched_audios {
+                        let global_volume = get_global_volume(&audio_name);
+                        let mut audio = audio.lock();
+                        let _ = audio.stop(fade_time);
+
+                        let (sender, receiver) = moyu_pal::sync::oneshot::channel();
+                        audio.play(
+                            &mut manager,
+                            fade_time,
+                            global_volume,
+                            Some(Box::new(move || {
+                                let _ = sender.send(());
+                            })),
+                        )?;
+                        receivers.push(receiver);
+                    }
+
                     let promise = create_promise(async move {
-                        receiver.await?;
+                        for receiver in receivers {
+                            receiver.await?;
+                        }
                         Ok(())
                     })?;
                     return Ok(Some(promise));
                 } else {
-                    audio.play(&mut manager, fade_time, global_volume, None)?;
+                    for (audio_name, audio) in matched_audios {
+                        let global_volume = get_global_volume(&audio_name);
+                        let mut audio = audio.lock();
+                        let _ = audio.stop(fade_time);
+                        audio.play(&mut manager, fade_time, global_volume, None)?;
+                    }
                 }
             }
             AudioCommand::Stop { name, fade_time } => {
-                let audio = self.get_audio(&name)?;
-                audio.lock().stop(fade_time)?;
+                for (_, audio) in self.get_audios(&name)? {
+                    audio.lock().stop(fade_time)?;
+                }
             }
             AudioCommand::Pause { name, fade_time } => {
-                let audio = self.get_audio(&name)?;
-                audio.lock().pause(fade_time)?;
+                for (_, audio) in self.get_audios(&name)? {
+                    audio.lock().pause(fade_time)?;
+                }
             }
             AudioCommand::Resume { name, fade_time } => {
-                let audio = self.get_audio(&name)?;
-                audio.lock().resume(fade_time)?;
+                for (_, audio) in self.get_audios(&name)? {
+                    audio.lock().resume(fade_time)?;
+                }
             }
             AudioCommand::SetVolume {
                 name,
                 volume,
                 fade_time,
             } => {
-                let global_volume = get_global_volume(&name);
-                let audio = self.get_audio(&name)?;
-                audio.lock().set_volume(volume, global_volume, fade_time)?;
+                for (audio_name, audio) in self.get_audios(&name)? {
+                    let global_volume = get_global_volume(&audio_name);
+                    audio.lock().set_volume(volume, global_volume, fade_time)?;
+                }
             }
             AudioCommand::SetGlobalVolume { name, volume } => {
                 let clamped = volume.clamp(0.0, 1.0);
                 set_global_volume(&name, clamped);
 
-                if let Some(audio) = self.audios.get(&name) {
+                if is_wildcard(&name) {
+                    let matched_audios = self
+                        .audios
+                        .iter()
+                        .filter(|(audio_name, _)| wildcard_match(&name, audio_name))
+                        .map(|(audio_name, audio)| (audio_name.clone(), audio.clone()))
+                        .collect::<Vec<_>>();
+
+                    for (audio_name, audio) in matched_audios {
+                        let mut audio = audio.lock();
+                        if audio.played() {
+                            let own_volume = audio.volume;
+                            let global_volume = get_global_volume(&audio_name);
+                            audio.set_volume(own_volume, global_volume, None)?;
+                        }
+                    }
+                } else if let Some(audio) = self.audios.get(&name) {
                     let mut audio = audio.lock();
                     if audio.played() {
                         let own_volume = audio.volume;
-                        audio.set_volume(own_volume, clamped, None)?;
+                        let global_volume = get_global_volume(&name);
+                        audio.set_volume(own_volume, global_volume, None)?;
                     }
                 }
             }
             AudioCommand::SeekBy { name, time } => {
-                let audio = self.get_audio(&name)?;
-                audio.lock().seek_by(time)?;
+                for (_, audio) in self.get_audios(&name)? {
+                    audio.lock().seek_by(time)?;
+                }
             }
             AudioCommand::SeekTo { name, time } => {
-                let audio = self.get_audio(&name)?;
-                audio.lock().seek_to(time)?;
+                for (_, audio) in self.get_audios(&name)? {
+                    audio.lock().seek_to(time)?;
+                }
             }
             AudioCommand::SetPlaybackRate { name, rate } => {
-                let audio = self.get_audio(&name)?;
-                audio.lock().set_playback_rate(rate)?;
+                for (_, audio) in self.get_audios(&name)? {
+                    audio.lock().set_playback_rate(rate)?;
+                }
             }
             AudioCommand::SetLoopRegion { name, start, end } => {
-                let audio = self.get_audio(&name)?;
-                audio.lock().set_loop_region(start, end)?;
+                for (_, audio) in self.get_audios(&name)? {
+                    audio.lock().set_loop_region(start, end)?;
+                }
             }
             AudioCommand::SetPanning { name, panning } => {
-                let audio = self.get_audio(&name)?;
-                audio.lock().set_panning(panning)?;
+                for (_, audio) in self.get_audios(&name)? {
+                    audio.lock().set_panning(panning)?;
+                }
             }
         }
 
