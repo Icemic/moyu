@@ -56,7 +56,8 @@ const hostConfig: HostConfig<
    */
   createInstance(type, props, _root, _hostContext, _internalInstanceHandle) {
     // console.debug('createInstance', type);
-    const node = Node.create(props.label ?? '', type, props);
+    const { ref, ...restProps } = props;
+    const node = Node.create(props.label ?? '', type, restProps);
     return node;
   },
 
@@ -167,7 +168,7 @@ const hostConfig: HostConfig<
   commitUpdate(instance, _type, prevProps, nextProps, _internalHandle) {
     // console.debug('commitUpdate: ', type, JSON.stringify(_updatePayload));
     const { label: _oldLabel, children: _oldChildren, ...oldProps } = prevProps;
-    const { label, children, ...newProps } = nextProps;
+    const { label, children, ref, ...newProps } = nextProps;
 
     const changedProps: Record<string, any> = {};
 
