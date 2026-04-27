@@ -70,8 +70,9 @@ export default defineCommand({
       process.exit(1);
     }
 
+    // Use input-side JSON Schema so defaulted fields stay optional for authors.
     // biome-ignore lint: Zod schema type is dynamic
-    const jsonSchema = (schema as any).toJSONSchema();
+    const jsonSchema = (schema as any).toJSONSchema({ io: 'input' });
     writeFileSync(outputPath, JSON.stringify(jsonSchema, null, 2) + '\n');
 
     consola.success(`Schema written to ${outputPath}`);
