@@ -66,7 +66,7 @@ impl Audio {
                     return Err(e.into());
                 }
             };
-            handle.set_volume(linear_volume(0.0), tween(Some(0)));
+
             handle.set_volume(linear_volume(self.volume * global_volume), tween(fade_time));
 
             if let Some(callback) = on_stopped {

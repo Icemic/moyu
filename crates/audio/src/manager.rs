@@ -227,7 +227,7 @@ impl AudioManager {
                         EndPosition::Custom(PlaybackPosition::Seconds(end))
                     },
                 }),
-                volume: linear_volume(settings.volume).into(),
+                volume: linear_volume(0.0).into(),
                 playback_rate: settings.playback_rate.into(),
                 panning: Panning::from(settings.panning as f32).into(),
                 ..Default::default()

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Introduce global volume control for audio instances via `setGlobalVolume` command, allowing real-time volume adjustment and wildcard matching for dynamic channels.
 
+## Fixed
+
+- Fix an issue where audio with fade-in enabled would start at full volume, by setting the initial volume to 0 when fade-in is enabled.
+
 ## [0.11.0] - 2026-04-16
 
 ### Added
