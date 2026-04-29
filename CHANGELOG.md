@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Fixed
 
 - Fix an issue where audio with fade-in enabled would start at full volume, by setting the initial volume to 0 when fade-in is enabled.
+- Fix an issue where text nodes keep old text content when visible is set to false.
 
 ## [0.11.0] - 2026-04-16
 

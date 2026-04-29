@@ -422,12 +422,23 @@ impl Renderer for TextRenderer {
                     if node.base_mut().width() != &total_width
                         || node.base_mut().height() != &total_height
                     {
+                        // But the second transform pass is only
+                        // needed when pivot depends on the current size.
+                        let needs_transform_refresh = {
+                            let pivot = node.base().pivot();
+                            pivot.x != 0.0 || pivot.y != 0.0
+                        };
+
                         node.base_mut().set_size(total_width, total_height);
                         node.base_mut().calculate_content_bounds();
 
-                        // current transform matrix is not right because the size is not updated yet
-                        // so we have to skip this tick until the next one when the transform matrix is updated
-                        return;
+                        if needs_transform_refresh {
+                            // Hide stale geometry until NodeBase::update recomputes the transform
+                            // with the new size on the next tick.
+                            // FIXME: This may cause a flicker when the text changes frequently.
+                            node.num_indices = 0;
+                            return;
+                        }
                     }
 
                     // updates the sdf texture only when the image version is changed
