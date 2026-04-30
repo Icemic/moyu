@@ -548,6 +548,24 @@ export function createStage() {
     return autoState.active;
   }
 
+  function resetRuntimeState() {
+    skipState.active = false;
+    autoState.active = false;
+
+    if (_skipTimer !== null) {
+      clearTimeout(_skipTimer);
+      _skipTimer = null;
+    }
+
+    if (_autoTimer !== null) {
+      clearTimeout(_autoTimer);
+      _autoTimer = null;
+    }
+
+    clearAutoBarrier();
+    clearPendingAutoTickets();
+  }
+
   // --- internal helpers ---
 
   /** Build a one-shot GameControl for a single dispatch cycle. */
@@ -729,6 +747,7 @@ export function createStage() {
     startAuto,
     stopAuto,
     isAutoing,
+    resetRuntimeState,
     bindEvents,
   };
 }

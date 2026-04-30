@@ -19,6 +19,9 @@ export type CombinedCheckpoint<TState = unknown> = {
 export interface DebugSessionConfig {
   capturePolicy?: (marker: MarkerEnter) => boolean | Promise<boolean>;
   checkpointKey?: (marker: MarkerEnter) => string;
+  onMarkerEnter?: (marker: MarkerEnter) => void | Promise<void>;
+  onCheckpointCaptured?: (checkpoint: CombinedCheckpoint<unknown>) => void | Promise<void>;
+  onError?: (error: unknown) => void | Promise<void>;
 }
 
 export interface DebugSessionController {
@@ -49,6 +52,9 @@ let appStateAdapter: AnyAdapter | null = null;
 let currentConfig: Required<DebugSessionConfig> = {
   capturePolicy: () => true,
   checkpointKey: (marker) => marker.markerId,
+  onMarkerEnter: () => {},
+  onCheckpointCaptured: () => {},
+  onError: () => {},
 };
 let disposeMarkerListener: (() => void) | null = null;
 let disposeFinishedListener: (() => void) | null = null;
@@ -94,6 +100,7 @@ async function handleMarkerEnter(marker: MarkerEnter) {
   };
 
   debugState.currentCursor = cursor;
+  await currentConfig.onMarkerEnter(marker);
 
   const shouldCapture = await currentConfig.capturePolicy(marker);
   if (!shouldCapture) {
@@ -105,14 +112,18 @@ async function handleMarkerEnter(marker: MarkerEnter) {
 
   try {
     const appState = appStateAdapter ? await appStateAdapter.capture() : undefined;
+    const checkpoint: CombinedCheckpoint<unknown> = {
+      key,
+      cursor,
+      appState,
+    };
     debugState.checkpoints = {
       ...debugState.checkpoints,
       [key]: {
-        key,
-        cursor,
-        appState,
+        ...checkpoint,
       },
     };
+    await currentConfig.onCheckpointCaptured(checkpoint);
   } catch (error) {
     await executeScenarioCommand<boolean>({ subCommand: 'dropCheckpoint', key });
     throw error;
@@ -193,6 +204,9 @@ export async function startDebugSession(config: DebugSessionConfig = {}): Promis
   currentConfig = {
     capturePolicy: config.capturePolicy ?? (() => true),
     checkpointKey: config.checkpointKey ?? ((marker) => marker.markerId),
+    onMarkerEnter: config.onMarkerEnter ?? (() => {}),
+    onCheckpointCaptured: config.onCheckpointCaptured ?? (() => {}),
+    onError: config.onError ?? (() => {}),
   };
 
   clearLocalRuntimeState();
@@ -204,6 +218,7 @@ export async function startDebugSession(config: DebugSessionConfig = {}): Promis
         await handleMarkerEnter(event as MarkerEnter);
       } catch (error) {
         debugState.lastError = toErrorMessage(error);
+        await currentConfig.onError(error);
       }
     });
   });
@@ -224,6 +239,7 @@ export async function startDebugSession(config: DebugSessionConfig = {}): Promis
     disposeFinishedListener?.();
     disposeMarkerListener = null;
     disposeFinishedListener = null;
+    await currentConfig.onError(error);
     throw error;
   }
 
@@ -242,6 +258,7 @@ export async function stopDebugSession(): Promise<void> {
         await clearRemoteCheckpoints();
       } catch (error) {
         debugState.lastError = toErrorMessage(error);
+        await currentConfig.onError(error);
       }
     });
   }
@@ -262,6 +279,7 @@ export function clearDebugSessionRuntimeState(): void {
       await clearRemoteCheckpoints();
     } catch (error) {
       debugState.lastError = toErrorMessage(error);
+      await currentConfig.onError(error);
     }
   });
 }
