@@ -20,3 +20,6 @@ zip = {workspace = true}
 moyu_core = {workspace = true, features = ["js_runtime"]}
 moyu_macros = {workspace = true}
 moyu_pal = {workspace = true}
+
+[dev-dependencies]
+tokio = {workspace = true, features = ["rt", "macros"]}
