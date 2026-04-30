@@ -3,6 +3,7 @@ use sixu::format::*;
 use sixu::runtime::*;
 
 use crate::types::ScenarioEvent;
+use crate::types::MarkerEnter;
 use crate::types::TextLine;
 
 /// Executor that implements the runtime execution logic for ScenarioPlugin
@@ -17,6 +18,27 @@ impl ScenarioExecutor {
 }
 
 impl RuntimeExecutor for ScenarioExecutor {
+    fn handle_marker(
+        &mut self,
+        ctx: &mut RuntimeContext,
+        marker: &LineMarker,
+    ) -> sixu::error::Result<()> {
+        let current_state = ctx
+            .stack()
+            .last()
+            .ok_or(sixu::error::RuntimeError::StoryNotStarted)?;
+
+        self.sender
+            .try_send(ScenarioEvent::MarkerEnter(MarkerEnter {
+                marker_id: marker.id.clone(),
+                story: current_state.story.clone(),
+                paragraph: current_state.paragraph.clone(),
+            }))
+            .map_err(anyhow::Error::from)?;
+
+        Ok(())
+    }
+
     fn handle_command(
         &mut self,
         _ctx: &mut RuntimeContext,

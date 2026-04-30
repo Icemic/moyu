@@ -11,12 +11,21 @@ use ts_rs::TS;
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", untagged)]
 #[ts(export, optional_fields)]
 pub enum ScenarioEvent {
+    MarkerEnter(MarkerEnter),
     CommandLine(ResolvedCommandLine),
     ExtraSystemCall(ResolvedSystemCallLine),
     Text(TextLine),
     Finished,
     Waiting,
     WaitingCancelled,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkerEnter {
+    pub marker_id: String,
+    pub story: String,
+    pub paragraph: String,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -30,6 +39,7 @@ pub struct TextLine {
 impl Event for ScenarioEvent {
     fn name(&self) -> &'static str {
         match self {
+            ScenarioEvent::MarkerEnter(_) => "scenarioMarkerEnter",
             ScenarioEvent::CommandLine(_) => "scenarioCommandLine",
             ScenarioEvent::ExtraSystemCall(_) => "scenarioExtraSystemCall",
             ScenarioEvent::Text(_) => "scenarioText",
