@@ -42,6 +42,11 @@ export type ScenarioCommand =
   | { subCommand: 'clearPermanentVariables' }
   | { subCommand: 'saveGame'; name: string; extra?: JsonValue }
   | { subCommand: 'record'; meta: { [key in string]: JsonValue } }
+  | { subCommand: 'captureCheckpoint'; key: string }
+  | { subCommand: 'restoreCheckpoint'; key: string }
+  | { subCommand: 'dropCheckpoint'; key: string }
+  | { subCommand: 'clearCheckpoints' }
+  | { subCommand: 'getExecutionCursor' }
   | { subCommand: 'getRecords'; offset?: number; limit?: number }
   | { subCommand: 'jumpToRecord'; recordId: string }
   | {

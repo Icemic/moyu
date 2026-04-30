@@ -93,6 +93,22 @@ enum ScenarioCommand {
     Record {
         meta: HashMap<String, serde_json::Value>,
     },
+    /// capture the current runtime snapshot for debug checkpoint usage
+    CaptureCheckpoint {
+        key: String,
+    },
+    /// restore a previously captured debug checkpoint
+    RestoreCheckpoint {
+        key: String,
+    },
+    /// drop a previously captured debug checkpoint
+    DropCheckpoint {
+        key: String,
+    },
+    /// clear all captured debug checkpoints
+    ClearCheckpoints,
+    /// get the current execution cursor
+    GetExecutionCursor,
     /// get backlog records in reverse chronological order
     GetRecords {
         offset: Option<usize>,
@@ -149,12 +165,14 @@ impl Command for ScenarioPlugin {
                 log::info!("start story: {}", name);
                 self.runtime.lock().start(&name, entry.as_deref())?;
                 self.clear_backlog();
+                self.reset_debug_state();
                 return Ok(None);
             }
             ScenarioCommand::TerminateStory => {
                 log::info!("terminate story");
                 self.runtime.lock().terminate()?;
                 self.clear_backlog();
+                self.reset_debug_state();
                 return Ok(None);
             }
             ScenarioCommand::NextLine => {
@@ -255,6 +273,22 @@ impl Command for ScenarioPlugin {
             ScenarioCommand::Record { meta } => {
                 return self.record(meta).map(Some);
             }
+            ScenarioCommand::CaptureCheckpoint { key } => {
+                return self.capture_checkpoint(&key).map(Some);
+            }
+            ScenarioCommand::RestoreCheckpoint { key } => {
+                return self.restore_checkpoint(&key).map(Some);
+            }
+            ScenarioCommand::DropCheckpoint { key } => {
+                return self.drop_checkpoint(&key).map(Some);
+            }
+            ScenarioCommand::ClearCheckpoints => {
+                self.clear_checkpoints();
+                return Ok(None);
+            }
+            ScenarioCommand::GetExecutionCursor => {
+                return self.get_execution_cursor().map(Some);
+            }
             ScenarioCommand::GetRecords { offset, limit } => {
                 return self.get_records(offset, limit).map(Some);
             }
@@ -274,6 +308,7 @@ impl Command for ScenarioPlugin {
                 ctx.archive_variables_mut().as_object_mut()?.clear();
                 drop(runtime);
                 self.clear_backlog();
+                self.reset_debug_state();
                 return Ok(None);
             }
             ScenarioCommand::RemoveGame { name } => {

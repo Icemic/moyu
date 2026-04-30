@@ -28,6 +28,15 @@ pub struct MarkerEnter {
     pub paragraph: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
+pub struct ExecutionCursor {
+    pub story: String,
+    pub paragraph: String,
+    pub marker_id: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct TextLine {
@@ -70,6 +79,13 @@ pub struct SavedExecutionState {
 pub struct RuntimeSnapshot {
     pub stack: Vec<SavedExecutionState>,
     pub variables: serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
+pub struct RuntimeCheckpoint {
+    pub cursor: Option<ExecutionCursor>,
+    pub snapshot: RuntimeSnapshot,
+    pub blocks: HashMap<BlockFingerprint, Block>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
