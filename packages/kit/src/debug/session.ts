@@ -11,23 +11,17 @@ export interface AppStateAdapter<TState = unknown> {
 }
 
 export type CombinedCheckpoint<TState = unknown> = {
-  key: string;
   cursor: ExecutionCursor;
   appState: TState;
 };
 
 export interface DebugSessionConfig {
-  capturePolicy?: (marker: MarkerEnter) => boolean | Promise<boolean>;
-  checkpointKey?: (marker: MarkerEnter) => string;
-  onMarkerEnter?: (marker: MarkerEnter) => void | Promise<void>;
-  onCheckpointCaptured?: (checkpoint: CombinedCheckpoint<unknown>) => void | Promise<void>;
+  onMarkerEnter?: (checkpoint: CombinedCheckpoint<unknown>) => void | Promise<void>;
   onError?: (error: unknown) => void | Promise<void>;
 }
 
 export interface DebugSessionController {
-  restoreCheckpoint(key: string): Promise<boolean>;
-  dropCheckpoint(key: string): Promise<boolean>;
-  clearCheckpoints(): Promise<void>;
+  restoreCheckpoint(markerId: string): Promise<boolean>;
 }
 
 type AnyAdapter = AppStateAdapter<any>;
@@ -50,10 +44,7 @@ const debugState = proxy<DebugSessionState>({
 
 let appStateAdapter: AnyAdapter | null = null;
 let currentConfig: Required<DebugSessionConfig> = {
-  capturePolicy: () => true,
-  checkpointKey: (marker) => marker.markerId,
   onMarkerEnter: () => {},
-  onCheckpointCaptured: () => {},
   onError: () => {},
 };
 let disposeMarkerListener: (() => void) | null = null;
@@ -93,58 +84,38 @@ async function clearRemoteCheckpoints() {
 }
 
 async function handleMarkerEnter(marker: MarkerEnter) {
-  const cursor: ExecutionCursor = {
-    story: marker.story,
-    paragraph: marker.paragraph,
-    markerId: marker.markerId,
+  const checkpoint: CombinedCheckpoint<unknown> = {
+    cursor: {
+      story: marker.story,
+      paragraph: marker.paragraph,
+      markerId: marker.markerId,
+    },
+    appState: appStateAdapter ? await appStateAdapter.capture() : undefined,
   };
 
-  debugState.currentCursor = cursor;
-  await currentConfig.onMarkerEnter(marker);
-
-  const shouldCapture = await currentConfig.capturePolicy(marker);
-  if (!shouldCapture) {
-    return;
-  }
-
-  const key = currentConfig.checkpointKey(marker);
-  await executeScenarioCommand<boolean>({ subCommand: 'captureCheckpoint', key });
-
-  try {
-    const appState = appStateAdapter ? await appStateAdapter.capture() : undefined;
-    const checkpoint: CombinedCheckpoint<unknown> = {
-      key,
-      cursor,
-      appState,
-    };
-    debugState.checkpoints = {
-      ...debugState.checkpoints,
-      [key]: {
-        ...checkpoint,
-      },
-    };
-    await currentConfig.onCheckpointCaptured(checkpoint);
-  } catch (error) {
-    await executeScenarioCommand<boolean>({ subCommand: 'dropCheckpoint', key });
-    throw error;
-  }
+  debugState.currentCursor = checkpoint.cursor;
+  debugState.checkpoints = {
+    ...debugState.checkpoints,
+    [marker.markerId]: checkpoint,
+  };
+  await currentConfig.onMarkerEnter(checkpoint);
 }
 
 const debugSessionController: DebugSessionController = {
-  async restoreCheckpoint(key) {
-    const checkpoint = debugState.checkpoints[key];
-    if (!checkpoint) {
-      return false;
-    }
-
+  async restoreCheckpoint(markerId) {
     return enqueueDebugOperation(async () => {
       debugState.restoring = true;
       debugState.lastError = null;
 
       try {
+        const checkpoint = debugState.checkpoints[markerId];
+        if (!checkpoint) {
+          return false;
+        }
+
         const restored = await executeScenarioCommand<boolean>({
           subCommand: 'restoreCheckpoint',
-          key,
+          key: markerId,
         });
         if (!restored) {
           return false;
@@ -164,30 +135,6 @@ const debugSessionController: DebugSessionController = {
       }
     });
   },
-
-  async dropCheckpoint(key) {
-    return enqueueDebugOperation(async () => {
-      const removed = await executeScenarioCommand<boolean>({
-        subCommand: 'dropCheckpoint',
-        key,
-      });
-
-      if (removed) {
-        const nextCheckpoints = { ...debugState.checkpoints };
-        delete nextCheckpoints[key];
-        debugState.checkpoints = nextCheckpoints;
-      }
-
-      return removed;
-    });
-  },
-
-  async clearCheckpoints() {
-    await enqueueDebugOperation(async () => {
-      await clearRemoteCheckpoints();
-      debugState.checkpoints = {};
-    });
-  },
 };
 
 export function registerAppStateAdapter<TState = unknown>(adapter: AppStateAdapter<TState> | null): void {
@@ -202,17 +149,14 @@ export async function startDebugSession(config: DebugSessionConfig = {}): Promis
   await stopDebugSession();
 
   currentConfig = {
-    capturePolicy: config.capturePolicy ?? (() => true),
-    checkpointKey: config.checkpointKey ?? ((marker) => marker.markerId),
     onMarkerEnter: config.onMarkerEnter ?? (() => {}),
-    onCheckpointCaptured: config.onCheckpointCaptured ?? (() => {}),
     onError: config.onError ?? (() => {}),
   };
 
   clearLocalRuntimeState();
   debugState.active = true;
 
-  disposeMarkerListener = addEventListener('scenarioMarkerEnter', (event) => {
+  disposeMarkerListener = addEventListener('scenariomarkerenter', (event) => {
     void enqueueDebugOperation(async () => {
       try {
         await handleMarkerEnter(event as MarkerEnter);
@@ -223,7 +167,7 @@ export async function startDebugSession(config: DebugSessionConfig = {}): Promis
     });
   });
 
-  disposeFinishedListener = addEventListener('scenarioFinished', () => {
+  disposeFinishedListener = addEventListener('scenariofinished', () => {
     debugState.currentCursor = null;
   });
 
@@ -292,7 +236,5 @@ export function useDebugSession() {
     startDebugSession,
     stopDebugSession,
     restoreCheckpoint: debugSessionController.restoreCheckpoint,
-    dropCheckpoint: debugSessionController.dropCheckpoint,
-    clearCheckpoints: debugSessionController.clearCheckpoints,
   };
 }

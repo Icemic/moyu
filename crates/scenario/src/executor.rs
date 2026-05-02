@@ -1,19 +1,26 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use moyu_pal::sync::Mutex;
 use moyu_pal::sync::mpsc::Sender;
 use sixu::format::*;
 use sixu::runtime::*;
 
-use crate::types::ScenarioEvent;
-use crate::types::MarkerEnter;
-use crate::types::TextLine;
+use crate::types::{ExecutionCursor, MarkerEnter, RuntimeCheckpoint, ScenarioEvent, TextLine};
+use crate::utils::create_runtime_snapshot_from_context;
 
 /// Executor that implements the runtime execution logic for ScenarioPlugin
 pub struct ScenarioExecutor {
     sender: Sender<ScenarioEvent>,
+    checkpoints: Arc<Mutex<HashMap<String, RuntimeCheckpoint>>>,
 }
 
 impl ScenarioExecutor {
-    pub fn new(sender: Sender<ScenarioEvent>) -> Self {
-        Self { sender }
+    pub fn new(
+        sender: Sender<ScenarioEvent>,
+        checkpoints: Arc<Mutex<HashMap<String, RuntimeCheckpoint>>>,
+    ) -> Self {
+        Self { sender, checkpoints }
     }
 }
 
@@ -28,11 +35,27 @@ impl RuntimeExecutor for ScenarioExecutor {
             .last()
             .ok_or(sixu::error::RuntimeError::StoryNotStarted)?;
 
+        let cursor = ExecutionCursor {
+            story: current_state.story.clone(),
+            paragraph: current_state.paragraph.clone(),
+            marker_id: Some(marker.id.clone()),
+        };
+
+        let (snapshot, blocks) = create_runtime_snapshot_from_context(ctx)?;
+        self.checkpoints.lock().insert(
+            marker.id.clone(),
+            RuntimeCheckpoint {
+                cursor: Some(cursor.clone()),
+                snapshot,
+                blocks,
+            },
+        );
+
         self.sender
             .try_send(ScenarioEvent::MarkerEnter(MarkerEnter {
                 marker_id: marker.id.clone(),
-                story: current_state.story.clone(),
-                paragraph: current_state.paragraph.clone(),
+                story: cursor.story,
+                paragraph: cursor.paragraph,
             }))
             .map_err(anyhow::Error::from)?;
 
