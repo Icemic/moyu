@@ -1,10 +1,11 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
 use sixu::BlockFingerprint;
-use sixu::format::Literal;
+use sixu::format::{Block, Literal};
+use sixu::runtime::RuntimeContext;
 
-use crate::types::{BacklogState, RuntimeSnapshot};
+use crate::types::{BacklogState, RuntimeSnapshot, SavedExecutionState};
 
 pub(crate) fn convert_to_literal(value: serde_json::Value) -> Literal {
     match value {
@@ -68,4 +69,36 @@ pub(crate) fn prune_backlog_blocks(backlog: &mut BacklogState) {
     backlog
         .blocks
         .retain(|fingerprint, _| referenced.contains(fingerprint));
+}
+
+pub(crate) fn create_runtime_snapshot_from_context(
+    context: &RuntimeContext,
+) -> Result<(RuntimeSnapshot, HashMap<BlockFingerprint, Block>)> {
+    let mut blocks = HashMap::new();
+    let stack = context
+        .stack()
+        .iter()
+        .map(|state| {
+            let fingerprint = state.block.fingerprint();
+            blocks
+                .entry(fingerprint)
+                .or_insert_with(|| state.block.clone());
+
+            SavedExecutionState {
+                story: state.story.clone(),
+                paragraph: state.paragraph.clone(),
+                block_fingerprint: fingerprint,
+                index: state.index,
+                is_loop_body: state.is_loop_body,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    Ok((
+        RuntimeSnapshot {
+            stack,
+            variables: serde_json::Value::from(context.archive_variables().clone()),
+        },
+        blocks,
+    ))
 }

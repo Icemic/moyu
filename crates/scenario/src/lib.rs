@@ -6,7 +6,7 @@ mod utils;
 use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read, Write};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 
 use anyhow::Result;
@@ -34,10 +34,11 @@ use zip::write::SimpleFileOptions;
 use crate::executor::ScenarioExecutor;
 use crate::types::{
     BacklogState, ExecutionCursor, GameData, RuntimeCheckpoint, RuntimeSnapshot,
-    SavedExecutionState, ScenarioEvent, ScenarioRecord, WaitingState,
+    ScenarioEvent, ScenarioRecord, WaitingState,
 };
 use crate::utils::{
-    convert_to_literal, next_record_id, prune_backlog_blocks, snapshot_blocks, timestamp_millis,
+    convert_to_literal, create_runtime_snapshot_from_context, next_record_id,
+    prune_backlog_blocks, snapshot_blocks, timestamp_millis,
 };
 
 const METADATA_VERSION: u32 = 2;
@@ -58,6 +59,7 @@ pub struct ScenarioPlugin {
     waiting: Option<WaitingState>,
     /// Disable reacting to next line requests
     disable_next_line: Arc<AtomicBool>,
+    execution_generation: Arc<AtomicU64>,
 }
 
 impl ScenarioPlugin {
@@ -68,7 +70,13 @@ impl ScenarioPlugin {
 
         let (sender, receiver) = moyu_pal::sync::mpsc::channel(100);
 
-        let executor = ScenarioExecutor::new(sender.clone());
+        let checkpoints = Arc::new(Mutex::new(HashMap::new()));
+        let current_marker_id = Arc::new(Mutex::new(None));
+
+        let executor = ScenarioExecutor::new(
+            sender.clone(),
+            checkpoints.clone(),
+        );
         let runtime = Runtime::new_with_context(executor, context);
 
         Self {
@@ -76,10 +84,11 @@ impl ScenarioPlugin {
             sender,
             receiver,
             backlog: Arc::new(Mutex::new(BacklogState::default())),
-            checkpoints: Arc::new(Mutex::new(HashMap::new())),
-            current_marker_id: Arc::new(Mutex::new(None)),
+            checkpoints,
+            current_marker_id,
             waiting: Default::default(),
             disable_next_line: Arc::new(AtomicBool::new(false)),
+            execution_generation: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -118,6 +127,18 @@ impl ScenarioPlugin {
         self.checkpoints.lock().clear();
     }
 
+    fn drain_pending_events(&mut self) {
+        while self.receiver.try_recv().is_ok() {}
+    }
+
+    fn begin_runtime_transition(&mut self) -> u64 {
+        let generation = self.execution_generation.fetch_add(1, Ordering::Relaxed) + 1;
+        self.waiting = None;
+        self.disable_next_line.store(false, Ordering::Relaxed);
+        self.drain_pending_events();
+        generation
+    }
+
     fn reset_debug_state(&self) {
         self.clear_checkpoints();
         *self.current_marker_id.lock() = None;
@@ -140,11 +161,7 @@ impl ScenarioPlugin {
         to_js(&self.build_execution_cursor()?)
     }
 
-    fn capture_checkpoint(&mut self, key: &str) -> Result<JSValue> {
-        self.capture_checkpoint_state(key)?;
-        to_js(&true)
-    }
-
+    #[cfg(test)]
     fn capture_checkpoint_state(&mut self, key: &str) -> Result<()> {
         let (snapshot, blocks) = self.create_runtime_snapshot()?;
         let cursor = self.build_execution_cursor()?;
@@ -170,22 +187,12 @@ impl ScenarioPlugin {
             return Ok(false);
         };
 
+        self.begin_runtime_transition();
         Self::restore_runtime_snapshot(&self.runtime, &checkpoint.snapshot, &checkpoint.blocks)?;
-        self.waiting = None;
-        self.disable_next_line.store(false, Ordering::Relaxed);
         *self.current_marker_id.lock() = checkpoint.cursor.and_then(|cursor| cursor.marker_id);
 
         Ok(true)
     }
-
-    fn drop_checkpoint(&mut self, key: &str) -> Result<JSValue> {
-        to_js(&self.drop_checkpoint_state(key))
-    }
-
-    fn drop_checkpoint_state(&mut self, key: &str) -> bool {
-        self.checkpoints.lock().remove(key).is_some()
-    }
-
     fn track_cursor_event(&self, event: &ScenarioEvent) {
         match event {
             ScenarioEvent::MarkerEnter(marker) => {
@@ -198,39 +205,17 @@ impl ScenarioPlugin {
         }
     }
 
+    fn take_queued_event(&mut self) -> Option<ScenarioEvent> {
+        let event = self.receiver.try_recv().ok()?;
+        self.track_cursor_event(&event);
+        Some(event)
+    }
+
     fn create_runtime_snapshot(
         &self,
     ) -> Result<(RuntimeSnapshot, HashMap<BlockFingerprint, Block>)> {
         let runtime = self.runtime.lock();
-        let context = runtime.context();
-
-        let mut blocks = HashMap::new();
-        let stack = context
-            .stack()
-            .iter()
-            .map(|state| {
-                let fingerprint = state.block.fingerprint();
-                blocks
-                    .entry(fingerprint)
-                    .or_insert_with(|| state.block.clone());
-
-                SavedExecutionState {
-                    story: state.story.clone(),
-                    paragraph: state.paragraph.clone(),
-                    block_fingerprint: fingerprint,
-                    index: state.index,
-                    is_loop_body: state.is_loop_body,
-                }
-            })
-            .collect::<Vec<_>>();
-
-        Ok((
-            RuntimeSnapshot {
-                stack,
-                variables: serde_json::Value::from(context.archive_variables().clone()),
-            },
-            blocks,
-        ))
+        create_runtime_snapshot_from_context(runtime.context())
     }
 
     fn restore_runtime_snapshot(
@@ -362,9 +347,8 @@ impl ScenarioPlugin {
             (snapshot, backlog.blocks.clone())
         };
 
+        self.begin_runtime_transition();
         Self::restore_runtime_snapshot(&self.runtime, &snapshot, &blocks)?;
-        self.waiting = None;
-        self.disable_next_line.store(false, Ordering::Relaxed);
         *self.current_marker_id.lock() = None;
 
         to_js(&true)
@@ -444,12 +428,13 @@ impl ScenarioPlugin {
         Ok(promise)
     }
 
-    fn load_save_data_from_file(&mut self, name: &str) -> Result<JSValue> {
+    fn load_save_data_from_file(&mut self, name: &str, generation: u64) -> Result<JSValue> {
         let path = format!("saves/{}.sav", name);
         let runtime = self.runtime.clone();
         let backlog = self.backlog.clone();
         let checkpoints = self.checkpoints.clone();
         let current_marker_id = self.current_marker_id.clone();
+        let execution_generation = self.execution_generation.clone();
         let future = async move {
             let Some(data) = read_from_appdata(&path).await? else {
                 log::info!("No save data found for {}", path);
@@ -471,6 +456,11 @@ impl ScenarioPlugin {
                 records,
                 blocks,
             } = data;
+
+            if is_execution_stale(&execution_generation, generation) {
+                log::info!("Skip stale load game result for {}", path);
+                return Ok(());
+            }
 
             ScenarioPlugin::restore_runtime_snapshot(&runtime, &current_state, &blocks)?;
 
@@ -681,9 +671,13 @@ impl ScenarioPlugin {
 
         let runtime = self.runtime.clone();
         let disable_next_line = self.disable_next_line.clone();
+        let execution_generation = self.execution_generation.clone();
+        let generation = execution_generation.load(Ordering::Relaxed);
         let future = async move {
-            run_step_loop(&runtime).await?;
-            disable_next_line.store(false, Ordering::Relaxed);
+            run_step_loop(&runtime, &execution_generation, generation).await?;
+            if !is_execution_stale(&execution_generation, generation) {
+                disable_next_line.store(false, Ordering::Relaxed);
+            }
             Ok::<(), anyhow::Error>(())
         };
 
@@ -698,37 +692,54 @@ impl ScenarioPlugin {
 /// when JS callbacks (e.g. setVariable) re-enter the scenario plugin.
 async fn run_step_loop(
     runtime: &Arc<Mutex<Runtime<ScenarioExecutor>>>,
+    execution_generation: &Arc<AtomicU64>,
+    generation: u64,
 ) -> std::result::Result<(), anyhow::Error> {
     use moyu_core::utils::eval_in_sandbox::eval_in_sandbox;
     use moyu_pal::dir::assets_dir;
 
     loop {
-        // Acquire lock, run one synchronous step, then release lock
+        if is_execution_stale(execution_generation, generation) {
+            return Ok(());
+        }
+
         let step_result = {
             let mut rt = runtime.lock();
+            if is_execution_stale(execution_generation, generation) {
+                return Ok(());
+            }
             rt.step().map_err(anyhow::Error::from)
-        }; // lock released here
+        };
 
         match step_result? {
             StepResult::Done => return Ok(()),
             StepResult::NeedsCondition(condition) => {
-                // Evaluate condition outside the lock
                 let ret = eval_in_sandbox(format!("Boolean({})", condition)).await?;
                 let result = ret.as_bool().unwrap_or(false);
-                // Re-acquire lock to provide result
+                if is_execution_stale(execution_generation, generation) {
+                    return Ok(());
+                }
+
                 let mut rt = runtime.lock();
+                if is_execution_stale(execution_generation, generation) {
+                    return Ok(());
+                }
                 rt.resume_condition(result);
             }
             StepResult::NeedsScript(script) => {
-                // Evaluate script outside the lock
                 let ret = eval_in_sandbox(format!("(() => {{ {} }})()", script)).await?;
                 let literal = convert_to_literal(ret);
-                // Re-acquire lock to provide result
+                if is_execution_stale(execution_generation, generation) {
+                    return Ok(());
+                }
+
                 let mut rt = runtime.lock();
+                if is_execution_stale(execution_generation, generation) {
+                    return Ok(());
+                }
                 rt.resume_script(Some(RValue::Literal(literal)), true);
             }
             StepResult::NeedsStoryFile(story_name) => {
-                // Load story file outside the lock
                 let asset_full_path = assets_dir()
                     .join(&format!("scenario/{}.sixu", story_name))
                     .map_err(|e| {
@@ -740,13 +751,23 @@ async fn run_step_loop(
                     })?;
                 let data = moyu_pal::fs::read(&asset_full_path).await?;
                 log::info!("Loaded scenario from file: {}", asset_full_path);
-                // Re-acquire lock to provide data
+                if is_execution_stale(execution_generation, generation) {
+                    return Ok(());
+                }
+
                 let mut rt = runtime.lock();
+                if is_execution_stale(execution_generation, generation) {
+                    return Ok(());
+                }
                 rt.provide_story_data(&story_name, data)
                     .map_err(anyhow::Error::from)?;
             }
         }
     }
+}
+
+fn is_execution_stale(execution_generation: &Arc<AtomicU64>, generation: u64) -> bool {
+    execution_generation.load(Ordering::Relaxed) != generation
 }
 
 impl Plugin for ScenarioPlugin {
@@ -756,16 +777,22 @@ impl Plugin for ScenarioPlugin {
                 let _ = self.waiting.take();
 
                 let runtime = self.runtime.clone();
+                let execution_generation = self.execution_generation.clone();
+                let generation = execution_generation.load(Ordering::Relaxed);
                 moyu_pal::task::spawn(async move {
-                    if let Err(err) = run_step_loop(&runtime).await {
+                    if let Err(err) = run_step_loop(&runtime, &execution_generation, generation).await {
                         log::error!("Error during scenario execution after wait: {}", err);
                     }
                 });
             }
         }
 
-        if let Ok(event) = self.receiver.try_recv() {
-            self.track_cursor_event(&event);
+        let mut events = Vec::new();
+        while let Some(event) = self.take_queued_event() {
+            events.push(event);
+        }
+
+        for event in events {
             self.send_event(event);
         }
     }
@@ -786,9 +813,19 @@ impl PluginEventSource for ScenarioPlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{MarkerEnter, TextLine};
     use sixu::format::Literal;
     use sixu::parser::parse;
     use sixu::runtime::StepResult;
+    use std::sync::Once;
+
+    static PLATFORM_SETUP: Once = Once::new();
+
+    fn setup_test_platform() {
+        PLATFORM_SETUP.call_once(|| {
+            let _ = moyu_pal::platform::setup();
+        });
+    }
 
     fn build_plugin(script: &str) -> ScenarioPlugin {
         let (_, story) = parse("test", script).unwrap();
@@ -803,7 +840,7 @@ mod tests {
 
     #[tokio::test]
     async fn checkpoint_roundtrip_restores_variables_and_cursor() {
-        let _platform = moyu_pal::platform::setup();
+        setup_test_platform();
 
         let mut plugin = build_plugin(
             r#"
@@ -861,5 +898,91 @@ after
         assert_eq!(cursor.story, "test");
         assert_eq!(cursor.paragraph, "entry");
         assert_eq!(cursor.marker_id.as_deref(), Some("Lstart"));
+    }
+
+    #[tokio::test]
+    async fn restore_checkpoint_clears_stale_events() {
+        setup_test_platform();
+
+        let mut plugin = build_plugin(
+            r#"
+::entry {
+text
+}
+"#,
+        );
+
+        plugin.capture_checkpoint_state("cp1").unwrap();
+        plugin
+            .sender
+            .try_send(ScenarioEvent::Text(TextLine {
+                leading: None,
+                text: Some("stale".to_string()),
+                tailing: None,
+            }))
+            .unwrap();
+
+        assert!(plugin.restore_checkpoint_state("cp1").unwrap());
+        assert!(plugin.receiver.try_recv().is_err());
+    }
+
+    #[test]
+    fn queued_events_are_drained_in_order() {
+        let mut plugin = ScenarioPlugin::new();
+
+        plugin
+            .sender
+            .try_send(ScenarioEvent::MarkerEnter(MarkerEnter {
+                marker_id: "L1".to_string(),
+                story: "test".to_string(),
+                paragraph: "entry".to_string(),
+            }))
+            .unwrap();
+        plugin
+            .sender
+            .try_send(ScenarioEvent::Text(TextLine {
+                leading: None,
+                text: Some("hello".to_string()),
+                tailing: None,
+            }))
+            .unwrap();
+        plugin.sender.try_send(ScenarioEvent::Finished).unwrap();
+
+        let mut drained = Vec::new();
+        while let Some(event) = plugin.take_queued_event() {
+            drained.push(event);
+        }
+
+        assert_eq!(drained.len(), 3);
+        assert!(matches!(drained[0], ScenarioEvent::MarkerEnter(_)));
+        assert!(matches!(drained[1], ScenarioEvent::Text(_)));
+        assert!(matches!(drained[2], ScenarioEvent::Finished));
+        assert_eq!(*plugin.current_marker_id.lock(), None);
+    }
+
+    #[test]
+    fn marked_text_emits_marker_after_line_event_and_stores_remote_checkpoint() {
+        let mut plugin = build_plugin(
+            r#"
+::entry {
+//#marker id=L1
+text
+}
+"#,
+        );
+
+        {
+            let mut runtime = plugin.runtime.lock();
+            assert!(matches!(runtime.step(), Ok(StepResult::Done)));
+        }
+
+        let first = plugin.take_queued_event().unwrap();
+        let second = plugin.take_queued_event().unwrap();
+
+        assert!(matches!(first, ScenarioEvent::Text(_)));
+        assert!(matches!(second, ScenarioEvent::MarkerEnter(_)));
+
+        let checkpoint = plugin.checkpoints.lock().get("L1").cloned().unwrap();
+        assert_eq!(checkpoint.cursor.unwrap().marker_id.as_deref(), Some("L1"));
     }
 }

@@ -93,16 +93,8 @@ enum ScenarioCommand {
     Record {
         meta: HashMap<String, serde_json::Value>,
     },
-    /// capture the current runtime snapshot for debug checkpoint usage
-    CaptureCheckpoint {
-        key: String,
-    },
     /// restore a previously captured debug checkpoint
     RestoreCheckpoint {
-        key: String,
-    },
-    /// drop a previously captured debug checkpoint
-    DropCheckpoint {
         key: String,
     },
     /// clear all captured debug checkpoints
@@ -163,6 +155,7 @@ impl Command for ScenarioPlugin {
             }
             ScenarioCommand::StartStory { name, entry } => {
                 log::info!("start story: {}", name);
+                self.begin_runtime_transition();
                 self.runtime.lock().start(&name, entry.as_deref())?;
                 self.clear_backlog();
                 self.reset_debug_state();
@@ -170,6 +163,7 @@ impl Command for ScenarioPlugin {
             }
             ScenarioCommand::TerminateStory => {
                 log::info!("terminate story");
+                self.begin_runtime_transition();
                 self.runtime.lock().terminate()?;
                 self.clear_backlog();
                 self.reset_debug_state();
@@ -273,14 +267,8 @@ impl Command for ScenarioPlugin {
             ScenarioCommand::Record { meta } => {
                 return self.record(meta).map(Some);
             }
-            ScenarioCommand::CaptureCheckpoint { key } => {
-                return self.capture_checkpoint(&key).map(Some);
-            }
             ScenarioCommand::RestoreCheckpoint { key } => {
                 return self.restore_checkpoint(&key).map(Some);
-            }
-            ScenarioCommand::DropCheckpoint { key } => {
-                return self.drop_checkpoint(&key).map(Some);
             }
             ScenarioCommand::ClearCheckpoints => {
                 self.clear_checkpoints();
@@ -299,9 +287,11 @@ impl Command for ScenarioPlugin {
                 if !overwrite && !self.runtime.lock().context().stack().is_empty() {
                     return Err(anyhow::anyhow!("Current game session is not empty"));
                 }
-                return self.load_save_data_from_file(&name).map(Some);
+                let generation = self.begin_runtime_transition();
+                return self.load_save_data_from_file(&name, generation).map(Some);
             }
             ScenarioCommand::ResetGame => {
+                self.begin_runtime_transition();
                 let mut runtime = self.runtime.lock();
                 let ctx = runtime.context_mut();
                 ctx.stack_mut().clear();
