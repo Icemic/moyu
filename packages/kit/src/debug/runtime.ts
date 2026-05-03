@@ -7,6 +7,7 @@ import {
 } from './session';
 
 interface DebugParams {
+  debug?: boolean;
   debugSessionId?: string;
   debugWsUrl?: string;
 }
@@ -231,6 +232,7 @@ async function readDebugParams(): Promise<DebugParams> {
   try {
     const parsed = JSON.parse(rawParams) as Record<string, unknown>;
     return {
+      debug: parsed.debug === true,
       debugSessionId: typeof parsed.debugSessionId === 'string' ? parsed.debugSessionId : undefined,
       debugWsUrl: typeof parsed.debugWsUrl === 'string' ? parsed.debugWsUrl : undefined,
     };
@@ -265,7 +267,7 @@ export async function startRuntimeDebugSession(): Promise<void> {
   await stopRuntimeDebugSession();
 
   const params = await readDebugParams();
-  if (!params.debugSessionId || !params.debugWsUrl) {
+  if (params.debug !== true || !params.debugSessionId || !params.debugWsUrl) {
     return;
   }
 
