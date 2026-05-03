@@ -26,6 +26,14 @@ interface JumpRequestMessage {
   markerId: string;
 }
 
+interface RouteRequestMessage {
+  type: 'route:request';
+  sessionId: string;
+  requestId: number;
+  page: string;
+  params?: Record<string, unknown>;
+}
+
 interface JumpDoneMessage {
   type: 'jump:done';
   sessionId: string;
@@ -41,7 +49,25 @@ interface JumpErrorMessage {
   error: string;
 }
 
-type RuntimeDebugIncomingMessage = JumpRequestMessage | { type?: string; sessionId?: string; [key: string]: unknown };
+interface RouteDoneMessage {
+  type: 'route:done';
+  sessionId: string;
+  requestId: number;
+  page: string;
+}
+
+interface RouteErrorMessage {
+  type: 'route:error';
+  sessionId: string;
+  requestId: number;
+  page: string;
+  error: string;
+}
+
+type RuntimeDebugIncomingMessage =
+  | JumpRequestMessage
+  | RouteRequestMessage
+  | { type?: string; sessionId?: string; [key: string]: unknown };
 
 interface RuntimeWebSocketMessageEvent {
   data: unknown;
@@ -68,8 +94,11 @@ type RuntimeDebugConnection = {
   socket: RuntimeWebSocket;
 };
 
+type RuntimeDebugRequestMessage = JumpRequestMessage | RouteRequestMessage;
+
 let currentConnection: RuntimeDebugConnection | null = null;
 let currentController: DebugSessionController | null = null;
+let bufferedRequestMessages: RuntimeDebugRequestMessage[] = [];
 
 function getRuntimeWebSocket(): RuntimeWebSocketConstructor | null {
   return (globalThis as { WebSocket?: RuntimeWebSocketConstructor }).WebSocket ?? null;
@@ -84,9 +113,20 @@ function isJumpRequestMessage(message: RuntimeDebugIncomingMessage): message is 
   );
 }
 
+function isRouteRequestMessage(message: RuntimeDebugIncomingMessage): message is RouteRequestMessage {
+  return (
+    message.type === 'route:request' &&
+    typeof message.sessionId === 'string' &&
+    typeof message.requestId === 'number' &&
+    typeof message.page === 'string' &&
+    (message.params === undefined ||
+      (typeof message.params === 'object' && message.params !== null && !Array.isArray(message.params)))
+  );
+}
+
 function sendRuntimeDebugMessage(
   socket: RuntimeWebSocket,
-  message: MarkerEnterMessage | JumpDoneMessage | JumpErrorMessage,
+  message: MarkerEnterMessage | JumpDoneMessage | JumpErrorMessage | RouteDoneMessage | RouteErrorMessage,
 ): void {
   const RuntimeWebSocket = getRuntimeWebSocket();
   if (!RuntimeWebSocket || socket.readyState !== RuntimeWebSocket.OPEN) {
@@ -94,6 +134,89 @@ function sendRuntimeDebugMessage(
   }
 
   socket.send(JSON.stringify(message));
+}
+
+function clearBufferedRequestMessages() {
+  bufferedRequestMessages = [];
+}
+
+function bufferRequestMessage(message: RuntimeDebugRequestMessage) {
+  bufferedRequestMessages.push(message);
+}
+
+function flushBufferedRequestMessages(socket: RuntimeWebSocket, sessionId: string) {
+  const messages = bufferedRequestMessages;
+  bufferedRequestMessages = [];
+
+  for (const message of messages) {
+    handleRuntimeDebugRequest(socket, sessionId, message);
+  }
+}
+
+function handleRuntimeDebugRequest(
+  socket: RuntimeWebSocket,
+  sessionId: string,
+  message: RuntimeDebugRequestMessage,
+) {
+  const controller = currentController;
+  if (!controller) {
+    bufferRequestMessage(message);
+    return;
+  }
+
+  if (isJumpRequestMessage(message)) {
+    void controller
+      .restoreCheckpoint(message.markerId)
+      .then((restored) => {
+        if (!restored) {
+          sendRuntimeDebugMessage(socket, {
+            type: 'jump:error',
+            sessionId,
+            requestId: message.requestId,
+            markerId: message.markerId,
+            error: 'Checkpoint not found',
+          });
+          return;
+        }
+
+        sendRuntimeDebugMessage(socket, {
+          type: 'jump:done',
+          sessionId,
+          requestId: message.requestId,
+          markerId: message.markerId,
+        });
+      })
+      .catch((error) => {
+        sendRuntimeDebugMessage(socket, {
+          type: 'jump:error',
+          sessionId,
+          requestId: message.requestId,
+          markerId: message.markerId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    return;
+  }
+
+  void controller
+    .switchPage(message.page, message.params)
+    .then(() => {
+      sendRuntimeDebugMessage(socket, {
+        type: 'route:done',
+        sessionId,
+        requestId: message.requestId,
+        page: message.page,
+      });
+    })
+    .catch((error) => {
+      sendRuntimeDebugMessage(socket, {
+        type: 'route:error',
+        sessionId,
+        requestId: message.requestId,
+        page: message.page,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
 }
 
 async function readDebugParams(): Promise<DebugParams> {
@@ -120,6 +243,7 @@ export async function stopRuntimeDebugSession(): Promise<void> {
   const connection = currentConnection;
   currentConnection = null;
   currentController = null;
+  clearBufferedRequestMessages();
   const RuntimeWebSocket = getRuntimeWebSocket();
 
   await stopDebugSession();
@@ -180,6 +304,7 @@ export async function startRuntimeDebugSession(): Promise<void> {
     })
       .then((controller) => {
         currentController = controller;
+        flushBufferedRequestMessages(socket, sessionId);
       })
       .catch((error) => {
         console.error('[debug] failed to start runtime debug session:', error);
@@ -194,6 +319,7 @@ export async function startRuntimeDebugSession(): Promise<void> {
 
     currentConnection = null;
     currentController = null;
+    clearBufferedRequestMessages();
     void stopDebugSession();
   };
 
@@ -217,48 +343,12 @@ export async function startRuntimeDebugSession(): Promise<void> {
       }
 
       if (isJumpRequestMessage(message)) {
-        const controller = currentController;
-        if (!controller) {
-          sendRuntimeDebugMessage(socket, {
-            type: 'jump:error',
-            sessionId,
-            requestId: message.requestId,
-            markerId: message.markerId,
-            error: 'Debug session is not ready',
-          });
-          return;
-        }
+        handleRuntimeDebugRequest(socket, sessionId, message);
+        return;
+      }
 
-        void controller
-          .restoreCheckpoint(message.markerId)
-          .then((restored) => {
-            if (!restored) {
-              sendRuntimeDebugMessage(socket, {
-                type: 'jump:error',
-                sessionId,
-                requestId: message.requestId,
-                markerId: message.markerId,
-                error: 'Checkpoint not found',
-              });
-              return;
-            }
-
-            sendRuntimeDebugMessage(socket, {
-              type: 'jump:done',
-              sessionId,
-              requestId: message.requestId,
-              markerId: message.markerId,
-            });
-          })
-          .catch((error) => {
-            sendRuntimeDebugMessage(socket, {
-              type: 'jump:error',
-              sessionId,
-              requestId: message.requestId,
-              markerId: message.markerId,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          });
+      if (isRouteRequestMessage(message)) {
+        handleRuntimeDebugRequest(socket, sessionId, message);
         return;
       }
 

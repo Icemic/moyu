@@ -8,6 +8,7 @@ import { executePluginCommand } from '../moyu';
 export interface AppStateAdapter<TState = unknown> {
   capture(): TState | Promise<TState>;
   restore(state: TState): void | Promise<void>;
+  switchPage?(page: string, params?: Record<string, unknown>): void | Promise<void>;
 }
 
 export type CombinedCheckpoint<TState = unknown> = {
@@ -22,6 +23,7 @@ export interface DebugSessionConfig {
 
 export interface DebugSessionController {
   restoreCheckpoint(markerId: string): Promise<boolean>;
+  switchPage(page: string, params?: Record<string, unknown>): Promise<void>;
 }
 
 type AnyAdapter = AppStateAdapter<any>;
@@ -135,6 +137,23 @@ const debugSessionController: DebugSessionController = {
       }
     });
   },
+
+  async switchPage(page, params) {
+    return enqueueDebugOperation(async () => {
+      debugState.lastError = null;
+
+      try {
+        if (!appStateAdapter?.switchPage) {
+          throw new Error('Page switching is not supported by the app state adapter');
+        }
+
+        await appStateAdapter.switchPage(page, params);
+      } catch (error) {
+        debugState.lastError = toErrorMessage(error);
+        throw error;
+      }
+    });
+  },
 };
 
 export function registerAppStateAdapter<TState = unknown>(adapter: AppStateAdapter<TState> | null): void {
@@ -236,5 +255,6 @@ export function useDebugSession() {
     startDebugSession,
     stopDebugSession,
     restoreCheckpoint: debugSessionController.restoreCheckpoint,
+    switchPage: debugSessionController.switchPage,
   };
 }
