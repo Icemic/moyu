@@ -1,6 +1,5 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: too tight for this file */
-import React from 'react';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, type ComponentType, type FC } from 'react';
 import { proxy, type Snapshot, useSnapshot } from 'valtio';
 
 // ============================================================================
@@ -57,13 +56,13 @@ export type DefaultPageName = GetPages<RootNavigatorList>;
 export type DefaultOverlayName = GetOverlays<RootNavigatorList>;
 
 export interface PageDescriptor {
-  component: React.ComponentType<any>;
+  component: ComponentType<any>;
   options?: Record<string, any>;
   requiredParams?: string[];
 }
 
 export interface OverlayDescriptor {
-  component: React.ComponentType<any>;
+  component: ComponentType<any>;
   options?: Record<string, any>;
   requiredParams?: string[];
 }
@@ -88,6 +87,11 @@ export interface Navigator<PageName extends string = DefaultPageName, OverlayNam
    * @param params Parameters to pass to the page (optional)
    */
   navigate: (page: PageName, params?: Record<string, any>) => void;
+
+  /**
+   * Check whether a page exists in the navigator configuration.
+   */
+  hasPage: (page: string) => boolean;
 
   /**
    * Go back to the previous page (not implemented yet)
@@ -258,6 +262,10 @@ export function createStackNavigator<
       }
     },
 
+    hasPage: (page) => {
+      return normalizedPages[page] !== undefined;
+    },
+
     goBack: () => {
       // TODO: Implement history stack
       console.warn('goBack() not implemented yet');
@@ -332,7 +340,7 @@ export function createStackNavigator<
  * @param navigator The navigator instance
  * @returns A React component that renders the navigation state
  */
-export function createStaticNavigation(navigator: Navigator<any, any>): React.FC {
+export function createStaticNavigation(navigator: Navigator<any, any>): FC {
   return () => {
     // navigator._state is a Valtio proxy, useSnapshot makes it reactive
     const navState = useSnapshot(navigator._state as any) as NavigationState;
