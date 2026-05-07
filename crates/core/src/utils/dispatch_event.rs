@@ -65,6 +65,6 @@ pub fn dispatch_event_with_config<T: Event>(event: T, try_sync: bool) {
     } else {
         let closure = wasm_bindgen::prelude::Closure::once_into_js(dispatch);
         let window = web_sys::window().unwrap();
-        let _ = window.set_timeout_with_callback(closure.as_ref().unchecked_ref());
+        let _ = window.queue_microtask(closure.as_ref().unchecked_ref());
     }
 }
