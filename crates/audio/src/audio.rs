@@ -11,6 +11,7 @@ pub struct Audio {
     pub(crate) handle: Option<StaticSoundHandle>,
     pub(crate) loading_state: AudioLoadingState,
     pub(crate) volume: f64,
+    pub(crate) stale: bool,
 }
 
 #[derive(Debug)]
@@ -34,6 +35,7 @@ impl Audio {
             handle: None,
             loading_state: AudioLoadingState::Unloaded,
             volume: 1.0,
+            stale: false,
         }
     }
 

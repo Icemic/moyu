@@ -147,7 +147,9 @@ impl AudioManager {
 
         if let Some(old) = self.audios.remove(name) {
             warn!("Audio {} already exists, stopping it", name);
-            old.lock().stop(None).ok();
+            let mut old = old.lock();
+            old.stale = true;
+            old.stop(None).ok();
         }
 
         let audio = Arc::new(Mutex::new(Audio::new()));
@@ -166,6 +168,7 @@ impl AudioManager {
         for audio_name in audio_names {
             if let Some(audio) = self.audios.remove(&audio_name) {
                 let mut audio = audio.lock();
+                audio.stale = true;
                 if audio.played()
                     && let Err(err) = audio.stop(fade_time)
                 {
@@ -234,6 +237,10 @@ impl AudioManager {
             });
 
             let mut audio = audio.lock();
+            if audio.stale {
+                return Ok(());
+            }
+
             audio.sound = Some(sound_data);
             audio.loading_state = AudioLoadingState::Loaded;
             audio.volume = settings.volume;
