@@ -25,6 +25,8 @@ interface JumpRequestMessage {
   sessionId: string;
   requestId: number;
   markerId: string;
+  boundary?: 'before' | 'after';
+  strategy?: 'fast-forward' | 'warp';
 }
 
 interface RouteRequestMessage {
@@ -110,7 +112,9 @@ function isJumpRequestMessage(message: RuntimeDebugIncomingMessage): message is 
     message.type === 'jump:request' &&
     typeof message.sessionId === 'string' &&
     typeof message.requestId === 'number' &&
-    typeof message.markerId === 'string'
+    typeof message.markerId === 'string' &&
+    (message.boundary === undefined || message.boundary === 'before' || message.boundary === 'after') &&
+    (message.strategy === undefined || message.strategy === 'fast-forward' || message.strategy === 'warp')
   );
 }
 
@@ -166,8 +170,15 @@ function handleRuntimeDebugRequest(
   }
 
   if (isJumpRequestMessage(message)) {
-    void controller
-      .restoreCheckpoint(message.markerId)
+    const runJump =
+      message.strategy === 'warp'
+        ? controller.warp({
+            markerId: message.markerId,
+            boundary: message.boundary,
+          }).then(() => true)
+        : controller.restoreCheckpoint(message.markerId);
+
+    void runJump
       .then((restored) => {
         if (!restored) {
           sendRuntimeDebugMessage(socket, {
