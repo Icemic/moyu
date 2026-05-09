@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-05-09
+
 ### Breaking
 
 - Introduce global volume control for audio instances via `setGlobalVolume` command, allowing real-time volume adjustment and wildcard matching for dynamic channels.
