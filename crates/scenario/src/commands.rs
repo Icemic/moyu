@@ -8,6 +8,7 @@ use sixu::format::Literal;
 use ts_rs::TS;
 
 use crate::ScenarioPlugin;
+use crate::types::WarpBoundary;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(
@@ -101,6 +102,15 @@ enum ScenarioCommand {
     ClearCheckpoints,
     /// get the current execution cursor
     GetExecutionCursor,
+    /// get the nearest available checkpoint before a target marker in the current story
+    GetFastForwardCheckpoint {
+        key: String,
+    },
+    /// warp to a target marker by running the internal buffered fast-forward loop
+    Warp {
+        marker_id: String,
+        boundary: WarpBoundary,
+    },
     /// get backlog records in reverse chronological order
     GetRecords {
         offset: Option<usize>,
@@ -276,6 +286,15 @@ impl Command for ScenarioPlugin {
             }
             ScenarioCommand::GetExecutionCursor => {
                 return self.get_execution_cursor().map(Some);
+            }
+            ScenarioCommand::GetFastForwardCheckpoint { key } => {
+                return self.get_fast_forward_checkpoint(&key).map(Some);
+            }
+            ScenarioCommand::Warp {
+                marker_id,
+                boundary,
+            } => {
+                return self.warp(&marker_id, boundary).map(Some);
             }
             ScenarioCommand::GetRecords { offset, limit } => {
                 return self.get_records(offset, limit).map(Some);

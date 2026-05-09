@@ -26,19 +26,18 @@ use moyu_pal::fs::{
 use moyu_pal::sync::Mutex;
 use moyu_pal::sync::mpsc::{Receiver, Sender};
 use sixu::BlockFingerprint;
-use sixu::format::Block;
 use sixu::format::RValue;
+use sixu::format::{Block, ChildContent, Story};
 use sixu::runtime::{ExecutionState, Runtime, StepResult};
 use zip::write::SimpleFileOptions;
 
-use crate::executor::ScenarioExecutor;
+use crate::executor::{ScenarioExecutor, WarpState};
 use crate::types::{
-    BacklogState, ExecutionCursor, GameData, RuntimeCheckpoint, RuntimeSnapshot,
-    ScenarioEvent, ScenarioRecord, WaitingState,
+    BacklogState, ExecutionCursor, GameData, RuntimeCheckpoint, RuntimeSnapshot, ScenarioEvent,
+    ScenarioRecord, WarpBoundary, WaitingState,
 };
 use crate::utils::{
-    convert_to_literal, create_runtime_snapshot_from_context, next_record_id,
-    prune_backlog_blocks, snapshot_blocks, timestamp_millis,
+    convert_to_literal, next_record_id, prune_backlog_blocks, snapshot_blocks, timestamp_millis,
 };
 
 const METADATA_VERSION: u32 = 2;
@@ -55,7 +54,9 @@ pub struct ScenarioPlugin {
     pub receiver: Receiver<ScenarioEvent>,
     backlog: Arc<Mutex<BacklogState>>,
     checkpoints: Arc<Mutex<HashMap<String, RuntimeCheckpoint>>>,
+    checkpoint_blocks: Arc<Mutex<HashMap<BlockFingerprint, Block>>>,
     current_marker_id: Arc<Mutex<Option<String>>>,
+    warp_state: Arc<Mutex<Option<WarpState>>>,
     waiting: Option<WaitingState>,
     /// Disable reacting to next line requests
     disable_next_line: Arc<AtomicBool>,
@@ -68,14 +69,17 @@ impl ScenarioPlugin {
 
         let context = RuntimeContext::new();
 
-        let (sender, receiver) = moyu_pal::sync::mpsc::channel(100);
+        let (sender, receiver) = moyu_pal::sync::mpsc::channel(10000);
 
         let checkpoints = Arc::new(Mutex::new(HashMap::new()));
+        let checkpoint_blocks = Arc::new(Mutex::new(HashMap::new()));
         let current_marker_id = Arc::new(Mutex::new(None));
-
+        let warp_state = Arc::new(Mutex::new(None));
         let executor = ScenarioExecutor::new(
             sender.clone(),
             checkpoints.clone(),
+            checkpoint_blocks.clone(),
+            warp_state.clone(),
         );
         let runtime = Runtime::new_with_context(executor, context);
 
@@ -85,7 +89,9 @@ impl ScenarioPlugin {
             receiver,
             backlog: Arc::new(Mutex::new(BacklogState::default())),
             checkpoints,
+            checkpoint_blocks,
             current_marker_id,
+            warp_state,
             waiting: Default::default(),
             disable_next_line: Arc::new(AtomicBool::new(false)),
             execution_generation: Arc::new(AtomicU64::new(0)),
@@ -125,6 +131,7 @@ impl ScenarioPlugin {
 
     fn clear_checkpoints(&self) {
         self.checkpoints.lock().clear();
+        self.checkpoint_blocks.lock().clear();
     }
 
     fn drain_pending_events(&mut self) {
@@ -135,6 +142,7 @@ impl ScenarioPlugin {
         let generation = self.execution_generation.fetch_add(1, Ordering::Relaxed) + 1;
         self.waiting = None;
         self.disable_next_line.store(false, Ordering::Relaxed);
+        *self.warp_state.lock() = None;
         self.drain_pending_events();
         generation
     }
@@ -161,19 +169,90 @@ impl ScenarioPlugin {
         to_js(&self.build_execution_cursor()?)
     }
 
+    fn collect_block_markers(block: &Block, markers: &mut Vec<String>) {
+        for child in block.children() {
+            if let Some(marker) = &child.marker {
+                markers.push(marker.id.clone());
+            }
+
+            if let ChildContent::Block(block) = &child.content {
+                Self::collect_block_markers(block, markers);
+            }
+        }
+    }
+
+    fn collect_story_markers(story: &Story) -> Vec<String> {
+        let mut markers = Vec::new();
+
+        for paragraph in &story.paragraphs {
+            Self::collect_block_markers(&paragraph.block, &mut markers);
+        }
+
+        markers
+    }
+
+    fn get_fast_forward_checkpoint(&self, key: &str) -> Result<JSValue> {
+        let (marker_exists, checkpoint_key) = self.get_fast_forward_checkpoint_info(key)?;
+        to_js(&serde_json::json!({
+            "markerExists": marker_exists,
+            "checkpointKey": checkpoint_key,
+        }))
+    }
+
+    fn get_fast_forward_checkpoint_info(&self, key: &str) -> Result<(bool, Option<String>)> {
+        let Some(cursor) = self.build_execution_cursor()? else {
+            return Ok((false, None));
+        };
+
+        let markers = {
+            let runtime = self.runtime.lock();
+            let Some(story) = runtime
+                .context()
+                .stories()
+                .iter()
+                .find(|story| story.name == cursor.story)
+            else {
+                return Ok((false, None));
+            };
+
+            Self::collect_story_markers(story)
+        };
+
+        let Some(target_index) = markers.iter().position(|marker_id| marker_id == key) else {
+            return Ok((false, None));
+        };
+
+        let checkpoints = self.checkpoints.lock();
+        for marker_id in markers[..target_index].iter().rev() {
+            let Some(checkpoint) = checkpoints.get(marker_id) else {
+                continue;
+            };
+            let Some(checkpoint_cursor) = checkpoint.cursor.as_ref() else {
+                continue;
+            };
+            if checkpoint_cursor.story == cursor.story {
+                return Ok((true, Some(marker_id.clone())));
+            }
+        }
+
+        Ok((true, None))
+    }
+
     #[cfg(test)]
     fn capture_checkpoint_state(&mut self, key: &str) -> Result<()> {
-        let (snapshot, blocks) = self.create_runtime_snapshot()?;
+        let snapshot = {
+            let runtime = self.runtime.lock();
+            let mut checkpoint_blocks = self.checkpoint_blocks.lock();
+            crate::utils::create_runtime_snapshot_from_context(
+                runtime.context(),
+                &mut checkpoint_blocks,
+            )?
+        };
         let cursor = self.build_execution_cursor()?;
 
-        self.checkpoints.lock().insert(
-            key.to_string(),
-            RuntimeCheckpoint {
-                cursor,
-                snapshot,
-                blocks,
-            },
-        );
+        self.checkpoints
+            .lock()
+            .insert(key.to_string(), RuntimeCheckpoint { cursor, snapshot });
 
         Ok(())
     }
@@ -188,7 +267,14 @@ impl ScenarioPlugin {
         };
 
         self.begin_runtime_transition();
-        Self::restore_runtime_snapshot(&self.runtime, &checkpoint.snapshot, &checkpoint.blocks)?;
+        {
+            let checkpoint_blocks = self.checkpoint_blocks.lock();
+            Self::restore_runtime_snapshot(
+                &self.runtime,
+                &checkpoint.snapshot,
+                &checkpoint_blocks,
+            )?;
+        }
         *self.current_marker_id.lock() = checkpoint.cursor.and_then(|cursor| cursor.marker_id);
 
         Ok(true)
@@ -214,8 +300,11 @@ impl ScenarioPlugin {
     fn create_runtime_snapshot(
         &self,
     ) -> Result<(RuntimeSnapshot, HashMap<BlockFingerprint, Block>)> {
+        let mut blocks = HashMap::new();
         let runtime = self.runtime.lock();
-        create_runtime_snapshot_from_context(runtime.context())
+        let snapshot =
+            crate::utils::create_runtime_snapshot_from_context(runtime.context(), &mut blocks)?;
+        Ok((snapshot, blocks))
     }
 
     fn restore_runtime_snapshot(
@@ -668,7 +757,6 @@ impl ScenarioPlugin {
         }
 
         self.disable_next_line.store(true, Ordering::Relaxed);
-
         let runtime = self.runtime.clone();
         let disable_next_line = self.disable_next_line.clone();
         let execution_generation = self.execution_generation.clone();
@@ -678,6 +766,65 @@ impl ScenarioPlugin {
             if !is_execution_stale(&execution_generation, generation) {
                 disable_next_line.store(false, Ordering::Relaxed);
             }
+            Ok::<(), anyhow::Error>(())
+        };
+
+        create_promise(future)
+    }
+
+    pub fn warp(&mut self, marker_id: &str, boundary: WarpBoundary) -> Result<JSValue> {
+        let generation = self.begin_runtime_transition();
+        self.disable_next_line.store(true, Ordering::Relaxed);
+
+        *self.warp_state.lock() =
+            Some(WarpState::new(marker_id.to_string(), boundary));
+
+        let runtime = self.runtime.clone();
+        let sender = self.sender.clone();
+        let warp_state = self.warp_state.clone();
+        let current_marker_id = self.current_marker_id.clone();
+        let disable_next_line = self.disable_next_line.clone();
+        let execution_generation = self.execution_generation.clone();
+        let target_marker_id = marker_id.to_string();
+
+        let future = async move {
+            let outcome = run_warp_loop(
+                &runtime,
+                &execution_generation,
+                generation,
+                &warp_state,
+            )
+            .await?;
+
+            let replay_state = warp_state.lock().take();
+
+            if !is_execution_stale(&execution_generation, generation) {
+                disable_next_line.store(false, Ordering::Relaxed);
+            }
+
+            let Some(replay_state) = replay_state else {
+                return Ok::<(), anyhow::Error>(());
+            };
+
+            if matches!(outcome, WarpLoopOutcome::Stale) {
+                return Ok::<(), anyhow::Error>(());
+            }
+
+            if replay_state.reached_target {
+                *current_marker_id.lock() = Some(target_marker_id);
+            }
+
+            for event in replay_state.events {
+                sender.send(event).await.map_err(anyhow::Error::from)?;
+            }
+
+            if matches!(outcome, WarpLoopOutcome::ReachedTarget) {
+                sender
+                    .send(ScenarioEvent::WarpFinished)
+                    .await
+                    .map_err(anyhow::Error::from)?;
+            }
+
             Ok::<(), anyhow::Error>(())
         };
 
@@ -766,6 +913,44 @@ async fn run_step_loop(
     }
 }
 
+enum WarpLoopOutcome {
+    ReachedTarget,
+    FinishedWithoutTarget,
+    Stale,
+}
+
+async fn run_warp_loop(
+    runtime: &Arc<Mutex<Runtime<ScenarioExecutor>>>,
+    execution_generation: &Arc<AtomicU64>,
+    generation: u64,
+    warp_state: &Arc<Mutex<Option<WarpState>>>,
+) -> std::result::Result<WarpLoopOutcome, anyhow::Error> {
+    loop {
+        if is_execution_stale(execution_generation, generation) {
+            return Ok(WarpLoopOutcome::Stale);
+        }
+
+        run_step_loop(runtime, execution_generation, generation).await?;
+
+        if is_execution_stale(execution_generation, generation) {
+            return Ok(WarpLoopOutcome::Stale);
+        }
+
+        let warp_state = warp_state.lock();
+        let Some(state) = warp_state.as_ref() else {
+            return Ok(WarpLoopOutcome::Stale);
+        };
+
+        if state.reached_target {
+            return Ok(WarpLoopOutcome::ReachedTarget);
+        }
+
+        if state.reached_finished {
+            return Ok(WarpLoopOutcome::FinishedWithoutTarget);
+        }
+    }
+}
+
 fn is_execution_stale(execution_generation: &Arc<AtomicU64>, generation: u64) -> bool {
     execution_generation.load(Ordering::Relaxed) != generation
 }
@@ -780,7 +965,9 @@ impl Plugin for ScenarioPlugin {
                 let execution_generation = self.execution_generation.clone();
                 let generation = execution_generation.load(Ordering::Relaxed);
                 moyu_pal::task::spawn(async move {
-                    if let Err(err) = run_step_loop(&runtime, &execution_generation, generation).await {
+                    if let Err(err) =
+                        run_step_loop(&runtime, &execution_generation, generation).await
+                    {
                         log::error!("Error during scenario execution after wait: {}", err);
                     }
                 });
@@ -984,5 +1171,51 @@ text
 
         let checkpoint = plugin.checkpoints.lock().get("L1").cloned().unwrap();
         assert_eq!(checkpoint.cursor.unwrap().marker_id.as_deref(), Some("L1"));
+    }
+
+    #[test]
+    fn fast_forward_checkpoint_uses_latest_previous_marker_in_current_story() {
+        let plugin = build_plugin(
+            r#"
+::entry {
+//#marker id=L1
+first
+//#marker id=L2
+second
+//#marker id=L3
+third
+}
+"#,
+        );
+
+        {
+            let mut runtime = plugin.runtime.lock();
+            assert!(matches!(runtime.step(), Ok(StepResult::Done)));
+            assert!(matches!(runtime.step(), Ok(StepResult::Done)));
+        }
+
+        assert_eq!(
+            plugin.get_fast_forward_checkpoint_info("L3").unwrap(),
+            (true, Some("L2".to_string()))
+        );
+    }
+
+    #[test]
+    fn fast_forward_checkpoint_reports_missing_previous_checkpoint_for_first_marker() {
+        let plugin = build_plugin(
+            r#"
+::entry {
+//#marker id=L1
+first
+//#marker id=L2
+second
+}
+"#,
+        );
+
+        assert_eq!(
+            plugin.get_fast_forward_checkpoint_info("L1").unwrap(),
+            (true, None)
+        );
     }
 }

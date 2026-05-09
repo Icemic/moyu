@@ -73,32 +73,26 @@ pub(crate) fn prune_backlog_blocks(backlog: &mut BacklogState) {
 
 pub(crate) fn create_runtime_snapshot_from_context(
     context: &RuntimeContext,
-) -> Result<(RuntimeSnapshot, HashMap<BlockFingerprint, Block>)> {
-    let mut blocks = HashMap::new();
-    let stack = context
-        .stack()
-        .iter()
-        .map(|state| {
-            let fingerprint = state.block.fingerprint();
-            blocks
-                .entry(fingerprint)
-                .or_insert_with(|| state.block.clone());
+    blocks: &mut HashMap<BlockFingerprint, Block>,
+) -> Result<RuntimeSnapshot> {
+    let mut stack = Vec::with_capacity(context.stack().len());
 
-            SavedExecutionState {
-                story: state.story.clone(),
-                paragraph: state.paragraph.clone(),
-                block_fingerprint: fingerprint,
-                index: state.index,
-                is_loop_body: state.is_loop_body,
-            }
-        })
-        .collect::<Vec<_>>();
+    for state in context.stack().iter() {
+        let fingerprint = state.block.fingerprint();
 
-    Ok((
-        RuntimeSnapshot {
-            stack,
-            variables: serde_json::Value::from(context.archive_variables().clone()),
-        },
-        blocks,
-    ))
+        if let std::collections::hash_map::Entry::Vacant(entry) = blocks.entry(fingerprint) {
+            entry.insert(state.block.clone());
+        }
+
+        stack.push(SavedExecutionState {
+            story: state.story.clone(),
+            paragraph: state.paragraph.clone(),
+            block_fingerprint: fingerprint,
+            index: state.index,
+            is_loop_body: state.is_loop_body,
+        });
+    }
+    let variables = serde_json::Value::from(context.archive_variables().clone());
+
+    Ok(RuntimeSnapshot { stack, variables })
 }
