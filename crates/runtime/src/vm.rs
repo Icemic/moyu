@@ -4,7 +4,7 @@ use std::ffi::c_void;
 use std::ptr::null_mut;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Instant;
 
 use moyu_pal::config::get_engine_config;
@@ -53,6 +53,7 @@ pub struct QuickVM {
     promise_resolvers: Arc<Mutex<HashMap<u64, PromiseResolvers>>>,
     /// Promise resolution task queue
     promise_tasks: Arc<Mutex<VecDeque<PromiseTask>>>,
+    wake_pending: AtomicBool,
     to_be_closed: bool,
 }
 
@@ -227,6 +228,7 @@ impl QuickVM {
             async_tasks: Arc::new(Mutex::new(VecDeque::new())),
             promise_resolvers: Arc::new(Mutex::new(HashMap::new())),
             promise_tasks: Arc::new(Mutex::new(VecDeque::new())),
+            wake_pending: AtomicBool::new(false),
             to_be_closed: false,
         }
     }
@@ -242,6 +244,10 @@ impl QuickVM {
     /// Execute a function in the context of the vm and in quickjs thread.
     pub fn on_vm_thread(&self, f: impl FnOnce(&Self) + Send + 'static) {
         self.async_tasks.lock().unwrap().push_back(Box::new(f));
+
+        if !self.wake_pending.swap(true, Ordering::Relaxed) {
+            crate::invoke_vm_wake_hook();
+        }
     }
 
     /// Check if in VM thread
@@ -421,37 +427,87 @@ impl QuickVM {
         }
     }
 
-    /// Tick the VM, executing all pending timers
-    pub fn tick(&self) -> bool {
-        if self.to_be_closed {
-            return true;
-        }
+    fn drain_async_tasks(&self) -> bool {
+        let mut drained = false;
 
-        // like microtasks in js, execute all async tasks until the queue is empty
         loop {
-            let mut async_tasks = self.async_tasks.lock().unwrap();
-            if let Some(task) = async_tasks.pop_front() {
-                drop(async_tasks);
+            let task = {
+                let mut async_tasks = self.async_tasks.lock().unwrap();
+                async_tasks.pop_front()
+            };
+
+            if let Some(task) = task {
+                drained = true;
                 task(self);
             } else {
                 break;
             }
         }
 
-        // handle all pending calls
-        let mut call_tasks = self.call_tasks.lock().unwrap();
-        while let Some((name, args, sender)) = call_tasks.pop_front() {
-            let _result = self.context().call_function(&name, args);
-            sender.send(()).unwrap();
+        drained
+    }
+
+    fn drain_call_tasks(&self) -> bool {
+        let mut drained = false;
+
+        loop {
+            let task = {
+                let mut call_tasks = self.call_tasks.lock().unwrap();
+                call_tasks.pop_front()
+            };
+
+            if let Some((name, args, sender)) = task {
+                drained = true;
+                let _result = self.context().call_function(&name, args);
+                sender.send(()).unwrap();
+            } else {
+                break;
+            }
         }
 
-        // drop the lock before executing the tasks to avoid deadlocks
-        drop(call_tasks);
+        drained
+    }
 
-        // Process Promise tasks
-        self.process_promise_tasks();
+    fn drain_promise_resolution_tasks(&self) -> bool {
+        let has_pending_tasks = !self.promise_tasks.lock().unwrap().is_empty();
+        if has_pending_tasks {
+            self.process_promise_tasks();
+        }
 
-        self.context().execute_pending_job().unwrap();
+        has_pending_tasks
+    }
+
+    fn has_pending_microtasks(&self) -> bool {
+        !self.async_tasks.lock().unwrap().is_empty()
+            || !self.call_tasks.lock().unwrap().is_empty()
+            || !self.promise_tasks.lock().unwrap().is_empty()
+    }
+
+    fn run_microtask_checkpoint(&self) {
+        loop {
+            let mut made_progress = false;
+
+            made_progress |= self.drain_async_tasks();
+            made_progress |= self.drain_call_tasks();
+            made_progress |= self.drain_promise_resolution_tasks();
+
+            self.context().execute_pending_job().unwrap();
+
+            if !made_progress && !self.has_pending_microtasks() {
+                break;
+            }
+        }
+    }
+
+    /// Tick the VM, executing all pending timers
+    pub fn tick(&self) -> bool {
+        if self.to_be_closed {
+            return true;
+        }
+
+        self.wake_pending.store(false, Ordering::Relaxed);
+
+        self.run_microtask_checkpoint();
 
         // filter out all tasks that are ready to be executed
         let timer_tasks = self.timer_tasks.lock().unwrap();
@@ -470,6 +526,8 @@ impl QuickVM {
         // execute the tasks
         for task in tasks_to_execute.drain(..) {
             task.callback.call(vec![]).unwrap();
+
+            self.run_microtask_checkpoint();
 
             // remove the task from the list
             let mut timer_tasks = self.timer_tasks.lock().unwrap();

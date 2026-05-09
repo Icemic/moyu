@@ -671,6 +671,7 @@ impl Graphics {
 
                     self.texture_pool.borrow_mut().cleanup(timestamp);
 
+                    #[cfg(web)]
                     self.window.request_redraw();
                 }
                 RenderCommand::WriteBuffer {
