@@ -4,4 +4,12 @@ import type { ResolvedCommandLine } from './ResolvedCommandLine';
 import type { ResolvedSystemCallLine } from './ResolvedSystemCallLine';
 import type { TextLine } from './TextLine';
 
-export type ScenarioEvent = MarkerEnter | ResolvedCommandLine | ResolvedSystemCallLine | TextLine | null | null | null;
+export type ScenarioEvent =
+  | MarkerEnter
+  | ResolvedCommandLine
+  | ResolvedSystemCallLine
+  | TextLine
+  | null
+  | null
+  | null
+  | null;

@@ -68,11 +68,29 @@ interface AutoBarrier {
   settled: boolean;
 }
 
+export interface FastForwardOptions {
+  stepLimit?: number;
+  timeLimitMs?: number;
+  onAbort?: (error: Error) => void;
+  warp?: boolean;
+}
+
+interface FastForwardRuntime {
+  stepLimit: number;
+  timeLimitMs: number;
+  stepCount: number;
+  startedAt: number;
+  onAbort?: (error: Error) => void;
+  warp: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Skip state — independent valtio proxy (not serialized with game saves)
 // ---------------------------------------------------------------------------
 
 const SKIP_INTERVAL_MS = 80;
+const DEFAULT_FAST_FORWARD_STEP_LIMIT = 10000;
+const DEFAULT_FAST_FORWARD_TIME_LIMIT_MS = 3000;
 
 const autoRuntime = {
   defaultTailMs: 0,
@@ -84,6 +102,12 @@ export const skipState = proxy({ active: false });
 /** Reactive auto state. Actors read via useIsAutoing(). */
 export const autoState = proxy({ active: false });
 
+/** Reactive fast-forward state. Actors read via useIsSeeking(). */
+export const fastForwardState = proxy({ active: false });
+
+/** Reactive warp state. Handlers use this to suppress live-only behavior during warp. */
+export const warpState = proxy({ active: false });
+
 /** Reactively returns whether skip (Ctrl fast-forward) is active. */
 export function useIsSkipping(): boolean {
   return useSnapshot(skipState).active;
@@ -92,6 +116,18 @@ export function useIsSkipping(): boolean {
 /** Reactively returns whether auto mode is active. */
 export function useIsAutoing(): boolean {
   return useSnapshot(autoState).active;
+}
+
+/** Reactively returns whether any seek (fast-forward or warp) is active. */
+export function useIsSeeking(): boolean {
+  return useSnapshot(fastForwardState).active;
+}
+
+/** Returns the current seek type, or null when no seek is active. */
+export function getSeekingType(): 'warp' | 'fast-forward' | null {
+  if (warpState.active) return 'warp';
+  if (fastForwardState.active) return 'fast-forward';
+  return null;
 }
 
 /** Set the default tail delay in milliseconds for newly created auto tickets. */
@@ -267,6 +303,128 @@ export function createStage() {
   let _autoBarrierSeq = 0;
   let _autoTicketSeq = 0;
   const _pendingAutoTickets = new Map<number, AutoTicketRecord>();
+  let _fastForwardRuntime: FastForwardRuntime | null = null;
+  let _managedAdvanceInFlight = false;
+  let _managedAdvancePending = false;
+
+  function resetManagedAdvanceState() {
+    _managedAdvanceInFlight = false;
+    _managedAdvancePending = false;
+  }
+
+  function clearFastForwardRuntime() {
+    _fastForwardRuntime = null;
+    resetManagedAdvanceState();
+  }
+
+  function stopFastForwardInternal() {
+    fastForwardState.active = false;
+    warpState.active = false;
+    clearFastForwardRuntime();
+  }
+
+  function abortFastForward(error: Error) {
+    const runtime = _fastForwardRuntime;
+    stopFastForwardInternal();
+
+    if (!runtime?.onAbort) {
+      return;
+    }
+
+    try {
+      runtime.onAbort(error);
+    } catch (abortError) {
+      console.error('Error in fast-forward abort callback:', abortError);
+    }
+  }
+
+  function canAdvanceFastForward() {
+    if (!fastForwardState.active || _fastForwardRuntime === null) {
+      return true;
+    }
+
+    const elapsedMs = Date.now() - _fastForwardRuntime.startedAt;
+    if (elapsedMs > _fastForwardRuntime.timeLimitMs) {
+      abortFastForward(new Error(`Fast forward exceeded time limit (${_fastForwardRuntime.timeLimitMs}ms)`));
+      return false;
+    }
+
+    _fastForwardRuntime.stepCount += 1;
+    if (_fastForwardRuntime.stepCount > _fastForwardRuntime.stepLimit) {
+      abortFastForward(new Error(`Fast forward exceeded step limit (${_fastForwardRuntime.stepLimit})`));
+      return false;
+    }
+
+    return true;
+  }
+
+  function normalizeAdvanceError(error: unknown): Error {
+    return error instanceof Error ? error : new Error(String(error));
+  }
+
+  function isManagedAdvanceActive() {
+    return fastForwardState.active || skipState.active || autoState.active;
+  }
+
+  function canScheduleManagedAdvance() {
+    if (fastForwardState.active) {
+      return canAdvanceFastForward();
+    }
+
+    return true;
+  }
+
+  function handleManagedAdvanceError(error: unknown) {
+    console.error('Failed to advance scenario:', error);
+
+    if (fastForwardState.active) {
+      abortFastForward(normalizeAdvanceError(error));
+    }
+  }
+
+  function scheduleManagedAdvance() {
+    if (!isManagedAdvanceActive()) {
+      _managedAdvancePending = false;
+      return;
+    }
+
+    if (_managedAdvanceInFlight) {
+      _managedAdvancePending = true;
+      return;
+    }
+
+    if (!canScheduleManagedAdvance()) {
+      _managedAdvancePending = false;
+      return;
+    }
+
+    _managedAdvanceInFlight = true;
+    _managedAdvancePending = false;
+
+    void Promise.resolve(nextLine())
+      .catch(handleManagedAdvanceError)
+      .finally(() => {
+        _managedAdvanceInFlight = false;
+
+        if (!isManagedAdvanceActive()) {
+          _managedAdvancePending = false;
+          return;
+        }
+
+        if (_managedAdvancePending) {
+          scheduleManagedAdvance();
+        }
+      });
+  }
+
+  function requestNextLine() {
+    if (isManagedAdvanceActive()) {
+      scheduleManagedAdvance();
+      return;
+    }
+
+    void Promise.resolve(nextLine()).catch(handleManagedAdvanceError);
+  }
 
   function clearAutoResumeTimer() {
     if (_autoResumeTimer !== null) {
@@ -312,7 +470,7 @@ export function createStage() {
       if (_autoBarrier === null || _autoBarrier.id !== barrierId) return;
 
       _autoBarrier = null;
-      void nextLine();
+      requestNextLine();
     }, safeDelayMs);
   }
 
@@ -487,7 +645,7 @@ export function createStage() {
         return;
       }
       if (_autoBarrier === null) {
-        void nextLine();
+        requestNextLine();
       }
     }, autoRuntime.defaultTailMs);
   }
@@ -497,13 +655,14 @@ export function createStage() {
     if (_skipTimer !== null) clearTimeout(_skipTimer);
     _skipTimer = setTimeout(() => {
       _skipTimer = null;
-      if (skipState.active) nextLine();
+      if (skipState.active) requestNextLine();
     }, SKIP_INTERVAL_MS);
   }
 
   /** Enter skip mode. Called when Ctrl is pressed. */
   function startSkip() {
     if (skipState.active) return;
+    if (fastForwardState.active) return;
     if (isAnyBlockerActive()) return;
     skipState.active = true;
     invokeSkipCallbacks(); // finish current animations
@@ -518,7 +677,7 @@ export function createStage() {
       clearTimeout(_skipTimer);
       _skipTimer = null;
       // ensure engine continues normally
-      nextLine();
+      requestNextLine();
     }
   }
 
@@ -528,6 +687,7 @@ export function createStage() {
 
   function startAuto() {
     if (autoState.active) return;
+    if (fastForwardState.active) return;
     if (isAnyAutoBlockerActive()) return;
     autoState.active = true;
     tryInterrupt(); // finish current printing
@@ -548,9 +708,36 @@ export function createStage() {
     return autoState.active;
   }
 
+  function startFastForward(options?: FastForwardOptions) {
+    if (fastForwardState.active) return;
+
+    resetRuntimeState();
+    _fastForwardRuntime = {
+      stepLimit: Math.max(1, options?.stepLimit ?? DEFAULT_FAST_FORWARD_STEP_LIMIT),
+      timeLimitMs: Math.max(1, options?.timeLimitMs ?? DEFAULT_FAST_FORWARD_TIME_LIMIT_MS),
+      stepCount: 0,
+      startedAt: Date.now(),
+      onAbort: options?.onAbort,
+      warp: options?.warp === true,
+    };
+    fastForwardState.active = true;
+    warpState.active = _fastForwardRuntime.warp;
+  }
+
+  function stopFastForward() {
+    stopFastForwardInternal();
+  }
+
+  function isFastForwarding(): boolean {
+    return fastForwardState.active;
+  }
+
   function resetRuntimeState() {
     skipState.active = false;
     autoState.active = false;
+    fastForwardState.active = false;
+    warpState.active = false;
+    clearFastForwardRuntime();
 
     if (_skipTimer !== null) {
       clearTimeout(_skipTimer);
@@ -570,12 +757,21 @@ export function createStage() {
 
   /** Build a one-shot GameControl for a single dispatch cycle. */
   function buildControl(): { control: GameControl; wasHandled: () => boolean } {
-    let handled = false;
+    const warpActive = warpState.active;
+    let handled = warpActive;
     let unskippableFlag = false;
+    const inertRecordId = '__warp__';
 
     const control: GameControl = {
       setWaiting(time: number, skippable: boolean) {
         handled = true;
+        if (warpActive) {
+          return;
+        }
+        if (fastForwardState.active) {
+          requestNextLine();
+          return;
+        }
         if (skipState.active) {
           // Skip mode: finish residual animations and continue the chain
           invokeSkipCallbacks();
@@ -593,6 +789,13 @@ export function createStage() {
       },
       hold() {
         handled = true;
+        if (warpActive) {
+          return;
+        }
+        if (fastForwardState.active) {
+          requestNextLine();
+          return;
+        }
         if (skipState.active && !unskippableFlag) {
           if (isAnyBlockerActive()) {
             stopSkip();
@@ -612,12 +815,22 @@ export function createStage() {
       },
       nextLine() {
         handled = true;
-        void nextLine();
+        if (warpActive) {
+          return;
+        }
+        requestNextLine();
       },
       unskippable() {
+        if (warpActive) {
+          return;
+        }
         unskippableFlag = true;
       },
       record(meta: Record<string, any>) {
+        if (warpActive) {
+          return inertRecordId;
+        }
+
         const result = executePluginCommand('scenario', {
           subCommand: 'record',
           meta,
@@ -666,14 +879,14 @@ export function createStage() {
       cmd = transformCommand(e);
     } catch (err) {
       console.error('Failed to transform scenario command:', err);
-      void nextLine();
+      requestNextLine();
       return;
     }
 
     const handler = commandHandlers.get(cmd.command);
     if (!handler) {
       console.warn(`[Stage] No handler registered for command "${cmd.command}". Auto-advancing.`);
-      void nextLine();
+      requestNextLine();
       return;
     }
 
@@ -682,7 +895,7 @@ export function createStage() {
 
     // Default: auto-advance if handler didn't explicitly control flow
     if (!wasHandled()) {
-      void nextLine();
+      requestNextLine();
     }
   }
 
@@ -692,8 +905,9 @@ export function createStage() {
     for (const handler of textLineHandlers) {
       handler(e, control);
     }
+
     if (!wasHandled()) {
-      void nextLine();
+      requestNextLine();
     }
   }
 
@@ -747,6 +961,9 @@ export function createStage() {
     startAuto,
     stopAuto,
     isAutoing,
+    startFastForward,
+    stopFastForward,
+    isFastForwarding,
     resetRuntimeState,
     bindEvents,
   };
