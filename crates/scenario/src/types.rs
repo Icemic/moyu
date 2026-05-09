@@ -7,6 +7,13 @@ use sixu::format::Block;
 use sixu::format::{ResolvedCommandLine, ResolvedSystemCallLine};
 use ts_rs::TS;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum WarpBoundary {
+    Before,
+    After,
+}
+
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", untagged)]
 #[ts(export, optional_fields)]
@@ -18,6 +25,7 @@ pub enum ScenarioEvent {
     Finished,
     Waiting,
     WaitingCancelled,
+    WarpFinished,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -55,6 +63,7 @@ impl Event for ScenarioEvent {
             ScenarioEvent::Finished => "scenarioFinished",
             ScenarioEvent::Waiting => "scenarioWaiting",
             ScenarioEvent::WaitingCancelled => "scenarioWaitingCancelled",
+            ScenarioEvent::WarpFinished => "scenarioWarpFinished",
         }
     }
 }
@@ -85,7 +94,6 @@ pub struct RuntimeSnapshot {
 pub struct RuntimeCheckpoint {
     pub cursor: Option<ExecutionCursor>,
     pub snapshot: RuntimeSnapshot,
-    pub blocks: HashMap<BlockFingerprint, Block>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
