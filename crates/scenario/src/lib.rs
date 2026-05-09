@@ -44,6 +44,12 @@ const METADATA_VERSION: u32 = 2;
 const MAX_RECORDS: usize = 50;
 const ZIP_COMMENT: &str = "MOYU\0";
 
+/// Maximum number of internal steps per single run_step_loop call.
+/// Prevents infinite loops caused by unconditional goto/replace/call cycles
+/// that never yield a text line or command (which would otherwise deadlock
+/// the async executor indefinitely).
+const MAX_STEPS_PER_RUN: usize = 100_000;
+
 #[derive(Plugin)]
 pub struct ScenarioPlugin {
     /// The runtime that handles scenario execution
@@ -762,11 +768,11 @@ impl ScenarioPlugin {
         let execution_generation = self.execution_generation.clone();
         let generation = execution_generation.load(Ordering::Relaxed);
         let future = async move {
-            run_step_loop(&runtime, &execution_generation, generation).await?;
+            let result = run_step_loop(&runtime, &execution_generation, generation).await;
             if !is_execution_stale(&execution_generation, generation) {
                 disable_next_line.store(false, Ordering::Relaxed);
             }
-            Ok::<(), anyhow::Error>(())
+            result
         };
 
         create_promise(future)
@@ -794,13 +800,15 @@ impl ScenarioPlugin {
                 generation,
                 &warp_state,
             )
-            .await?;
+            .await;
 
             let replay_state = warp_state.lock().take();
 
             if !is_execution_stale(&execution_generation, generation) {
                 disable_next_line.store(false, Ordering::Relaxed);
             }
+
+            let outcome = outcome?;
 
             let Some(replay_state) = replay_state else {
                 return Ok::<(), anyhow::Error>(());
@@ -845,9 +853,21 @@ async fn run_step_loop(
     use moyu_core::utils::eval_in_sandbox::eval_in_sandbox;
     use moyu_pal::dir::assets_dir;
 
+    let mut steps: usize = 0;
+
     loop {
         if is_execution_stale(execution_generation, generation) {
             return Ok(());
+        }
+
+        steps += 1;
+        if steps > MAX_STEPS_PER_RUN {
+            return Err(anyhow::anyhow!(
+                "Scenario execution exceeded the maximum step limit per run ({} steps). \
+                 This is likely caused by an unconditional infinite loop in the script \
+                 (e.g. a #goto/#replace cycle with no reachable exit).",
+                MAX_STEPS_PER_RUN
+            ));
         }
 
         let step_result = {
@@ -913,6 +933,13 @@ async fn run_step_loop(
     }
 }
 
+/// Maximum number of outer iterations in run_warp_loop.
+/// Each iteration corresponds to one complete run_step_loop call (ending at a
+/// text line or command). This bounds the total number of "segments" traversed
+/// during a single warp, preventing infinite loops caused by goto cycles that
+/// always pass through at least one text/command line before looping back.
+const MAX_WARP_OUTER_ITERATIONS: usize = 100000;
+
 enum WarpLoopOutcome {
     ReachedTarget,
     FinishedWithoutTarget,
@@ -925,9 +952,21 @@ async fn run_warp_loop(
     generation: u64,
     warp_state: &Arc<Mutex<Option<WarpState>>>,
 ) -> std::result::Result<WarpLoopOutcome, anyhow::Error> {
+    let mut outer_iterations: usize = 0;
+
     loop {
         if is_execution_stale(execution_generation, generation) {
             return Ok(WarpLoopOutcome::Stale);
+        }
+
+        outer_iterations += 1;
+        if outer_iterations > MAX_WARP_OUTER_ITERATIONS {
+            return Err(anyhow::anyhow!(
+                "Warp exceeded the maximum outer iteration limit ({} iterations). \
+                 The target marker may be unreachable due to a goto/replace loop \
+                 in the script.",
+                MAX_WARP_OUTER_ITERATIONS
+            ));
         }
 
         run_step_loop(runtime, execution_generation, generation).await?;
