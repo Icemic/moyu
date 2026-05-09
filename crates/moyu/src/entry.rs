@@ -9,9 +9,10 @@ use moyu_core::setup;
 use moyu_core::surface::create_window;
 use moyu_core::utils::dispatch_event::dispatch_event;
 use moyu_core::winit::application::ApplicationHandler;
+use moyu_core::winit::event::StartCause;
 #[cfg(native)]
 use moyu_core::winit::event::WindowEvent;
-use moyu_core::winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
+use moyu_core::winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 #[cfg(any(desktop, web))]
 use moyu_gamepad::GamepadPlugin;
 use moyu_nodes::nodes::{Animation, Backdrop, Clip, Filter, Sprite, Text, Video};
@@ -26,6 +27,8 @@ use moyu_pal::visible_hand::VisibleHand;
 #[cfg(native)]
 use moyu_runtime::QuickVM;
 use moyu_scenario::ScenarioPlugin;
+#[cfg(native)]
+use std::time::{Duration, Instant};
 
 #[allow(dead_code)]
 pub async fn main_entry(event_loop: EventLoop<ApplicationInitEvent>, #[cfg(web)] element_id: &str) {
@@ -35,6 +38,14 @@ pub async fn main_entry(event_loop: EventLoop<ApplicationInitEvent>, #[cfg(web)]
     setup();
 
     let event_proxy = event_loop.create_proxy();
+
+    #[cfg(native)]
+    moyu_runtime::set_vm_wake_hook(Arc::new({
+        let event_proxy = event_proxy.clone();
+        move || {
+            let _ = event_proxy.send_event(ApplicationInitEvent::VmWake);
+        }
+    }));
 
     let mut app = Application::new(
         event_proxy,
@@ -49,6 +60,7 @@ pub async fn main_entry(event_loop: EventLoop<ApplicationInitEvent>, #[cfg(web)]
 pub(crate) enum ApplicationInitEvent {
     #[default]
     Start,
+    VmWake,
     Graphic,
     Plugin,
     LoadUserScript,
@@ -60,7 +72,9 @@ struct Application {
     #[cfg(web)]
     element_id: String,
     #[cfg(native)]
-    loop_helper: Option<spin_sleep_util::Interval>,
+    frame_interval: Duration,
+    #[cfg(native)]
+    next_redraw_at: Option<Instant>,
 
     initialized: bool,
 
@@ -81,7 +95,9 @@ impl Application {
             #[cfg(web)]
             element_id: element_id.to_string(),
             #[cfg(native)]
-            loop_helper: None,
+            frame_interval: Duration::from_secs_f64(1.0 / 60.0),
+            #[cfg(native)]
+            next_redraw_at: None,
             initialized: false,
             _vm_handle: Arc::new(Mutex::new(None)),
             _core_handle: Arc::new(Mutex::new(None)),
@@ -91,13 +107,51 @@ impl Application {
     pub fn core(&self) -> Option<&Arc<Core>> {
         try_get_core()
     }
+
+    #[cfg(native)]
+    fn schedule_next_redraw(&mut self, now: Instant) {
+        let next = match self.next_redraw_at {
+            Some(scheduled_at) => {
+                let mut candidate = scheduled_at;
+
+                while candidate <= now {
+                    candidate = candidate
+                        .checked_add(self.frame_interval)
+                        .unwrap_or(now);
+                }
+
+                candidate
+            }
+            None => now.checked_add(self.frame_interval).unwrap_or(now),
+        };
+
+        self.next_redraw_at = Some(next);
+    }
 }
 
 impl ApplicationHandler<ApplicationInitEvent> for Application {
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+        #[cfg(native)]
+        if matches!(cause, StartCause::ResumeTimeReached { .. })
+            && self.initialized
+            && self.next_redraw_at.is_some()
+        {
+            if let Some(core) = self.core() {
+                core.window().request_redraw();
+            }
+        }
+    }
+
     fn user_event(&mut self, _: &ActiveEventLoop, event: ApplicationInitEvent) {
         match event {
             ApplicationInitEvent::Start => {
                 // do nothing
+            }
+            ApplicationInitEvent::VmWake => {
+                #[cfg(native)]
+                if let Some(vm) = moyu_runtime::try_get_vm() {
+                    vm.tick();
+                }
             }
             ApplicationInitEvent::Graphic => {
                 let core = get_core().clone();
@@ -216,6 +270,12 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 core.window().set_visible(true);
                 core.window().request_redraw();
 
+                #[cfg(native)]
+                {
+                    let now = Instant::now();
+                    self.schedule_next_redraw(now);
+                }
+
                 // show splash screen
                 if !get_engine_config().skip_splash {
                     let core = core.clone();
@@ -251,10 +311,8 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
 
             log::info!("max refresh rate: {}", refresh_rate_max / 1000);
 
-            let loop_helper = spin_sleep_util::interval(
-                std::time::Duration::from_secs(1) / (refresh_rate_max / 1000),
-            );
-            self.loop_helper = Some(loop_helper);
+            self.frame_interval = Duration::from_secs_f64(1000.0 / refresh_rate_max as f64);
+            self.next_redraw_at = None;
         };
 
         let window = create_window(
@@ -275,12 +333,28 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
     }
 
     fn suspended(&mut self, _: &moyu_core::winit::event_loop::ActiveEventLoop) {
+        #[cfg(native)]
+        {
+            self.next_redraw_at = None;
+        }
         log::warn!("Suspended");
     }
 
     fn about_to_wait(&mut self, event_loop: &moyu_core::winit::event_loop::ActiveEventLoop) {
         if let Some(core) = self.core() {
             core.handle_about_to_wait(event_loop);
+        }
+
+        #[cfg(native)]
+        {
+            let control_flow = if self.initialized {
+                self.next_redraw_at
+                    .map(ControlFlow::WaitUntil)
+                    .unwrap_or(ControlFlow::Wait)
+            } else {
+                ControlFlow::Wait
+            };
+            event_loop.set_control_flow(control_flow);
         }
     }
 
@@ -300,9 +374,8 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
 
         #[cfg(native)]
         if let WindowEvent::RedrawRequested = event {
-            if let Some(loop_helper) = &mut self.loop_helper {
-                loop_helper.tick();
-            }
+            let now = Instant::now();
+            self.schedule_next_redraw(now);
         }
     }
 }

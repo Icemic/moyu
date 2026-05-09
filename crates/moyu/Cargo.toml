@@ -27,8 +27,6 @@ name = "libmoyu"
 path = "src/lib.rs"
 
 [dependencies]
-spin_sleep_util = "0.1.1"
-
 log = {workspace = true}
 
 moyu_audio = {workspace = true}
