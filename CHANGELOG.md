@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- (Scenario) Support local context and add local variable management commands
+
 ## [0.12.0] - 2026-05-09
 
 ### Breaking

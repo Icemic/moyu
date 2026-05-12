@@ -36,6 +36,10 @@ export type ScenarioCommand =
   | { subCommand: 'getVariable'; name: string }
   | { subCommand: 'setVariables'; variables: { [key in string]: JsonValue } }
   | { subCommand: 'getVariables' }
+  | { subCommand: 'setLocalVariable'; name: string; value: JsonValue }
+  | { subCommand: 'getLocalVariable'; name: string }
+  | { subCommand: 'setLocalVariables'; variables: { [key in string]: JsonValue } }
+  | { subCommand: 'getLocalVariables' }
   | { subCommand: 'setPermanentVariable'; key: string; value: JsonValue }
   | { subCommand: 'getPermanentVariable'; key: string }
   | { subCommand: 'setPermanentVariables'; variables: { [key in string]: JsonValue } }

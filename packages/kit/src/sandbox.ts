@@ -2,8 +2,36 @@ import { executePluginCommand } from './moyu';
 
 // Snapshot of JS built-in globals captured at init time, used to let them bypass the sandbox proxy
 const JS_GLOBAL_KEYS = new Set(Object.getOwnPropertyNames(globalThis));
-const JS_GLOBAL_KEYS_EXCLUDED = new Set(['window', 'globalThis', 'ARCHIVE', 'GLOBAL']);
-JS_GLOBAL_KEYS_EXCLUDED.forEach((key) => JS_GLOBAL_KEYS.delete(key));
+const JS_GLOBAL_KEYS_EXCLUDED = new Set(['window', 'globalThis', 'LOCAL', 'ARCHIVE', 'GLOBAL']);
+JS_GLOBAL_KEYS_EXCLUDED.forEach((key) => {
+  JS_GLOBAL_KEYS.delete(key);
+});
+
+const localVariables = new Proxy(
+  {},
+  {
+    get(_, key) {
+      if (typeof key === 'string') {
+        return executePluginCommand('scenario', {
+          subCommand: 'getLocalVariable',
+          name: key,
+        });
+      }
+      return undefined;
+    },
+    set(_, key, value) {
+      if (typeof key === 'string') {
+        executePluginCommand('scenario', {
+          subCommand: 'setLocalVariable',
+          name: key,
+          value,
+        });
+        return true;
+      }
+      return false;
+    },
+  },
+);
 
 const archiveVariables = new Proxy(
   {},
@@ -65,10 +93,18 @@ function safeEval(code: string, sandbox: Record<string, any>) {
         return false;
       }
 
-      return key in target || key === 'ARCHIVE' || key === 'GLOBAL' || key === 'window' || key === 'globalThis';
+      return (
+        key in target ||
+        key === 'LOCAL' ||
+        key === 'ARCHIVE' ||
+        key === 'GLOBAL' ||
+        key === 'window' ||
+        key === 'globalThis'
+      );
     },
     get(target, key) {
       if (key === 'window' || key === 'globalThis') return proxy; // Make window/globalThis refer to the sandbox itself
+      if (key === 'LOCAL') return localVariables;
       if (key === 'ARCHIVE') return archiveVariables;
       if (key === 'GLOBAL') return globalVariables;
 

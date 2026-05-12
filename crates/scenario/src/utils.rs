@@ -90,6 +90,11 @@ pub(crate) fn create_runtime_snapshot_from_context(
             block_fingerprint: fingerprint,
             index: state.index,
             is_loop_body: state.is_loop_body,
+            locals: state
+                .locals
+                .clone()
+                .map(Literal::Object)
+                .map(serde_json::Value::from),
         });
     }
     let variables = serde_json::Value::from(context.archive_variables().clone());

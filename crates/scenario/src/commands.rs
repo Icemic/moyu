@@ -66,6 +66,21 @@ enum ScenarioCommand {
     },
     /// Get all variables from current game session
     GetVariables,
+    /// Set a paragraph-local variable for the current invocation
+    SetLocalVariable {
+        name: String,
+        value: serde_json::Value,
+    },
+    /// Get a paragraph-local variable for the current invocation
+    GetLocalVariable {
+        name: String,
+    },
+    /// Set multiple paragraph-local variables for the current invocation
+    SetLocalVariables {
+        variables: HashMap<String, serde_json::Value>,
+    },
+    /// Get all paragraph-local variables for the current invocation
+    GetLocalVariables,
 
     /// Set a permanent variable that will be saved across game sessions
     SetPermanentVariable {
@@ -222,6 +237,33 @@ impl Command for ScenarioPlugin {
                 let runtime = self.runtime.lock();
                 let game_vars = runtime.context().archive_variables();
                 return Ok(Some(to_js(&game_vars)?));
+            }
+            ScenarioCommand::SetLocalVariable { name, value } => {
+                let mut runtime = self.runtime.lock();
+                runtime.context_mut().set_local(name, value.into())?;
+                return Ok(None);
+            }
+            ScenarioCommand::GetLocalVariable { name } => {
+                let runtime = self.runtime.lock();
+                let value = runtime.context().get_local(&name);
+                return Ok(Some(to_js(&value)?));
+            }
+            ScenarioCommand::SetLocalVariables { variables } => {
+                let mut runtime = self.runtime.lock();
+                let ctx = runtime.context_mut();
+
+                let variables = variables
+                    .into_iter()
+                    .map(|(k, v)| (k, v.into()))
+                    .collect::<HashMap<String, Literal>>();
+
+                ctx.set_locals(variables)?;
+                return Ok(None);
+            }
+            ScenarioCommand::GetLocalVariables => {
+                let runtime = self.runtime.lock();
+                let locals = runtime.context().current_paragraph_locals().cloned();
+                return Ok(Some(to_js(&locals)?));
             }
             ScenarioCommand::SetPermanentVariable { key: name, value } => {
                 {

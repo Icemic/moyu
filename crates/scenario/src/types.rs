@@ -82,6 +82,7 @@ pub struct SavedExecutionState {
     pub block_fingerprint: BlockFingerprint,
     pub index: usize,
     pub is_loop_body: bool,
+    pub locals: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

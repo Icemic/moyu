@@ -27,7 +27,7 @@ use moyu_pal::sync::Mutex;
 use moyu_pal::sync::mpsc::{Receiver, Sender};
 use sixu::BlockFingerprint;
 use sixu::format::RValue;
-use sixu::format::{Block, ChildContent, Story};
+use sixu::format::{Block, ChildContent, Literal, Story};
 use sixu::runtime::{ExecutionState, Runtime, StepResult};
 use zip::write::SimpleFileOptions;
 
@@ -332,12 +332,31 @@ impl ScenarioPlugin {
                         )
                     })?;
 
+                let locals = match &state.locals {
+                    Some(value) => {
+                        let literal = Literal::from(value.clone());
+                        match literal {
+                            Literal::Object(map) => Some(map),
+                            other => {
+                                return Err(anyhow::anyhow!(
+                                    "Saved locals for {}::{} must be an object, got {}",
+                                    state.story,
+                                    state.paragraph,
+                                    other.to_string()
+                                ));
+                            }
+                        }
+                    }
+                    None => None,
+                };
+
                 Ok(ExecutionState {
                     story: state.story.clone(),
                     paragraph: state.paragraph.clone(),
                     block,
                     index: state.index,
                     is_loop_body: state.is_loop_body,
+                    locals,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
@@ -1086,6 +1105,10 @@ after
                 .as_object_mut()
                 .unwrap()
                 .insert("value".to_string(), Literal::Integer(1));
+            runtime
+                .context_mut()
+                .set_local("choice".to_string(), Literal::String("alpha".to_string()))
+                .unwrap();
             assert!(matches!(runtime.step(), Ok(StepResult::Done)));
         }
 
@@ -1103,6 +1126,10 @@ after
                 .as_object_mut()
                 .unwrap()
                 .insert("value".to_string(), Literal::Integer(9));
+            runtime
+                .context_mut()
+                .set_local("choice".to_string(), Literal::String("beta".to_string()))
+                .unwrap();
         }
         *plugin.current_marker_id.lock() = Some("Lchanged".to_string());
 
@@ -1117,6 +1144,12 @@ after
                 .unwrap()
                 .get("value"),
             Some(&Literal::Integer(1))
+        );
+        assert_eq!(
+            runtime
+                .context()
+                .get_local("choice"),
+            Some(&Literal::String("alpha".to_string()))
         );
         drop(runtime);
 
