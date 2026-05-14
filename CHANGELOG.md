@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - (Scenario) Support local context and add local variable management commands
+- (Core) Add ReadFile command and ReadFormat type for file reading 
 
 ## [0.12.0] - 2026-05-09
 

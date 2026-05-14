@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use arc_swap::ArcSwapOption;
 use moyu_macros::Plugin;
 use moyu_pal::config::{WindowState, get_engine_config};
+use moyu_pal::url::Url;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -70,8 +71,23 @@ pub enum SystemCommand {
         height: Option<u32>,
         keep_aspect_ratio: Option<bool>,
     },
+    /// Read file using protocol [`assets:`, `saves:`, `data:`],
+    /// other protocols are not supported and will be rejected for security reason.
+    ReadFile {
+        path: String,
+        format: Option<ReadFormat>,
+    },
     GetParams,
     Quit,
+}
+
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+#[derive(TS)]
+pub enum ReadFormat {
+    #[default]
+    Text,
+    Binary,
 }
 
 impl Command for SystemPlugin {
@@ -159,6 +175,35 @@ impl Command for SystemPlugin {
                     let promise = create_promise(fut)?;
                     return Ok(Some(promise));
                 }
+            }
+            SystemCommand::ReadFile { path, format } => {
+                let fut = async move {
+                    let url = match Url::parse(&path) {
+                        Ok(url) => url,
+                        Err(_) => {
+                            return Err(anyhow::anyhow!("Invalid URL format: {}.", path));
+                        }
+                    };
+
+                    if !["assets", "saves", "data"].contains(&url.scheme()) {
+                        return Err(anyhow::anyhow!(
+                            "Unsupported URL scheme: {}. Only 'assets:', 'saves:', and 'data:' are supported.",
+                            url.scheme()
+                        ));
+                    }
+
+                    let data = moyu_pal::fs::read(&url).await?;
+
+                    if format.unwrap_or_default() == ReadFormat::Binary {
+                        return Err(anyhow!("Not support returning binary data yet."));
+                    }
+
+                    let text = String::from_utf8(data)?;
+                    Ok(text)
+                };
+
+                let promise = create_promise(fut)?;
+                return Ok(Some(promise));
             }
             SystemCommand::GetParams => {
                 return Ok(Some(to_js(&get_engine_config().params)?));
