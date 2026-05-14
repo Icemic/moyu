@@ -29,6 +29,7 @@ const main = defineCommand({
     run: () => import('./commands/run.js').then((m) => m.default),
     pack: () => import('./commands/pack.js').then((m) => m.default),
     schema: () => import('./commands/schema.js').then((m) => m.default),
+    'ui-schema': () => import('./commands/ui-schema.js').then((m) => m.default),
   },
 });
 
