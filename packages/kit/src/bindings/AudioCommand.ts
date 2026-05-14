@@ -3,6 +3,7 @@ import type { AudioSettings } from './AudioSettings';
 
 export type AudioCommand =
   | { subCommand: 'load'; name: string; src: string; settings?: AudioSettings }
+  | { subCommand: 'loadAndPlay'; name: string; src: string; settings?: AudioSettings }
   | { subCommand: 'release'; name: string; fadeTime?: number; silentFail?: boolean }
   | { subCommand: 'play'; name: string; fadeTime?: number; waitForEnd?: boolean }
   | { subCommand: 'stop'; name: string; fadeTime?: number }

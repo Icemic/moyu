@@ -303,6 +303,12 @@ pub enum AudioCommand {
         src: String,
         settings: Option<AudioSettings>,
     },
+    /// Load if not loaded then play, or play if already loaded.
+    LoadAndPlay {
+        name: String,
+        src: String,
+        settings: Option<AudioSettings>,
+    },
     Release {
         name: String,
         fade_time: Option<u32>,
@@ -371,6 +377,40 @@ impl Command for AudioManager {
                 let fut = self.load_audio(&name, &src, settings.unwrap_or_default())?;
                 let promise = create_promise(fut)?;
                 return Ok(Some(promise));
+            }
+            AudioCommand::LoadAndPlay {
+                name,
+                src,
+                settings,
+            } => {
+                if is_wildcard(&name) {
+                    return Err(anyhow::anyhow!(
+                        "Audio name {} cannot be a wildcard pattern",
+                        name
+                    ));
+                }
+
+                let mut settings = settings.unwrap_or_default();
+                settings.auto_play = true;
+
+                if !self.audios.contains_key(&name) {
+                    let fut = self.load_audio(&name, &src, settings)?;
+                    let promise = create_promise(fut)?;
+                    return Ok(Some(promise));
+                }
+
+                let audios = self.get_audios(&name);
+                let Some((audio_name, audio)) = audios.first() else {
+                    return Ok(None);
+                };
+
+                let mut manager = self.manager.lock();
+                let global_volume = get_global_volume(&audio_name);
+                let mut audio = audio.lock();
+                let _ = audio.stop(settings.fade_time);
+                audio.play(&mut manager, settings.fade_time, global_volume, None)?;
+
+                return Ok(None);
             }
             AudioCommand::Release {
                 name,
