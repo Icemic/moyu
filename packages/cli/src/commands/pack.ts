@@ -166,6 +166,7 @@ export default defineCommand({
     await copyBundleJs(projectRoot, tmpPackDir);
     if (frameworkMode) {
       await copyCommandsSchema(projectRoot, tmpPackDir);
+      await copyUiSchema(projectRoot, tmpPackDir);
       await copyIndexHtml(projectRoot, tmpPackDir);
       await copyIndexPreviewHtml(projectRoot, tmpPackDir);
       await writeFrameworkMeta(tmpPackDir, frameworkConfig!);
@@ -350,6 +351,15 @@ async function copyCommandsSchema(projectRoot: string, tmpPackDir: string): Prom
   }
   consola.info('Copying commands.schema.json...');
   await cp(schemaPath, join(tmpPackDir, 'commands.schema.json'));
+}
+
+async function copyUiSchema(projectRoot: string, tmpPackDir: string): Promise<void> {
+  const schemaPath = join(projectRoot, 'ui.schema.json');
+  if (!existsSync(schemaPath)) {
+    return;
+  }
+  consola.info('Copying ui.schema.json...');
+  await cp(schemaPath, join(tmpPackDir, 'ui.schema.json'));
 }
 
 async function copyNativeEngine(target: string, targetPath: string, tmpPackDir: string): Promise<void> {
