@@ -1,4 +1,5 @@
 import { executePluginCommand } from '../moyu';
+import { replaceUiData } from '../ui';
 import {
   startDebugSession,
   stopDebugSession,
@@ -37,6 +38,12 @@ interface RouteRequestMessage {
   params?: Record<string, unknown>;
 }
 
+interface UiReplaceMessage {
+  type: 'ui:replace';
+  sessionId: string;
+  data: unknown;
+}
+
 interface JumpDoneMessage {
   type: 'jump:done';
   sessionId: string;
@@ -70,6 +77,7 @@ interface RouteErrorMessage {
 type RuntimeDebugIncomingMessage =
   | JumpRequestMessage
   | RouteRequestMessage
+  | UiReplaceMessage
   | { type?: string; sessionId?: string; [key: string]: unknown };
 
 interface RuntimeWebSocketMessageEvent {
@@ -97,7 +105,7 @@ type RuntimeDebugConnection = {
   socket: RuntimeWebSocket;
 };
 
-type RuntimeDebugRequestMessage = JumpRequestMessage | RouteRequestMessage;
+type RuntimeDebugRequestMessage = JumpRequestMessage | RouteRequestMessage | UiReplaceMessage;
 
 let currentConnection: RuntimeDebugConnection | null = null;
 let currentController: DebugSessionController | null = null;
@@ -127,6 +135,10 @@ function isRouteRequestMessage(message: RuntimeDebugIncomingMessage): message is
     (message.params === undefined ||
       (typeof message.params === 'object' && message.params !== null && !Array.isArray(message.params)))
   );
+}
+
+function isUiReplaceMessage(message: RuntimeDebugIncomingMessage): message is UiReplaceMessage {
+  return message.type === 'ui:replace' && typeof message.sessionId === 'string';
 }
 
 function sendRuntimeDebugMessage(
@@ -163,6 +175,15 @@ function handleRuntimeDebugRequest(
   sessionId: string,
   message: RuntimeDebugRequestMessage,
 ) {
+  if (isUiReplaceMessage(message)) {
+    try {
+      replaceUiData(message.data);
+    } catch (error) {
+      console.error('[debug] failed to replace runtime UI data:', error);
+    }
+    return;
+  }
+
   const controller = currentController;
   if (!controller) {
     bufferRequestMessage(message);
@@ -361,6 +382,11 @@ export async function startRuntimeDebugSession(): Promise<void> {
       }
 
       if (isRouteRequestMessage(message)) {
+        handleRuntimeDebugRequest(socket, sessionId, message);
+        return;
+      }
+
+      if (isUiReplaceMessage(message)) {
         handleRuntimeDebugRequest(socket, sessionId, message);
         return;
       }

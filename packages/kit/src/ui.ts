@@ -7,6 +7,8 @@ const UI_DATA_ASSET_PATH = 'assets:///data/ui.json';
 type UiDocument = Record<string, unknown>;
 type UiSchema<TUiDocument extends UiDocument> = ZodType<TUiDocument>;
 
+let activeUiSchema: UiSchema<UiDocument> | null = null;
+
 const uiDataState = proxy<UiDocument>({});
 const uiRuntimeState = proxy({
   initialized: false,
@@ -21,9 +23,20 @@ type RootUiDataKeys = Exclude<keyof RootUiDataMap, '__uiDataBrand__'>;
 type ResolvedUiDataMap = RootUiDataKeys extends never ? Record<string, unknown> : Omit<RootUiDataMap, '__uiDataBrand__'>;
 type UiDataName = Extract<keyof ResolvedUiDataMap, string>;
 
+function applyUiData(nextData: UiDocument) {
+  for (const key of Object.keys(uiDataState)) {
+    delete uiDataState[key];
+  }
+
+  Object.assign(uiDataState, nextData);
+  uiRuntimeState.initialized = true;
+  uiRuntimeState.error = null;
+}
+
 export async function initUiData<TUiDocument extends UiDocument>(schema: UiSchema<TUiDocument>): Promise<void> {
   uiRuntimeState.initialized = false;
   uiRuntimeState.error = null;
+  activeUiSchema = schema as UiSchema<UiDocument>;
 
   let rawData: unknown;
   try {
@@ -46,12 +59,21 @@ export async function initUiData<TUiDocument extends UiDocument>(schema: UiSchem
     throw new Error(`Invalid UI data: ${parsed.error.message}`);
   }
 
-  for (const key of Object.keys(uiDataState)) {
-    delete uiDataState[key];
+  applyUiData(parsed.data);
+}
+
+export function replaceUiData(rawData: unknown): void {
+  if (!activeUiSchema) {
+    throw new Error('UI data schema has not been initialized. Call initUiData() first.');
   }
 
-  Object.assign(uiDataState, parsed.data);
-  uiRuntimeState.initialized = true;
+  const parsed = activeUiSchema.safeParse(rawData);
+  if (!parsed.success) {
+    uiRuntimeState.error = parsed.error.message;
+    throw new Error(`Invalid replacement UI data: ${parsed.error.message}`);
+  }
+
+  applyUiData(parsed.data);
 }
 
 export function getUiData<Name extends UiDataName>(name: Name): ResolvedUiDataMap[Name] {
