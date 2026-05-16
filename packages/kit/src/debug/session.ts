@@ -5,11 +5,13 @@ import type { ScenarioCommand } from '../bindings/ScenarioCommand';
 import type { FastForwardOptions } from '../hooks/useStage';
 import { addEventListener } from '../events';
 import { executePluginCommand } from '../moyu';
+import { getNavigator } from '../components/navigation';
 
 export interface AppStateAdapter<TState = unknown> {
   capture(): TState | Promise<TState>;
   restore(state: TState): void | Promise<void>;
   switchPage?(page: string, params?: Record<string, unknown>): void | Promise<void>;
+  switchOverlay?(overlay: string, params?: Record<string, unknown>): void | Promise<void>;
   enterFastForwardMode?(options?: FastForwardOptions): void | Promise<void>;
   exitFastForwardMode?(): void | Promise<void>;
   restartCurrentStoryFromHead?(): void | Promise<void>;
@@ -28,7 +30,7 @@ export interface DebugSessionConfig {
 export interface DebugSessionController {
   restoreCheckpoint(markerId: string): Promise<boolean>;
   warp(options: DebugWarpOptions): Promise<void>;
-  switchPage(page: string, params?: Record<string, unknown>): Promise<void>;
+  switchRoute(routeName: string, params?: Record<string, unknown>): Promise<void>;
 }
 
 export type DebugWarpBoundary = 'before' | 'after';
@@ -406,16 +408,32 @@ const debugSessionController: DebugSessionController = {
     }
   },
 
-  async switchPage(page, params) {
+  async switchRoute(routeName, params) {
     return enqueueDebugOperation(async () => {
       debugState.lastError = null;
 
       try {
-        if (!appStateAdapter?.switchPage) {
-          throw new Error('Page switching is not supported by the app state adapter');
+        const navigator = getNavigator();
+
+        if (navigator.hasPage(routeName)) {
+          if (!appStateAdapter?.switchPage) {
+            throw new Error('Page switching is not supported by the app state adapter');
+          }
+
+          await appStateAdapter.switchPage(routeName, params);
+          return;
         }
 
-        await appStateAdapter.switchPage(page, params);
+        if (navigator.hasOverlay(routeName)) {
+          if (!appStateAdapter?.switchOverlay) {
+            throw new Error('Overlay switching is not supported by the app state adapter');
+          }
+
+          await appStateAdapter.switchOverlay(routeName, params);
+          return;
+        }
+
+        throw new Error(`Route "${routeName}" not found`);
       } catch (error) {
         debugState.lastError = toErrorMessage(error);
         throw error;
@@ -560,6 +578,6 @@ export function useDebugSession() {
     stopDebugSession,
     restoreCheckpoint: debugSessionController.restoreCheckpoint,
     warp: debugSessionController.warp,
-    switchPage: debugSessionController.switchPage,
+    switchRoute: debugSessionController.switchRoute,
   };
 }

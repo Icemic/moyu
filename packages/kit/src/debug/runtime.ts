@@ -232,7 +232,7 @@ function handleRuntimeDebugRequest(
   }
 
   void controller
-    .switchPage(message.page, message.params)
+    .switchRoute(message.page, message.params)
     .then(() => {
       sendRuntimeDebugMessage(socket, {
         type: 'route:done',

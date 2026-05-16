@@ -18,6 +18,8 @@ export const PageParamsContext = createContext<Record<string, any> | undefined>(
  */
 export const OverlayParamsContext = createContext<Record<string, any> | undefined>(undefined);
 
+export const DEBUG_EMPTY_PAGE = 'debug-empty';
+
 // ============================================================================
 // Type Definitions
 // ============================================================================
@@ -92,6 +94,11 @@ export interface Navigator<PageName extends string = DefaultPageName, OverlayNam
    * Check whether a page exists in the navigator configuration.
    */
   hasPage: (page: string) => boolean;
+
+  /**
+   * Check whether an overlay exists in the navigator configuration.
+   */
+  hasOverlay: (overlay: string) => boolean;
 
   /**
    * Go back to the previous page (not implemented yet)
@@ -226,6 +233,14 @@ export function createStackNavigator<
     normalizedPages[key] = normalizeDescriptor(config);
   }
 
+  if (normalizedPages[DEBUG_EMPTY_PAGE]) {
+    throw new Error(`Navigation Error: Page name "${DEBUG_EMPTY_PAGE}" is reserved.`);
+  }
+
+  normalizedPages[DEBUG_EMPTY_PAGE] = {
+    component: () => null,
+  };
+
   const normalizedOverlays: Record<string, OverlayDescriptor> = {};
   if (options.overlays) {
     for (const [key, config] of Object.entries(options.overlays)) {
@@ -264,6 +279,10 @@ export function createStackNavigator<
 
     hasPage: (page) => {
       return normalizedPages[page] !== undefined;
+    },
+
+    hasOverlay: (overlay) => {
+      return normalizedOverlays[overlay] !== undefined;
     },
 
     goBack: () => {
