@@ -14,6 +14,7 @@ import { Readable, Writable } from 'node:stream';
 import { defineCommand } from 'citty';
 import consola from 'consola';
 import { formatBytes, loadMeta } from '../utils/engine.js';
+import { generateJsonSchema } from '../utils/generate-json-schema.js';
 import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
 
 // Disable web workers – not available in Node.js
@@ -165,6 +166,8 @@ export default defineCommand({
     await copyIndexJson(projectRoot, tmpPackDir);
     await copyBundleJs(projectRoot, tmpPackDir);
     if (frameworkMode) {
+      await regenerateCommandsSchema(projectRoot);
+      await regenerateUiSchema(projectRoot);
       await copyCommandsSchema(projectRoot, tmpPackDir);
       await copyUiSchema(projectRoot, tmpPackDir);
       await copyIndexHtml(projectRoot, tmpPackDir);
@@ -339,6 +342,31 @@ async function copyIndexPreviewHtml(projectRoot: string, tmpPackDir: string): Pr
   }
   consola.info('Copying index-preview.html...');
   await cp(previewHtml, join(tmpPackDir, 'index-preview.html'));
+}
+
+async function regenerateCommandsSchema(projectRoot: string): Promise<void> {
+  const inputPath = join(projectRoot, 'src/commands/commands.ts');
+  if (!existsSync(inputPath)) {
+    consola.warn('src/commands/commands.ts not found, skipping commands schema generation.');
+    return;
+  }
+  await generateJsonSchema({
+    inputPath,
+    outputPath: join(projectRoot, 'commands.schema.json'),
+    exportName: 'ScenarioCommandSchema',
+  });
+}
+
+async function regenerateUiSchema(projectRoot: string): Promise<void> {
+  const inputPath = join(projectRoot, 'src/data/ui.ts');
+  if (!existsSync(inputPath)) {
+    return;
+  }
+  await generateJsonSchema({
+    inputPath,
+    outputPath: join(projectRoot, 'ui.schema.json'),
+    exportName: 'GameUiSchema',
+  });
 }
 
 async function copyCommandsSchema(projectRoot: string, tmpPackDir: string): Promise<void> {
