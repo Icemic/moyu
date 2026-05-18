@@ -26,6 +26,7 @@ interface JumpRequestMessage {
   sessionId: string;
   requestId: number;
   markerId: string;
+  story?: string;
   boundary?: 'before' | 'after';
   strategy?: 'fast-forward' | 'warp';
 }
@@ -121,6 +122,7 @@ function isJumpRequestMessage(message: RuntimeDebugIncomingMessage): message is 
     typeof message.sessionId === 'string' &&
     typeof message.requestId === 'number' &&
     typeof message.markerId === 'string' &&
+    (message.story === undefined || typeof message.story === 'string') &&
     (message.boundary === undefined || message.boundary === 'before' || message.boundary === 'after') &&
     (message.strategy === undefined || message.strategy === 'fast-forward' || message.strategy === 'warp')
   );
@@ -195,9 +197,12 @@ function handleRuntimeDebugRequest(
       message.strategy === 'warp'
         ? controller.warp({
             markerId: message.markerId,
+            story: message.story,
             boundary: message.boundary,
           }).then(() => true)
-        : controller.restoreCheckpoint(message.markerId);
+        : controller.restoreCheckpoint(message.markerId, {
+            story: message.story,
+          });
 
     void runJump
       .then((restored) => {

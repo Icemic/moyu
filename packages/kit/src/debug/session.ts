@@ -14,6 +14,7 @@ export interface AppStateAdapter<TState = unknown> {
   switchOverlay?(overlay: string, params?: Record<string, unknown>): void | Promise<void>;
   enterFastForwardMode?(options?: FastForwardOptions): void | Promise<void>;
   exitFastForwardMode?(): void | Promise<void>;
+  restartStoryFromHead?(options: DebugStoryStartOptions): void | Promise<void>;
   restartCurrentStoryFromHead?(): void | Promise<void>;
 }
 
@@ -28,14 +29,23 @@ export interface DebugSessionConfig {
 }
 
 export interface DebugSessionController {
-  restoreCheckpoint(markerId: string): Promise<boolean>;
+  restoreCheckpoint(markerId: string, options?: DebugJumpTargetOptions): Promise<boolean>;
   warp(options: DebugWarpOptions): Promise<void>;
   switchRoute(routeName: string, params?: Record<string, unknown>): Promise<void>;
 }
 
+export interface DebugStoryStartOptions {
+  story: string;
+  entry?: string;
+}
+
+export interface DebugJumpTargetOptions {
+  story?: string;
+}
+
 export type DebugWarpBoundary = 'before' | 'after';
 
-export interface DebugWarpOptions {
+export interface DebugWarpOptions extends DebugJumpTargetOptions {
   markerId: string;
   boundary?: DebugWarpBoundary;
 }
@@ -65,6 +75,7 @@ type DebugSessionState = {
   active: boolean;
   checkpoints: Record<string, CombinedCheckpoint<unknown>>;
   currentCursor: ExecutionCursor | null;
+  currentStory: string | null;
   restoring: boolean;
   lastError: string | null;
 };
@@ -73,6 +84,7 @@ const debugState = proxy<DebugSessionState>({
   active: false,
   checkpoints: {},
   currentCursor: null,
+  currentStory: null,
   restoring: false,
   lastError: null,
 });
@@ -122,8 +134,41 @@ function reportDebugSessionError(error: unknown) {
 function clearLocalRuntimeState() {
   debugState.checkpoints = {};
   debugState.currentCursor = null;
+  debugState.currentStory = null;
   debugState.restoring = false;
   debugState.lastError = null;
+}
+
+async function restartJumpStoryFromHead(targetStory: string | undefined, currentStory: string | null) {
+  debugState.checkpoints = {};
+  debugState.currentCursor = null;
+  debugState.currentStory = null;
+
+  if (targetStory) {
+    if (appStateAdapter?.restartStoryFromHead) {
+      await appStateAdapter.restartStoryFromHead({
+        story: targetStory,
+        entry: 'entry',
+      });
+    } else if (currentStory === targetStory && appStateAdapter?.restartCurrentStoryFromHead) {
+      await appStateAdapter.restartCurrentStoryFromHead();
+    } else {
+      throw new Error('Restarting the target story from head is not supported by the app state adapter');
+    }
+
+    debugState.currentCursor = await executeScenarioCommand<ExecutionCursor | null>({
+      subCommand: 'getExecutionCursor',
+    });
+    debugState.currentStory = debugState.currentCursor?.story ?? targetStory;
+    return;
+  }
+
+  if (!appStateAdapter?.restartCurrentStoryFromHead) {
+    throw new Error('Restarting the current story from head is not supported by the app state adapter');
+  }
+
+  await appStateAdapter.restartCurrentStoryFromHead();
+  debugState.currentCursor = null;
 }
 
 async function doSettleActiveSeek(op: ActiveSeek | null, clearSlot: () => void, error?: unknown) {
@@ -194,6 +239,7 @@ async function syncLocalWarpCheckpoint(targetMarkerId: string) {
   };
 
   debugState.currentCursor = checkpointCursor;
+  debugState.currentStory = checkpointCursor.story;
   debugState.checkpoints[targetMarkerId] = checkpoint;
   await currentConfig.onMarkerEnter(checkpoint);
 }
@@ -222,9 +268,18 @@ function notifyMarkerEnter(checkpoint: CombinedCheckpoint<unknown>) {
   }
 }
 
-async function prepareJumpStart(markerId: string): Promise<boolean> {
+async function prepareJumpStart(markerId: string, options?: DebugJumpTargetOptions): Promise<boolean> {
+  const currentStory = debugState.currentStory ?? debugState.currentCursor?.story ?? null;
+  const targetStory = options?.story;
+  let restartedFromHead = false;
+
+  if (targetStory && targetStory !== currentStory) {
+    await restartJumpStoryFromHead(targetStory, currentStory);
+    restartedFromHead = true;
+  }
+
   const checkpoint = debugState.checkpoints[markerId];
-  if (checkpoint) {
+  if (!restartedFromHead && checkpoint && (!targetStory || checkpoint.cursor.story === targetStory)) {
     const restored = await executeScenarioCommand<boolean>({
       subCommand: 'restoreCheckpoint',
       key: markerId,
@@ -238,6 +293,7 @@ async function prepareJumpStart(markerId: string): Promise<boolean> {
     }
 
     debugState.currentCursor = checkpoint.cursor;
+    debugState.currentStory = checkpoint.cursor.story;
     return false;
   }
 
@@ -247,19 +303,17 @@ async function prepareJumpStart(markerId: string): Promise<boolean> {
   });
 
   if (!lookup.markerExists) {
-    throw new Error(`Marker ${markerId} is not available in the current story`);
+    throw new Error(
+      targetStory ? `Marker ${markerId} is not available in story ${targetStory}` : `Marker ${markerId} is not available in the current story`,
+    );
   }
 
   const startCheckpointKey = lookup.checkpointKey ?? null;
 
   if (!startCheckpointKey) {
-    if (!appStateAdapter?.restartCurrentStoryFromHead) {
-      throw new Error('Restarting the current story from head is not supported by the app state adapter');
+    if (!restartedFromHead) {
+      await restartJumpStoryFromHead(targetStory, currentStory);
     }
-
-    await appStateAdapter.restartCurrentStoryFromHead();
-    debugState.checkpoints = {};
-    debugState.currentCursor = null;
     return true;
   }
 
@@ -281,6 +335,7 @@ async function prepareJumpStart(markerId: string): Promise<boolean> {
   }
 
   debugState.currentCursor = startCheckpoint.cursor;
+  debugState.currentStory = startCheckpoint.cursor.story;
   return true;
 }
 
@@ -295,6 +350,7 @@ function handleMarkerEnter(marker: MarkerEnter) {
   };
 
   debugState.currentCursor = checkpoint.cursor;
+  debugState.currentStory = checkpoint.cursor.story;
   debugState.checkpoints[marker.markerId] = checkpoint;
   notifyMarkerEnter(checkpoint);
 
@@ -370,12 +426,12 @@ async function runWarp(options: DebugWarpOptions) {
 }
 
 const debugSessionController: DebugSessionController = {
-  async restoreCheckpoint(markerId) {
+  async restoreCheckpoint(markerId, options) {
     debugState.restoring = true;
     debugState.lastError = null;
 
     try {
-      const needsFastForward = await enqueueDebugOperation(async () => prepareJumpStart(markerId));
+      const needsFastForward = await enqueueDebugOperation(async () => prepareJumpStart(markerId, options));
 
       if (needsFastForward) {
         await runFastForwardToMarker(markerId);
@@ -395,7 +451,7 @@ const debugSessionController: DebugSessionController = {
     debugState.lastError = null;
 
     try {
-      const needsWarp = await enqueueDebugOperation(async () => prepareJumpStart(options.markerId));
+      const needsWarp = await enqueueDebugOperation(async () => prepareJumpStart(options.markerId, options));
 
       if (needsWarp) {
         await runWarp(options);
@@ -509,6 +565,7 @@ export async function startDebugSession(config: DebugSessionConfig = {}): Promis
     debugState.currentCursor = await executeScenarioCommand<ExecutionCursor | null>({
       subCommand: 'getExecutionCursor',
     });
+    debugState.currentStory = debugState.currentCursor?.story ?? null;
   } catch (error) {
     debugState.active = false;
     clearLocalRuntimeState();
