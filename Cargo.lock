@@ -2086,7 +2086,7 @@ dependencies = [
 
 [[package]]
 name = "moyu"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "cfg_aliases",
  "embed-resource",
@@ -2111,7 +2111,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_audio"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2127,7 +2127,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_core"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2156,7 +2156,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_gamepad"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "cfg_aliases",
@@ -2172,7 +2172,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_macros"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -2182,7 +2182,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_nodes"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2207,7 +2207,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_ops"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "cfg_aliases",
@@ -2224,7 +2224,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_pal"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "android-activity",
  "android_logger",
@@ -2265,7 +2265,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_resource"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2279,7 +2279,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_runtime"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "ehttp",
@@ -2295,7 +2295,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_scenario"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "base64",
@@ -2313,7 +2313,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_video"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -3398,7 +3398,7 @@ checksum = "7204ed6420f698836b76d4d5c2ec5dec7585fd5c3a788fd1cde855d1de598239"
 
 [[package]]
 name = "run-wasm"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "devserver_lib",
  "pico-args",
