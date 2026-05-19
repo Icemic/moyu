@@ -206,6 +206,12 @@ async function settleActiveWarp(error?: unknown) {
   }, error);
 }
 
+export async function clearLocalDebugSessionRuntimeState(): Promise<void> {
+  await settleActiveFastForward(new Error('Debug session runtime state cleared'));
+  await settleActiveWarp(new Error('Debug session runtime state cleared'));
+  clearLocalRuntimeState();
+}
+
 async function clearRemoteCheckpoints() {
   await executeScenarioCommand<void>({ subCommand: 'clearCheckpoints' });
 }
@@ -607,16 +613,14 @@ export async function stopDebugSession(): Promise<void> {
   clearLocalRuntimeState();
 }
 
-export function clearDebugSessionRuntimeState(): void {
-  clearLocalRuntimeState();
-  void settleActiveFastForward(new Error('Debug session runtime state cleared'));
-  void settleActiveWarp(new Error('Debug session runtime state cleared'));
+export async function clearDebugSessionRuntimeState(): Promise<void> {
+  await clearLocalDebugSessionRuntimeState();
 
   if (!debugState.active) {
     return;
   }
 
-  void enqueueDebugOperation(async () => {
+  await enqueueDebugOperation(async () => {
     try {
       await clearRemoteCheckpoints();
     } catch (error) {

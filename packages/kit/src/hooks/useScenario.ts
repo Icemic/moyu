@@ -1,6 +1,6 @@
 import { executePluginCommand } from '../moyu';
 import { useEffect } from 'react';
-import { clearDebugSessionRuntimeState } from '../debug/session';
+import { clearLocalDebugSessionRuntimeState } from '../debug/session';
 
 interface ScenarioSessionConfig {
   stories: string[];
@@ -58,14 +58,14 @@ async function terminateCurrentScenario() {
     await executePluginCommand('scenario', {
       subCommand: 'terminateStory',
     });
-    clearDebugSessionRuntimeState();
+    await clearLocalDebugSessionRuntimeState();
   } catch (error) {
     console.error('Failed to terminate scenario:', error);
   }
 }
 
 async function startScenarioSession(session: ScenarioSession, config: ScenarioSessionConfig) {
-  clearDebugSessionRuntimeState();
+  await clearLocalDebugSessionRuntimeState();
 
   for (const story of config.stories) {
     if (!isCurrentScenarioSession(session)) return;
