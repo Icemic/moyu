@@ -1,4 +1,5 @@
 import { executePluginCommand } from './moyu';
+import { reportRuntimeDebugVariablesSet } from './debug/variableMonitor';
 import type { JsonValue } from './bindings/serde_json/JsonValue';
 
 const VARIABLES_DATA_ASSET_PATH = 'assets:///data/variables.json';
@@ -38,7 +39,7 @@ function normalizeVariableDefinitions(value: unknown): VariableDefinition[] {
   });
 }
 
-async function loadVariablesDocument(): Promise<VariablesDocument | null> {
+export async function loadVariablesDocument(): Promise<VariablesDocument | null> {
   let rawText: string;
 
   try {
@@ -129,6 +130,8 @@ async function ensureVariableDefaults(scope: VariableScope): Promise<void> {
           variables: missingVariables,
         },
   );
+
+  reportRuntimeDebugVariablesSet(scope, missingVariables);
 }
 
 export async function initGlobalVariableDefaults(): Promise<void> {

@@ -1,4 +1,5 @@
 import { executePluginCommand } from './moyu';
+import { reportRuntimeDebugVariableSet } from './debug/variableMonitor';
 
 // Snapshot of JS built-in globals captured at init time, used to let them bypass the sandbox proxy
 const JS_GLOBAL_KEYS = new Set(Object.getOwnPropertyNames(globalThis));
@@ -52,6 +53,7 @@ const archiveVariables = new Proxy(
           name: key,
           value,
         });
+        reportRuntimeDebugVariableSet('archive', key, value);
         return true;
       }
       return false;
@@ -78,6 +80,7 @@ const globalVariables = new Proxy(
           key,
           value,
         });
+        reportRuntimeDebugVariableSet('global', key, value);
         return true;
       }
       return false;

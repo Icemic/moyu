@@ -1,6 +1,14 @@
 import { executePluginCommand } from '../moyu';
 import { replaceUiData } from '../ui';
 import {
+  resetRuntimeDebugVariableMonitor,
+  setRuntimeDebugVariableEmissionSuspended,
+  setRuntimeDebugVariableMessageSender,
+  syncRuntimeDebugVariablesSnapshot,
+  type RuntimeDebugVariableMessagePayload,
+  type RuntimeDebugVariablesSnapshotReason,
+} from './variableMonitor';
+import {
   startDebugSession,
   stopDebugSession,
   type CombinedCheckpoint,
@@ -108,6 +116,14 @@ type RuntimeDebugConnection = {
 
 type RuntimeDebugRequestMessage = JumpRequestMessage | RouteRequestMessage | UiReplaceMessage;
 
+type RuntimeDebugOutgoingMessage =
+  | MarkerEnterMessage
+  | JumpDoneMessage
+  | JumpErrorMessage
+  | RouteDoneMessage
+  | RouteErrorMessage
+  | (RuntimeDebugVariableMessagePayload & { sessionId: string });
+
 let currentConnection: RuntimeDebugConnection | null = null;
 let currentController: DebugSessionController | null = null;
 let bufferedRequestMessages: RuntimeDebugRequestMessage[] = [];
@@ -145,7 +161,7 @@ function isUiReplaceMessage(message: RuntimeDebugIncomingMessage): message is Ui
 
 function sendRuntimeDebugMessage(
   socket: RuntimeWebSocket,
-  message: MarkerEnterMessage | JumpDoneMessage | JumpErrorMessage | RouteDoneMessage | RouteErrorMessage,
+  message: RuntimeDebugOutgoingMessage,
 ): void {
   const RuntimeWebSocket = getRuntimeWebSocket();
   if (!RuntimeWebSocket || socket.readyState !== RuntimeWebSocket.OPEN) {
@@ -172,6 +188,14 @@ function flushBufferedRequestMessages(socket: RuntimeWebSocket, sessionId: strin
   }
 }
 
+async function syncRuntimeDebugVariablesSnapshotSafe(reason: RuntimeDebugVariablesSnapshotReason): Promise<void> {
+  try {
+    await syncRuntimeDebugVariablesSnapshot(reason);
+  } catch (error) {
+    console.error('[debug] failed to sync runtime variables snapshot:', error);
+  }
+}
+
 function handleRuntimeDebugRequest(
   socket: RuntimeWebSocket,
   sessionId: string,
@@ -193,6 +217,7 @@ function handleRuntimeDebugRequest(
   }
 
   if (isJumpRequestMessage(message)) {
+    setRuntimeDebugVariableEmissionSuspended(true);
     const runJump =
       message.strategy === 'warp'
         ? controller.warp({
@@ -205,7 +230,7 @@ function handleRuntimeDebugRequest(
           });
 
     void runJump
-      .then((restored) => {
+      .then(async (restored) => {
         if (!restored) {
           sendRuntimeDebugMessage(socket, {
             type: 'jump:error',
@@ -214,6 +239,7 @@ function handleRuntimeDebugRequest(
             markerId: message.markerId,
             error: 'Checkpoint not found',
           });
+          await syncRuntimeDebugVariablesSnapshotSafe('jump-error');
           return;
         }
 
@@ -223,8 +249,9 @@ function handleRuntimeDebugRequest(
           requestId: message.requestId,
           markerId: message.markerId,
         });
+        await syncRuntimeDebugVariablesSnapshotSafe('jump-done');
       })
-      .catch((error) => {
+      .catch(async (error) => {
         sendRuntimeDebugMessage(socket, {
           type: 'jump:error',
           sessionId,
@@ -232,21 +259,27 @@ function handleRuntimeDebugRequest(
           markerId: message.markerId,
           error: error instanceof Error ? error.message : String(error),
         });
+        await syncRuntimeDebugVariablesSnapshotSafe('jump-error');
+      })
+      .finally(() => {
+        setRuntimeDebugVariableEmissionSuspended(false);
       });
     return;
   }
 
+  setRuntimeDebugVariableEmissionSuspended(true);
   void controller
     .switchRoute(message.page, message.params)
-    .then(() => {
+    .then(async () => {
       sendRuntimeDebugMessage(socket, {
         type: 'route:done',
         sessionId,
         requestId: message.requestId,
         page: message.page,
       });
+      await syncRuntimeDebugVariablesSnapshotSafe('route-done');
     })
-    .catch((error) => {
+    .catch(async (error) => {
       sendRuntimeDebugMessage(socket, {
         type: 'route:error',
         sessionId,
@@ -254,6 +287,10 @@ function handleRuntimeDebugRequest(
         page: message.page,
         error: error instanceof Error ? error.message : String(error),
       });
+      await syncRuntimeDebugVariablesSnapshotSafe('route-error');
+    })
+    .finally(() => {
+      setRuntimeDebugVariableEmissionSuspended(false);
     });
 }
 
@@ -282,6 +319,7 @@ export async function stopRuntimeDebugSession(): Promise<void> {
   const connection = currentConnection;
   currentConnection = null;
   currentController = null;
+  resetRuntimeDebugVariableMonitor();
   clearBufferedRequestMessages();
   const RuntimeWebSocket = getRuntimeWebSocket();
 
@@ -343,6 +381,13 @@ export async function startRuntimeDebugSession(): Promise<void> {
     })
       .then((controller) => {
         currentController = controller;
+        setRuntimeDebugVariableMessageSender((message) => {
+          sendRuntimeDebugMessage(socket, {
+            ...message,
+            sessionId,
+          });
+        });
+        void syncRuntimeDebugVariablesSnapshotSafe('init');
         flushBufferedRequestMessages(socket, sessionId);
       })
       .catch((error) => {
@@ -358,6 +403,7 @@ export async function startRuntimeDebugSession(): Promise<void> {
 
     currentConnection = null;
     currentController = null;
+    resetRuntimeDebugVariableMonitor();
     clearBufferedRequestMessages();
     void stopDebugSession();
   };
