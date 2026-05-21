@@ -1,5 +1,8 @@
 mod commands;
+mod execution_path;
 mod executor;
+mod replace_recovery;
+mod story_graph;
 mod types;
 mod utils;
 
@@ -25,13 +28,16 @@ use moyu_pal::fs::{
 };
 use moyu_pal::sync::Mutex;
 use moyu_pal::sync::mpsc::{Receiver, Sender};
-use sixu::BlockFingerprint;
+use sixu::Fingerprint;
 use sixu::format::RValue;
 use sixu::format::{Block, ChildContent, Literal, Story};
 use sixu::runtime::{ExecutionState, Runtime, StepResult};
 use zip::write::SimpleFileOptions;
 
 use crate::executor::{ScenarioExecutor, WarpState};
+use crate::execution_path::capture_execution_path;
+use crate::replace_recovery::plan_story_replace;
+use crate::story_graph::build_story_graph;
 use crate::types::{
     BacklogState, ExecutionCursor, GameData, RuntimeCheckpoint, RuntimeSnapshot, ScenarioEvent,
     ScenarioRecord, WarpBoundary, WaitingState,
@@ -60,7 +66,7 @@ pub struct ScenarioPlugin {
     pub receiver: Receiver<ScenarioEvent>,
     backlog: Arc<Mutex<BacklogState>>,
     checkpoints: Arc<Mutex<HashMap<String, RuntimeCheckpoint>>>,
-    checkpoint_blocks: Arc<Mutex<HashMap<BlockFingerprint, Block>>>,
+    checkpoint_blocks: Arc<Mutex<HashMap<Fingerprint, Block>>>,
     current_marker_id: Arc<Mutex<Option<String>>>,
     warp_state: Arc<Mutex<Option<WarpState>>>,
     waiting: Option<WaitingState>,
@@ -305,7 +311,7 @@ impl ScenarioPlugin {
 
     fn create_runtime_snapshot(
         &self,
-    ) -> Result<(RuntimeSnapshot, HashMap<BlockFingerprint, Block>)> {
+    ) -> Result<(RuntimeSnapshot, HashMap<Fingerprint, Block>)> {
         let mut blocks = HashMap::new();
         let runtime = self.runtime.lock();
         let snapshot =
@@ -316,7 +322,7 @@ impl ScenarioPlugin {
     fn restore_runtime_snapshot(
         runtime: &Arc<Mutex<Runtime<ScenarioExecutor>>>,
         snapshot: &RuntimeSnapshot,
-        blocks: &HashMap<BlockFingerprint, Block>,
+        blocks: &HashMap<Fingerprint, Block>,
     ) -> Result<()> {
         let stack = snapshot
             .stack
@@ -525,6 +531,90 @@ impl ScenarioPlugin {
         let stories = runtime.context().stories();
         let story_names: Vec<String> = stories.iter().map(|s| s.name.clone()).collect();
         Ok(to_js(&story_names)?)
+    }
+
+    fn replace_story_data(&mut self, name: &str, content: &str) -> Result<JSValue> {
+        let (_, next_story) = sixu::parser::parse(name, content)
+            .map_err(|error| anyhow::anyhow!("Failed to parse story file '{}': {}", name, error))?;
+
+        let existing_story = {
+            let runtime = self.runtime.lock();
+            runtime
+                .context()
+                .stories()
+                .iter()
+                .find(|story| story.name == name)
+                .cloned()
+        };
+
+        let Some(existing_story) = existing_story else {
+            let mut runtime = self.runtime.lock();
+            runtime.context_mut().stories_mut().push(next_story);
+            return to_js(&crate::types::StoryReplaceOutcome {
+                story: name.to_string(),
+                current_story_affected: false,
+                plan: crate::types::StoryReplaceExecutionPlan {
+                    mode: crate::types::StoryReplaceMode::InvalidateOnly,
+                    boundary: None,
+                    target_marker_id: None,
+                    changed_control_flow: true,
+                },
+            });
+        };
+
+        let current_marker_id = self.current_marker_id.lock().clone();
+        let (current_story_affected, execution_path) = {
+            let runtime = self.runtime.lock();
+            let path = capture_execution_path(runtime.context(), current_marker_id);
+            let affected = path
+                .frames
+                .last()
+                .map(|frame| frame.story == name)
+                .unwrap_or(false);
+            (affected, path)
+        };
+
+        let old_graph = build_story_graph(&existing_story);
+        let new_graph = build_story_graph(&next_story);
+
+        let replace_plan = {
+            let checkpoints = self.checkpoints.lock();
+            let checkpoint_blocks = self.checkpoint_blocks.lock();
+
+            plan_story_replace(
+                name,
+                current_story_affected,
+                &existing_story,
+                &next_story,
+                &old_graph,
+                &new_graph,
+                &execution_path,
+                &checkpoints,
+                &checkpoint_blocks,
+            )?
+        };
+
+        {
+            let mut runtime = self.runtime.lock();
+            let stories = runtime.context_mut().stories_mut();
+
+            if let Some(position) = stories.iter().position(|story| story.name == name) {
+                stories[position] = next_story;
+            } else {
+                stories.push(next_story);
+            }
+        }
+
+        *self.checkpoints.lock() = replace_plan.checkpoints.clone();
+        *self.checkpoint_blocks.lock() = replace_plan.checkpoint_blocks.clone();
+
+        if current_story_affected
+            && !matches!(replace_plan.outcome.plan.mode, crate::types::StoryReplaceMode::Noop)
+        {
+            *self.current_marker_id.lock() = None;
+        }
+
+        to_js(&replace_plan.outcome)
     }
 
     fn save_global_data_to_file(&self) -> Result<JSValue> {

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
-use sixu::BlockFingerprint;
+use sixu::Fingerprint;
 use sixu::format::{Block, Literal};
 use sixu::runtime::RuntimeContext;
 
@@ -51,7 +51,7 @@ pub(crate) fn next_record_id(backlog: &mut BacklogState) -> Result<String> {
     backlog.next_record_serial += 1;
     Ok(id)
 }
-pub(crate) fn snapshot_blocks(snapshot: &RuntimeSnapshot) -> HashSet<BlockFingerprint> {
+pub(crate) fn snapshot_blocks(snapshot: &RuntimeSnapshot) -> HashSet<Fingerprint> {
     snapshot
         .stack
         .iter()
@@ -73,7 +73,7 @@ pub(crate) fn prune_backlog_blocks(backlog: &mut BacklogState) {
 
 pub(crate) fn create_runtime_snapshot_from_context(
     context: &RuntimeContext,
-    blocks: &mut HashMap<BlockFingerprint, Block>,
+    blocks: &mut HashMap<Fingerprint, Block>,
 ) -> Result<RuntimeSnapshot> {
     let mut stack = Vec::with_capacity(context.stack().len());
 

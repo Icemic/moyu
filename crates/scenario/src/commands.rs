@@ -23,6 +23,11 @@ enum ScenarioCommand {
     AddStory {
         name: String,
     },
+    /// Replace in-memory story definition and return a hot-reload recovery plan.
+    ReplaceStoryData {
+        name: String,
+        content: String,
+    },
     /// Remove a scenario by name
     RemoveStory {
         name: String,
@@ -163,23 +168,21 @@ impl Command for ScenarioPlugin {
 
         match payload {
             ScenarioCommand::AddStory { name } => {
-                log::info!("add story: {}", name);
                 return self.add_story(&name).map(Some);
             }
+            ScenarioCommand::ReplaceStoryData { name, content } => {
+                return self.replace_story_data(&name, &content).map(Some);
+            }
             ScenarioCommand::RemoveStory { name } => {
-                log::info!("remove story: {}", name);
                 return self.remove_story(&name).map(Some);
             }
             ScenarioCommand::HasStory { name } => {
-                log::info!("has story: {}", name);
                 return Ok(Some(to_js(&self.has_story(&name))?));
             }
             ScenarioCommand::GetStoryList => {
-                log::info!("get story list");
                 return self.get_story_list().map(Some);
             }
             ScenarioCommand::StartStory { name, entry } => {
-                log::info!("start story: {}", name);
                 self.begin_runtime_transition();
                 self.runtime.lock().start(&name, entry.as_deref())?;
                 self.clear_backlog();
@@ -187,7 +190,6 @@ impl Command for ScenarioPlugin {
                 return Ok(None);
             }
             ScenarioCommand::TerminateStory => {
-                log::info!("terminate story");
                 self.begin_runtime_transition();
                 self.runtime.lock().terminate()?;
                 self.clear_backlog();

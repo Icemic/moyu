@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use moyu_pal::sync::Mutex;
 use moyu_pal::sync::mpsc::Sender;
-use sixu::BlockFingerprint;
+use sixu::Fingerprint;
 use sixu::format::*;
 use sixu::runtime::*;
 
@@ -59,7 +59,7 @@ impl WarpState {
 pub struct ScenarioExecutor {
     sender: Sender<ScenarioEvent>,
     checkpoints: Arc<Mutex<HashMap<String, RuntimeCheckpoint>>>,
-    checkpoint_blocks: Arc<Mutex<HashMap<BlockFingerprint, Block>>>,
+    checkpoint_blocks: Arc<Mutex<HashMap<Fingerprint, Block>>>,
     warp_state: Arc<Mutex<Option<WarpState>>>,
 }
 
@@ -67,7 +67,7 @@ impl ScenarioExecutor {
     pub fn new(
         sender: Sender<ScenarioEvent>,
         checkpoints: Arc<Mutex<HashMap<String, RuntimeCheckpoint>>>,
-        checkpoint_blocks: Arc<Mutex<HashMap<BlockFingerprint, Block>>>,
+        checkpoint_blocks: Arc<Mutex<HashMap<Fingerprint, Block>>>,
         warp_state: Arc<Mutex<Option<WarpState>>>,
     ) -> Self {
         Self {
