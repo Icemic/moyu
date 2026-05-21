@@ -47,6 +47,16 @@ interface RouteRequestMessage {
   params?: Record<string, unknown>;
 }
 
+interface StoryReplaceMessage {
+  type: 'story:replace';
+  sessionId: string;
+  requestId: number;
+  story: string;
+  content: string;
+  seekMode?: 'off' | 'fast-forward' | 'warp';
+  targetMarkerId?: string;
+}
+
 interface UiReplaceMessage {
   type: 'ui:replace';
   sessionId: string;
@@ -83,9 +93,25 @@ interface RouteErrorMessage {
   error: string;
 }
 
+interface StoryReplaceDoneMessage {
+  type: 'story:replace:done';
+  sessionId: string;
+  requestId: number;
+  story: string;
+}
+
+interface StoryReplaceErrorMessage {
+  type: 'story:replace:error';
+  sessionId: string;
+  requestId: number;
+  story: string;
+  error: string;
+}
+
 type RuntimeDebugIncomingMessage =
   | JumpRequestMessage
   | RouteRequestMessage
+  | StoryReplaceMessage
   | UiReplaceMessage
   | { type?: string; sessionId?: string; [key: string]: unknown };
 
@@ -114,7 +140,7 @@ type RuntimeDebugConnection = {
   socket: RuntimeWebSocket;
 };
 
-type RuntimeDebugRequestMessage = JumpRequestMessage | RouteRequestMessage | UiReplaceMessage;
+type RuntimeDebugRequestMessage = JumpRequestMessage | RouteRequestMessage | StoryReplaceMessage | UiReplaceMessage;
 
 type RuntimeDebugOutgoingMessage =
   | MarkerEnterMessage
@@ -122,6 +148,8 @@ type RuntimeDebugOutgoingMessage =
   | JumpErrorMessage
   | RouteDoneMessage
   | RouteErrorMessage
+  | StoryReplaceDoneMessage
+  | StoryReplaceErrorMessage
   | (RuntimeDebugVariableMessagePayload & { sessionId: string });
 
 let currentConnection: RuntimeDebugConnection | null = null;
@@ -152,6 +180,18 @@ function isRouteRequestMessage(message: RuntimeDebugIncomingMessage): message is
     typeof message.page === 'string' &&
     (message.params === undefined ||
       (typeof message.params === 'object' && message.params !== null && !Array.isArray(message.params)))
+  );
+}
+
+function isStoryReplaceMessage(message: RuntimeDebugIncomingMessage): message is StoryReplaceMessage {
+  return (
+    message.type === 'story:replace' &&
+    typeof message.sessionId === 'string' &&
+    typeof message.requestId === 'number' &&
+    typeof message.story === 'string' &&
+    typeof message.content === 'string' &&
+    (message.seekMode === undefined || message.seekMode === 'off' || message.seekMode === 'fast-forward' || message.seekMode === 'warp') &&
+    (message.targetMarkerId === undefined || typeof message.targetMarkerId === 'string')
   );
 }
 
@@ -260,6 +300,40 @@ function handleRuntimeDebugRequest(
           error: error instanceof Error ? error.message : String(error),
         });
         await syncRuntimeDebugVariablesSnapshotSafe('jump-error');
+      })
+      .finally(() => {
+        setRuntimeDebugVariableEmissionSuspended(false);
+      });
+    return;
+  }
+
+  if (isStoryReplaceMessage(message)) {
+    setRuntimeDebugVariableEmissionSuspended(true);
+    void controller
+      .replaceStory({
+        story: message.story,
+        content: message.content,
+        seekMode: message.seekMode,
+        targetMarkerId: message.targetMarkerId,
+      })
+      .then(async () => {
+        sendRuntimeDebugMessage(socket, {
+          type: 'story:replace:done',
+          sessionId,
+          requestId: message.requestId,
+          story: message.story,
+        });
+        await syncRuntimeDebugVariablesSnapshotSafe('story-replace-done');
+      })
+      .catch(async (error) => {
+        sendRuntimeDebugMessage(socket, {
+          type: 'story:replace:error',
+          sessionId,
+          requestId: message.requestId,
+          story: message.story,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        await syncRuntimeDebugVariablesSnapshotSafe('story-replace-error');
       })
       .finally(() => {
         setRuntimeDebugVariableEmissionSuspended(false);
@@ -433,6 +507,11 @@ export async function startRuntimeDebugSession(): Promise<void> {
       }
 
       if (isRouteRequestMessage(message)) {
+        handleRuntimeDebugRequest(socket, sessionId, message);
+        return;
+      }
+
+      if (isStoryReplaceMessage(message)) {
         handleRuntimeDebugRequest(socket, sessionId, message);
         return;
       }

@@ -16,7 +16,9 @@ export type RuntimeDebugVariablesSnapshotReason =
   | 'jump-done'
   | 'jump-error'
   | 'route-done'
-  | 'route-error';
+  | 'route-error'
+  | 'story-replace-done'
+  | 'story-replace-error';
 
 export interface RuntimeDebugVariablesSnapshotPayload {
   type: 'variables:snapshot';

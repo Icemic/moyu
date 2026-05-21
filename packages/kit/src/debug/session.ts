@@ -1,7 +1,9 @@
 import { useSnapshot, proxy } from 'valtio';
+import type { ExecutableRestartBoundary } from '../bindings/ExecutableRestartBoundary';
 import type { ExecutionCursor } from '../bindings/ExecutionCursor';
 import type { MarkerEnter } from '../bindings/MarkerEnter';
 import type { ScenarioCommand } from '../bindings/ScenarioCommand';
+import type { StoryReplaceOutcome } from '../bindings/StoryReplaceOutcome';
 import type { FastForwardOptions } from '../hooks/useStage';
 import { addEventListener } from '../events';
 import { executePluginCommand } from '../moyu';
@@ -32,6 +34,12 @@ export interface DebugSessionController {
   restoreCheckpoint(markerId: string, options?: DebugJumpTargetOptions): Promise<boolean>;
   warp(options: DebugWarpOptions): Promise<void>;
   switchRoute(routeName: string, params?: Record<string, unknown>): Promise<void>;
+  replaceStory(options: {
+    story: string;
+    content: string;
+    seekMode?: 'off' | 'fast-forward' | 'warp';
+    targetMarkerId?: string;
+  }): Promise<StoryReplaceOutcome>;
 }
 
 export interface DebugStoryStartOptions {
@@ -216,6 +224,42 @@ async function clearRemoteCheckpoints() {
   await executeScenarioCommand<void>({ subCommand: 'clearCheckpoints' });
 }
 
+function pruneLocalStoryCheckpoints(story: string, preserved: Set<string>) {
+  debugState.checkpoints = Object.fromEntries(
+    Object.entries(debugState.checkpoints).filter(([key, checkpoint]) => {
+      if (checkpoint.cursor.story !== story) {
+        return true;
+      }
+
+      return preserved.has(key);
+    }),
+  );
+}
+
+async function syncCurrentExecutionCursor(fallbackStory: string | null = null) {
+  debugState.currentCursor = await executeScenarioCommand<ExecutionCursor | null>({
+    subCommand: 'getExecutionCursor',
+  });
+  debugState.currentStory = debugState.currentCursor?.story ?? fallbackStory;
+}
+
+async function executeRestartBoundary(boundary: ExecutableRestartBoundary, story: string) {
+  if (boundary.kind === 'checkpoint') {
+    await debugSessionController.restoreCheckpoint(boundary.checkpointKey, { story });
+    return;
+  }
+
+  if (!appStateAdapter?.restartStoryFromHead) {
+    throw new Error('Restarting a story from an explicit entry is not supported by the app state adapter');
+  }
+
+  await appStateAdapter.restartStoryFromHead({
+    story: boundary.story,
+    entry: boundary.kind === 'restart-story' ? boundary.entry : boundary.paragraph,
+  });
+  await syncCurrentExecutionCursor(boundary.story);
+}
+
 async function syncLocalWarpCheckpoint(targetMarkerId: string) {
   const cursor = await executeScenarioCommand<ExecutionCursor | null>({
     subCommand: 'getExecutionCursor',
@@ -290,17 +334,20 @@ async function prepareJumpStart(markerId: string, options?: DebugJumpTargetOptio
       subCommand: 'restoreCheckpoint',
       key: markerId,
     });
-    if (!restored) {
-      throw new Error(`Failed to restore checkpoint ${markerId}`);
+
+    if (restored) {
+      if (appStateAdapter) {
+        await appStateAdapter.restore(checkpoint.appState);
+      }
+
+      debugState.currentCursor = checkpoint.cursor;
+      debugState.currentStory = checkpoint.cursor.story;
+      return false;
     }
 
-    if (appStateAdapter) {
-      await appStateAdapter.restore(checkpoint.appState);
-    }
-
-    debugState.currentCursor = checkpoint.cursor;
-    debugState.currentStory = checkpoint.cursor.story;
-    return false;
+    debugState.checkpoints = Object.fromEntries(
+      Object.entries(debugState.checkpoints).filter(([key]) => key !== markerId),
+    );
   }
 
   const lookup = await executeScenarioCommand<FastForwardCheckpointLookup>({
@@ -325,7 +372,8 @@ async function prepareJumpStart(markerId: string, options?: DebugJumpTargetOptio
 
   const startCheckpoint = debugState.checkpoints[startCheckpointKey];
   if (!startCheckpoint) {
-    throw new Error(`Local checkpoint ${startCheckpointKey} not found`);
+    await restartJumpStoryFromHead(targetStory, currentStory);
+    return true;
   }
 
   const restored = await executeScenarioCommand<boolean>({
@@ -502,6 +550,57 @@ const debugSessionController: DebugSessionController = {
       }
     });
   },
+
+  async replaceStory(options) {
+    debugState.restoring = true;
+    debugState.lastError = null;
+
+    try {
+      const outcome = await enqueueDebugOperation(async () =>
+        executeScenarioCommand<StoryReplaceOutcome>({
+          subCommand: 'replaceStoryData',
+          name: options.story,
+          content: options.content,
+        }),
+      );
+
+      if (outcome.plan.mode === 'invalidate-only') {
+        pruneLocalStoryCheckpoints(options.story, new Set());
+      }
+
+      if (outcome.plan.mode === 'reposition') {
+        if (!outcome.plan.boundary) {
+          throw new Error('Story replace outcome is missing an executable boundary');
+        }
+
+        const seekMode = options.seekMode ?? 'warp';
+        const replaceTargetMarkerId = options.targetMarkerId ?? outcome.plan.targetMarkerId;
+
+        await executeRestartBoundary(outcome.plan.boundary, options.story);
+
+        if (
+          replaceTargetMarkerId &&
+          !(outcome.plan.boundary.kind === 'checkpoint' && outcome.plan.boundary.checkpointKey === replaceTargetMarkerId)
+        ) {
+          if (seekMode === 'warp') {
+            await runWarp({
+              markerId: replaceTargetMarkerId,
+              boundary: 'after',
+            });
+          } else if (seekMode === 'fast-forward') {
+            await runFastForwardToMarker(replaceTargetMarkerId);
+          }
+        }
+      }
+
+      return outcome;
+    } catch (error) {
+      debugState.lastError = toErrorMessage(error);
+      throw error;
+    } finally {
+      debugState.restoring = false;
+    }
+  },
 };
 
 export function registerAppStateAdapter<TState = unknown>(adapter: AppStateAdapter<TState> | null): void {
@@ -640,5 +739,6 @@ export function useDebugSession() {
     restoreCheckpoint: debugSessionController.restoreCheckpoint,
     warp: debugSessionController.warp,
     switchRoute: debugSessionController.switchRoute,
+    replaceStory: debugSessionController.replaceStory,
   };
 }
