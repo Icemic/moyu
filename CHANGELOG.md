@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Implement story replacement and recovery planning
+
 ## [0.13.0] - 2026-05-20
 
 ### Added
