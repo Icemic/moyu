@@ -12,7 +12,7 @@ env:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }} ${{ matrix.wasm && '(Webassembly)' || '' }}
+    name: Build on ${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.wasm && ' (Webassembly)' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -25,10 +25,18 @@ jobs:
             wasm: true
             platform: web
             arch: universal
-          - os: macOS-latest
+          - os: macos-15
+            wasm: false
             platform: macos
             arch: aarch64
+            target: aarch64-apple-darwin
+          - os: macos-15
+            wasm: false
+            platform: macos
+            arch: amd64
+            target: x86_64-apple-darwin
           - os: windows-latest
+            wasm: false
             platform: windows
             arch: amd64
 
@@ -71,11 +79,15 @@ jobs:
           rustup target add wasm32-unknown-unknown
           cargo install wasm-pack --version 0.13.1
 
+      - name: Install Rust target
+        if: matrix.wasm == false && matrix.target
+        run: rustup target add ${{ matrix.target }}
+
       - name: Build Binary
         if: matrix.wasm == false
         env:
           CARGO_PROFILE_RELEASE_STRIP: true
-        run: cargo build --release
+        run: cargo build --release ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
 
       - name: Build Web
         run: |
@@ -85,12 +97,14 @@ jobs:
       - name: Collect and package artifacts (Native)
         if: matrix.wasm == false
         shell: bash
+        env:
+          BUILD_DIR: ${{ matrix.target && format('target/{0}/release', matrix.target) || 'target/release' }}
         run: |
           mkdir -p artifacts
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp target/release/moyu.exe artifacts/
+            cp "$BUILD_DIR/moyu.exe" artifacts/
           else
-            cp target/release/moyu artifacts/
+            cp "$BUILD_DIR/moyu" artifacts/
           fi
           # Create zst archive
           ARCHIVE_NAME="${{ matrix.platform }}-${{ matrix.arch }}-${{ steps.version.outputs.version }}.tar.zst"

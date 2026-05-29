@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }} ${{ matrix.wasm && '(Webassembly)' || '' }}
+    name: Build on ${{ matrix.os }}${{ matrix.target && format(' ({0})', matrix.target) || '' }}${{ matrix.wasm && ' (Webassembly)' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -22,8 +22,14 @@ jobs:
             wasm: false
           - os: ubuntu-latest
             wasm: true
-          - os: macOS-latest
+          - os: macos-15
+            wasm: false
+            target: aarch64-apple-darwin
+          - os: macos-15
+            wasm: false
+            target: x86_64-apple-darwin
           - os: windows-latest
+            wasm: false
 
     runs-on: ${{ matrix.os }}
 
@@ -44,8 +50,12 @@ jobs:
           rustup target add wasm32-unknown-unknown
           cargo install wasm-pack
 
+      - name: Install Rust target
+        if: matrix.target
+        run: rustup target add ${{ matrix.target }}
+
       - name: Build Binary
-        run: cargo build --verbose --release
+        run: cargo build --verbose --release ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
         if: matrix.wasm == false
 
       - name: Build Web
