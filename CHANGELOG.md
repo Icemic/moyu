@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add local storage fallback for web platform when OPFS is not available
+
+### Fixed
+
+- Fix an compatibility issue of video shader on WebGL backend causing crash
+- Improve surface texture usage configuration
+- Avoid crashes on WebGL backend on snapshot and backdrop pass
+
 ## [0.14.0] - 2026-05-22
 
 ### Added
