@@ -18,7 +18,7 @@ pub struct VideoRenderer {
     bind_group_layout: BindGroupLayout,
     index_buffer: Buffer,
     sampler: Sampler,
-    /// Uniform buffer for VideoParams (format: u32)
+    /// Uniform buffer for VideoParams (format: u32 padded to 16 bytes)
     params_buffer_i420: Buffer,
     params_buffer_nv12: Buffer,
     params_buffer_rgba: Buffer,
@@ -146,25 +146,25 @@ impl VideoRenderer {
             ..Default::default()
         });
 
-        // Pre-create uniform buffers for both formats (4 bytes each, u32)
+        // Pre-create uniform buffers for all formats (16 bytes each, padded u32)
         let params_buffer_i420 = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Video Params I420"),
-            contents: &0u32.to_le_bytes(),
+            contents: bytemuck::cast_slice(&[0u32, 0, 0, 0]),
             usage: BufferUsages::UNIFORM,
         });
         let params_buffer_nv12 = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Video Params NV12"),
-            contents: &1u32.to_le_bytes(),
+            contents: bytemuck::cast_slice(&[1u32, 0, 0, 0]),
             usage: BufferUsages::UNIFORM,
         });
         let params_buffer_rgba = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Video Params RGBA"),
-            contents: &2u32.to_le_bytes(),
+            contents: bytemuck::cast_slice(&[2u32, 0, 0, 0]),
             usage: BufferUsages::UNIFORM,
         });
         let params_buffer_bgra = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Video Params BGRA"),
-            contents: &3u32.to_le_bytes(),
+            contents: bytemuck::cast_slice(&[3u32, 0, 0, 0]),
             usage: BufferUsages::UNIFORM,
         });
 

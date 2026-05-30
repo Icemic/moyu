@@ -21,7 +21,7 @@ struct VertexOutput {
 };
 
 struct VideoParams {
-    format: u32,
+    @size(16) format: u32,
 };
 
 @group(0) @binding(0)
