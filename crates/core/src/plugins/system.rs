@@ -134,7 +134,10 @@ impl Command for SystemPlugin {
                 keep_aspect_ratio,
             } => {
                 if let Some(graphics) = self.core.graphics() {
-                    graphics.request_snapshot();
+                    if !graphics.request_snapshot() {
+                        self.snapshot.store(None);
+                        return Ok(None);
+                    }
 
                     // Create an async function that will poll for the snapshot
                     let graphics_clone = graphics.clone();

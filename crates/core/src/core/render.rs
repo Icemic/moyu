@@ -206,9 +206,22 @@ impl Graphics {
         &self.resource_manager
     }
 
+    fn surface_can_copy_src(&self) -> bool {
+        self.config
+            .lock()
+            .usage
+            .contains(wgpu::TextureUsages::COPY_SRC)
+    }
+
     /// Request a screenshot to be taken on the next render
-    pub fn request_snapshot(&self) {
+    pub fn request_snapshot(&self) -> bool {
+        if !self.surface_can_copy_src() {
+            log::warn!("Snapshot is not supported because the surface texture is not COPY_SRC");
+            return false;
+        }
+
         self.snapshot_requested.store(true, Ordering::Relaxed);
+        true
     }
 
     /// Check if there's a screenshot ready and return it.
@@ -872,6 +885,29 @@ impl Graphics {
                         );
 
                     if width == 0 || height == 0 {
+                        continue;
+                    }
+
+                    if !self.surface_can_copy_src() {
+                        let _clear_pass = encoder.as_mut().unwrap().begin_render_pass(
+                            &wgpu::RenderPassDescriptor {
+                                label: Some("Clear Backdrop Fallback Pass"),
+                                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                                    view: &final_view,
+                                    depth_slice: None,
+                                    resolve_target: None,
+                                    ops: wgpu::Operations {
+                                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                                        store: wgpu::StoreOp::Store,
+                                    },
+                                })],
+                                depth_stencil_attachment: None,
+                                ..Default::default()
+                            },
+                        );
+                        log::warn!(
+                            "CaptureBackdrop skipped because the surface texture is not COPY_SRC"
+                        );
                         continue;
                     }
 
