@@ -1,12 +1,218 @@
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::js_sys::{Object, Reflect};
+use web_sys::js_sys::{Function, Promise, Reflect};
 use web_sys::wasm_bindgen::JsValue;
 use web_sys::FileSystemRemoveOptions;
 
 use super::{get_path_in_appdata, FileEntry};
+
+const LOCAL_STORAGE_PREFIX: &str = "moyu:appdata:";
+
+fn opfs_root_promise() -> Result<Promise> {
+    use web_sys::wasm_bindgen::JsCast;
+
+    let window = web_sys::window().ok_or_else(|| anyhow::anyhow!("Failed to get window object"))?;
+    let navigator = window.navigator();
+    let storage = Reflect::get(navigator.as_ref(), &JsValue::from_str("storage"))
+        .map_err(|err| anyhow::anyhow!("Failed to get navigator.storage: {:?}", err))?;
+    let get_directory = Reflect::get(&storage, &JsValue::from_str("getDirectory"))
+        .map_err(|err| anyhow::anyhow!("Failed to get storage.getDirectory: {:?}", err))?;
+
+    if !get_directory.is_function() {
+        return Err(anyhow::anyhow!("OPFS is not supported"));
+    }
+
+    let get_directory = get_directory.dyn_into::<Function>().map_err(|err| {
+        anyhow::anyhow!("Failed to cast storage.getDirectory to Function: {:?}", err)
+    })?;
+    let promise = get_directory
+        .call0(&storage)
+        .map_err(|err| anyhow::anyhow!("Failed to call storage.getDirectory: {:?}", err))?
+        .dyn_into::<Promise>()
+        .map_err(|err| anyhow::anyhow!("storage.getDirectory did not return a Promise: {:?}", err))?;
+
+    Ok(promise)
+}
+
+fn opfs_supported() -> bool {
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
+
+    let navigator = window.navigator();
+    let Ok(storage) = Reflect::get(navigator.as_ref(), &JsValue::from_str("storage")) else {
+        return false;
+    };
+
+    if storage.is_undefined() || storage.is_null() {
+        return false;
+    }
+
+    Reflect::get(&storage, &JsValue::from_str("getDirectory"))
+        .map(|get_directory| get_directory.is_function())
+        .unwrap_or(false)
+}
+
+fn local_storage() -> Result<web_sys::Storage> {
+    let window = web_sys::window().ok_or_else(|| anyhow::anyhow!("Failed to get window object"))?;
+    window
+        .local_storage()
+        .map_err(|err| anyhow::anyhow!("Failed to access localStorage: {:?}", err))?
+        .ok_or_else(|| anyhow::anyhow!("localStorage is not available"))
+}
+
+fn local_storage_key(path: &Path) -> String {
+    format!(
+        "{}{}",
+        LOCAL_STORAGE_PREFIX,
+        path.to_string_lossy().replace('\\', "/")
+    )
+}
+
+fn local_storage_file_key(relative_path: &str) -> Result<String> {
+    Ok(local_storage_key(&get_path_in_appdata(relative_path)?))
+}
+
+fn read_from_local_storage(relative_path: &str) -> Result<Option<Vec<u8>>> {
+    let key = local_storage_file_key(relative_path)?;
+    let storage = match local_storage() {
+        Ok(storage) => storage,
+        Err(err) => {
+            log::warn!("Failed to access localStorage appdata fallback: {}", err);
+            return Ok(None);
+        }
+    };
+
+    let Some(data) = storage
+        .get_item(&key)
+        .map_err(|err| anyhow::anyhow!("Failed to read localStorage item: {:?}", err))?
+    else {
+        return Ok(None);
+    };
+
+    Ok(Some(BASE64_STANDARD.decode(data)?))
+}
+
+fn write_to_local_storage(relative_path: &str, data: Vec<u8>) -> Result<()> {
+    let key = local_storage_file_key(relative_path)?;
+    let storage = local_storage()?;
+    storage
+        .set_item(&key, &BASE64_STANDARD.encode(data))
+        .map_err(|err| anyhow::anyhow!("Failed to write localStorage item: {:?}", err))
+}
+
+fn readdir_from_local_storage(
+    relative_path: &str,
+    pattern: Option<String>,
+) -> Result<Vec<FileEntry>> {
+    let path = get_path_in_appdata(relative_path)?;
+    let prefix = format!("{}/", local_storage_key(&path).trim_end_matches('/'));
+    let storage = match local_storage() {
+        Ok(storage) => storage,
+        Err(err) => {
+            log::warn!("Failed to access localStorage appdata fallback: {}", err);
+            return Ok(Vec::new());
+        }
+    };
+
+    let mut entries = HashMap::<String, FileEntry>::new();
+    let len = storage
+        .length()
+        .map_err(|err| anyhow::anyhow!("Failed to get localStorage length: {:?}", err))?;
+
+    for index in 0..len {
+        let Some(key) = storage
+            .key(index)
+            .map_err(|err| anyhow::anyhow!("Failed to get localStorage key: {:?}", err))?
+        else {
+            continue;
+        };
+
+        if !key.starts_with(&prefix) {
+            continue;
+        }
+
+        let rest = &key[prefix.len()..];
+        if rest.is_empty() {
+            continue;
+        }
+
+        let (name, is_dir) = match rest.split_once('/') {
+            Some((name, _)) => (name.to_string(), true),
+            None => (rest.to_string(), false),
+        };
+
+        if let Some(pattern) = pattern.as_ref()
+            && !fast_glob::glob_match(pattern, &name)
+        {
+            continue;
+        }
+
+        if is_dir {
+            entries.entry(name.clone()).or_insert(FileEntry {
+                name,
+                is_dir: true,
+                size: 0,
+                last_modified: 0,
+            });
+            continue;
+        }
+
+        let size = storage
+            .get_item(&key)
+            .map_err(|err| anyhow::anyhow!("Failed to read localStorage item: {:?}", err))?
+            .and_then(|data| BASE64_STANDARD.decode(data).ok())
+            .map(|data| data.len() as u64)
+            .unwrap_or(0);
+
+        entries.insert(
+            name.clone(),
+            FileEntry {
+                name,
+                is_dir: false,
+                size,
+                last_modified: 0,
+            },
+        );
+    }
+
+    let mut entries = entries.into_values().collect::<Vec<_>>();
+    entries.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(entries)
+}
+
+fn remove_from_local_storage(relative_path: &str) -> Result<()> {
+    let key = local_storage_file_key(relative_path)?;
+    let prefix = format!("{}/", key.trim_end_matches('/'));
+    let storage = local_storage()?;
+    let mut keys = vec![key];
+    let len = storage
+        .length()
+        .map_err(|err| anyhow::anyhow!("Failed to get localStorage length: {:?}", err))?;
+
+    for index in 0..len {
+        if let Some(key) = storage
+            .key(index)
+            .map_err(|err| anyhow::anyhow!("Failed to get localStorage key: {:?}", err))?
+            && key.starts_with(&prefix)
+        {
+            keys.push(key);
+        }
+    }
+
+    for key in keys {
+        storage
+            .remove_item(&key)
+            .map_err(|err| anyhow::anyhow!("Failed to remove localStorage item: {:?}", err))?;
+    }
+
+    Ok(())
+}
 
 async fn get_dir_from_appdata(
     clean_path: Option<&std::path::Path>,
@@ -18,9 +224,7 @@ async fn get_dir_from_appdata(
     use wasm_bindgen_futures::JsFuture;
     use web_sys::{FileSystemDirectoryHandle, FileSystemGetDirectoryOptions};
 
-    let window = web_sys::window().ok_or_else(|| anyhow::anyhow!("Failed to get window object"))?;
-    let navigator = window.navigator();
-    let opfs_root = JsFuture::from(navigator.storage().get_directory())
+    let opfs_root = JsFuture::from(opfs_root_promise()?)
         .await
         .map_err(|err| anyhow::anyhow!("Failed to get storage directory: {:?}", err))?
         .dyn_into::<web_sys::FileSystemDirectoryHandle>()
@@ -103,6 +307,10 @@ pub async fn read_from_appdata(relative_path: &str) -> Result<Option<Vec<u8>>> {
     use web_sys::wasm_bindgen::JsCast;
     use web_sys::File;
 
+    if !opfs_supported() {
+        return read_from_local_storage(relative_path);
+    }
+
     // create parent directory if it doesn't exist
     let Some(file) =
         get_file_from_appdata(&get_path_in_appdata(relative_path)?, true, false).await?
@@ -130,6 +338,10 @@ pub async fn read_from_appdata(relative_path: &str) -> Result<Option<Vec<u8>>> {
 pub async fn write_to_appdata(relative_path: &str, data: Vec<u8>) -> Result<()> {
     use wasm_bindgen_futures::JsFuture;
     use web_sys::wasm_bindgen::JsCast;
+
+    if !opfs_supported() {
+        return write_to_local_storage(relative_path, data);
+    }
 
     let Some(file) =
         get_file_from_appdata(&get_path_in_appdata(relative_path)?, true, true).await?
@@ -175,6 +387,10 @@ pub async fn readdir_from_appdata(
     use wasm_bindgen_futures::JsFuture;
     use web_sys::wasm_bindgen::JsCast;
     use web_sys::{FileSystemHandle, FileSystemHandleKind};
+
+    if !opfs_supported() {
+        return readdir_from_local_storage(relative_path, pattern);
+    }
 
     let path = get_path_in_appdata(relative_path)?;
 
@@ -254,6 +470,10 @@ pub async fn readdir_from_appdata(
 
 /// Remove a file or directory from the appdata directory.
 pub async fn remove_from_appdata(relative_path: &str) -> Result<()> {
+    if !opfs_supported() {
+        return remove_from_local_storage(relative_path);
+    }
+
     let path = get_path_in_appdata(relative_path)?;
 
     let dir = get_dir_from_appdata(path.parent(), false).await?;

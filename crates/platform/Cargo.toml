@@ -53,6 +53,7 @@ web-sys = {workspace = true, features = [
   "Location",
   "Navigator",
   "StorageManager",
+  "Storage",
   "File",
   "FileSystemDirectoryHandle",
   "FileSystemGetDirectoryOptions",
