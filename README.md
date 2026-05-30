@@ -1,5 +1,7 @@
 # 末语 - 跨平台视觉小说引擎
 
+**简体中文** | [English](README_EN.md) | [日本語](README_JP.md)
+
 跨平台视觉小说引擎，以 Rust 为核心，使用 React 构建界面与演出。
 
 <p>
