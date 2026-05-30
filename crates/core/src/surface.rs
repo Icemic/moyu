@@ -205,12 +205,10 @@ pub async fn create_wgpu_surface(
 
     info!("Present mode: {:?}", present_mode);
 
-    // opengl backend does not support surface as COPY_SRC
-    let usage = if adapter.get_info().backend == wgpu::Backend::Gl {
-        wgpu::TextureUsages::RENDER_ATTACHMENT
-    } else {
-        wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC
-    };
+    let mut usage = wgpu::TextureUsages::RENDER_ATTACHMENT;
+    if caps.usages.contains(wgpu::TextureUsages::COPY_SRC) {
+        usage |= wgpu::TextureUsages::COPY_SRC;
+    }
 
     // define how the surface creates its underlying SurfaceTextures
     let config = wgpu::SurfaceConfiguration {
