@@ -9,6 +9,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_NDK_PLATFORM: 26
+  ANDROID_NDK_VERSION: 30.0.14904198
 
 jobs:
   build:
@@ -25,6 +27,12 @@ jobs:
             wasm: true
             platform: web
             arch: universal
+          - os: ubuntu-latest
+            wasm: false
+            platform: android
+            arch: aarch64
+            android: true
+            target: aarch64-linux-android
           - os: macos-15
             wasm: false
             platform: macos
@@ -68,7 +76,7 @@ jobs:
           fi
 
       - name: Install Linux Dependencies
-        if: matrix.os == 'ubuntu-latest' && matrix.wasm == false
+        if: matrix.os == 'ubuntu-latest' && matrix.wasm == false && matrix.android != true
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev pkg-config libudev-dev
@@ -79,15 +87,37 @@ jobs:
           rustup target add wasm32-unknown-unknown
           cargo install wasm-pack --version 0.13.1
 
+      - name: Install Android Dependencies
+        if: matrix.android == true
+        shell: bash
+        run: |
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk --version 4.1.2 --locked
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            SDKMANAGER="$ANDROID_HOME/tools/bin/sdkmanager"
+          fi
+          set +o pipefail
+          yes | "$SDKMANAGER" --install "ndk;$ANDROID_NDK_VERSION"
+          set -o pipefail
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" >> "$GITHUB_ENV"
+
       - name: Install Rust target
-        if: matrix.wasm == false && matrix.target
+        if: matrix.wasm == false && matrix.target && matrix.android != true
         run: rustup target add ${{ matrix.target }}
 
       - name: Build Binary
-        if: matrix.wasm == false
+        if: matrix.wasm == false && matrix.android != true
         env:
           CARGO_PROFILE_RELEASE_STRIP: true
         run: cargo build --release ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+
+      - name: Build Android
+        if: matrix.android == true
+        env:
+          CARGO_PROFILE_RELEASE_STRIP: true
+        run: cargo ndk -t arm64-v8a build --release
 
       - name: Build Web
         run: |
@@ -101,14 +131,19 @@ jobs:
           BUILD_DIR: ${{ matrix.target && format('target/{0}/release', matrix.target) || 'target/release' }}
         run: |
           mkdir -p artifacts
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
+          if [[ "${{ matrix.platform }}" == "android" ]]; then
+            cp "$BUILD_DIR/libmoyu.so" artifacts/
+            ARTIFACT_FILE="libmoyu.so"
+          elif [[ "${{ runner.os }}" == "Windows" ]]; then
             cp "$BUILD_DIR/moyu.exe" artifacts/
+            ARTIFACT_FILE="moyu.exe"
           else
             cp "$BUILD_DIR/moyu" artifacts/
+            ARTIFACT_FILE="moyu"
           fi
           # Create zst archive
           ARCHIVE_NAME="${{ matrix.platform }}-${{ matrix.arch }}-${{ steps.version.outputs.version }}.tar.zst"
-          tar -C artifacts -cf - . | zstd -o "$ARCHIVE_NAME"
+          tar -C artifacts -cf - "$ARTIFACT_FILE" | zstd -o "$ARCHIVE_NAME"
           echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_ENV
 
       - name: Collect and package artifacts (Web)

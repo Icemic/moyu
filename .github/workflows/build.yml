@@ -10,6 +10,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_NDK_PLATFORM: 26
+  ANDROID_NDK_VERSION: 30.0.14904198
 
 jobs:
   build:
@@ -22,6 +24,10 @@ jobs:
             wasm: false
           - os: ubuntu-latest
             wasm: true
+          - os: ubuntu-latest
+            wasm: false
+            android: true
+            target: aarch64-linux-android
           - os: macos-15
             wasm: false
             target: aarch64-apple-darwin
@@ -39,7 +45,7 @@ jobs:
           lfs: true
 
       - name: Install Linux Dependencies
-        if: matrix.os == 'ubuntu-latest' && matrix.wasm == false
+        if: matrix.os == 'ubuntu-latest' && matrix.wasm == false && matrix.android != true
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev pkg-config libudev-dev
@@ -50,13 +56,42 @@ jobs:
           rustup target add wasm32-unknown-unknown
           cargo install wasm-pack
 
+      - name: Install Android Dependencies
+        if: matrix.android == true
+        shell: bash
+        run: |
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk --version 4.1.2 --locked
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [[ ! -x "$SDKMANAGER" ]]; then
+            SDKMANAGER="$ANDROID_HOME/tools/bin/sdkmanager"
+          fi
+          set +o pipefail
+          yes | "$SDKMANAGER" --install "ndk;$ANDROID_NDK_VERSION"
+          set -o pipefail
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" >> "$GITHUB_ENV"
+
       - name: Install Rust target
-        if: matrix.target
+        if: matrix.target && matrix.android != true
         run: rustup target add ${{ matrix.target }}
 
       - name: Build Binary
         run: cargo build --verbose --release ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
-        if: matrix.wasm == false
+        if: matrix.wasm == false && matrix.android != true
+
+      - name: Build Android
+        run: cargo ndk -t arm64-v8a build --release
+        if: matrix.android == true
+
+      - name: Upload Android artifact
+        if: matrix.android == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aarch64
+          path: target/aarch64-linux-android/release/libmoyu.so
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Build Web
         run: |
