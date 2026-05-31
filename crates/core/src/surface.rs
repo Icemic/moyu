@@ -187,6 +187,9 @@ pub async fn create_wgpu_surface(
 
     #[cfg(native)]
     let present_mode = match get_engine_config().present_mode {
+        #[cfg(mobile)]
+        moyu_pal::config::RenderingPresentMode::Recommended => wgpu::PresentMode::Fifo,
+        #[cfg(not(mobile))]
         moyu_pal::config::RenderingPresentMode::Recommended => {
             if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
                 wgpu::PresentMode::Mailbox

@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RenderingPresentMode {
-    /// Chooses Mailbox -> FifoRelaxed -> Fifo based on availability.
+    /// Chooses Mailbox -> FifoRelaxed -> Fifo based on availability on desktop.
+    /// Uses Fifo on mobile so native surface buffers stay paced by system vsync.
     ///
     /// This will ensure that you get a smooth experience as well as low latency if possible.
     ///
