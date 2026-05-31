@@ -41,22 +41,25 @@ pub async fn read_by_file(url: &Url) -> Result<Vec<u8>> {
 /// Open a file from a URL, returns a `Vec<u8>`
 #[cfg(android)]
 pub async fn read_by_file(url: &Url) -> Result<Vec<u8>> {
-    if url.to_string().starts_with("file:///android_asset/") {
-        let asset_path = url.to_string().replace("file:///android_asset/", "");
-        let asset_manager = get_android_app().asset_manager();
-        let mut asset = asset_manager
-            .open(&std::ffi::CString::new(asset_path)?)
-            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))?;
-        let mut buf = Vec::new();
+    let file_path = url
+        .to_file_path()
+        .map_err(|_| anyhow::anyhow!("Invalid file URL on Android: {}", url))?;
+    let asset_path = file_path.strip_prefix("/android_asset").map_err(|_| {
+        anyhow::anyhow!("You can only read from 'file:///android_asset/' on Android.")
+    })?;
+    let asset_path = asset_path
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("Android asset path is not valid UTF-8: {}", url))?;
 
-        asset.read_to_end(&mut buf)?;
+    let asset_manager = get_android_app().asset_manager();
+    let mut asset = asset_manager
+        .open(&std::ffi::CString::new(asset_path)?)
+        .ok_or_else(|| anyhow::anyhow!("Android asset not found: {}", asset_path))?;
+    let mut buf = Vec::new();
 
-        return Ok(buf);
-    }
+    asset.read_to_end(&mut buf)?;
 
-    return Err(anyhow::anyhow!(
-        "You can only read from 'file:///android_asset/' on Android."
-    ));
+    Ok(buf)
 }
 
 /// Open a file from a URL, returns a `Vec<u8>`
