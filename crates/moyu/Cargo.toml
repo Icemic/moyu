@@ -23,7 +23,7 @@ path = "src/main.rs"
 
 [lib]
 crate-type = ["cdylib"]
-name = "libmoyu"
+name = "moyu"
 path = "src/lib.rs"
 
 [dependencies]
