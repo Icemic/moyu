@@ -37,5 +37,6 @@ TS_RS_EXPORT_DIR = {value = "packages/kit/src/bindings", relative = true}
 [alias]
 run-desktop = "run --package moyu --features desktop"
 run-wasm = "run --release --package run-wasm -- moyu --lib --release"
+build-android-arm64 = "ndk -t arm64-v8a -P 26 build --release"
 # should have "sudo CARGO_PROFILE_RELEASE_DEBUG=true" before `cargo`
 run-flamegraph = "flamegraph --package moyu --features desktop"
