@@ -87,10 +87,10 @@ impl Default for MoyuConfig {
 }
 
 pub async fn setup() {
-    #[cfg(native)]
+    #[cfg(desktop)]
     let mut args = pico_args::Arguments::from_env();
 
-    #[cfg(native)]
+    #[cfg(desktop)]
     let mut entry = {
         args.opt_value_from_str("--entry")
             .unwrap()
@@ -99,6 +99,9 @@ pub async fn setup() {
                 "./index.json".to_string()
             })
     };
+
+    #[cfg(mobile)]
+    let mut entry = "./index.json".to_string();
 
     #[cfg(web)]
     let mut entry = web_sys::window()
@@ -130,7 +133,7 @@ pub async fn setup() {
 
                 config.entry = Some(entry);
 
-                #[cfg(native)]
+                #[cfg(desktop)]
                 if let Some(params) = args.opt_value_from_str("--params").unwrap() {
                     config.params = params;
                 }
