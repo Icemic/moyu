@@ -267,6 +267,9 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 #[cfg(desktop)]
                 core.move_to_center();
 
+                #[cfg(native)]
+                core.sync_surface_size_with_window();
+
                 core.window().set_visible(true);
                 core.window().request_redraw();
 

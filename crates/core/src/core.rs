@@ -19,6 +19,7 @@ use moyu_pal::time::Instant;
 use render::Graphics;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(not(mobile))]
 use winit::dpi::{LogicalSize, Size};
 use winit::keyboard::ModifiersState;
 use winit::window::{Fullscreen, Window};
@@ -208,75 +209,98 @@ impl Core {
         }
     }
 
+    /// Sync the engine surface size with the actual window size.
+    pub fn sync_surface_size_with_window(&self) {
+        let physical_size = self.window.inner_size();
+        if physical_size.width == 0 || physical_size.height == 0 {
+            return;
+        }
+
+        let surface_size =
+            SurfaceSize::from_physical_size(&physical_size, self.window.scale_factor());
+        if self.surface_size() != surface_size {
+            self.resize_stage(surface_size);
+        }
+    }
+
     /// resize window, should be called in main thread
     pub fn resize_window(&self, logical_width: f64, logical_height: f64, factor: Option<f64>) {
-        let window = &self.window;
-        let factor = factor.unwrap_or(window.scale_factor());
+        #[cfg(mobile)]
+        {
+            let _ = (logical_width, logical_height, factor);
+            self.sync_surface_size_with_window();
+        }
 
-        let window_fullscreen = window.fullscreen();
-        let window_minimized = window.is_minimized();
-        let window_maximized = window.is_maximized();
+        #[cfg(not(mobile))]
+        {
+            let window = &self.window;
+            let factor = factor.unwrap_or(window.scale_factor());
 
-        if logical_width > 0. && logical_height > 0. {
-            // see [Self::set_correct_canvas_size_for_web] for explanation about web platform
-            let surface_size = if cfg!(web) {
-                SurfaceSize::new(logical_width * factor, logical_height * factor, factor)
-            } else {
-                SurfaceSize::new(logical_width, logical_height, factor)
-            };
+            let window_fullscreen = window.fullscreen();
+            let window_minimized = window.is_minimized();
+            let window_maximized = window.is_maximized();
 
-            self.resize_stage(surface_size);
+            if logical_width > 0. && logical_height > 0. {
+                // see [Self::set_correct_canvas_size_for_web] for explanation about web platform
+                let surface_size = if cfg!(web) {
+                    SurfaceSize::new(logical_width * factor, logical_height * factor, factor)
+                } else {
+                    SurfaceSize::new(logical_width, logical_height, factor)
+                };
 
-            let window_size = if cfg!(web) {
-                Size::Logical(LogicalSize::new(
-                    logical_width * factor,
-                    logical_height * factor,
-                ))
-            } else {
-                Size::Logical(LogicalSize::new(logical_width, logical_height))
-            };
+                self.resize_stage(surface_size);
 
-            let _ = window.request_inner_size(window_size);
+                let window_size = if cfg!(web) {
+                    Size::Logical(LogicalSize::new(
+                        logical_width * factor,
+                        logical_height * factor,
+                    ))
+                } else {
+                    Size::Logical(LogicalSize::new(logical_width, logical_height))
+                };
 
-            window.set_minimized(window_minimized.unwrap_or(false));
-            window.set_maximized(window_maximized);
+                let _ = window.request_inner_size(window_size);
 
-            // see [Self::set_correct_canvas_size_for_web] for explanation about web platform
-            #[cfg(web)]
-            {
-                use wasm_bindgen::JsCast;
-                use winit::platform::web::WindowExtWebSys;
+                window.set_minimized(window_minimized.unwrap_or(false));
+                window.set_maximized(window_maximized);
 
-                if let Some(canvas) = window.canvas() {
-                    canvas
-                        .style()
-                        .set_property("transform", &format!("scale({})", 1.0 / factor))
-                        .unwrap();
-                    canvas
-                        .style()
-                        .set_property("transform-origin", "top left")
-                        .unwrap();
+                // see [Self::set_correct_canvas_size_for_web] for explanation about web platform
+                #[cfg(web)]
+                {
+                    use wasm_bindgen::JsCast;
+                    use winit::platform::web::WindowExtWebSys;
 
-                    if let Some(parent) = canvas.parent_element() {
-                        if let Ok(parent) = parent.dyn_into::<web_sys::HtmlElement>() {
-                            parent
-                                .style()
-                                .set_property("width", &format!("{}px", logical_width))
-                                .unwrap();
-                            parent
-                                .style()
-                                .set_property("height", &format!("{}px", logical_height))
-                                .unwrap();
-                            parent.style().set_property("overflow", "hidden").unwrap();
+                    if let Some(canvas) = window.canvas() {
+                        canvas
+                            .style()
+                            .set_property("transform", &format!("scale({})", 1.0 / factor))
+                            .unwrap();
+                        canvas
+                            .style()
+                            .set_property("transform-origin", "top left")
+                            .unwrap();
+
+                        if let Some(parent) = canvas.parent_element() {
+                            if let Ok(parent) = parent.dyn_into::<web_sys::HtmlElement>() {
+                                parent
+                                    .style()
+                                    .set_property("width", &format!("{}px", logical_width))
+                                    .unwrap();
+                                parent
+                                    .style()
+                                    .set_property("height", &format!("{}px", logical_height))
+                                    .unwrap();
+                                parent.style().set_property("overflow", "hidden").unwrap();
+                            }
                         }
                     }
                 }
-            }
 
-            // reset fullscreen status
-            if window_fullscreen.is_some() {
-                window.set_fullscreen(None);
-                window.set_fullscreen(window_fullscreen);
+                // reset fullscreen status
+                if window_fullscreen.is_some() {
+                    window.set_fullscreen(None);
+                    window.set_fullscreen(window_fullscreen);
+                }
             }
         }
     }
