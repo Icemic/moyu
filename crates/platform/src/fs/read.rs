@@ -30,7 +30,7 @@ pub async fn read(url: &Url) -> Result<Vec<u8>> {
 }
 
 /// Open a file from a URL, returns a `Vec<u8>`
-#[cfg(native)]
+#[cfg(desktop)]
 pub async fn read_by_file(url: &Url) -> Result<Vec<u8>> {
     match tokio::fs::read(url.to_file_path().unwrap()).await {
         Ok(v) => Ok(v),
@@ -39,8 +39,8 @@ pub async fn read_by_file(url: &Url) -> Result<Vec<u8>> {
 }
 
 /// Open a file from a URL, returns a `Vec<u8>`
-#[cfg(target_os = "android")]
-pub async fn read_from_file(url: &Url) -> Result<Vec<u8>> {
+#[cfg(android)]
+pub async fn read_by_file(url: &Url) -> Result<Vec<u8>> {
     if url.to_string().starts_with("file:///android_asset/") {
         let asset_path = url.to_string().replace("file:///android_asset/", "");
         let asset_manager = get_android_app().asset_manager();
