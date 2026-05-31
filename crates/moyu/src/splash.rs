@@ -10,14 +10,17 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
         return;
     };
 
+    let (width, height) = core.stage_size().logical_size_f32();
+
     let node_bg = {
-        let n = Sprite::new("splash-bg".to_string());
+        let mut n = Sprite::new("splash-bg".to_string());
         let asset_id = graphics.resource_manager().insert_asset(
             AssetKind::Texture,
             "builtin:white",
             include_bytes!("../static/white.png").to_vec(),
         );
 
+        n.area = [0.0, 0.0, width / 3840., height / 2400.];
         n.next_texture_id.store(Some(asset_id));
         n.into_node_lock()
     };
@@ -38,7 +41,6 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
         let mut node = node.write();
 
         // logo size is 3840x2400 (16:10), scale as cover the whole screen
-        let (width, height) = core.stage_size().logical_size_f32();
         let scale_x = width as f32 / 3840.0;
         let scale_y = height as f32 / 2400.0;
         let scale = scale_x.max(scale_y);
