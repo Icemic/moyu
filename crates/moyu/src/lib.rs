@@ -12,6 +12,7 @@ use winit::platform::android::activity::AndroidApp;
 #[tokio::main]
 async fn android_main(app: AndroidApp) {
     moyu_pal::logger::setup();
+    let _android_app_handle = moyu_pal::platform::setup_android(&app);
     moyu_pal::config::setup().await;
 
     let event_loop = moyu_core::surface::create_eventloop(app);
