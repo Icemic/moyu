@@ -7,15 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-06-01
+
 ### Added
 
 - Add local storage fallback for web platform when OPFS is not available
+- Align the behavior of Back gesture on Android with close button on desktop platforms
 
 ### Fixed
 
 - Fix an compatibility issue of video shader on WebGL backend causing crash
 - Improve surface texture usage configuration
 - Avoid crashes on WebGL backend on snapshot and backdrop pass
+- Fix Android target compilation
+- Fix a crash on Android caused by incorrect handling of setup function
+- Use Fifo instead of Mailbox for surface texture on Android to avoid error logs
+- Fix some file reading issues on Android
+- Fix wrong stage size on Android
+- Improve splash screen on some cases
+- Crash when resume from background on Android
 
 ## [0.14.0] - 2026-05-22
 
