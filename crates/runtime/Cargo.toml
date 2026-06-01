@@ -14,7 +14,7 @@ log = {workspace = true}
 quickjs-rusty = {workspace = true}
 serde = {workspace = true}
 tokio = {workspace = true, features = ["time", "sync"]}
-tokio-tungstenite = "0.28"
+tokio-tungstenite = "0.29"
 
 moyu_pal = {workspace = true}
 
