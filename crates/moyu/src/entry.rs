@@ -268,7 +268,7 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 core.move_to_center();
 
                 #[cfg(native)]
-                core.sync_surface_size_with_window();
+                core.sync_surface_size_with_window(false);
 
                 core.window().set_visible(true);
                 core.window().request_redraw();
@@ -318,6 +318,21 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
             self.next_redraw_at = None;
         };
 
+        if let Some(core) = self.core().cloned() {
+            #[cfg(mobile)]
+            core.reconfigure_surface_with_window();
+            core.window().set_visible(true);
+            core.window().request_redraw();
+
+            #[cfg(native)]
+            {
+                let now = Instant::now();
+                self.schedule_next_redraw(now);
+            }
+
+            return;
+        }
+
         let window = create_window(
             event_loop,
             #[cfg(web)]
@@ -339,6 +354,10 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
         #[cfg(native)]
         {
             self.next_redraw_at = None;
+        }
+        #[cfg(mobile)]
+        if let Some(core) = self.core() {
+            core.release_render_surface();
         }
         log::warn!("Suspended");
     }

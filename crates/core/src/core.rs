@@ -210,7 +210,7 @@ impl Core {
     }
 
     /// Sync the engine surface size with the actual window size.
-    pub fn sync_surface_size_with_window(&self) {
+    pub fn sync_surface_size_with_window(&self, force_reconfigure: bool) {
         let physical_size = self.window.inner_size();
         if physical_size.width == 0 || physical_size.height == 0 {
             return;
@@ -218,8 +218,27 @@ impl Core {
 
         let surface_size =
             SurfaceSize::from_physical_size(&physical_size, self.window.scale_factor());
-        if self.surface_size() != surface_size {
+        if force_reconfigure || self.surface_size() != surface_size {
             self.resize_stage(surface_size);
+        }
+    }
+
+    /// Force the engine surface to reconfigure with the actual window size,
+    /// then queue a surface recreation on the render thread. The forced
+    /// reconfigure also schedules a Reconfigure command for the first frame
+    /// after resume, which is needed to reliably re-establish the swapchain.
+    pub fn reconfigure_surface_with_window(&self) {
+        self.sync_surface_size_with_window(true);
+
+        if let Some(graphics) = self.graphics.load().as_ref() {
+            graphics.request_recreate_surface();
+        }
+    }
+
+    /// Release platform render surfaces before Android destroys its SurfaceView.
+    pub fn release_render_surface(&self) {
+        if let Some(graphics) = self.graphics.load().as_ref() {
+            graphics.release_surface();
         }
     }
 
@@ -228,7 +247,7 @@ impl Core {
         #[cfg(mobile)]
         {
             let _ = (logical_width, logical_height, factor);
-            self.sync_surface_size_with_window();
+            self.sync_surface_size_with_window(false);
         }
 
         #[cfg(not(mobile))]

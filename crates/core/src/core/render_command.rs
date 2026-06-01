@@ -104,6 +104,14 @@ pub enum RenderCommand {
         filters: Vec<FilterKind>,
     },
 
+    ReleaseSurface {
+        done: std::sync::mpsc::Sender<()>,
+    },
+
+    /// Recreate the wgpu surface from the current window handle.
+    /// Must be sent before any BeginFrame that follows a ReleaseSurface.
+    RecreateSurface,
+
     Reconfigure,
 }
 

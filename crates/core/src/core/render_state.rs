@@ -11,6 +11,15 @@ pub struct RenderState {
 }
 
 impl RenderState {
+    pub fn clear_frame_resources(&mut self) {
+        self.scissor_stack.clear();
+        self.offscreen_stack.clear();
+        self.current_offscreen_offset = (0, 0);
+        self.current_viewport = [0.0, 0.0, 0.0, 0.0];
+        self.current_view = None;
+        self.current_format = None;
+    }
+
     pub fn get_current_view(&self) -> Option<&TextureView> {
         self.current_view.as_ref()
     }
@@ -34,12 +43,7 @@ impl RenderState {
         viewport_height: f32,
         view: TextureView,
     ) {
-        self.scissor_stack.clear();
-        self.offscreen_stack.clear();
-        self.current_offscreen_offset = (0, 0);
-        self.current_viewport = [0.0, 0.0, 0.0, 0.0];
-        self.current_view = None;
-        self.current_format = None;
+        self.clear_frame_resources();
 
         self.scissor_stack.push(scissor_rect);
         self.current_viewport = [0.0, 0.0, viewport_width, viewport_height];

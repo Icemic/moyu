@@ -30,7 +30,7 @@ use crate::utils::walk::walk_nodes_enter_leave;
 pub struct Graphics {
     pub(crate) window: Arc<Window>,
     pub(crate) instance: Instance,
-    pub(crate) surface: Surface<'static>,
+    pub(crate) surface: Mutex<Option<Surface<'static>>>,
     pub(crate) device: Device,
     pub(crate) queue: Queue,
     pub(crate) config: Arc<Mutex<SurfaceConfiguration>>,
@@ -143,7 +143,7 @@ impl Graphics {
         Self {
             window: window.clone(),
             instance,
-            surface,
+            surface: Mutex::new(Some(surface)),
             device,
             queue,
             config: Arc::new(Mutex::new(config)),
@@ -192,10 +192,50 @@ impl Graphics {
         &self.queue
     }
 
-    /// Get surface of wgpu. This is useful when you need to do some low-level operations.
-    /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn surface(&self) -> &Surface<'static> {
-        &self.surface
+    /// Drop the platform surface while keeping device resources alive.
+    /// Blocks until the render thread confirms the surface has been released.
+    pub fn release_surface(&self) {
+        let (done, wait) = std::sync::mpsc::channel();
+        if self
+            .sender
+            .send(RenderCommand::ReleaseSurface { done })
+            .is_ok()
+        {
+            let _ = wait.recv();
+        } else {
+            self.release_surface_now();
+        }
+    }
+
+    fn release_surface_now(&self) {
+        let surface = self.surface.lock().take();
+        drop(surface);
+        self.instance.poll_all(true);
+    }
+
+    /// Queue a surface recreation on the render thread.
+    /// Must be called before the next BeginFrame that follows a release.
+    pub fn request_recreate_surface(&self) {
+        let _ = self.sender.send(RenderCommand::RecreateSurface);
+    }
+
+    /// Recreate the platform surface from the current window (render-thread side).
+    fn recreate_surface(&self) {
+        let surface = match self.instance.create_surface(self.window.clone()) {
+            Ok(s) => s,
+            Err(err) => {
+                log::error!("Failed to recreate surface: {}", err);
+                return;
+            }
+        };
+
+        {
+            let config = self.config.lock();
+            surface.configure(&self.device, &config);
+        }
+
+        self.surface.lock().replace(surface);
+        log::info!("Surface recreated on render thread.");
     }
 
     pub fn config(&self) -> &Arc<Mutex<SurfaceConfiguration>> {
@@ -276,8 +316,15 @@ impl Graphics {
 
     /// reset surface
     fn refresh(&self) {
+        self.instance.poll_all(true);
+
         let config = self.config.lock();
-        self.surface.configure(&self.device, &config);
+        if let Some(surface) = self.surface.lock().as_ref() {
+            surface.configure(&self.device, &config);
+        }
+        drop(config);
+
+        self.texture_pool.borrow_mut().cleanup(f64::MAX);
     }
 
     pub fn reconfigure_surface(&self, surface_size: SurfaceSize, stage_size: SurfaceSize) {
@@ -487,6 +534,14 @@ impl Graphics {
         let mut scale_factor = 1.;
 
         let mut need_skip_current_frame = false;
+        // After ReleaseSurface (Android suspend), the surface is gone. Stay in
+        // this state and drop every stale frame command until RecreateSurface
+        // (sent on resume) rebuilds the surface. Using RecreateSurface as the
+        // exit signal — rather than the next BeginFrame — is essential: the
+        // update thread keeps producing frames during the suspend/resume gap,
+        // so a stale BeginFrame can arrive before resume and must be discarded
+        // instead of being rendered against a None surface.
+        let mut surface_released = false;
 
         let mut draw_count = 0;
 
@@ -511,10 +566,52 @@ impl Graphics {
                 }
             };
 
+            // After ReleaseSurface, drop stale frame commands until RecreateSurface
+            // rebuilds the surface, but allow surface control commands through.
+            if surface_released {
+                match command {
+                    RenderCommand::RecreateSurface => {
+                        // Surface is rebuilt; resume normal frame processing.
+                        self.recreate_surface();
+                        surface_released = false;
+                        continue;
+                    }
+                    RenderCommand::Reconfigure => {
+                        // Let Reconfigure run so the surface config is up-to-date.
+                        self.refresh();
+                        continue;
+                    }
+                    RenderCommand::ReleaseSurface { done } => {
+                        // Another release while already released.
+                        self.release_surface_now();
+                        let _ = done.send(());
+                        continue;
+                    }
+                    // Drop all stale frame commands (BeginFrame/EndFrame/draw/...)
+                    // that arrive before the surface is rebuilt.
+                    _ => continue,
+                }
+            }
+
             if need_skip_current_frame {
                 match command {
                     RenderCommand::EndFrame { .. } => {
                         need_skip_current_frame = false;
+                    }
+                    // Handle ReleaseSurface even during a skip cycle to avoid
+                    // blocking the main thread's Suspended handler indefinitely.
+                    RenderCommand::ReleaseSurface { done } => {
+                        drop(current_pass.take());
+                        output.take();
+                        encoder.take();
+                        belt_encoder.take();
+                        state.clear_frame_resources();
+
+                        self.release_surface_now();
+
+                        need_skip_current_frame = false;
+                        surface_released = true;
+                        let _ = done.send(());
                     }
                     _ => {
                         // skip other commands
@@ -530,7 +627,13 @@ impl Graphics {
                     stage_logical_size: stage,
                     scale_factor: scale,
                 } => {
-                    let o = match self.surface.get_current_texture() {
+                    let o = match self
+                        .surface
+                        .lock()
+                        .as_ref()
+                        .ok_or(wgpu::SurfaceError::Lost)
+                        .and_then(|surface| surface.get_current_texture())
+                    {
                         Ok(v) => v,
                         // Reconfigure the surface if lost
                         Err(wgpu::SurfaceError::Lost) => {
@@ -680,6 +783,7 @@ impl Graphics {
                     );
                     staging_belt.recall();
 
+                    state.clear_frame_resources();
                     output.take().unwrap().present();
 
                     self.texture_pool.borrow_mut().cleanup(timestamp);
@@ -989,17 +1093,24 @@ impl Graphics {
                     }
                 }
                 RenderCommand::Reconfigure => {
-                    // Finish all queue commands before reconfigure.
-                    // This is essential on DirectX 12 backend to avoid unexpected error.
-                    self.instance.poll_all(true);
+                    self.refresh();
+                }
+                RenderCommand::RecreateSurface => {
+                    self.recreate_surface();
+                }
+                RenderCommand::ReleaseSurface { done } => {
+                    drop(current_pass.take());
+                    output.take();
+                    encoder.take();
+                    belt_encoder.take();
+                    state.clear_frame_resources();
 
-                    // apply new size
-                    let config = self.config.lock();
-                    self.surface.configure(&self.device, &config);
-                    drop(config);
+                    self.release_surface_now();
 
-                    // cleanup all pooled textures immediately
-                    self.texture_pool.borrow_mut().cleanup(f64::MAX);
+                    // Drop stale commands from the old frame cycle until
+                    // RecreateSurface rebuilds the surface on resume.
+                    surface_released = true;
+                    let _ = done.send(());
                 }
                 RenderCommand::BeginOffscreenPass {
                     offscreen_view,
