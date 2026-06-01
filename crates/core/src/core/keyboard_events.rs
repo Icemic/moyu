@@ -4,6 +4,8 @@ use winit::event::WindowEvent;
 use winit::keyboard::NamedKey;
 use winit::window::Window;
 
+#[cfg(android)]
+use crate::events::BeforeUnloadEvent;
 use crate::events::{KeyboardEvent, KeyboardEventKind, KeyboardLocation};
 use crate::utils::dispatch_event::dispatch_event;
 
@@ -18,6 +20,17 @@ impl Core {
                 is_synthetic,
             } => {
                 if !*is_synthetic {
+                    #[cfg(android)]
+                    if event.state.is_pressed()
+                        && matches!(
+                            &event.logical_key,
+                            winit::keyboard::Key::Named(NamedKey::BrowserBack)
+                        )
+                    {
+                        dispatch_event(BeforeUnloadEvent {});
+                        return true;
+                    }
+
                     let modifiers_state = self.modifiers_state.load().clone();
 
                     let kind = if event.state.is_pressed() {
