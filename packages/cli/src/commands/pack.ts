@@ -5,14 +5,15 @@
  * Target platforms use CDN asset keys (e.g. windows-amd64, linux-amd64, web-universal).
  */
 
-import { ZipWriter, configure } from '@zip.js/zip.js';
 import { spawn } from 'node:child_process';
 import { createReadStream, createWriteStream, existsSync } from 'node:fs';
-import { cp, glob, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, glob, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { Readable, Writable } from 'node:stream';
+import { configure, ZipWriter } from '@zip.js/zip.js';
 import { defineCommand } from 'citty';
 import consola from 'consola';
+import { ANDROID_FORMATS, ANDROID_PLATFORM, isAndroidFormat, packAndroid } from '../utils/android.js';
 import { formatBytes, loadMeta } from '../utils/engine.js';
 import { generateJsonSchema } from '../utils/generate-json-schema.js';
 import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
@@ -67,7 +68,7 @@ export default defineCommand({
   args: {
     target: {
       type: 'string',
-      description: 'Target platform (e.g. windows-amd64, linux-amd64, web-universal)',
+      description: 'Target platform (e.g. windows-amd64, linux-amd64, web-universal, android-aarch64)',
     },
     framework: {
       type: 'boolean',
@@ -82,6 +83,10 @@ export default defineCommand({
     output: {
       type: 'string',
       description: 'Output directory path',
+    },
+    'android-format': {
+      type: 'string',
+      description: 'Android output format (debug-apk, release-apk, release-aab, android-project)',
     },
   },
   run: async ({ args }) => {
@@ -100,6 +105,7 @@ export default defineCommand({
     let targetPath: string | null = null;
     let target: string | undefined;
     let isWeb = false;
+    let isAndroid = false;
 
     if (!frameworkMode) {
       const metaPath = metaFile(projectRoot);
@@ -119,11 +125,20 @@ export default defineCommand({
       activeVersion = meta.active.version;
       target = args.target;
       isWeb = target === WEB_PLATFORM;
+      isAndroid = target === ANDROID_PLATFORM;
 
       // Validate target
-      if (!isWeb && !NATIVE_EXECUTABLES[target]) {
-        const supported = [...Object.keys(NATIVE_EXECUTABLES), WEB_PLATFORM].join(', ');
+      if (!isWeb && !isAndroid && !NATIVE_EXECUTABLES[target]) {
+        const supported = [...Object.keys(NATIVE_EXECUTABLES), WEB_PLATFORM, ANDROID_PLATFORM].join(', ');
         consola.error(`Unsupported target: "${target}".\nSupported targets: ${supported}`);
+        process.exit(1);
+      }
+      if (isAndroid && compress) {
+        consola.error('--compress is not supported for Android targets.');
+        process.exit(1);
+      }
+      if (isAndroid && !isAndroidFormat(args['android-format'])) {
+        consola.error(`Invalid --android-format. Supported values: ${ANDROID_FORMATS.join(', ')}`);
         process.exit(1);
       }
 
@@ -143,6 +158,7 @@ export default defineCommand({
       consola.info(`Engine version: ${activeVersion}`);
     }
     consola.info(`Compress: ${compress}`);
+    if (isAndroid) consola.info(`Android format: ${args['android-format']}`);
     consola.info(`Output: ${outputDir}`);
 
     // 1. Build the project
@@ -177,7 +193,15 @@ export default defineCommand({
 
     // 4. Copy platform-specific files
     if (!frameworkMode) {
-      if (isWeb) {
+      if (isAndroid) {
+        await packAndroid({
+          projectRoot,
+          engineDir: targetPath!,
+          runtimePackageDir: tmpPackDir,
+          outputDir,
+          format: args['android-format'],
+        });
+      } else if (isWeb) {
         await copyWebEngine(projectRoot, targetPath!, tmpPackDir);
       } else {
         await copyNativeEngine(target!, targetPath!, tmpPackDir);
@@ -185,7 +209,9 @@ export default defineCommand({
     }
 
     // 5. Output
-    if (compress) {
+    if (isAndroid) {
+      // Android artifacts are emitted by Gradle or exported as an Android Studio project.
+    } else if (compress) {
       await createZip(tmpPackDir, outputDir, archiveName);
     } else {
       await copyToOutput(tmpPackDir, outputDir);
