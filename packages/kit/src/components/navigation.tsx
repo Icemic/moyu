@@ -300,7 +300,6 @@ export function createStackNavigator<
 
     hasActiveOverlay: (overlay, id) => {
       if (id) {
-        console.log(navigationState.overlayStack.some((o) => o.type === overlay && o.id === id));
         return navigationState.overlayStack.some((o) => o.type === overlay && o.id === id);
       }
       return navigationState.overlayStack.some((o) => o.type === overlay);
