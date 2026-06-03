@@ -1,5 +1,5 @@
 <h1 align="center">末语 - 跨平台视觉小说引擎</h1>
-<img alt="Momoyu Logo" src="https://repository-images.githubusercontent.com/456076228/ecb67727-0821-47c9-aef2-9634f58f3e92" width="50%" style="display: block; margin: 0 auto;">
+<p align="center"><img alt="末语 Logo" src=".github/moyu-social-banner-thin.png"></p>
 <br>
 <p align="center"><strong>简体中文</strong> | <a href="README_EN.md">English</a> | <a href="README_JP.md">日本語</a></p>
 <p align="center">渐进式跨平台视觉小说引擎，以 Rust 为核心，使用脱离浏览器的 React 构建界面与演出。</p>

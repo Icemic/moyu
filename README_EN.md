@@ -1,5 +1,5 @@
-<h1 align="center">Moyu - Cross-Platform Visual Novel Engine</h1>
-<img alt="Momoyu Logo" src="https://repository-images.githubusercontent.com/456076228/ecb67727-0821-47c9-aef2-9634f58f3e92" width="50%" style="display: block; margin: 0 auto;">
+<h1 align="center">MoYu - Cross-Platform Visual Novel Engine</h1>
+<p align="center"><img alt="MoYu Logo" src=".github/moyu-social-banner-thin.png"></p>
 <br>
 <p align="center"><a href="README.md">简体中文</a> | <strong>English</strong> | <a href="README_JP.md">日本語</a></p>
 <p align="center">A progressive cross-platform visual novel engine with a Rust core, using browser-independent React to build interfaces and presentation.</p>
