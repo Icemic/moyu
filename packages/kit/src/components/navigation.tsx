@@ -106,11 +106,19 @@ export interface Navigator<PageName extends string = DefaultPageName, OverlayNam
   goBack: () => void;
 
   /**
+   * Check whether an overlay has been pushed, optionally by ID
+   * @param overlay Overlay name
+   * @param id Optional unique ID to check for specific overlay instance
+   */
+  hasActiveOverlay: (overlay: OverlayName, id?: string) => boolean;
+
+  /**
    * Push an overlay to the overlay stack
    * @param overlay Overlay name
    * @param params Parameters to pass to the overlay (optional)
+   * @param id Unique ID for the overlay (optional)
    */
-  pushOverlay: (overlay: OverlayName, params?: Record<string, any>) => void;
+  pushOverlay: (overlay: OverlayName, params?: Record<string, any>, id?: string) => void;
 
   /**
    * Pop the top overlay from the stack
@@ -290,7 +298,15 @@ export function createStackNavigator<
       console.warn('goBack() not implemented yet');
     },
 
-    pushOverlay: (overlay, params) => {
+    hasActiveOverlay: (overlay, id) => {
+      if (id) {
+        console.log(navigationState.overlayStack.some((o) => o.type === overlay && o.id === id));
+        return navigationState.overlayStack.some((o) => o.type === overlay && o.id === id);
+      }
+      return navigationState.overlayStack.some((o) => o.type === overlay);
+    },
+
+    pushOverlay: (overlay, params, _id) => {
       // Check if overlay exists
       if (!normalizedOverlays[overlay as string]) {
         console.error(`Navigation Error: Overlay "${overlay}" not found in navigator configuration.`);
@@ -300,7 +316,7 @@ export function createStackNavigator<
       // Validate parameters
       validateParams('overlay', overlay as string, normalizedOverlays[overlay as string], params);
 
-      const id = generateOverlayId();
+      const id = _id ?? generateOverlayId();
       const overlayInfo: OverlayInfo = { type: overlay as string, id };
       navigationState.overlayStack.push(overlayInfo);
 
