@@ -1,6 +1,5 @@
 <h1 align="center">末語（モユ） - クロスプラットフォーム・ビジュアルノベルエンジン</h1>
 <p align="center"><img alt="MoYu Logo" src=".github/moyu-social-banner-thin.png"></p>
-<br>
 <p align="center"><a href="README.md">简体中文</a> | <a href="README_EN.md">English</a> | <strong>日本語</strong></p>
 <p align="center">Rust をコアとし、ブラウザから独立した React でインターフェースと演出を構築する、プログレッシブなクロスプラットフォーム・ビジュアルノベルエンジンです。</p>
 <p align="center">
