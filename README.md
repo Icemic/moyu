@@ -1,10 +1,9 @@
-# 末语 - 跨平台视觉小说引擎
-
-**简体中文** | [English](README_EN.md) | [日本語](README_JP.md)
-
-跨平台视觉小说引擎，以 Rust 为核心，使用 React 构建界面与演出。
-
-<p>
+<h1 align="center">末语 - 跨平台视觉小说引擎</h1>
+<img alt="Momoyu Logo" src="https://repository-images.githubusercontent.com/456076228/ecb67727-0821-47c9-aef2-9634f58f3e92" width="50%" style="display: block; margin: 0 auto;">
+<br>
+<p align="center"><strong>简体中文</strong> | <a href="README_EN.md">English</a> | <a href="README_JP.md">日本語</a></p>
+<p align="center">渐进式跨平台视觉小说引擎，以 Rust 为核心，使用脱离浏览器的 React 构建界面与演出。</p>
+<p align="center">
   <a href="https://opensource.org/licenses/MPL-2.0"><img alt="MPL-2.0 License" src="https://img.shields.io/badge/license-MPL%202.0-blue.svg"></a>
   <a href="https://github.com/Icemic/moyu/actions"><img alt="Rust CI" src="https://github.com/Icemic/moyu/actions/workflows/build.yml/badge.svg"></a>
   <a href="https://github.com/Icemic/moyu/pulls"><img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat"></a>
@@ -12,7 +11,7 @@
   <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=dcB58s03NbyIENYYtp0IHa8aTcUzlBF4&authKey=cgKWlgzqOhczlLbJbGo%2F1wLiUzH%2FMXNSTxz%2BNhDjMufuw0egSin7eqZKoRD7vF4l&noverify=0&group_code=293602841"><img alt="QQ" src="https://img.shields.io/badge/QQ-293602841-blue?logo=qq&logoColor=white"></a>
 </p>
 
-**用 React 写视觉小说 | 渐进式跨平台引擎 | MPL-2.0**
+<hr>
 
 面向现代视觉小说开发，基于 Rust 核心与 JS/React 开发范式，为创作者提供从快速原型到深度定制的渐进式体验。
 

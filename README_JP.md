@@ -1,10 +1,9 @@
-# 末語（Moyu） - クロスプラットフォーム・ビジュアルノベルエンジン
-
-[简体中文](README.md) | [English](README_EN.md) | **日本語**
-
-Rust をコアとし、React でインターフェースと演出を構築するクロスプラットフォーム・ビジュアルノベルエンジンです。
-
-<p>
+<h1 align="center">末語（モユ） - クロスプラットフォーム・ビジュアルノベルエンジン</h1>
+<img alt="Momoyu Logo" src="https://repository-images.githubusercontent.com/456076228/ecb67727-0821-47c9-aef2-9634f58f3e92" width="50%" style="display: block; margin: 0 auto;">
+<br>
+<p align="center"><a href="README.md">简体中文</a> | <a href="README_EN.md">English</a> | <strong>日本語</strong></p>
+<p align="center">Rust をコアとし、ブラウザから独立した React でインターフェースと演出を構築する、プログレッシブなクロスプラットフォーム・ビジュアルノベルエンジンです。</p>
+<p align="center">
   <a href="https://opensource.org/licenses/MPL-2.0"><img alt="MPL-2.0 License" src="https://img.shields.io/badge/license-MPL%202.0-blue.svg"></a>
   <a href="https://github.com/Icemic/moyu/actions"><img alt="Rust CI" src="https://github.com/Icemic/moyu/actions/workflows/build.yml/badge.svg"></a>
   <a href="https://github.com/Icemic/moyu/pulls"><img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat"></a>
@@ -12,7 +11,7 @@ Rust をコアとし、React でインターフェースと演出を構築する
   <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=dcB58s03NbyIENYYtp0IHa8aTcUzlBF4&authKey=cgKWlgzqOhczlLbJbGo%2F1wLiUzH%2FMXNSTxz%2BNhDjMufuw0egSin7eqZKoRD7vF4l&noverify=0&group_code=293602841"><img alt="QQ" src="https://img.shields.io/badge/QQ-293602841-blue?logo=qq&logoColor=white"></a>
 </p>
 
-**React でビジュアルノベルを書く | プログレッシブなクロスプラットフォームエンジン | MPL-2.0**
+<hr>
 
 末語はモダンなビジュアルノベル開発のために、Rust コアと JS/React の開発スタイルを組み合わせ、迅速なプロトタイピングから本格的なカスタマイズまで、段階的な開発体験をクリエイターに提供します。
 

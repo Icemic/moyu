@@ -1,10 +1,9 @@
-# Moyu - Cross-Platform Visual Novel Engine
-
-[简体中文](README.md) | **English** | [日本語](README_JP.md)
-
-A cross-platform visual novel engine with a Rust core, using React to build interfaces and presentation.
-
-<p>
+<h1 align="center">Moyu - Cross-Platform Visual Novel Engine</h1>
+<img alt="Momoyu Logo" src="https://repository-images.githubusercontent.com/456076228/ecb67727-0821-47c9-aef2-9634f58f3e92" width="50%" style="display: block; margin: 0 auto;">
+<br>
+<p align="center"><a href="README.md">简体中文</a> | <strong>English</strong> | <a href="README_JP.md">日本語</a></p>
+<p align="center">A progressive cross-platform visual novel engine with a Rust core, using browser-independent React to build interfaces and presentation.</p>
+<p align="center">
   <a href="https://opensource.org/licenses/MPL-2.0"><img alt="MPL-2.0 License" src="https://img.shields.io/badge/license-MPL%202.0-blue.svg"></a>
   <a href="https://github.com/Icemic/moyu/actions"><img alt="Rust CI" src="https://github.com/Icemic/moyu/actions/workflows/build.yml/badge.svg"></a>
   <a href="https://github.com/Icemic/moyu/pulls"><img alt="PRs Welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat"></a>
@@ -12,7 +11,7 @@ A cross-platform visual novel engine with a Rust core, using React to build inte
   <a href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=dcB58s03NbyIENYYtp0IHa8aTcUzlBF4&authKey=cgKWlgzqOhczlLbJbGo%2F1wLiUzH%2FMXNSTxz%2BNhDjMufuw0egSin7eqZKoRD7vF4l&noverify=0&group_code=293602841"><img alt="QQ" src="https://img.shields.io/badge/QQ-293602841-blue?logo=qq&logoColor=white"></a>
 </p>
 
-**Write Visual Novels with React | A Progressive Cross-Platform Engine | MPL-2.0**
+<hr>
 
 Built for modern visual novel development, Moyu combines a Rust core with a JS/React development workflow, offering creators a progressive experience from rapid prototyping to deep customization.
 
