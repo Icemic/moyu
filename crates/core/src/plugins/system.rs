@@ -153,12 +153,15 @@ impl Command for SystemPlugin {
                                 format,
                             )) = graphics_clone.try_get_snapshot()
                             {
+                                let format = format.try_into().map_err(|format| {
+                                    anyhow!("Unsupported texture format for snapshot: {:?}", format)
+                                })?;
                                 let mut snapshot = Snapshot {
                                     width: origin_width,
                                     height: origin_height,
                                     data,
                                     stride: bytes_per_row,
-                                    format: format.into(),
+                                    format,
                                 };
 
                                 snapshot.resize(

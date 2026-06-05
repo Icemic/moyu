@@ -22,13 +22,15 @@ impl std::fmt::Display for SnapshotFormat {
     }
 }
 
-impl From<wgpu::TextureFormat> for SnapshotFormat {
-    fn from(format: wgpu::TextureFormat) -> Self {
+impl TryFrom<wgpu::TextureFormat> for SnapshotFormat {
+    type Error = wgpu::TextureFormat;
+
+    fn try_from(format: wgpu::TextureFormat) -> Result<Self, Self::Error> {
         match format {
-            wgpu::TextureFormat::Rgba8Unorm => SnapshotFormat::Rgba8,
-            wgpu::TextureFormat::Bgra8Unorm => SnapshotFormat::Bgra8,
-            wgpu::TextureFormat::Rgba16Float => SnapshotFormat::Rgba16f,
-            _ => panic!("Unsupported texture format for snapshot"),
+            wgpu::TextureFormat::Rgba8Unorm => Ok(SnapshotFormat::Rgba8),
+            wgpu::TextureFormat::Bgra8Unorm => Ok(SnapshotFormat::Bgra8),
+            wgpu::TextureFormat::Rgba16Float => Ok(SnapshotFormat::Rgba16f),
+            _ => Err(format),
         }
     }
 }
