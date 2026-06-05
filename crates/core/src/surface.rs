@@ -168,11 +168,7 @@ pub async fn create_wgpu_surface(
 
     let caps = surface.get_capabilities(&adapter);
 
-    let format = *caps
-        .formats
-        .iter()
-        .find(|f| !f.is_srgb())
-        .expect("Cannot find a proper surface format.");
+    let format = choose_surface_format(&caps.formats);
 
     info!("Available surface format: {:?}", caps.formats);
     info!("Selected surface format: {:?}", format);
@@ -229,4 +225,20 @@ pub async fn create_wgpu_surface(
     surface.configure(&device, &config);
 
     (instance, surface, device, queue, config)
+}
+
+#[inline(always)]
+fn choose_surface_format(formats: &[wgpu::TextureFormat]) -> wgpu::TextureFormat {
+    if formats.contains(&wgpu::TextureFormat::Bgra8Unorm) {
+        return wgpu::TextureFormat::Bgra8Unorm;
+    }
+
+    if formats.contains(&wgpu::TextureFormat::Rgba8Unorm) {
+        return wgpu::TextureFormat::Rgba8Unorm;
+    }
+
+    panic!(
+        "Cannot find a proper surface format. Expected Bgra8Unorm or Rgba8Unorm, available: {:?}",
+        formats
+    );
 }
