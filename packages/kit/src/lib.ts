@@ -8,6 +8,7 @@ export * from './events';
 export type * from './node';
 export * from './utils';
 export * from './commands';
+export * from './gameState';
 export * from './runtime-globals';
 export * from './components/navigation';
 export * from './debug';
