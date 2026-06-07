@@ -5,6 +5,7 @@ mod filter;
 mod sprite;
 #[cfg(feature = "text")]
 mod text;
+mod transition;
 mod video;
 
 pub use animation::*;
@@ -14,4 +15,5 @@ pub use filter::*;
 pub use sprite::*;
 #[cfg(feature = "text")]
 pub use text::*;
+pub use transition::*;
 pub use video::*;

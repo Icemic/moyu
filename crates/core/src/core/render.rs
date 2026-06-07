@@ -415,6 +415,7 @@ impl Graphics {
                 root_node.as_ref(),
                 &mut |child, parent| {
                     let mut _child = child.write();
+                    _child.pre_update(parent.base());
                     _child.base_mut().update(parent.base(), false);
 
                     let renderer_type = _child.renderer_type();
@@ -429,11 +430,8 @@ impl Graphics {
                             &upload_payload,
                         );
 
-                        collect_command = _child.base().visible()
-                            && _child
-                                .base()
-                                .global_content_bounds()
-                                .intersects(&stage_bound);
+                        collect_command =
+                            current_renderer.should_collect_commands(_child.as_ref(), &stage_bound);
                         if collect_command {
                             current_renderer.collect_commands(_child.as_ref(), &self.sender);
                         }
@@ -1111,6 +1109,63 @@ impl Graphics {
                     // RecreateSurface rebuilds the surface on resume.
                     surface_released = true;
                     let _ = done.send(());
+                }
+                RenderCommand::BeginRenderTargetPass { target_view, rect } => {
+                    if let Some(pass) = current_pass.take() {
+                        drop(pass);
+                    }
+
+                    let (px, py, w, h) = calculate_surface_physical_coordinates(
+                        &rect,
+                        stage_logical_size,
+                        surface_logical_size,
+                        scale_factor,
+                    );
+
+                    state.push_offscreen_state(
+                        [0, 0, w, h],
+                        (px, py),
+                        [
+                            -(px as f32),
+                            -(py as f32),
+                            surface_logical_size.0 * scale_factor,
+                            surface_logical_size.1 * scale_factor,
+                        ],
+                        target_view,
+                    );
+
+                    current_pass = Some(begin_main_render_pass(
+                        &mut encoder.as_mut().unwrap(),
+                        &state.get_current_view().unwrap(),
+                        state.get_current_viewport(),
+                        wgpu::Color::TRANSPARENT,
+                        true,
+                    ));
+
+                    current_pass
+                        .as_mut()
+                        .unwrap()
+                        .set_bind_group(0, &self.mvp_bind_group, &[]);
+                }
+                RenderCommand::EndRenderTargetPass => {
+                    if let Some(pass) = current_pass.take() {
+                        drop(pass);
+                    }
+
+                    state.pop_offscreen_state();
+
+                    current_pass = Some(begin_main_render_pass(
+                        &mut encoder.as_mut().unwrap(),
+                        &state.get_current_view().unwrap(),
+                        state.get_current_viewport(),
+                        color,
+                        false,
+                    ));
+
+                    current_pass
+                        .as_mut()
+                        .unwrap()
+                        .set_bind_group(0, &self.mvp_bind_group, &[]);
                 }
                 RenderCommand::BeginOffscreenPass {
                     offscreen_view,

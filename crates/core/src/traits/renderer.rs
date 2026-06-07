@@ -1,5 +1,6 @@
 use std::sync::mpsc::SyncSender;
 
+use crate::base::Bound;
 use wgpu::{BindGroupLayout, Device, Queue, RenderPipeline};
 
 use crate::core::render_command::RenderCommand;
@@ -24,6 +25,10 @@ pub trait Renderer {
         render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     );
+
+    fn should_collect_commands(&self, node: &dyn Node, stage_bound: &Bound) -> bool {
+        node.base().visible() && node.base().global_content_bounds().intersects(stage_bound)
+    }
 
     fn collect_commands(&self, node: &dyn Node, render_queue: &RenderCommandSender);
     #[allow(unused_variables)]
