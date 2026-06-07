@@ -1,5 +1,5 @@
 use crate::core::NodeLock;
-use crate::traits::Node;
+use crate::traits::{Node, ShadowKind};
 
 /// walk through all node-like ones from top to bottom,
 /// due that the depth should not big, recursive is acceptable
@@ -40,7 +40,10 @@ where
 
         {
             let child_ref = child.read();
-            if !child_ref.base().children().is_empty() && child_ref.base().visible() {
+            if !child_ref.base().children().is_empty()
+                && child_ref.base().visible()
+                && !child_ref.shadowed(ShadowKind::Rendering)
+            {
                 walk_nodes_enter_leave(child_ref.as_ref(), enter, leave);
             }
         }

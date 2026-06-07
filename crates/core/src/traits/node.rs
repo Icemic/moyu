@@ -10,6 +10,11 @@ use crate::utils::convert::JSValue;
 use super::Command;
 use super::Focusable;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShadowKind {
+    Rendering,
+}
+
 pub trait Node: NodeBaseTrait + Debug + Send + Sync {
     fn create_instance(label: Option<String>) -> Result<Box<dyn Node>>
     where
@@ -34,6 +39,23 @@ pub trait Node: NodeBaseTrait + Debug + Send + Sync {
     /// method called when the properties of the node need to be updated
     fn update_properties(&mut self, _props: &mut JSValue) {
         // defaults to do nothing
+    }
+
+    /// Hook that runs before `NodeBase::update`.
+    ///
+    /// Wrapper-style nodes can use this to sync parent-driven state, such as
+    /// inherited size, before transform and anchor calculations run.
+    fn pre_update(&mut self, _parent: &NodeBase) {}
+
+    /// Whether this node shadows part of its subtree lifecycle for the given kind.
+    ///
+    /// Shadowing means the parent node is intentionally taking over that aspect
+    /// of the subtree, so core traversal should stop recursing into the
+    /// children for that specific kind. Wrapper nodes such as transition slots
+    /// use this to temporarily replace normal child rendering with their own
+    /// retained output.
+    fn shadowed(&self, _kind: ShadowKind) -> bool {
+        false
     }
 
     /// return Some(self) manually if you've implemented Focusable for the node

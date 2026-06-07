@@ -15,10 +15,12 @@ use moyu_core::winit::event::WindowEvent;
 use moyu_core::winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 #[cfg(any(desktop, web))]
 use moyu_gamepad::GamepadPlugin;
-use moyu_nodes::nodes::{Animation, Backdrop, Clip, Filter, Sprite, Text, Video};
+use moyu_nodes::nodes::{
+    Animation, Backdrop, Clip, Filter, Sprite, Text, TransitionContainer, TransitionSlot, Video,
+};
 use moyu_nodes::renderer::{
     AnimationRenderer, BackdropRenderer, ClipRenderer, OffscreenPassRenderer, SpriteRenderer,
-    TextRenderer, VideoRenderer,
+    TextRenderer, TransitionContainerRenderer, TransitionSlotRenderer, VideoRenderer,
 };
 use moyu_pal::config::get_engine_config;
 use moyu_pal::platform;
@@ -185,6 +187,8 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 core.register_node_type::<Filter>("filter");
                 core.register_node_type::<Backdrop>("backdrop");
                 core.register_node_type::<Animation>("animation");
+                core.register_node_type::<TransitionContainer>("transition_container");
+                core.register_node_type::<TransitionSlot>("transition_slot");
                 core.register_node_type::<Video>("video");
 
                 if let Some(graphics) = core.graphics() {
@@ -197,6 +201,9 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                     let filter_renderer = OffscreenPassRenderer::new(&device, &config);
                     let backdrop_renderer = BackdropRenderer::new(&device, &config);
                     let animation_renderer = AnimationRenderer::new(&device, &config);
+                    let transition_container_renderer =
+                        TransitionContainerRenderer::new(&device, &config);
+                    let transition_slot_renderer = TransitionSlotRenderer::new();
                     let video_renderer = VideoRenderer::new(&device, &config);
 
                     text_renderer.init_huozi_from_env();
@@ -207,6 +214,14 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                     graphics.register_renderer("filter", Box::new(filter_renderer));
                     graphics.register_renderer("backdrop", Box::new(backdrop_renderer));
                     graphics.register_renderer("animation", Box::new(animation_renderer));
+                    graphics.register_renderer(
+                        "transition_container",
+                        Box::new(transition_container_renderer),
+                    );
+                    graphics.register_renderer(
+                        "transition_slot",
+                        Box::new(transition_slot_renderer),
+                    );
                     graphics.register_renderer("video", Box::new(video_renderer));
                 }
 
