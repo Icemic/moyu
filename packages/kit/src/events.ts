@@ -30,4 +30,5 @@ export * from './bindings/ResolvedSystemCallLine';
 export * from './bindings/TextLine';
 export * from './bindings/ScenarioEvent';
 export * from './bindings/TouchEventKind';
+export * from './bindings/TransitionContainerEvent';
 export * from './bindings/WheelEventDeltaMode';
