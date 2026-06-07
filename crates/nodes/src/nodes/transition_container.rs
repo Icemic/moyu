@@ -232,7 +232,7 @@ impl Command for TransitionContainer {
                 self.pending_prepare = true;
             }
             TransitionContainerCommand::Perform { effect, duration } => {
-                self.pending_perform = Some(PendingPerform { effect, duration });
+                self.pending_perform = Some(PendingPerform { effect, duration: duration / 1000.0 });
             }
         }
 
