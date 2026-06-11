@@ -447,13 +447,26 @@ async function runGradleBuild(
       : format === 'release-apk'
         ? ':app:assembleRelease'
         : ':app:bundleRelease';
-  const gradlew = join(workdir, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew');
+  const gradlew = join(workdir, process.platform === 'win32' ? './gradlew.bat' : 'gradlew');
   if (!existsSync(gradlew)) throw new Error(`Gradle wrapper not found: ${gradlew}`);
   if (process.platform !== 'win32') await chmod(gradlew, 0o755);
+  
+  let executable = gradlew;
+  if (process.platform === 'win32') {
+    // On Windows, spawn the batch file through cmd.exe to ensure it runs with the correct working directory.
+    executable = 'cmd.exe';
+  }
+
+  let gradleArgs: string[];
+  if (process.platform === 'win32') {
+    gradleArgs = ['/c', gradlew, task];
+  } else {
+    gradleArgs = [task];
+  }
 
   consola.start(`Running Gradle ${task}...`);
   await new Promise<void>((resolveBuild, reject) => {
-    const child = spawn(gradlew, [task], {
+    const child = spawn(executable, gradleArgs, {
       cwd: workdir,
       stdio: 'inherit',
       env: signing
