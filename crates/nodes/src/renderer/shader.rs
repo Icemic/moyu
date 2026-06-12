@@ -297,7 +297,6 @@ impl ShaderRenderer {
             ],
         })
     }
-
 }
 
 impl ShaderSlotRenderer {
@@ -627,9 +626,17 @@ impl Renderer for ShaderRenderer {
                 }
 
                 if let Some(buffer) = shader.params_uniform_buffer.as_ref() {
-                    if let Err(err) =
-                        self.pass
-                            .write_params_uniform(render_queue, buffer, &shader.params)
+                    let params = match shader.shader.pack_params_uniform_bytes() {
+                        Ok(params) => params,
+                        Err(err) => {
+                            shader.mark_error(err);
+                            return;
+                        }
+                    };
+
+                    if let Err(err) = self
+                        .pass
+                        .write_params_uniform(render_queue, buffer, &params)
                     {
                         shader.mark_error(err);
                         return;
@@ -1042,7 +1049,9 @@ impl Renderer for ShaderRenderer {
                         {
                             let Some(snapshot_display_view) = shader.snapshot_display_view.as_ref()
                             else {
-                                shader.mark_error("display-backed transition snapshot is not available");
+                                shader.mark_error(
+                                    "display-backed transition snapshot is not available",
+                                );
                                 return;
                             };
 
@@ -1095,9 +1104,17 @@ impl Renderer for ShaderRenderer {
                         }
 
                         if let Some(buffer) = shader.params_uniform_buffer.as_ref() {
+                            let params = match shader.shader.pack_params_uniform_bytes() {
+                                Ok(params) => params,
+                                Err(err) => {
+                                    shader.mark_error(err);
+                                    return;
+                                }
+                            };
+
                             if let Err(err) =
                                 self.pass
-                                    .write_params_uniform(render_queue, buffer, &shader.params)
+                                    .write_params_uniform(render_queue, buffer, &params)
                             {
                                 shader.mark_error(err);
                                 return;

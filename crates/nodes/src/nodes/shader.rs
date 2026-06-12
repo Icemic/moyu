@@ -1,4 +1,5 @@
 use anyhow::Result;
+use csscolorparser::Color;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Command, Node, NodeBaseTrait, NodeEventSource};
 use moyu_core::utils::convert::{JSValue, from_js};
@@ -8,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::events::ShaderEvent;
+use crate::renderer::pass::SHADER_PARAM_SLOT_COUNT;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
 #[serde(rename_all = "kebab-case")]
@@ -25,6 +27,7 @@ pub enum ShaderBuiltinName {
     #[default]
     Crossfade,
     Wipe,
+    Fade,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
@@ -56,12 +59,35 @@ pub struct ShaderParam {
     pub value: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", tag = "name")]
+#[ts(export, optional_fields)]
+pub enum ShaderBuiltin {
+    Crossfade,
+    Wipe,
+    Fade {
+        out: f64,
+        hold: f64,
+        #[serde(rename = "in")]
+        in_ratio: f64,
+        #[ts(type = "string")]
+        color: Color,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", tag = "type")]
 #[ts(export, optional_fields)]
 pub enum ShaderSource {
-    Builtin { name: ShaderBuiltinName },
-    Raw { content: String },
+    Builtin {
+        #[serde(flatten)]
+        builtin: ShaderBuiltin,
+    },
+    Raw {
+        content: String,
+        #[serde(default)]
+        params: Option<Vec<ShaderParam>>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -96,7 +122,6 @@ pub(crate) enum TransitionFromSource {
 #[derive(Debug, Node)]
 pub struct Shader {
     pub(crate) shader: ShaderSource,
-    pub(crate) params: Vec<ShaderParam>,
     pub(crate) time_control: ShaderTimeControl,
     pub(crate) display_channel: Option<u32>,
     pub(crate) retain: RetainMode,
@@ -153,7 +178,6 @@ impl Default for Shader {
     fn default() -> Self {
         Self {
             shader: ShaderSource::default(),
-            params: Vec::new(),
             time_control: ShaderTimeControl::Auto,
             display_channel: None,
             retain: RetainMode::Snapshot,
@@ -246,10 +270,7 @@ impl Shader {
         (self.elapsed_time as f32, time_delta as f32, frame)
     }
 
-    pub(crate) fn advance_transition_timeline(
-        &mut self,
-        timestamp: f64,
-    ) -> (f32, f32, u32, f32) {
+    pub(crate) fn advance_transition_timeline(&mut self, timestamp: f64) -> (f32, f32, u32, f32) {
         match self.transition_phase {
             TransitionPhase::Running => {
                 let mut time_delta = 0.0;
@@ -289,9 +310,9 @@ impl Shader {
                 self.local_frame,
                 1.0,
             ),
-            TransitionPhase::Stable | TransitionPhase::AwaitingPrepare | TransitionPhase::Prepared => {
-                (0.0, 0.0, 0, self.transition_progress)
-            }
+            TransitionPhase::Stable
+            | TransitionPhase::AwaitingPrepare
+            | TransitionPhase::Prepared => (0.0, 0.0, 0, self.transition_progress),
         }
     }
 
@@ -374,11 +395,7 @@ impl Shader {
         }
     }
 
-    pub(crate) fn apply_prepare_request(
-        &mut self,
-        request: PendingPrepare,
-        capture_display: bool,
-    ) {
+    pub(crate) fn apply_prepare_request(&mut self, request: PendingPrepare, capture_display: bool) {
         self.retain = request.mode;
         self.transition_from_channel = Some(request.from_channel);
         self.transition_to_channel = Some(request.to_channel);
@@ -436,6 +453,106 @@ impl ShaderBuiltinName {
         match self {
             Self::Crossfade => 0,
             Self::Wipe => 1,
+            Self::Fade => 2,
+        }
+    }
+}
+
+impl ShaderBuiltin {
+    pub(crate) fn name(&self) -> ShaderBuiltinName {
+        match self {
+            Self::Crossfade => ShaderBuiltinName::Crossfade,
+            Self::Wipe => ShaderBuiltinName::Wipe,
+            Self::Fade { .. } => ShaderBuiltinName::Fade,
+        }
+    }
+
+    pub(crate) fn sanitize(self, node_id: u32) -> Self {
+        const DEFAULT_OUT: f64 = 0.5;
+        const DEFAULT_HOLD: f64 = 0.0;
+        const DEFAULT_IN: f64 = 0.5;
+        const SUM_EPSILON: f64 = 0.0001;
+
+        match self {
+            Self::Fade {
+                mut out,
+                mut hold,
+                mut in_ratio,
+                color,
+            } => {
+                if !out.is_finite() || !(0.0..=1.0).contains(&out) {
+                    log::warn!(
+                        "shader node {}: fade out ratio must be within 0..=1, got {}; using fallback {}",
+                        node_id,
+                        out,
+                        DEFAULT_OUT
+                    );
+                    out = DEFAULT_OUT;
+                }
+
+                if !hold.is_finite() || !(0.0..=1.0).contains(&hold) {
+                    log::warn!(
+                        "shader node {}: fade hold ratio must be within 0..=1, got {}; using fallback {}",
+                        node_id,
+                        hold,
+                        DEFAULT_HOLD
+                    );
+                    hold = DEFAULT_HOLD;
+                }
+
+                if !in_ratio.is_finite() || !(0.0..=1.0).contains(&in_ratio) {
+                    log::warn!(
+                        "shader node {}: fade in ratio must be within 0..=1, got {}; using fallback {}",
+                        node_id,
+                        in_ratio,
+                        DEFAULT_IN
+                    );
+                    in_ratio = DEFAULT_IN;
+                }
+
+                let total = out + hold + in_ratio;
+                if !total.is_finite() || (total - 1.0).abs() > SUM_EPSILON {
+                    log::warn!(
+                        "shader node {}: fade ratios must sum to 1, got {}; using fallback ratios ({}, {}, {})",
+                        node_id,
+                        total,
+                        DEFAULT_OUT,
+                        DEFAULT_HOLD,
+                        DEFAULT_IN
+                    );
+                    out = DEFAULT_OUT;
+                    hold = DEFAULT_HOLD;
+                    in_ratio = DEFAULT_IN;
+                }
+
+                Self::Fade {
+                    out,
+                    hold,
+                    in_ratio,
+                    color,
+                }
+            }
+            _ => self,
+        }
+    }
+
+    fn write_param_slots(&self, slots: &mut [u32; SHADER_PARAM_SLOT_COUNT]) {
+        if let Self::Fade {
+            out,
+            hold,
+            in_ratio,
+            color,
+        } = self
+        {
+            slots[0] = (*out as f32).to_bits();
+            slots[1] = (*hold as f32).to_bits();
+            slots[2] = (*in_ratio as f32).to_bits();
+
+            let color = color.to_array();
+            slots[3] = color[0].to_bits();
+            slots[4] = color[1].to_bits();
+            slots[5] = color[2].to_bits();
+            slots[6] = color[3].to_bits();
         }
     }
 }
@@ -443,9 +560,92 @@ impl ShaderBuiltinName {
 impl ShaderSource {
     pub(crate) fn builtin_effect_id(&self) -> i32 {
         match self {
-            Self::Builtin { name } => name.effect_id(),
+            Self::Builtin { builtin } => builtin.name().effect_id(),
             Self::Raw { .. } => -1,
         }
+    }
+
+    pub(crate) fn sanitize(self, node_id: u32) -> Self {
+        match self {
+            Self::Builtin { builtin } => Self::Builtin {
+                builtin: builtin.sanitize(node_id),
+            },
+            Self::Raw { content, params } => Self::Raw { content, params },
+        }
+    }
+
+    pub(crate) fn needs_pipeline_recompile(&self, next: &Self) -> bool {
+        match (self, next) {
+            (Self::Builtin { .. }, Self::Builtin { .. }) => false,
+            (
+                Self::Raw {
+                    content: current_content,
+                    ..
+                },
+                Self::Raw {
+                    content: next_content,
+                    ..
+                },
+            ) => current_content != next_content,
+            _ => true,
+        }
+    }
+
+    pub(crate) fn pack_params_uniform_bytes(
+        &self,
+    ) -> Result<[u8; SHADER_PARAM_SLOT_COUNT * std::mem::size_of::<u32>()], String> {
+        let slots = match self {
+            Self::Builtin { builtin } => {
+                let mut slots = [0; SHADER_PARAM_SLOT_COUNT];
+                builtin.write_param_slots(&mut slots);
+                slots
+            }
+            Self::Raw { params, .. } => {
+                let params = params.as_deref().unwrap_or(&[]);
+                let mut slots = [0; SHADER_PARAM_SLOT_COUNT];
+
+                for (index, param) in params.iter().enumerate() {
+                    if index >= SHADER_PARAM_SLOT_COUNT {
+                        return Err(format!(
+                            "shader params exceed the current limit of {} 4-byte slots",
+                            SHADER_PARAM_SLOT_COUNT
+                        ));
+                    }
+
+                    slots[index] = match param.param_type {
+                        ShaderParamType::Float => (param.value as f32).to_bits(),
+                        ShaderParamType::Int => {
+                            if param.value.fract() != 0.0 {
+                                return Err(format!(
+                                    "shader int param '{}' must be an integer, got {}",
+                                    param.name, param.value
+                                ));
+                            }
+
+                            if !(i32::MIN as f64..=i32::MAX as f64).contains(&param.value) {
+                                return Err(format!(
+                                    "shader int param '{}' is out of i32 range: {}",
+                                    param.name, param.value
+                                ));
+                            }
+
+                            param.value as i32 as u32
+                        }
+                    };
+                }
+
+                slots
+            }
+        };
+        let mut bytes = [0u8; SHADER_PARAM_SLOT_COUNT * std::mem::size_of::<u32>()];
+
+        for (index, slot) in slots.iter().enumerate() {
+            let start = index * std::mem::size_of::<u32>();
+            let end = start + std::mem::size_of::<u32>();
+            bytes[start..end].copy_from_slice(&slot.to_ne_bytes());
+        }
+
+        Ok(bytes)
     }
 }
 
@@ -454,7 +654,6 @@ impl ShaderSource {
 #[ts(export, optional_fields)]
 pub struct ShaderProps {
     pub shader: Patch<ShaderSource>,
-    pub params: Patch<Vec<ShaderParam>>,
     pub time_control: Patch<ShaderTimeControl>,
     pub display_channel: Patch<Option<u32>>,
 }
@@ -500,40 +699,56 @@ impl Node for Shader {
     }
 
     fn update_properties(&mut self, props: &mut JSValue) {
-        let props: ShaderProps = from_js(props).unwrap();
+        let props: ShaderProps = match from_js(props) {
+            Ok(props) => props,
+            Err(err) => {
+                log::error!(
+                    "shader node {}: failed to parse props: {:?}",
+                    self.base().id(),
+                    err
+                );
+                return;
+            }
+        };
 
         match props.shader {
             Patch::Set(shader) => {
-                self.shader = shader;
-                self.shader_dirty = true;
-                self.needs_retry = true;
-                self.error_state = false;
-                self.pipeline = None;
-                self.bind_group = None;
-            }
-            Patch::Reset => {
-                self.shader = ShaderSource::default();
-                self.shader_dirty = true;
-                self.needs_retry = true;
-                self.error_state = false;
-                self.pipeline = None;
-                self.bind_group = None;
-            }
-            Patch::Missing => {}
-        }
+                let shader = shader.sanitize(*self.base().id());
+                let shader_dirty = self.shader.needs_pipeline_recompile(&shader);
+                let params_dirty = self.shader != shader;
 
-        match props.params {
-            Patch::Set(params) => {
-                self.params = params;
-                self.params_dirty = true;
-                self.needs_retry = true;
-                self.error_state = false;
+                self.shader = shader;
+                if shader_dirty {
+                    self.shader_dirty = true;
+                    self.pipeline = None;
+                    self.bind_group = None;
+                }
+                if params_dirty {
+                    self.params_dirty = true;
+                }
+                if shader_dirty || params_dirty {
+                    self.needs_retry = true;
+                    self.error_state = false;
+                }
             }
             Patch::Reset => {
-                self.params.clear();
-                self.params_dirty = true;
-                self.needs_retry = true;
-                self.error_state = false;
+                let shader = ShaderSource::default();
+                let shader_dirty = self.shader.needs_pipeline_recompile(&shader);
+                let params_dirty = self.shader != shader;
+
+                self.shader = shader;
+                if shader_dirty {
+                    self.shader_dirty = true;
+                    self.pipeline = None;
+                    self.bind_group = None;
+                }
+                if params_dirty {
+                    self.params_dirty = true;
+                }
+                if shader_dirty || params_dirty {
+                    self.needs_retry = true;
+                    self.error_state = false;
+                }
             }
             Patch::Missing => {}
         }
@@ -674,7 +889,7 @@ impl Command for Shader {
 impl Default for ShaderSource {
     fn default() -> Self {
         Self::Builtin {
-            name: ShaderBuiltinName::Crossfade,
+            builtin: ShaderBuiltin::Crossfade,
         }
     }
 }

@@ -9,7 +9,7 @@ version.workspace = true
 
 [features]
 default = []
-text = ["dep:huozi", "dep:csscolorparser"]
+text = ["dep:huozi"]
 
 [dependencies]
 reiterator = "0.3.0"
@@ -34,7 +34,7 @@ moyu_video = {workspace = true}
 # optional for features
 huozi = {workspace = true, optional = true}
 
-csscolorparser = {workspace = true, optional = true}
+csscolorparser = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 moyu_core = {workspace = true, features = ["js_runtime"]}

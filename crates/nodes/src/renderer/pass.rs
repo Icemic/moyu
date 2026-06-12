@@ -11,9 +11,10 @@ use moyu_core::traits::RenderCommandSender;
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
-use crate::nodes::{ShaderParam, ShaderParamType, ShaderSource as ShaderNodeSource};
+use crate::nodes::ShaderSource as ShaderNodeSource;
 
-const SHADER_PARAM_SLOT_COUNT: usize = 32;
+pub(crate) const SHADER_PARAM_SLOT_COUNT: usize = 32;
+const SHADER_PARAMS_UNIFORM_SIZE: usize = SHADER_PARAM_SLOT_COUNT * std::mem::size_of::<u32>();
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -32,12 +33,6 @@ struct ShaderBuiltinsUniform {
     frame: u32,
     channel_count: u32,
     _padding1: [u32; 2],
-}
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-struct ShaderParamsUniform {
-    slots: [u32; SHADER_PARAM_SLOT_COUNT],
 }
 
 #[derive(Clone, Copy)]
@@ -71,44 +66,6 @@ fn wait_for_future<T>(device: &Device, future: impl Future<Output = T>) -> T {
             }
         }
     }
-}
-
-fn pack_params(params: &[ShaderParam]) -> Result<ShaderParamsUniform, String> {
-    let mut uniform = ShaderParamsUniform::zeroed();
-
-    for (index, param) in params.iter().enumerate() {
-        if index >= SHADER_PARAM_SLOT_COUNT {
-            return Err(format!(
-                "shader params exceed the current limit of {} 4-byte slots",
-                SHADER_PARAM_SLOT_COUNT
-            ));
-        }
-
-        match param.param_type {
-            ShaderParamType::Float => {
-                uniform.slots[index] = (param.value as f32).to_bits();
-            }
-            ShaderParamType::Int => {
-                if param.value.fract() != 0.0 {
-                    return Err(format!(
-                        "shader int param '{}' must be an integer, got {}",
-                        param.name, param.value
-                    ));
-                }
-
-                if !(i32::MIN as f64..=i32::MAX as f64).contains(&param.value) {
-                    return Err(format!(
-                        "shader int param '{}' is out of i32 range: {}",
-                        param.name, param.value
-                    ));
-                }
-
-                uniform.slots[index] = param.value as i32 as u32;
-            }
-        }
-    }
-
-    Ok(uniform)
 }
 
 impl ShaderPass {
@@ -277,7 +234,7 @@ impl ShaderPass {
             ShaderNodeSource::Builtin { .. } => {
                 Cow::Borrowed(include_str!("shaders/shader_transition_builtin.wgsl"))
             }
-            ShaderNodeSource::Raw { content } => Cow::Owned(content.clone()),
+            ShaderNodeSource::Raw { content, .. } => Cow::Owned(content.clone()),
         };
 
         #[cfg(native)]
@@ -363,7 +320,7 @@ impl ShaderPass {
         if params_uniform_buffer.is_none() {
             *params_uniform_buffer = Some(device.create_buffer_init(&util::BufferInitDescriptor {
                 label: Some("Shader Params Uniform Buffer"),
-                contents: bytemuck::bytes_of(&ShaderParamsUniform::zeroed()),
+                contents: &[0; SHADER_PARAMS_UNIFORM_SIZE],
                 usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             }));
         }
@@ -476,15 +433,21 @@ impl ShaderPass {
         &self,
         render_queue: &RenderCommandSender,
         buffer: &Buffer,
-        params: &[ShaderParam],
+        data: &[u8],
     ) -> Result<(), String> {
-        let uniform = pack_params(params)?;
+        if data.len() != SHADER_PARAMS_UNIFORM_SIZE {
+            return Err(format!(
+                "shader params uniform must be exactly {} bytes, got {}",
+                SHADER_PARAMS_UNIFORM_SIZE,
+                data.len()
+            ));
+        }
 
         render_queue
             .send(RenderCommand::WriteBuffer {
                 buffer: buffer.clone(),
                 offset: 0,
-                data: bytemuck::bytes_of(&uniform).to_vec(),
+                data: data.to_vec(),
                 use_staging_belt: true,
             })
             .unwrap();

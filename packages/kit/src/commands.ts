@@ -26,6 +26,7 @@ export * from './bindings/TextCommand';
 export * from './bindings/RetainMode';
 export * from './bindings/AudioSettings';
 export * from './bindings/EffectParams';
+export * from './bindings/ShaderBuiltin';
 export * from './bindings/ShaderBuiltinName';
 export * from './bindings/ShaderCommand';
 export * from './bindings/ShaderParam';
