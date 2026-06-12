@@ -11,6 +11,26 @@ use ts_rs::TS;
 use crate::events::ShaderEvent;
 use crate::renderer::pass::SHADER_PARAM_SLOT_COUNT;
 
+fn default_wipe_softness() -> f64 {
+    0.05
+}
+
+fn default_zoom_start_scale() -> f64 {
+    0.0
+}
+
+fn default_zoom_end_scale() -> f64 {
+    1.0
+}
+
+fn default_zoom_origin() -> [f64; 2] {
+    [0.5, 0.5]
+}
+
+fn default_pixellate_steps() -> u32 {
+    4
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
 #[serde(rename_all = "kebab-case")]
 #[ts(export)]
@@ -28,6 +48,21 @@ pub enum ShaderBuiltinName {
     Crossfade,
     Wipe,
     Fade,
+    Push,
+    Slideaway,
+    Zoom,
+    Pixellate,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum ShaderDirection {
+    #[default]
+    Left,
+    Right,
+    Up,
+    Down,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
@@ -60,11 +95,16 @@ pub struct ShaderParam {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase", tag = "name")]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "name")]
 #[ts(export, optional_fields)]
 pub enum ShaderBuiltin {
     Crossfade,
-    Wipe,
+    Wipe {
+        #[serde(default = "default_wipe_softness")]
+        softness: f64,
+        #[serde(default)]
+        direction: ShaderDirection,
+    },
     Fade {
         out: f64,
         hold: f64,
@@ -72,6 +112,26 @@ pub enum ShaderBuiltin {
         in_ratio: f64,
         #[ts(type = "string")]
         color: Color,
+    },
+    Push {
+        #[serde(default)]
+        direction: ShaderDirection,
+    },
+    Slideaway {
+        #[serde(default)]
+        direction: ShaderDirection,
+    },
+    Zoom {
+        #[serde(default = "default_zoom_start_scale")]
+        start_scale: f64,
+        #[serde(default = "default_zoom_end_scale")]
+        end_scale: f64,
+        #[serde(default = "default_zoom_origin")]
+        origin: [f64; 2],
+    },
+    Pixellate {
+        #[serde(default = "default_pixellate_steps")]
+        steps: u32,
     },
 }
 
@@ -454,6 +514,21 @@ impl ShaderBuiltinName {
             Self::Crossfade => 0,
             Self::Wipe => 1,
             Self::Fade => 2,
+            Self::Push => 3,
+            Self::Slideaway => 4,
+            Self::Zoom => 5,
+            Self::Pixellate => 6,
+        }
+    }
+}
+
+impl ShaderDirection {
+    fn slot_value(self) -> u32 {
+        match self {
+            Self::Left => 0,
+            Self::Right => 1,
+            Self::Up => 2,
+            Self::Down => 3,
         }
     }
 }
@@ -462,8 +537,12 @@ impl ShaderBuiltin {
     pub(crate) fn name(&self) -> ShaderBuiltinName {
         match self {
             Self::Crossfade => ShaderBuiltinName::Crossfade,
-            Self::Wipe => ShaderBuiltinName::Wipe,
+            Self::Wipe { .. } => ShaderBuiltinName::Wipe,
             Self::Fade { .. } => ShaderBuiltinName::Fade,
+            Self::Push { .. } => ShaderBuiltinName::Push,
+            Self::Slideaway { .. } => ShaderBuiltinName::Slideaway,
+            Self::Zoom { .. } => ShaderBuiltinName::Zoom,
+            Self::Pixellate { .. } => ShaderBuiltinName::Pixellate,
         }
     }
 
@@ -471,9 +550,31 @@ impl ShaderBuiltin {
         const DEFAULT_OUT: f64 = 0.5;
         const DEFAULT_HOLD: f64 = 0.0;
         const DEFAULT_IN: f64 = 0.5;
+        const DEFAULT_WIPE_SOFTNESS: f64 = 0.0;
+        const DEFAULT_ZOOM_START_SCALE: f64 = 0.0;
+        const DEFAULT_ZOOM_END_SCALE: f64 = 1.0;
         const SUM_EPSILON: f64 = 0.0001;
 
         match self {
+            Self::Wipe {
+                mut softness,
+                direction,
+            } => {
+                if !softness.is_finite() || !(0.0..=1.0).contains(&softness) {
+                    log::warn!(
+                        "shader node {}: wipe softness must be within 0..=1, got {}; using fallback {}",
+                        node_id,
+                        softness,
+                        DEFAULT_WIPE_SOFTNESS
+                    );
+                    softness = DEFAULT_WIPE_SOFTNESS;
+                }
+
+                Self::Wipe {
+                    softness,
+                    direction,
+                }
+            }
             Self::Fade {
                 mut out,
                 mut hold,
@@ -532,27 +633,96 @@ impl ShaderBuiltin {
                     color,
                 }
             }
+            Self::Zoom {
+                mut start_scale,
+                mut end_scale,
+                mut origin,
+            } => {
+                if !start_scale.is_finite() || start_scale < 0.0 {
+                    log::warn!(
+                        "shader node {}: zoom startScale must be finite and >= 0, got {}; using fallback {}",
+                        node_id,
+                        start_scale,
+                        DEFAULT_ZOOM_START_SCALE
+                    );
+                    start_scale = DEFAULT_ZOOM_START_SCALE;
+                }
+
+                if !end_scale.is_finite() || end_scale < 0.0 {
+                    log::warn!(
+                        "shader node {}: zoom endScale must be finite and >= 0, got {}; using fallback {}",
+                        node_id,
+                        end_scale,
+                        DEFAULT_ZOOM_END_SCALE
+                    );
+                    end_scale = DEFAULT_ZOOM_END_SCALE;
+                }
+
+                for (index, coord) in origin.iter_mut().enumerate() {
+                    if !coord.is_finite() || !(0.0..=1.0).contains(coord) {
+                        log::warn!(
+                            "shader node {}: zoom origin[{}] must be within 0..=1, got {}; using fallback {}",
+                            node_id,
+                            index,
+                            coord,
+                            0.5
+                        );
+                        *coord = 0.5;
+                    }
+                }
+
+                Self::Zoom {
+                    start_scale,
+                    end_scale,
+                    origin,
+                }
+            }
             _ => self,
         }
     }
 
     fn write_param_slots(&self, slots: &mut [u32; SHADER_PARAM_SLOT_COUNT]) {
-        if let Self::Fade {
-            out,
-            hold,
-            in_ratio,
-            color,
-        } = self
-        {
-            slots[0] = (*out as f32).to_bits();
-            slots[1] = (*hold as f32).to_bits();
-            slots[2] = (*in_ratio as f32).to_bits();
+        match self {
+            Self::Crossfade => {}
+            Self::Wipe {
+                softness,
+                direction,
+            } => {
+                slots[0] = (*softness as f32).to_bits();
+                slots[1] = direction.slot_value();
+            }
+            Self::Fade {
+                out,
+                hold,
+                in_ratio,
+                color,
+            } => {
+                slots[0] = (*out as f32).to_bits();
+                slots[1] = (*hold as f32).to_bits();
+                slots[2] = (*in_ratio as f32).to_bits();
 
-            let color = color.to_array();
-            slots[3] = color[0].to_bits();
-            slots[4] = color[1].to_bits();
-            slots[5] = color[2].to_bits();
-            slots[6] = color[3].to_bits();
+                let color = color.to_array();
+                slots[3] = color[0].to_bits();
+                slots[4] = color[1].to_bits();
+                slots[5] = color[2].to_bits();
+                slots[6] = color[3].to_bits();
+            }
+            Self::Push { direction } | Self::Slideaway { direction } => {
+                slots[0] = direction.slot_value();
+            }
+            Self::Zoom {
+                start_scale,
+                end_scale,
+                origin,
+            } => {
+                slots[0] = (*start_scale as f32).to_bits();
+                slots[1] = (*end_scale as f32).to_bits();
+                slots[2] = (origin[0] as f32).to_bits();
+                slots[3] = (origin[1] as f32).to_bits();
+            }
+            Self::Pixellate { steps } => {
+                slots[0] = *steps;
+            }
         }
     }
 }

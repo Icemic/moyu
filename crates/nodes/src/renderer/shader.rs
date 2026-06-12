@@ -621,6 +621,10 @@ impl Renderer for ShaderRenderer {
                                 .iter()
                                 .filter(|declared| **declared)
                                 .count() as u32,
+                            stage_size: [
+                                payload.stage_logical_size.0,
+                                payload.stage_logical_size.1,
+                            ],
                         },
                     );
                 }
@@ -1099,6 +1103,10 @@ impl Renderer for ShaderRenderer {
                                         .filter(|declared| **declared)
                                         .count()
                                         as u32,
+                                    stage_size: [
+                                        payload.stage_logical_size.0,
+                                        payload.stage_logical_size.1,
+                                    ],
                                 },
                             );
                         }
