@@ -81,7 +81,11 @@ jobs:
         if: matrix.wasm == false && matrix.android != true
 
       - name: Build Android
-        run: cargo ndk -t arm64-v8a build --release
+        shell: bash
+        run: |
+          cargo ndk -t arm64-v8a build --release
+          mkdir -p artifacts/android-aarch64
+          cp target/aarch64-linux-android/release/liblibmoyu.so artifacts/android-aarch64/libmoyu.so
         if: matrix.android == true
 
       - name: Upload Android artifact
@@ -89,7 +93,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-aarch64
-          path: target/aarch64-linux-android/release/libmoyu.so
+          path: artifacts/android-aarch64/libmoyu.so
           if-no-files-found: error
           retention-days: 7
 

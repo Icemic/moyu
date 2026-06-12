@@ -132,7 +132,7 @@ jobs:
         run: |
           mkdir -p artifacts
           if [[ "${{ matrix.platform }}" == "android" ]]; then
-            cp "$BUILD_DIR/libmoyu.so" artifacts/
+            cp "$BUILD_DIR/liblibmoyu.so" artifacts/libmoyu.so
             ARTIFACT_FILE="libmoyu.so"
           elif [[ "${{ runner.os }}" == "Windows" ]]; then
             cp "$BUILD_DIR/moyu.exe" artifacts/
