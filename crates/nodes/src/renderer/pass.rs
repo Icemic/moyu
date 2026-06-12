@@ -1,5 +1,7 @@
 use std::borrow::Cow;
+#[cfg(native)]
 use std::future::Future;
+#[cfg(native)]
 use std::task::{Context, Poll, Waker};
 
 use bytemuck::{Pod, Zeroable};
@@ -55,6 +57,7 @@ pub struct ShaderPass {
     dummy_view: TextureView,
 }
 
+#[cfg(native)]
 fn wait_for_future<T>(device: &Device, future: impl Future<Output = T>) -> T {
     let waker = Waker::noop();
     let mut future = std::pin::pin!(future);
@@ -277,6 +280,7 @@ impl ShaderPass {
             ShaderNodeSource::Raw { content } => Cow::Owned(content.clone()),
         };
 
+        #[cfg(native)]
         device.push_error_scope(wgpu::ErrorFilter::Validation);
 
         let fragment_module = device.create_shader_module(ShaderModuleDescriptor {
@@ -322,8 +326,11 @@ impl ShaderPass {
             cache: None,
         });
 
-        if let Some(err) = wait_for_future(device, device.pop_error_scope()) {
-            return Err(err.to_string());
+        #[cfg(native)]
+        {
+            if let Some(err) = wait_for_future(device, device.pop_error_scope()) {
+                return Err(err.to_string());
+            }
         }
 
         Ok(pipeline)
