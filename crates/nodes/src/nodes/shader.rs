@@ -16,7 +16,7 @@ use crate::renderer::pass::SHADER_PARAM_SLOT_COUNT;
 #[ts(export)]
 pub enum RetainMode {
     #[default]
-    Snapshot,
+    Static,
     Live,
 }
 
@@ -180,7 +180,7 @@ impl Default for Shader {
             shader: ShaderSource::default(),
             time_control: ShaderTimeControl::Auto,
             display_channel: None,
-            retain: RetainMode::Snapshot,
+            retain: RetainMode::Static,
             transition_phase: TransitionPhase::Stable,
             transition_from_channel: None,
             transition_to_channel: None,

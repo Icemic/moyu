@@ -815,7 +815,7 @@ impl Renderer for ShaderRenderer {
                             shader.channel_needs_redraw[slot.channel] = true;
 
                             if Some(slot.channel) == from_channel
-                                && (shader.retain == RetainMode::Snapshot
+                                && (shader.retain == RetainMode::Static
                                     || shader.transition_from_source
                                         == TransitionFromSource::Display)
                             {
@@ -888,7 +888,7 @@ impl Renderer for ShaderRenderer {
                             TransitionPhase::Prepared
                             | TransitionPhase::Running
                             | TransitionPhase::Finishing => match shader.retain {
-                                RetainMode::Snapshot => {
+                                RetainMode::Static => {
                                     let should_render = shader.from_needs_redraw;
                                     slot.render_children = should_render;
                                     slot.render_target = if should_render {
