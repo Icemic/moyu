@@ -1,3 +1,8 @@
+struct RenderUniform {
+  position: vec2<f32>,
+  size: vec2<f32>,
+}
+
 struct BuiltinsUniform {
   time: f32,
   time_delta: f32,
@@ -5,7 +10,7 @@ struct BuiltinsUniform {
   effect_id: i32,
   frame: u32,
   channel_count: u32,
-  _padding1: vec2<u32>,
+  stage_size: vec2<f32>,
 }
 
 struct ParamsUniform {
@@ -16,6 +21,9 @@ struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) uv: vec2<f32>,
 }
+
+@group(1) @binding(0)
+var<uniform> render_uniform: RenderUniform;
 
 @group(1) @binding(1)
 var<uniform> builtins: BuiltinsUniform;
@@ -36,9 +44,85 @@ fn apply_crossfade(from_color: vec4<f32>, to_color: vec4<f32>, progress: f32) ->
   return mix(from_color, to_color, progress);
 }
 
-fn apply_wipe(from_color: vec4<f32>, to_color: vec4<f32>, progress: f32, wipe_y: f32) -> vec4<f32> {
-  let feather = 0.02;
-  let to_weight = 1.0 - smoothstep(progress - feather, progress + feather, wipe_y);
+fn composite_over(top: vec4<f32>, bottom: vec4<f32>) -> vec4<f32> {
+  return top + bottom * (1.0 - top.a);
+}
+
+fn uv_in_bounds(uv: vec2<f32>) -> bool {
+  return all(uv >= vec2<f32>(0.0, 0.0)) && all(uv <= vec2<f32>(1.0, 1.0));
+}
+
+fn sample_texture_or_transparent(texture: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
+  if (!uv_in_bounds(uv)) {
+    return vec4<f32>(0.0, 0.0, 0.0, 0.0);
+  }
+
+  return textureSample(texture, texture_sampler, uv);
+}
+
+fn read_directional_progress(direction: u32, uv: vec2<f32>) -> f32 {
+  switch (direction) {
+    case 0u: {
+      return 1.0 - uv.x;
+    }
+    case 1u: {
+      return uv.x;
+    }
+    case 2u: {
+      return 1.0 - uv.y;
+    }
+    default: {
+      return uv.y;
+    }
+  }
+}
+
+fn direction_offset(direction: u32, amount: f32) -> vec2<f32> {
+  switch (direction) {
+    case 0u: {
+      return vec2<f32>(-amount, 0.0);
+    }
+    case 1u: {
+      return vec2<f32>(amount, 0.0);
+    }
+    case 2u: {
+      return vec2<f32>(0.0, -amount);
+    }
+    default: {
+      return vec2<f32>(0.0, amount);
+    }
+  }
+}
+
+fn sample_translated(texture: texture_2d<f32>, uv: vec2<f32>, direction: u32, amount: f32) -> vec4<f32> {
+  return sample_texture_or_transparent(texture, uv - direction_offset(direction, amount));
+}
+
+fn sample_scaled(texture: texture_2d<f32>, uv: vec2<f32>, scale: f32, origin: vec2<f32>) -> vec4<f32> {
+  let safe_scale = max(scale, 0.0001);
+  let scaled_uv = (uv - origin) / safe_scale + origin;
+  return sample_texture_or_transparent(texture, scaled_uv);
+}
+
+fn sample_pixellated(texture: texture_2d<f32>, uv: vec2<f32>, exponent: f32) -> vec4<f32> {
+  let dimensions = max(vec2<f32>(textureDimensions(texture)), vec2<f32>(1.0, 1.0));
+  let max_exponent = ceil(log2(max(dimensions.x, dimensions.y)));
+  let block_size = min(vec2<f32>(exp2(clamp(exponent, 0.0, max_exponent))) / dimensions, vec2<f32>(1.0, 1.0));
+  let snapped_uv = clamp((floor(uv / block_size) + vec2<f32>(0.5, 0.5)) * block_size, vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0));
+  return textureSample(texture, texture_sampler, snapped_uv);
+}
+
+fn apply_wipe(from_color: vec4<f32>, to_color: vec4<f32>, progress: f32, uv: vec2<f32>) -> vec4<f32> {
+  let softness = read_param_f32(0u);
+  let direction = read_param_u32(1u);
+  let edge_progress = read_directional_progress(direction, uv);
+
+  if (softness <= 0.0001) {
+    let to_weight = select(0.0, 1.0, edge_progress <= progress);
+    return mix(from_color, to_color, to_weight);
+  }
+
+  let to_weight = 1.0 - smoothstep(progress - softness, progress + softness, edge_progress);
   return mix(from_color, to_color, to_weight);
 }
 
@@ -98,6 +182,53 @@ fn apply_fade(from_color: vec4<f32>, to_color: vec4<f32>, progress: f32) -> vec4
   return mix(fade_color, to_color, fade_segment_progress(progress, hold_end, in_end));
 }
 
+fn apply_push(progress: f32, uv: vec2<f32>) -> vec4<f32> {
+  let direction = read_param_u32(0u);
+  let from_color = sample_translated(channel0, uv, direction, progress);
+  let to_color = sample_translated(channel1, uv, direction, progress - 1.0);
+  return composite_over(from_color, to_color);
+}
+
+fn apply_slideaway(to_color: vec4<f32>, progress: f32, uv: vec2<f32>) -> vec4<f32> {
+  let direction = read_param_u32(0u);
+  let from_color = sample_translated(channel0, uv, direction, progress);
+  return composite_over(from_color, to_color);
+}
+
+fn apply_zoom(from_color: vec4<f32>, progress: f32, uv: vec2<f32>) -> vec4<f32> {
+  let start_scale = read_param_f32(0u);
+  let end_scale = read_param_f32(1u);
+  let stage_size = max(builtins.stage_size, vec2<f32>(1.0, 1.0));
+  let rect_size = max(render_uniform.size, vec2<f32>(0.0001, 0.0001));
+  let screen_origin = vec2<f32>(read_param_f32(2u), read_param_f32(3u));
+  let origin = (screen_origin * stage_size - render_uniform.position) / rect_size;
+  let scale = mix(start_scale, end_scale, progress);
+
+  if (start_scale <= end_scale) {
+    let to_color = sample_scaled(channel1, uv, scale, origin);
+    return composite_over(to_color, from_color);
+  }
+
+  let scaled_from_color = sample_scaled(channel0, uv, scale, origin);
+  return composite_over(scaled_from_color, textureSample(channel1, texture_sampler, uv));
+}
+
+fn pixellate_step_progress(progress: f32, steps: f32) -> f32 {
+  return min(floor(progress * (steps + 1.0)), steps);
+}
+
+fn apply_pixellate(progress: f32, uv: vec2<f32>) -> vec4<f32> {
+  let steps = f32(read_param_u32(0u));
+
+  if (progress < 0.5) {
+    let phase = clamp(progress / 0.5, 0.0, 1.0);
+    return sample_pixellated(channel0, uv, pixellate_step_progress(phase, steps));
+  }
+
+  let phase = clamp((progress - 0.5) / 0.5, 0.0, 1.0);
+  return sample_pixellated(channel1, uv, pixellate_step_progress(1.0 - phase, steps));
+}
+
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
   let progress = builtins.progress;
@@ -110,10 +241,22 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
       return apply_crossfade(from_color, to_color, progress);
     }
     case 1: {
-      return apply_wipe(from_color, to_color, progress, input.uv.y);
+      return apply_wipe(from_color, to_color, progress, input.uv);
     }
     case 2: {
       return apply_fade(from_color, to_color, progress);
+    }
+    case 3: {
+      return apply_push(progress, input.uv);
+    }
+    case 4: {
+      return apply_slideaway(to_color, progress, input.uv);
+    }
+    case 5: {
+      return apply_zoom(from_color, progress, input.uv);
+    }
+    case 6: {
+      return apply_pixellate(progress, input.uv);
     }
     default: {
       return from_color;

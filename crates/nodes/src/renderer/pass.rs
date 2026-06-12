@@ -32,7 +32,7 @@ struct ShaderBuiltinsUniform {
     effect_id: i32,
     frame: u32,
     channel_count: u32,
-    _padding1: [u32; 2],
+    stage_size: [f32; 2],
 }
 
 #[derive(Clone, Copy)]
@@ -43,6 +43,7 @@ pub struct ShaderPassBuiltins {
     pub effect_id: i32,
     pub frame: u32,
     pub channel_count: u32,
+    pub stage_size: [f32; 2],
 }
 
 pub struct ShaderPass {
@@ -75,7 +76,7 @@ impl ShaderPass {
             entries: &[
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStages::VERTEX,
+                    visibility: ShaderStages::VERTEX_FRAGMENT,
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -416,7 +417,7 @@ impl ShaderPass {
             effect_id: builtins.effect_id,
             frame: builtins.frame,
             channel_count: builtins.channel_count,
-            _padding1: [0; 2],
+            stage_size: builtins.stage_size,
         };
 
         render_queue
