@@ -1,7 +1,7 @@
+mod shader;
 mod text;
-mod transition;
 mod video;
 
+pub use shader::*;
 pub use text::*;
-pub use transition::*;
 pub use video::*;
