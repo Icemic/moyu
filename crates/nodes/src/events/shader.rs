@@ -5,14 +5,14 @@ use ts_rs::TS;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(untagged)]
 #[ts(export, optional_fields)]
-pub enum TransitionContainerEvent {
+pub enum ShaderEvent {
     Finished,
 }
 
-impl Event for TransitionContainerEvent {
+impl Event for ShaderEvent {
     fn name(&self) -> &'static str {
         match self {
-            TransitionContainerEvent::Finished => "finished",
+            ShaderEvent::Finished => "finished",
         }
     }
 }

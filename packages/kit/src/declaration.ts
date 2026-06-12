@@ -11,8 +11,8 @@ import type { FilterProps } from './bindings/FilterProps';
 import type { BackdropProps } from './bindings/BackdropProps';
 import type { SpriteProps } from './bindings/SpriteProps';
 import type { TextProps } from './bindings/TextProps';
-import type { TransitionContainerProps } from './bindings/TransitionContainerProps';
-import type { TransitionSlotProps } from './bindings/TransitionSlotProps';
+import type { ShaderProps } from './bindings/ShaderProps';
+import type { ShaderSlotProps } from './bindings/ShaderSlotProps';
 import type { AnimationProps } from './bindings/AnimationProps';
 import type { VideoProps } from './bindings/VideoProps';
 
@@ -55,11 +55,11 @@ export type MoyuClipAttributes = ClipProps & MoyuNodeAttributes;
 export type MoyuFilterAttributes = FilterProps & MoyuNodeAttributes;
 export type MoyuBackdropAttributes = BackdropProps & MoyuNodeAttributes;
 export type MoyuAnimationAttributes = AnimationProps & MoyuNodeAttributes;
-export type MoyuTransitionContainerAttributes = TransitionContainerProps &
+export type MoyuShaderAttributes = ShaderProps &
   MoyuNodeAttributes & {
     onFinished?: () => void;
   };
-export type MoyuTransitionSlotAttributes = TransitionSlotProps & MoyuNodeAttributes;
+export type MoyuShaderSlotAttributes = ShaderSlotProps & MoyuNodeAttributes;
 export type MoyuVideoAttributes = VideoProps &
   MoyuNodeAttributes & {
     onEnded?: () => void;
@@ -98,8 +98,8 @@ export declare namespace JSX {
     filter: DetailedMoyuProps<MoyuFilterAttributes>;
     backdrop: DetailedMoyuProps<MoyuBackdropAttributes>;
     animation: DetailedMoyuProps<MoyuAnimationAttributes>;
-    transition_container: DetailedMoyuProps<MoyuTransitionContainerAttributes>;
-    transition_slot: DetailedMoyuProps<MoyuTransitionSlotAttributes>;
+    shader: DetailedMoyuProps<MoyuShaderAttributes>;
+    'shader-slot': DetailedMoyuProps<MoyuShaderSlotAttributes>;
     video: DetailedMoyuProps<MoyuVideoAttributes>;
   }
 }

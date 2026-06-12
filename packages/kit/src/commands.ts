@@ -1,9 +1,9 @@
 import type { AudioCommand } from './bindings/AudioCommand';
 import type { GamepadCommand } from './bindings/GamepadCommand';
 import type { ScenarioCommand } from './bindings/ScenarioCommand';
+import type { ShaderCommand } from './bindings/ShaderCommand';
 import type { SystemCommand } from './bindings/SystemCommand';
 import type { TextCommand } from './bindings/TextCommand';
-import type { TransitionContainerCommand } from './bindings/TransitionContainerCommand';
 import type { MakeNullOptional } from './utils';
 
 type _Command =
@@ -11,8 +11,8 @@ type _Command =
   | TextCommand
   | GamepadCommand
   | ScenarioCommand
-  | SystemCommand
-  | TransitionContainerCommand;
+  | ShaderCommand
+  | SystemCommand;
 
 export type Command = MakeNullOptional<_Command>;
 
@@ -26,6 +26,10 @@ export * from './bindings/TextCommand';
 export * from './bindings/RetainMode';
 export * from './bindings/AudioSettings';
 export * from './bindings/EffectParams';
-export * from './bindings/TransitionContainerCommand';
-export * from './bindings/TransitionEffect';
+export * from './bindings/ShaderBuiltinName';
+export * from './bindings/ShaderCommand';
+export * from './bindings/ShaderParam';
+export * from './bindings/ShaderParamType';
+export * from './bindings/ShaderSource';
+export * from './bindings/ShaderTimeControl';
 export * from './bindings/WindowState';
