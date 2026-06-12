@@ -140,11 +140,8 @@ pub async fn create_wgpu_surface(
         .await
         .expect("No suitable GPU adapters found on the system.");
 
-    #[cfg(native)]
-    {
-        let adapter_info = adapter.get_info();
-        info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
-    }
+    let adapter_info = adapter.get_info();
+    info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
 
     let required_limits = if cfg!(native) {
         adapter.limits()
