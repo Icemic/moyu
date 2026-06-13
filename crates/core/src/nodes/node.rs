@@ -136,6 +136,11 @@ impl NodeBase {
     }
 
     #[inline]
+    pub fn update_id(&self) -> u32 {
+        self._update_id
+    }
+
+    #[inline]
     pub fn width(&self) -> &u32 {
         &self.width
     }

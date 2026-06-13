@@ -1,4 +1,6 @@
+use glam::Vec3;
 use moyu_core::base::{Bound, MVPMatrix, Rect};
+use moyu_core::core::NodeLock;
 use moyu_core::core::render_command::RenderCommand;
 use moyu_core::traits::{
     Node, NodeBaseTrait, RenderCommandSender, Renderer, RendererUpdatePayload,
@@ -8,7 +10,8 @@ use wgpu::*;
 
 use super::pass::{ShaderPass, ShaderPassBuiltins};
 use crate::nodes::{
-    RetainMode, Shader, ShaderSlot, ShaderTimeControl, TransitionFromSource, TransitionPhase,
+    RetainMode, Shader, ShaderSlot, ShaderSlotLayout, ShaderSlotSpace, ShaderTimeControl,
+    TransitionFromSource, TransitionPhase,
 };
 
 #[derive(Clone, Copy)]
@@ -16,10 +19,16 @@ struct ShaderSlotDescriptor {
     channel: usize,
     empty: bool,
     is_static: bool,
+    space: ShaderSlotSpace,
     width: u32,
     height: u32,
     bounds: Option<Bound>,
 }
+
+const IDLE_TEXTURE_GRACE_SECONDS: f64 = 5.0;
+const BOOTSTRAP_RECT_SIZE: f32 = 100.0;
+const CONTENT_REVISION_OFFSET: u64 = 0xcbf29ce484222325;
+const CONTENT_REVISION_PRIME: u64 = 0x100000001b3;
 
 pub struct ShaderRenderer {
     pass: ShaderPass,
@@ -30,9 +39,6 @@ pub struct ShaderRenderer {
 pub struct ShaderSlotRenderer;
 
 impl ShaderRenderer {
-    const IDLE_TEXTURE_GRACE_SECONDS: f64 = 5.0;
-    const BOOTSTRAP_RECT_SIZE: f32 = 100.0;
-
     fn ensure_channel_texture(
         &self,
         shader: &mut Shader,
@@ -192,86 +198,6 @@ impl ShaderRenderer {
         }
     }
 
-    fn slot_children_bounds(slot: &ShaderSlot) -> Option<Bound> {
-        let mut bounds: Option<Bound> = None;
-
-        for child in slot.base().children() {
-            let child = child.read();
-            let child_bounds = *child.base().global_content_bounds();
-
-            if child_bounds.is_empty() {
-                continue;
-            }
-
-            bounds = Some(match bounds {
-                Some(current) => current.union(&child_bounds),
-                None => child_bounds,
-            });
-        }
-
-        bounds
-    }
-
-    fn resolve_shader_rect(stage_rect: Rect, slots: &[ShaderSlotDescriptor]) -> Option<Rect> {
-        let mut bounds: Option<Bound> = None;
-
-        for slot in slots {
-            let Some(slot_bounds) = slot.bounds else {
-                continue;
-            };
-
-            bounds = Some(match bounds {
-                Some(current) => current.union(&slot_bounds),
-                None => slot_bounds,
-            });
-        }
-
-        let bounds = bounds?;
-        let clamped = bounds.clamp(
-            stage_rect.x(),
-            stage_rect.y(),
-            stage_rect.x() + stage_rect.width(),
-            stage_rect.y() + stage_rect.height(),
-        );
-
-        if clamped.is_empty() {
-            None
-        } else {
-            Some(clamped.into_rect())
-        }
-    }
-
-    fn resolve_transition_rect(
-        stage_rect: Rect,
-        from_bounds: Option<Bound>,
-        to_bounds: Option<Bound>,
-    ) -> Option<Rect> {
-        let union = match (from_bounds, to_bounds) {
-            (Some(from_bounds), Some(to_bounds)) => Some(from_bounds.union(&to_bounds)),
-            (Some(bounds), None) | (None, Some(bounds)) => Some(bounds),
-            (None, None) => None,
-        }?;
-
-        let clamped = union.clamp(
-            stage_rect.x(),
-            stage_rect.y(),
-            stage_rect.x() + stage_rect.width(),
-            stage_rect.y() + stage_rect.height(),
-        );
-
-        if clamped.is_empty() {
-            None
-        } else {
-            Some(clamped.into_rect())
-        }
-    }
-
-    fn bootstrap_transition_rect(stage_rect: Rect) -> Rect {
-        let width = Self::BOOTSTRAP_RECT_SIZE.min(stage_rect.width());
-        let height = Self::BOOTSTRAP_RECT_SIZE.min(stage_rect.height());
-        Rect::new(stage_rect.x(), stage_rect.y(), width, height)
-    }
-
     fn create_present_bind_group(
         &self,
         device: &Device,
@@ -334,53 +260,76 @@ impl Renderer for ShaderRenderer {
             payload.stage_logical_size.0,
             payload.stage_logical_size.1,
         );
-        let children = shader.base().children().clone();
-        let mut slots = Vec::new();
-        let mut slot_key_parts = Vec::new();
+        let mut slots = [None; Shader::CHANNEL_COUNT];
+        let mut slot_nodes: [Option<NodeLock>; Shader::CHANNEL_COUNT] =
+            std::array::from_fn(|_| None);
+        let mut slot_layouts = [None; Shader::CHANNEL_COUNT];
+        let mut invalid_channel = None;
         let mut duplicate_channel = None;
 
-        for child in &children {
-            let child = child.read();
+        for child_node in shader.base().children() {
+            let child = child_node.read();
             let Some(slot) = child.as_any().downcast_ref::<ShaderSlot>() else {
                 continue;
             };
 
             if slot.channel > 3 {
-                shader.mark_error(format!(
-                    "channel {} is out of range, expected 0..3",
-                    slot.channel
-                ));
-                return;
+                invalid_channel = Some(slot.channel);
+                break;
             }
 
             let channel = slot.channel as usize;
-            if slots
-                .iter()
-                .any(|item: &ShaderSlotDescriptor| item.channel == channel)
-            {
+            if slot_nodes[channel].is_some() {
                 duplicate_channel = Some(slot.channel);
+                continue;
             }
 
-            slot_key_parts.push(format!(
-                "{}:{}:{}:{}:{}",
-                slot.channel, slot.empty, slot.is_static, slot.width, slot.height
-            ));
-            slots.push(ShaderSlotDescriptor {
+            let bounds = if slot.empty || matches!(slot.space, ShaderSlotSpace::Shader) {
+                None
+            } else {
+                let mut bounds: Option<Bound> = None;
+                for child in slot.base().children() {
+                    let child = child.read();
+                    let child_bounds = *child.base().global_content_bounds();
+
+                    if child_bounds.is_empty() {
+                        continue;
+                    }
+
+                    bounds = Some(match bounds {
+                        Some(current) => current.union(&child_bounds),
+                        None => child_bounds,
+                    });
+                }
+                bounds
+            };
+
+            slot_nodes[channel] = Some(child_node.clone());
+            slot_layouts[channel] = Some(ShaderSlotLayout {
+                empty: slot.empty,
+                is_static: slot.is_static,
+                space: slot.space,
+                width: slot.width,
+                height: slot.height,
+            });
+            slots[channel] = Some(ShaderSlotDescriptor {
                 channel,
                 empty: slot.empty,
                 is_static: slot.is_static,
+                space: slot.space,
                 width: slot.width,
                 height: slot.height,
-                bounds: if slot.empty {
-                    None
-                } else {
-                    Self::slot_children_bounds(slot)
-                },
+                bounds,
             });
         }
 
-        let slot_key = slot_key_parts.join("|");
-        shader.update_slot_layout_key(slot_key);
+        if let Some(channel) = invalid_channel {
+            shader.mark_error(format!(
+                "channel {} is out of range, expected 0..3",
+                channel
+            ));
+            return;
+        }
 
         if let Some(channel) = duplicate_channel {
             shader.mark_error(format!("channel {} is declared more than once", channel));
@@ -397,13 +346,15 @@ impl Renderer for ShaderRenderer {
             }
         }
 
+        shader.update_slot_layouts(slot_layouts);
+
         if shader.error_state && !shader.needs_retry {
             return;
         }
 
         let mut declared_channels = [false; 4];
-        for slot in &slots {
-            declared_channels[slot.channel] = true;
+        for (channel, slot_node) in slot_nodes.iter().enumerate() {
+            declared_channels[channel] = slot_node.is_some();
         }
 
         for (index, declared) in declared_channels.iter().copied().enumerate() {
@@ -411,6 +362,7 @@ impl Renderer for ShaderRenderer {
                 shader.channel_declared[index] = false;
                 shader.channel_empty[index] = false;
                 shader.channel_static[index] = false;
+                shader.channel_content_revisions[index] = 0;
                 shader.channel_texture_widths[index] = 0;
                 shader.channel_texture_heights[index] = 0;
                 shader.channel_views[index] = None;
@@ -418,6 +370,7 @@ impl Renderer for ShaderRenderer {
                 shader.present_bind_group = None;
             }
         }
+        shader.channel_declared = declared_channels;
 
         let effect_id = shader.shader.builtin_effect_id();
 
@@ -425,15 +378,19 @@ impl Renderer for ShaderRenderer {
             ShaderTimeControl::Auto | ShaderTimeControl::Manual => {
                 if let Some(last_active_at) = shader.last_active_at {
                     if !shader.base().visible()
-                        && payload.timestamp - last_active_at >= Self::IDLE_TEXTURE_GRACE_SECONDS
+                        && payload.timestamp - last_active_at >= IDLE_TEXTURE_GRACE_SECONDS
                     {
                         shader.clear_idle_runtime_state();
                         shader.last_active_at = None;
                     }
                 }
 
-                let resolved_rect = Self::resolve_shader_rect(stage_rect, &slots).or_else(|| {
-                    if slots.iter().any(|slot| !slot.empty) {
+                let resolved_rect = resolve_shader_rect(stage_rect, &slots).or_else(|| {
+                    if slots
+                        .iter()
+                        .flatten()
+                        .any(|slot| !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal))
+                    {
                         if shader.shader_rect.width() > 0.0 && shader.shader_rect.height() > 0.0 {
                             Some(shader.shader_rect)
                         } else {
@@ -464,12 +421,30 @@ impl Renderer for ShaderRenderer {
                 }
 
                 if shader.render_width > 0 && shader.render_height > 0 {
-                    for slot in &slots {
-                        shader.channel_declared[slot.channel] = true;
-
+                    for slot in slots.iter().flatten() {
                         if shader.channel_static[slot.channel] != slot.is_static {
                             shader.channel_static[slot.channel] = slot.is_static;
+                            if !slot.is_static {
+                                shader.channel_content_revisions[slot.channel] = 0;
+                            }
                             shader.channel_needs_redraw[slot.channel] = true;
+                        }
+
+                        if slot.is_static
+                            && !slot.empty
+                            && !shader.channel_needs_redraw[slot.channel]
+                        {
+                            let Some(slot_node) = slot_nodes[slot.channel].as_ref() else {
+                                continue;
+                            };
+                            let slot_guard = slot_node.read();
+                            let slot_ref =
+                                slot_guard.as_any().downcast_ref::<ShaderSlot>().unwrap();
+                            let content_revision = slot_content_revision(slot_ref);
+
+                            if shader.channel_content_revisions[slot.channel] != content_revision {
+                                shader.channel_needs_redraw[slot.channel] = true;
+                            }
                         }
 
                         let (width, height) = if slot.empty {
@@ -501,14 +476,16 @@ impl Renderer for ShaderRenderer {
                     }
                 }
 
-                let mut static_rendered = [false; 4];
-                for child in &children {
-                    let mut child = child.write();
+                let mut static_rendered_revisions = [None; 4];
+                for slot_node in slot_nodes.iter().flatten() {
+                    let mut child = slot_node.write();
                     let Some(slot) = child.as_any_mut().downcast_mut::<ShaderSlot>() else {
                         continue;
                     };
 
                     slot.render_rect = shader.shader_rect;
+                    slot.render_content_origin =
+                        slot_render_content_origin(slot, shader.shader_rect);
 
                     if shader.render_width == 0 || shader.render_height == 0 || slot.empty {
                         slot.render_target = None;
@@ -533,7 +510,10 @@ impl Renderer for ShaderRenderer {
                         };
 
                         if should_render {
-                            static_rendered[channel] = true;
+                            if slot.ready() {
+                                static_rendered_revisions[channel] =
+                                    Some(slot_content_revision(slot));
+                            }
                         }
                     } else {
                         slot.render_children = true;
@@ -541,8 +521,9 @@ impl Renderer for ShaderRenderer {
                     }
                 }
 
-                for (channel, rendered) in static_rendered.iter().copied().enumerate() {
-                    if rendered {
+                for (channel, revision) in static_rendered_revisions.iter().copied().enumerate() {
+                    if let Some(revision) = revision {
+                        shader.channel_content_revisions[channel] = revision;
                         shader.channel_needs_redraw[channel] = false;
                     }
                 }
@@ -651,12 +632,12 @@ impl Renderer for ShaderRenderer {
                 shader.finish_transition_if_ready();
 
                 if let Some(request) = shader.pending_prepare.take() {
-                    let has_from_slot = slots
-                        .iter()
-                        .any(|slot| slot.channel == request.from_channel as usize && !slot.empty);
-                    let has_to_slot = slots
-                        .iter()
-                        .any(|slot| slot.channel == request.to_channel as usize && !slot.empty);
+                    let has_from_slot = slots[request.from_channel as usize].is_some_and(|slot| {
+                        !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
+                    });
+                    let has_to_slot = slots[request.to_channel as usize].is_some_and(|slot| {
+                        !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
+                    });
 
                     if !has_from_slot || !has_to_slot {
                         log::warn!(
@@ -695,12 +676,12 @@ impl Renderer for ShaderRenderer {
                         return;
                     };
 
-                    let has_from_slot = slots
-                        .iter()
-                        .any(|slot| slot.channel == from_channel as usize && !slot.empty);
-                    let has_to_slot = slots
-                        .iter()
-                        .any(|slot| slot.channel == to_channel as usize && !slot.empty);
+                    let has_from_slot = slots[from_channel as usize].is_some_and(|slot| {
+                        !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
+                    });
+                    let has_to_slot = slots[to_channel as usize].is_some_and(|slot| {
+                        !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
+                    });
 
                     if !has_from_slot || !has_to_slot {
                         log::warn!(
@@ -717,27 +698,23 @@ impl Renderer for ShaderRenderer {
                     .map(|channel| channel as usize);
                 let to_channel = shader.transition_to_channel.map(|channel| channel as usize);
 
-                let from_bounds = from_channel.and_then(|channel| {
-                    slots
-                        .iter()
-                        .find(|slot| slot.channel == channel && !slot.empty)
-                        .and_then(|slot| slot.bounds)
-                });
-                let to_bounds = to_channel.and_then(|channel| {
-                    slots
-                        .iter()
-                        .find(|slot| slot.channel == channel && !slot.empty)
-                        .and_then(|slot| slot.bounds)
-                });
-                let has_to_slot = to_channel.is_some_and(|channel| {
-                    slots
-                        .iter()
-                        .any(|slot| slot.channel == channel && !slot.empty)
-                });
+                let from_bounds = from_channel
+                    .and_then(|channel| slots[channel])
+                    .filter(|slot| !slot.empty)
+                    .and_then(|slot| slot.bounds);
+                let to_bounds = to_channel
+                    .and_then(|channel| slots[channel])
+                    .filter(|slot| !slot.empty)
+                    .and_then(|slot| slot.bounds);
+                let has_to_slot =
+                    to_channel
+                        .and_then(|channel| slots[channel])
+                        .is_some_and(|slot| {
+                            !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
+                        });
 
                 if shader.is_active() {
-                    if let Some(rect) =
-                        Self::resolve_transition_rect(stage_rect, from_bounds, to_bounds)
+                    if let Some(rect) = resolve_transition_rect(stage_rect, from_bounds, to_bounds)
                     {
                         let (_, _, render_width, render_height) =
                             calculate_surface_physical_coordinates(
@@ -751,7 +728,12 @@ impl Renderer for ShaderRenderer {
                         shader.render_width = render_width;
                         shader.render_height = render_height;
                     } else if has_to_slot {
-                        let rect = Self::bootstrap_transition_rect(stage_rect);
+                        let rect = Rect::new(
+                            stage_rect.x(),
+                            stage_rect.y(),
+                            BOOTSTRAP_RECT_SIZE.min(stage_rect.width()),
+                            BOOTSTRAP_RECT_SIZE.min(stage_rect.height()),
+                        );
                         let (_, _, render_width, render_height) =
                             calculate_surface_physical_coordinates(
                                 &rect,
@@ -776,7 +758,7 @@ impl Renderer for ShaderRenderer {
                     shader.render_height = 0;
 
                     if let Some(last_active_at) = shader.last_active_at {
-                        if payload.timestamp - last_active_at >= Self::IDLE_TEXTURE_GRACE_SECONDS {
+                        if payload.timestamp - last_active_at >= IDLE_TEXTURE_GRACE_SECONDS {
                             shader.clear_idle_runtime_state();
                             shader.last_active_at = None;
                         }
@@ -784,12 +766,31 @@ impl Renderer for ShaderRenderer {
                 }
 
                 if shader.is_active() && shader.render_width > 0 && shader.render_height > 0 {
-                    for slot in &slots {
-                        shader.channel_declared[slot.channel] = true;
-
+                    for slot in slots.iter().flatten() {
                         if shader.channel_static[slot.channel] != slot.is_static {
                             shader.channel_static[slot.channel] = slot.is_static;
+                            if !slot.is_static {
+                                shader.channel_content_revisions[slot.channel] = 0;
+                            }
                             shader.channel_needs_redraw[slot.channel] = true;
+                        }
+
+                        let needs_revision_check = slot.is_static
+                            && !slot.empty
+                            && Some(slot.channel) != from_channel
+                            && !shader.channel_needs_redraw[slot.channel];
+                        if needs_revision_check {
+                            let Some(slot_node) = slot_nodes[slot.channel].as_ref() else {
+                                continue;
+                            };
+                            let slot_guard = slot_node.read();
+                            let slot_ref =
+                                slot_guard.as_any().downcast_ref::<ShaderSlot>().unwrap();
+                            let content_revision = slot_content_revision(slot_ref);
+
+                            if shader.channel_content_revisions[slot.channel] != content_revision {
+                                shader.channel_needs_redraw[slot.channel] = true;
+                            }
                         }
 
                         let (width, height) = if slot.empty {
@@ -838,17 +839,19 @@ impl Renderer for ShaderRenderer {
                 }
 
                 let mut snapshot_from_rendered = false;
-                let mut static_rendered = [false; 4];
+                let mut static_rendered_revisions = [None; 4];
                 let mut awaiting_prepare_captured = false;
                 let display_channel = shader.display_channel.map(|channel| channel as usize);
 
-                for child in &children {
-                    let mut child = child.write();
+                for slot_node in slot_nodes.iter().flatten() {
+                    let mut child = slot_node.write();
                     let Some(slot) = child.as_any_mut().downcast_mut::<ShaderSlot>() else {
                         continue;
                     };
 
                     slot.render_rect = shader.shader_rect;
+                    slot.render_content_origin =
+                        slot_render_content_origin(slot, shader.shader_rect);
 
                     if slot.empty {
                         slot.render_target = None;
@@ -938,8 +941,8 @@ impl Renderer for ShaderRenderer {
                         None
                     };
 
-                    if should_render && slot.is_static {
-                        static_rendered[channel] = true;
+                    if should_render && slot.is_static && slot.ready() {
+                        static_rendered_revisions[channel] = Some(slot_content_revision(slot));
                     }
                 }
 
@@ -951,8 +954,9 @@ impl Renderer for ShaderRenderer {
                     shader.from_needs_redraw = false;
                 }
 
-                for (channel, rendered) in static_rendered.iter().copied().enumerate() {
-                    if rendered {
+                for (channel, revision) in static_rendered_revisions.iter().copied().enumerate() {
+                    if let Some(revision) = revision {
+                        shader.channel_content_revisions[channel] = revision;
                         shader.channel_needs_redraw[channel] = false;
                     }
                 }
@@ -1243,6 +1247,7 @@ impl Renderer for ShaderRenderer {
                                 .send(RenderCommand::BeginRenderTargetPass {
                                     target_view: from_view.clone(),
                                     rect: shader.shader_rect,
+                                    content_origin: None,
                                 })
                                 .unwrap();
 
@@ -1269,6 +1274,7 @@ impl Renderer for ShaderRenderer {
                         .send(RenderCommand::BeginRenderTargetPass {
                             target_view: display_view.clone(),
                             rect: shader.shader_rect,
+                            content_origin: None,
                         })
                         .unwrap();
 
@@ -1348,6 +1354,7 @@ impl Renderer for ShaderSlotRenderer {
                 .send(RenderCommand::BeginRenderTargetPass {
                     target_view: target_view.clone(),
                     rect: slot.render_rect,
+                    content_origin: Some(slot.render_content_origin),
                 })
                 .unwrap();
         }
@@ -1357,5 +1364,94 @@ impl Renderer for ShaderSlotRenderer {
         render_queue
             .send(RenderCommand::EndRenderTargetPass)
             .unwrap();
+    }
+}
+
+fn slot_render_content_origin(slot: &ShaderSlot, shader_rect: Rect) -> (f32, f32) {
+    match slot.space {
+        ShaderSlotSpace::Normal => (shader_rect.x(), shader_rect.y()),
+        ShaderSlotSpace::Shader => {
+            let origin = slot.base().global_transform().transform_point3(Vec3::ZERO);
+            (origin.x, origin.y)
+        }
+    }
+}
+
+fn mix_content_revision(revision: &mut u64, value: u64) {
+    *revision ^= value;
+    *revision = revision.wrapping_mul(CONTENT_REVISION_PRIME);
+}
+
+fn accumulate_node_content_revision(node: &dyn Node, revision: &mut u64) {
+    mix_content_revision(revision, *node.base().id() as u64);
+    mix_content_revision(revision, node.base().update_id() as u64);
+    mix_content_revision(revision, node.base().children().len() as u64);
+
+    for child in node.base().children() {
+        let child = child.read();
+        accumulate_node_content_revision(child.as_ref(), revision);
+    }
+}
+
+fn slot_content_revision(slot: &ShaderSlot) -> u64 {
+    let mut revision = CONTENT_REVISION_OFFSET;
+    accumulate_node_content_revision(slot, &mut revision);
+    revision
+}
+
+fn resolve_shader_rect(
+    stage_rect: Rect,
+    slots: &[Option<ShaderSlotDescriptor>; Shader::CHANNEL_COUNT],
+) -> Option<Rect> {
+    let mut bounds: Option<Bound> = None;
+
+    for slot in slots.iter().flatten() {
+        let Some(slot_bounds) = slot.bounds else {
+            continue;
+        };
+
+        bounds = Some(match bounds {
+            Some(current) => current.union(&slot_bounds),
+            None => slot_bounds,
+        });
+    }
+
+    let bounds = bounds?;
+    let clamped = bounds.clamp(
+        stage_rect.x(),
+        stage_rect.y(),
+        stage_rect.x() + stage_rect.width(),
+        stage_rect.y() + stage_rect.height(),
+    );
+
+    if clamped.is_empty() {
+        None
+    } else {
+        Some(clamped.into_rect())
+    }
+}
+
+fn resolve_transition_rect(
+    stage_rect: Rect,
+    from_bounds: Option<Bound>,
+    to_bounds: Option<Bound>,
+) -> Option<Rect> {
+    let union = match (from_bounds, to_bounds) {
+        (Some(from_bounds), Some(to_bounds)) => Some(from_bounds.union(&to_bounds)),
+        (Some(bounds), None) | (None, Some(bounds)) => Some(bounds),
+        (None, None) => None,
+    }?;
+
+    let clamped = union.clamp(
+        stage_rect.x(),
+        stage_rect.y(),
+        stage_rect.x() + stage_rect.width(),
+        stage_rect.y() + stage_rect.height(),
+    );
+
+    if clamped.is_empty() {
+        None
+    } else {
+        Some(clamped.into_rect())
     }
 }

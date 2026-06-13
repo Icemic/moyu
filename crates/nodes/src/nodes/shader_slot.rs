@@ -9,15 +9,30 @@ use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum ShaderSlotSpace {
+    #[default]
+    Normal,
+    Shader,
+}
+
 #[derive(Debug, Node)]
 pub struct ShaderSlot {
     pub(crate) channel: u32,
     pub(crate) empty: bool,
     pub(crate) is_static: bool,
+    /// Coordinate space for the shader, either `normal` (default) or `shader`. \
+    /// `normal` means the shader will be rendered in the same coordinate space as the children,
+    /// while `shader` means the shader will be rendered in a separate coordinate space where (0, 0)
+    /// is the top-left corner of the shader slot and (width, height) is the bottom-right corner.
+    pub(crate) space: ShaderSlotSpace,
     pub(crate) width: u32,
     pub(crate) height: u32,
     pub(crate) render_target: Option<wgpu::TextureView>,
     pub(crate) render_rect: Rect,
+    pub(crate) render_content_origin: (f32, f32),
     pub(crate) render_children: bool,
 
     #[base]
@@ -30,10 +45,12 @@ impl Default for ShaderSlot {
             channel: 0,
             empty: false,
             is_static: false,
+            space: ShaderSlotSpace::Normal,
             width: 0,
             height: 0,
             render_target: None,
             render_rect: Rect::default(),
+            render_content_origin: (0.0, 0.0),
             render_children: true,
             node_base: NodeBase::default(),
         }
@@ -57,6 +74,7 @@ pub struct ShaderSlotProps {
     pub empty: Patch<bool>,
     #[serde(rename = "static")]
     pub is_static: Patch<bool>,
+    pub space: Patch<ShaderSlotSpace>,
     pub width: Patch<u32>,
     pub height: Patch<u32>,
 }
@@ -88,6 +106,7 @@ impl Node for ShaderSlot {
         apply_patch!(props.channel => self.channel, 0);
         apply_patch!(props.empty => self.empty, false);
         apply_patch!(props.is_static => self.is_static, false);
+        apply_patch!(props.space => self.space, ShaderSlotSpace::Normal);
         apply_patch!(props.width => self.width, 0);
         apply_patch!(props.height => self.height, 0);
         self.base_mut().pend_update();

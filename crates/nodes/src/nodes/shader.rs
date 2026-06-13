@@ -8,8 +8,14 @@ use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use super::ShaderSlotSpace;
 use crate::events::ShaderEvent;
 use crate::renderer::pass::SHADER_PARAM_SLOT_COUNT;
+
+const DEFAULT_OUT: f64 = 0.5;
+const DEFAULT_HOLD: f64 = 0.0;
+const DEFAULT_IN: f64 = 0.5;
+const SUM_TOLERANCE: f64 = 0.000_001;
 
 fn default_wipe_softness() -> f64 {
     0.05
@@ -29,6 +35,10 @@ fn default_zoom_origin() -> [f64; 2] {
 
 fn default_pixellate_steps() -> u32 {
     4
+}
+
+fn default_mask_softness() -> f64 {
+    0.0625
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
@@ -52,6 +62,7 @@ pub enum ShaderBuiltinName {
     Slideaway,
     Zoom,
     Pixellate,
+    Mask,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
@@ -95,7 +106,11 @@ pub struct ShaderParam {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "name")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "name"
+)]
 #[ts(export, optional_fields)]
 pub enum ShaderBuiltin {
     Crossfade,
@@ -132,6 +147,13 @@ pub enum ShaderBuiltin {
     Pixellate {
         #[serde(default = "default_pixellate_steps")]
         steps: u32,
+    },
+    Mask {
+        rule: String,
+        #[serde(default = "default_mask_softness")]
+        softness: f64,
+        #[serde(default)]
+        reverse: bool,
     },
 }
 
@@ -179,6 +201,15 @@ pub(crate) enum TransitionFromSource {
     Display,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ShaderSlotLayout {
+    pub empty: bool,
+    pub is_static: bool,
+    pub space: ShaderSlotSpace,
+    pub width: u32,
+    pub height: u32,
+}
+
 #[derive(Debug, Node)]
 pub struct Shader {
     pub(crate) shader: ShaderSource,
@@ -202,7 +233,7 @@ pub struct Shader {
     pub(crate) shader_dirty: bool,
     pub(crate) params_dirty: bool,
     pub(crate) slots_dirty: bool,
-    pub(crate) slot_layout_key: Option<String>,
+    pub(crate) slot_layouts: [Option<ShaderSlotLayout>; 4],
     pub(crate) shader_rect: moyu_core::base::Rect,
     pub(crate) render_width: u32,
     pub(crate) render_height: u32,
@@ -220,6 +251,7 @@ pub struct Shader {
     pub(crate) channel_declared: [bool; 4],
     pub(crate) channel_empty: [bool; 4],
     pub(crate) channel_static: [bool; 4],
+    pub(crate) channel_content_revisions: [u64; 4],
     pub(crate) channel_needs_redraw: [bool; 4],
     pub(crate) pipeline: Option<wgpu::RenderPipeline>,
     pub(crate) bind_group: Option<wgpu::BindGroup>,
@@ -258,7 +290,7 @@ impl Default for Shader {
             shader_dirty: true,
             params_dirty: true,
             slots_dirty: true,
-            slot_layout_key: None,
+            slot_layouts: [None; 4],
             shader_rect: moyu_core::base::Rect::default(),
             render_width: 0,
             render_height: 0,
@@ -276,6 +308,7 @@ impl Default for Shader {
             channel_declared: [false; 4],
             channel_empty: [false; 4],
             channel_static: [false; 4],
+            channel_content_revisions: [0; 4],
             channel_needs_redraw: [true; 4],
             pipeline: None,
             bind_group: None,
@@ -417,6 +450,7 @@ impl Shader {
         self.channel_declared = [false; Self::CHANNEL_COUNT];
         self.channel_empty = [false; Self::CHANNEL_COUNT];
         self.channel_static = [false; Self::CHANNEL_COUNT];
+        self.channel_content_revisions = [0; Self::CHANNEL_COUNT];
         self.channel_needs_redraw = [true; Self::CHANNEL_COUNT];
         self.bind_group = None;
         self.present_bind_group = None;
@@ -431,12 +465,15 @@ impl Shader {
         self.needs_retry = false;
     }
 
-    pub(crate) fn update_slot_layout_key(&mut self, slot_key: String) {
-        if self.slot_layout_key.as_deref() == Some(slot_key.as_str()) {
+    pub(crate) fn update_slot_layouts(
+        &mut self,
+        slot_layouts: [Option<ShaderSlotLayout>; Self::CHANNEL_COUNT],
+    ) {
+        if self.slot_layouts == slot_layouts {
             return;
         }
 
-        self.slot_layout_key = Some(slot_key);
+        self.slot_layouts = slot_layouts;
         self.slots_dirty = true;
         self.needs_retry = true;
         self.error_state = false;
@@ -518,6 +555,7 @@ impl ShaderBuiltinName {
             Self::Slideaway => 4,
             Self::Zoom => 5,
             Self::Pixellate => 6,
+            Self::Mask => 7,
         }
     }
 }
@@ -543,18 +581,11 @@ impl ShaderBuiltin {
             Self::Slideaway { .. } => ShaderBuiltinName::Slideaway,
             Self::Zoom { .. } => ShaderBuiltinName::Zoom,
             Self::Pixellate { .. } => ShaderBuiltinName::Pixellate,
+            Self::Mask { .. } => ShaderBuiltinName::Mask,
         }
     }
 
     pub(crate) fn sanitize(self, node_id: u32) -> Self {
-        const DEFAULT_OUT: f64 = 0.5;
-        const DEFAULT_HOLD: f64 = 0.0;
-        const DEFAULT_IN: f64 = 0.5;
-        const DEFAULT_WIPE_SOFTNESS: f64 = 0.0;
-        const DEFAULT_ZOOM_START_SCALE: f64 = 0.0;
-        const DEFAULT_ZOOM_END_SCALE: f64 = 1.0;
-        const SUM_EPSILON: f64 = 0.0001;
-
         match self {
             Self::Wipe {
                 mut softness,
@@ -565,9 +596,9 @@ impl ShaderBuiltin {
                         "shader node {}: wipe softness must be within 0..=1, got {}; using fallback {}",
                         node_id,
                         softness,
-                        DEFAULT_WIPE_SOFTNESS
+                        default_wipe_softness()
                     );
-                    softness = DEFAULT_WIPE_SOFTNESS;
+                    softness = default_wipe_softness();
                 }
 
                 Self::Wipe {
@@ -612,7 +643,7 @@ impl ShaderBuiltin {
                 }
 
                 let total = out + hold + in_ratio;
-                if !total.is_finite() || (total - 1.0).abs() > SUM_EPSILON {
+                if !total.is_finite() || (total - 1.0).abs() > SUM_TOLERANCE {
                     log::warn!(
                         "shader node {}: fade ratios must sum to 1, got {}; using fallback ratios ({}, {}, {})",
                         node_id,
@@ -643,9 +674,9 @@ impl ShaderBuiltin {
                         "shader node {}: zoom startScale must be finite and >= 0, got {}; using fallback {}",
                         node_id,
                         start_scale,
-                        DEFAULT_ZOOM_START_SCALE
+                        default_zoom_start_scale()
                     );
-                    start_scale = DEFAULT_ZOOM_START_SCALE;
+                    start_scale = default_zoom_start_scale();
                 }
 
                 if !end_scale.is_finite() || end_scale < 0.0 {
@@ -653,9 +684,9 @@ impl ShaderBuiltin {
                         "shader node {}: zoom endScale must be finite and >= 0, got {}; using fallback {}",
                         node_id,
                         end_scale,
-                        DEFAULT_ZOOM_END_SCALE
+                        default_zoom_end_scale()
                     );
-                    end_scale = DEFAULT_ZOOM_END_SCALE;
+                    end_scale = default_zoom_end_scale();
                 }
 
                 for (index, coord) in origin.iter_mut().enumerate() {
@@ -675,6 +706,27 @@ impl ShaderBuiltin {
                     start_scale,
                     end_scale,
                     origin,
+                }
+            }
+            Self::Mask {
+                rule,
+                mut softness,
+                reverse,
+            } => {
+                if !softness.is_finite() || !(0.0..=1.0).contains(&softness) {
+                    log::warn!(
+                        "shader node {}: mask softness must be within 0..=1, got {}; using fallback {}",
+                        node_id,
+                        softness,
+                        default_mask_softness()
+                    );
+                    softness = default_mask_softness();
+                }
+
+                Self::Mask {
+                    rule,
+                    softness,
+                    reverse,
                 }
             }
             _ => self,
@@ -722,6 +774,12 @@ impl ShaderBuiltin {
             }
             Self::Pixellate { steps } => {
                 slots[0] = *steps;
+            }
+            Self::Mask {
+                softness, reverse, ..
+            } => {
+                slots[0] = (*softness as f32).to_bits();
+                slots[1] = u32::from(*reverse);
             }
         }
     }

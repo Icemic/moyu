@@ -40,6 +40,12 @@ var channel0: texture_2d<f32>;
 @group(1) @binding(5)
 var channel1: texture_2d<f32>;
 
+@group(1) @binding(6)
+var channel2: texture_2d<f32>;
+
+@group(1) @binding(7)
+var channel3: texture_2d<f32>;
+
 fn apply_crossfade(from_color: vec4<f32>, to_color: vec4<f32>, progress: f32) -> vec4<f32> {
   return mix(from_color, to_color, progress);
 }
@@ -229,6 +235,27 @@ fn apply_pixellate(progress: f32, uv: vec2<f32>) -> vec4<f32> {
   return sample_pixellated(channel1, uv, pixellate_step_progress(1.0 - phase, steps));
 }
 
+fn read_mask_value(uv: vec2<f32>) -> f32 {
+  let mask_sample = sample_texture_or_transparent(channel2, uv);
+  return mask_sample.r;
+}
+
+fn apply_mask(from_color: vec4<f32>, to_color: vec4<f32>, progress: f32, uv: vec2<f32>) -> vec4<f32> {
+  let softness = read_param_f32(0u);
+  let reverse = read_param_u32(1u) != 0u;
+  let raw_mask = read_mask_value(uv);
+  let mask = select(raw_mask, 1.0 - raw_mask, reverse);
+
+  if (softness <= 0.0001) {
+    let to_weight = select(0.0, 1.0, mask <= progress);
+    return mix(from_color, to_color, to_weight);
+  }
+
+  let threshold = progress * (1.0 + softness * 2.0) - softness;
+  let to_weight = smoothstep(mask - softness, mask + softness, threshold);
+  return mix(from_color, to_color, to_weight);
+}
+
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
   let progress = builtins.progress;
@@ -257,6 +284,9 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     }
     case 6: {
       return apply_pixellate(progress, input.uv);
+    }
+    case 7: {
+      return apply_mask(from_color, to_color, progress, input.uv);
     }
     default: {
       return from_color;
