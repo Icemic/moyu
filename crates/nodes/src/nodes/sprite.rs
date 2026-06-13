@@ -160,6 +160,13 @@ impl Node for Sprite {
         self.base_mut().pend_update();
     }
 
+    fn ready(&self) -> bool {
+        self.texture_id.load().is_some()
+            && self.next_texture_id.load().is_none()
+            && self.next_src.is_none()
+            && self.children_ready()
+    }
+
     fn as_focusable(&self) -> Option<&dyn Focusable> {
         Some(self)
     }
