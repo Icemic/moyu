@@ -96,6 +96,7 @@ pub enum RenderCommand {
     BeginRenderTargetPass {
         target_view: TextureView,
         rect: Rect,
+        content_origin: Option<(f32, f32)>,
     },
     EndRenderTargetPass,
 

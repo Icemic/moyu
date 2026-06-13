@@ -1110,24 +1110,47 @@ impl Graphics {
                     surface_released = true;
                     let _ = done.send(());
                 }
-                RenderCommand::BeginRenderTargetPass { target_view, rect } => {
+                RenderCommand::BeginRenderTargetPass {
+                    target_view,
+                    rect,
+                    content_origin,
+                } => {
                     if let Some(pass) = current_pass.take() {
                         drop(pass);
                     }
 
-                    let (px, py, w, h) = calculate_surface_physical_coordinates(
-                        &rect,
-                        stage_logical_size,
-                        surface_logical_size,
-                        scale_factor,
+                    let (scale, tx, ty) = get_scale_and_translate(
+                        stage_logical_size.0,
+                        stage_logical_size.1,
+                        surface_logical_size.0,
+                        surface_logical_size.1,
                     );
+
+                    let (_, _, w, h) =
+                        calculate_surface_physical_coordinates_by_scale_and_translate(
+                            &rect,
+                            scale,
+                            tx,
+                            ty,
+                            scale_factor,
+                        );
+
+                    let content_origin = content_origin.unwrap_or((rect.x(), rect.y()));
+                    let (origin_x, origin_y, _, _) =
+                        calculate_surface_physical_coordinates_by_scale_and_translate(
+                            &Rect::new(content_origin.0, content_origin.1, 0.0, 0.0),
+                            scale,
+                            tx,
+                            ty,
+                            scale_factor,
+                        );
 
                     state.push_offscreen_state(
                         [0, 0, w, h],
-                        (px, py),
+                        (origin_x, origin_y),
                         [
-                            -(px as f32),
-                            -(py as f32),
+                            -(origin_x as f32),
+                            -(origin_y as f32),
                             surface_logical_size.0 * scale_factor,
                             surface_logical_size.1 * scale_factor,
                         ],
