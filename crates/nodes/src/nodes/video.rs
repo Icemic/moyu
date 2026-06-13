@@ -159,6 +159,13 @@ impl Node for Video {
         self.base_mut().pend_update();
     }
 
+    fn ready(&self) -> bool {
+        self.bind_group.is_some()
+            && self.next_src.is_none()
+            && self.next_data.load().is_none()
+            && self.children_ready()
+    }
+
     fn as_focusable(&self) -> Option<&dyn Focusable> {
         Some(self)
     }

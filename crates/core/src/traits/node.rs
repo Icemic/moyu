@@ -58,6 +58,20 @@ pub trait Node: NodeBaseTrait + Debug + Send + Sync {
         false
     }
 
+    /// Whether this node and its subtree are ready for retained rendering.
+    fn ready(&self) -> bool {
+        self.children_ready()
+    }
+
+    /// Whether all children are ready for retained rendering.
+    /// It will recursively check the whole subtree, so sometimes this may be a bit costly, use with caution.
+    fn children_ready(&self) -> bool {
+        self.base().children().iter().all(|child| {
+            let child = child.read();
+            child.ready()
+        })
+    }
+
     /// return Some(self) manually if you've implemented Focusable for the node
     fn as_focusable(&self) -> Option<&dyn Focusable> {
         None
