@@ -143,11 +143,12 @@ pub async fn create_wgpu_surface(
     let adapter_info = adapter.get_info();
     info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
 
-    let required_limits = if cfg!(native) {
-        adapter.limits()
-    } else {
+    let required_limits = if adapter_info.backend == wgpu::Backend::Gl {
         // downgrade to webgl2 limits for web
         wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits())
+    } else {
+        // use the adapter's limits directly for native and webgpu
+        adapter.limits()
     };
 
     // graphic card with specific backend
