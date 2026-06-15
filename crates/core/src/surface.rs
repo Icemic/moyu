@@ -203,7 +203,14 @@ pub async fn create_wgpu_surface(
     info!("Present mode: {:?}", present_mode);
 
     let mut usage = wgpu::TextureUsages::RENDER_ATTACHMENT;
+
     if caps.usages.contains(wgpu::TextureUsages::COPY_SRC) {
+        usage |= wgpu::TextureUsages::COPY_SRC;
+    }
+
+    if adapter_info.backend == wgpu::Backend::BrowserWebGpu {
+        // WebGPU on Chrome and Firefox (at least) do support COPY_SRC, but wgpu hard-coded its usages to RENDER_ATTACHMENT only
+        // on WebGPU, we have to force add COPY_SRC.
         usage |= wgpu::TextureUsages::COPY_SRC;
     }
 
