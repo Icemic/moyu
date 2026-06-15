@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-06-15
+
+### Added
+
+1. Generic shader (including transition) support with many builtin transition effects.
+
+### Fixed
+
+1. Limit surface formats to Bgra8Unorm and Rgba8Unorm
+2. Update snapshot format conversion to use TryFrom for better error handling
+3. Enable logging adapter info on web
+4. Fix an issue that `COPY_SRC` usage is not correctly detected on webgpu backend
+
 ## [0.14.1] - 2026-06-01
 
 ### Added
