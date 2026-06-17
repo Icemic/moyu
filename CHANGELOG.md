@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+1. Crash when resuming from minimized state on Windows
+2. Optimize redraw scheduling on native platforms by only requesting redraw when necessary
+
 ## [0.15.0] - 2026-06-15
 
 ### Added

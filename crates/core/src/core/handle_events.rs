@@ -42,54 +42,56 @@ impl Core {
             if !handled {
                 match event {
                     WindowEvent::RedrawRequested => {
-                        // poll all plugins
-                        for plugin in self.plugins.iter() {
-                            plugin.lock().update(true);
-                        }
+                        if !self.is_paused.load(Ordering::Relaxed) {
+                            // poll all plugins
+                            for plugin in self.plugins.iter() {
+                                plugin.lock().update(true);
+                            }
 
-                        #[cfg(native)]
-                        if let Some(handles) = self.graphics_thread.load().as_ref() {
-                            if handles.0.is_finished() {
-                                // detect graphics thread exit
-                                log::error!("Graphics thread exited unexpectedly.");
-                                event_loop.exit();
+                            #[cfg(native)]
+                            if let Some(handles) = self.graphics_thread.load().as_ref() {
+                                if handles.0.is_finished() {
+                                    // detect graphics thread exit
+                                    log::error!("Graphics thread exited unexpectedly.");
+                                    event_loop.exit();
+                                } else {
+                                    // wake up graphics thread
+                                    handles.0.thread().unpark();
+                                }
                             } else {
-                                // wake up graphics thread
-                                handles.0.thread().unpark();
+                                // keep the loop running until the graphics thread is created
+                                window.request_redraw();
+                                return;
                             }
-                        } else {
-                            // keep the loop running until the graphics thread is created
-                            window.request_redraw();
-                            return;
-                        }
 
-                        // We convert u128 to u32 here, which is safe because the timestamp is an
-                        // elapsed time (Can't you play a game for 136 years?).
-                        dispatch_event(AnimationFrameCallbackEvent {
-                            timestamp: self.instant.elapsed().as_millis() as u32,
-                        });
+                            // We convert u128 to u32 here, which is safe because the timestamp is an
+                            // elapsed time (Can't you play a game for 136 years?).
+                            dispatch_event(AnimationFrameCallbackEvent {
+                                timestamp: self.instant.elapsed().as_millis() as u32,
+                            });
 
-                        #[cfg(desktop)]
-                        self.handle_pointer_hover(MOUSE_IDENTIFIER, true);
+                            #[cfg(desktop)]
+                            self.handle_pointer_hover(MOUSE_IDENTIFIER, true);
 
-                        #[cfg(native)]
-                        if let Some(vm) = moyu_runtime::try_get_vm() {
-                            vm.tick();
-                        }
-
-                        #[cfg(web)]
-                        if let Some(graphics) = self.graphics.load().as_ref() {
-                            if let Err(err) = graphics.update() {
-                                log::error!(
-                                    "Error occurs on graphic updating, terminate graphic updating thread: {:?}",
-                                    err
-                                );
+                            #[cfg(native)]
+                            if let Some(vm) = moyu_runtime::try_get_vm() {
+                                vm.tick();
                             }
-                            if let Err(err) = graphics.render(false) {
-                                log::error!(
-                                    "Error occurs on graphic rendering, terminate graphic rendering thread: {:?}",
-                                    err
-                                );
+
+                            #[cfg(web)]
+                            if let Some(graphics) = self.graphics.load().as_ref() {
+                                if let Err(err) = graphics.update() {
+                                    log::error!(
+                                        "Error occurs on graphic updating, terminate graphic updating thread: {:?}",
+                                        err
+                                    );
+                                }
+                                if let Err(err) = graphics.render(false) {
+                                    log::error!(
+                                        "Error occurs on graphic rendering, terminate graphic rendering thread: {:?}",
+                                        err
+                                    );
+                                }
                             }
                         }
                     }

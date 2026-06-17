@@ -229,10 +229,8 @@ impl Graphics {
             }
         };
 
-        {
-            let config = self.config.lock();
-            surface.configure(&self.device, &config);
-        }
+        let config = self.config.lock().clone();
+        surface.configure(&self.device, &config);
 
         self.surface.lock().replace(surface);
         log::info!("Surface recreated on render thread.");
@@ -318,11 +316,10 @@ impl Graphics {
     fn refresh(&self) {
         self.instance.poll_all(true);
 
-        let config = self.config.lock();
+        let config = self.config.lock().clone();
         if let Some(surface) = self.surface.lock().as_ref() {
             surface.configure(&self.device, &config);
         }
-        drop(config);
 
         self.texture_pool.borrow_mut().cleanup(f64::MAX);
     }

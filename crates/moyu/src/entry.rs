@@ -137,7 +137,10 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
             && self.next_redraw_at.is_some()
         {
             if let Some(core) = self.core() {
-                core.window().request_redraw();
+                let size = core.window().inner_size();
+                if size.width > 0 && size.height > 0 {
+                    core.window().request_redraw();
+                }
             }
         }
     }
@@ -399,12 +402,17 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
 
         if let Some(core) = self.core() {
             core.handle_window_event(&event, &window_id, event_loop);
-        }
 
-        #[cfg(native)]
-        if let WindowEvent::RedrawRequested = event {
-            let now = Instant::now();
-            self.schedule_next_redraw(now);
+            #[cfg(native)]
+            if let WindowEvent::RedrawRequested = event {
+                let size = core.window().inner_size();
+                if size.width == 0 || size.height == 0 {
+                    self.next_redraw_at = None;
+                } else {
+                    let now = Instant::now();
+                    self.schedule_next_redraw(now);
+                }
+            }
         }
     }
 }
