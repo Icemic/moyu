@@ -49,13 +49,13 @@ impl Texture {
     }
 }
 
-impl Drop for Texture {
-    fn drop(&mut self) {
-        if let Some(texture) = self.texture.load().as_ref() {
-            texture.destroy();
-        }
-    }
-}
+// impl Drop for Texture {
+//     fn drop(&mut self) {
+//         if let Some(texture) = self.texture.load().as_ref() {
+//             texture.destroy();
+//         }
+//     }
+// }
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
