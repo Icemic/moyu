@@ -238,7 +238,8 @@ pub struct Shader {
     pub(crate) render_width: u32,
     pub(crate) render_height: u32,
     pub(crate) last_active_at: Option<f64>,
-    pub(crate) from_needs_redraw: bool,
+    pub(crate) prepare_ready_latched: bool,
+    pub(crate) from_texture_dirty: bool,
     pub(crate) channel_views: [Option<wgpu::TextureView>; 4],
     pub(crate) channel_texture_widths: [u32; 4],
     pub(crate) channel_texture_heights: [u32; 4],
@@ -295,7 +296,8 @@ impl Default for Shader {
             render_width: 0,
             render_height: 0,
             last_active_at: None,
-            from_needs_redraw: false,
+            prepare_ready_latched: false,
+            from_texture_dirty: false,
             channel_views: std::array::from_fn(|_| None),
             channel_texture_widths: [0; 4],
             channel_texture_heights: [0; 4],
@@ -418,7 +420,8 @@ impl Shader {
         self.transition_from_source = TransitionFromSource::Slot;
         self.pending_prepare = None;
         self.pending_perform = None;
-        self.from_needs_redraw = false;
+        self.prepare_ready_latched = false;
+        self.from_texture_dirty = false;
         self.snapshot_display_view = None;
         self.snapshot_display_rect = moyu_core::base::Rect::default();
         self.snapshot_bind_group = None;
@@ -508,7 +511,8 @@ impl Shader {
             self.snapshot_display_rect = moyu_core::base::Rect::default();
             TransitionFromSource::Slot
         };
-        self.from_needs_redraw = true;
+        self.prepare_ready_latched = false;
+        self.from_texture_dirty = true;
         self.snapshot_bind_group = None;
         self.reset_timeline();
         self.channel_needs_redraw = [true; Self::CHANNEL_COUNT];
@@ -521,7 +525,8 @@ impl Shader {
         } else {
             0.0
         };
-        self.from_needs_redraw = true;
+        self.prepare_ready_latched = false;
+        self.snapshot_bind_group = None;
         self.reset_timeline();
 
         if self.transition_duration <= 0.0 {
@@ -533,7 +538,10 @@ impl Shader {
 
     pub(crate) fn mark_prepare_captured(&mut self) {
         self.transition_phase = TransitionPhase::Prepared;
-        self.from_needs_redraw = false;
+        self.prepare_ready_latched = false;
+        self.from_texture_dirty = false;
+        self.snapshot_bind_group = None;
+        self.send_event(ShaderEvent::Prepared);
     }
 
     pub(crate) fn finish_update(&mut self) {
@@ -1051,10 +1059,11 @@ impl Command for Shader {
                     return Ok(None);
                 }
 
+                let mode = mode.unwrap_or(self.retain);
                 self.pending_prepare = Some(PendingPrepare {
                     from_channel: fromChannel,
                     to_channel: toChannel,
-                    mode: mode.unwrap_or(self.retain),
+                    mode,
                 });
             }
             ShaderCommand::Perform { duration } => {

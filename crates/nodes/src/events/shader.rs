@@ -6,12 +6,14 @@ use ts_rs::TS;
 #[serde(untagged)]
 #[ts(export, optional_fields)]
 pub enum ShaderEvent {
+    Prepared,
     Finished,
 }
 
 impl Event for ShaderEvent {
     fn name(&self) -> &'static str {
         match self {
+            ShaderEvent::Prepared => "prepared",
             ShaderEvent::Finished => "finished",
         }
     }

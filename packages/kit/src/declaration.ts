@@ -57,6 +57,7 @@ export type MoyuBackdropAttributes = BackdropProps & MoyuNodeAttributes;
 export type MoyuAnimationAttributes = AnimationProps & MoyuNodeAttributes;
 export type MoyuShaderAttributes = ShaderProps &
   MoyuNodeAttributes & {
+    onPrepared?: () => void;
     onFinished?: () => void;
   };
 export type MoyuShaderSlotAttributes = ShaderSlotProps & MoyuNodeAttributes;

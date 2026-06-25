@@ -25,6 +25,13 @@ struct ShaderSlotDescriptor {
     bounds: Option<Bound>,
 }
 
+struct CollectedSlots {
+    descriptors: [Option<ShaderSlotDescriptor>; Shader::CHANNEL_COUNT],
+    slot_nodes: [Option<NodeLock>; Shader::CHANNEL_COUNT],
+    slot_layouts: [Option<ShaderSlotLayout>; Shader::CHANNEL_COUNT],
+    declared_channels: [bool; Shader::CHANNEL_COUNT],
+}
+
 const IDLE_TEXTURE_GRACE_SECONDS: f64 = 5.0;
 const BOOTSTRAP_RECT_SIZE: f32 = 100.0;
 const CONTENT_REVISION_OFFSET: u64 = 0xcbf29ce484222325;
@@ -223,6 +230,888 @@ impl ShaderRenderer {
             ],
         })
     }
+
+    fn collect_slots(&self, shader: &Shader) -> Result<CollectedSlots, String> {
+        let mut descriptors = [None; Shader::CHANNEL_COUNT];
+        let mut slot_nodes: [Option<NodeLock>; Shader::CHANNEL_COUNT] =
+            std::array::from_fn(|_| None);
+        let mut slot_layouts = [None; Shader::CHANNEL_COUNT];
+
+        for child_node in shader.base().children() {
+            let child = child_node.read();
+            let Some(slot) = child.as_any().downcast_ref::<ShaderSlot>() else {
+                continue;
+            };
+
+            if slot.channel > 3 {
+                return Err(format!(
+                    "channel {} is out of range, expected 0..3",
+                    slot.channel
+                ));
+            }
+
+            let channel = slot.channel as usize;
+            if slot_nodes[channel].is_some() {
+                return Err(format!("channel {} is declared more than once", slot.channel));
+            }
+
+            let bounds = if slot.empty || matches!(slot.space, ShaderSlotSpace::Shader) {
+                None
+            } else {
+                let mut bounds: Option<Bound> = None;
+
+                for child in slot.base().children() {
+                    let child = child.read();
+                    let child_bounds = *child.base().global_content_bounds();
+
+                    if child_bounds.is_empty() {
+                        continue;
+                    }
+
+                    bounds = Some(match bounds {
+                        Some(current) => current.union(&child_bounds),
+                        None => child_bounds,
+                    });
+                }
+
+                bounds
+            };
+
+            slot_nodes[channel] = Some(child_node.clone());
+            slot_layouts[channel] = Some(ShaderSlotLayout {
+                empty: slot.empty,
+                is_static: slot.is_static,
+                space: slot.space,
+                width: slot.width,
+                height: slot.height,
+            });
+            descriptors[channel] = Some(ShaderSlotDescriptor {
+                channel,
+                empty: slot.empty,
+                is_static: slot.is_static,
+                space: slot.space,
+                width: slot.width,
+                height: slot.height,
+                bounds,
+            });
+        }
+
+        let declared_channels = std::array::from_fn(|channel| slot_nodes[channel].is_some());
+
+        Ok(CollectedSlots {
+            descriptors,
+            slot_nodes,
+            slot_layouts,
+            declared_channels,
+        })
+    }
+
+    fn sync_declared_channels(&self, shader: &mut Shader, declared_channels: [bool; 4]) {
+        for (channel, declared) in declared_channels.iter().copied().enumerate() {
+            if declared {
+                continue;
+            }
+
+            shader.channel_declared[channel] = false;
+            shader.channel_empty[channel] = false;
+            shader.channel_static[channel] = false;
+            shader.channel_content_revisions[channel] = 0;
+            shader.channel_texture_widths[channel] = 0;
+            shader.channel_texture_heights[channel] = 0;
+            shader.channel_views[channel] = None;
+            shader.channel_needs_redraw[channel] = true;
+            shader.present_bind_group = None;
+        }
+
+        shader.channel_declared = declared_channels;
+    }
+
+    fn configure_cached_slot(
+        &self,
+        shader: &mut Shader,
+        slot: &mut ShaderSlot,
+        target_view: TextureView,
+        static_rendered_revisions: &mut [Option<u64>; Shader::CHANNEL_COUNT],
+    ) {
+        let channel = slot.channel as usize;
+        let should_render = if slot.is_static {
+            shader.channel_needs_redraw[channel]
+        } else {
+            true
+        };
+
+        slot.render_children = should_render;
+        slot.render_target = if should_render {
+            Some(target_view)
+        } else {
+            None
+        };
+
+        if should_render && slot.is_static && slot.ready() {
+            static_rendered_revisions[channel] = Some(slot_content_revision(slot));
+        }
+    }
+
+    fn update_generic(
+        &mut self,
+        shader: &mut Shader,
+        device: &Device,
+        render_queue: &RenderCommandSender,
+        payload: &RendererUpdatePayload,
+        stage_rect: Rect,
+        slots: &CollectedSlots,
+        effect_id: i32,
+    ) {
+        if let Some(last_active_at) = shader.last_active_at {
+            if !shader.base().visible() && payload.timestamp - last_active_at >= IDLE_TEXTURE_GRACE_SECONDS {
+                shader.clear_idle_runtime_state();
+                shader.last_active_at = None;
+            }
+        }
+
+        let resolved_rect = resolve_shader_rect(stage_rect, &slots.descriptors).or_else(|| {
+            if slots
+                .descriptors
+                .iter()
+                .flatten()
+                .any(|slot| !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal))
+            {
+                if shader.shader_rect.width() > 0.0 && shader.shader_rect.height() > 0.0 {
+                    Some(shader.shader_rect)
+                } else {
+                    Some(stage_rect)
+                }
+            } else {
+                None
+            }
+        });
+
+        if let Some(rect) = resolved_rect {
+            let (_, _, render_width, render_height) = calculate_surface_physical_coordinates(
+                &rect,
+                payload.stage_logical_size,
+                payload.surface_logical_size,
+                payload.scale_factor,
+            );
+
+            shader.shader_rect = rect;
+            shader.render_width = render_width;
+            shader.render_height = render_height;
+            shader.last_active_at = Some(payload.timestamp);
+        } else {
+            shader.shader_rect = Rect::default();
+            shader.render_width = 0;
+            shader.render_height = 0;
+        }
+
+        if shader.render_width > 0 && shader.render_height > 0 {
+            for slot in slots.descriptors.iter().flatten() {
+                if shader.channel_static[slot.channel] != slot.is_static {
+                    shader.channel_static[slot.channel] = slot.is_static;
+                    if !slot.is_static {
+                        shader.channel_content_revisions[slot.channel] = 0;
+                    }
+                    shader.channel_needs_redraw[slot.channel] = true;
+                }
+
+                if slot.is_static && !slot.empty && !shader.channel_needs_redraw[slot.channel] {
+                    let Some(slot_node) = slots.slot_nodes[slot.channel].as_ref() else {
+                        continue;
+                    };
+                    let slot_guard = slot_node.read();
+                    let slot_ref = slot_guard.as_any().downcast_ref::<ShaderSlot>().unwrap();
+                    let content_revision = slot_content_revision(slot_ref);
+
+                    if shader.channel_content_revisions[slot.channel] != content_revision {
+                        shader.channel_needs_redraw[slot.channel] = true;
+                    }
+                }
+
+                let (width, height) = if slot.empty {
+                    (slot.width, slot.height)
+                } else {
+                    (shader.render_width, shader.render_height)
+                };
+
+                if slot.empty && (width == 0 || height == 0) {
+                    shader.mark_error(format!(
+                        "empty channel {} requires a non-zero width and height",
+                        slot.channel
+                    ));
+                    return;
+                }
+
+                let recreated =
+                    self.ensure_channel_texture(shader, device, slot.channel, width, height, slot.empty);
+
+                if recreated {
+                    shader.channel_needs_redraw[slot.channel] = true;
+                }
+            }
+        }
+
+        let mut static_rendered_revisions = [None; Shader::CHANNEL_COUNT];
+
+        for slot_node in slots.slot_nodes.iter().flatten() {
+            let mut child = slot_node.write();
+            let Some(slot) = child.as_any_mut().downcast_mut::<ShaderSlot>() else {
+                continue;
+            };
+
+            slot.render_rect = shader.shader_rect;
+            slot.render_content_origin = slot_render_content_origin(slot, shader.shader_rect);
+
+            if shader.render_width == 0 || shader.render_height == 0 || slot.empty {
+                slot.render_target = None;
+                slot.render_children = false;
+                continue;
+            }
+
+            let channel = slot.channel as usize;
+            let Some(target_view) = shader.channel_views[channel].clone() else {
+                slot.render_target = None;
+                slot.render_children = false;
+                continue;
+            };
+
+            self.configure_cached_slot(shader, slot, target_view, &mut static_rendered_revisions);
+        }
+
+        for (channel, revision) in static_rendered_revisions.iter().copied().enumerate() {
+            if let Some(revision) = revision {
+                shader.channel_content_revisions[channel] = revision;
+                shader.channel_needs_redraw[channel] = false;
+            }
+        }
+
+        if shader.render_width == 0 || shader.render_height == 0 {
+            shader.bind_group = None;
+            shader.present_bind_group = None;
+            shader.snapshot_bind_group = None;
+            shader.finish_update();
+            return;
+        }
+
+        if shader.shader_dirty || shader.pipeline.is_none() || shader.needs_retry {
+            match self.pass.compile_pipeline(device, &shader.shader) {
+                Ok(pipeline) => {
+                    shader.pipeline = Some(pipeline);
+                    shader.bind_group = None;
+                }
+                Err(err) => {
+                    shader.mark_error(err);
+                    return;
+                }
+            }
+        }
+
+        self.pass.ensure_uniform_buffers(
+            device,
+            &mut shader.render_uniform_buffer,
+            &mut shader.builtins_uniform_buffer,
+            &mut shader.params_uniform_buffer,
+        );
+
+        if shader.bind_group.is_none() || shader.params_dirty || shader.slots_dirty {
+            let (
+                Some(render_uniform_buffer),
+                Some(builtins_uniform_buffer),
+                Some(params_uniform_buffer),
+            ) = (
+                shader.render_uniform_buffer.as_ref(),
+                shader.builtins_uniform_buffer.as_ref(),
+                shader.params_uniform_buffer.as_ref(),
+            ) else {
+                shader.mark_error("shader uniform buffers are not initialized");
+                return;
+            };
+
+            shader.bind_group = Some(self.pass.create_bind_group(
+                device,
+                render_uniform_buffer,
+                builtins_uniform_buffer,
+                params_uniform_buffer,
+                &shader.channel_views,
+            ));
+        }
+
+        shader.present_bind_group = None;
+        shader.snapshot_bind_group = None;
+
+        let (time, time_delta, frame) = shader.advance_generic_timeline(payload.timestamp);
+
+        if let Some(buffer) = shader.render_uniform_buffer.as_ref() {
+            self.pass
+                .write_render_uniform(render_queue, buffer, shader.shader_rect);
+        }
+
+        if let Some(buffer) = shader.builtins_uniform_buffer.as_ref() {
+            self.pass.write_builtins_uniform(
+                render_queue,
+                buffer,
+                ShaderPassBuiltins {
+                    time,
+                    time_delta,
+                    progress: 0.0,
+                    effect_id,
+                    frame,
+                    channel_count: slots
+                        .declared_channels
+                        .iter()
+                        .filter(|declared| **declared)
+                        .count() as u32,
+                    stage_size: [payload.stage_logical_size.0, payload.stage_logical_size.1],
+                },
+            );
+        }
+
+        if let Some(buffer) = shader.params_uniform_buffer.as_ref() {
+            let params = match shader.shader.pack_params_uniform_bytes() {
+                Ok(params) => params,
+                Err(err) => {
+                    shader.mark_error(err);
+                    return;
+                }
+            };
+
+            if let Err(err) = self.pass.write_params_uniform(render_queue, buffer, &params) {
+                shader.mark_error(err);
+                return;
+            }
+        }
+    }
+
+    fn update_transition(
+        &mut self,
+        shader: &mut Shader,
+        device: &Device,
+        render_queue: &RenderCommandSender,
+        payload: &RendererUpdatePayload,
+        stage_rect: Rect,
+        slots: &CollectedSlots,
+        effect_id: i32,
+    ) {
+        shader.finish_transition_if_ready();
+
+        let is_transition_input = |channel: u32| {
+            slots.descriptors[channel as usize]
+                .is_some_and(|slot| !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal))
+        };
+
+        if let Some(request) = shader.pending_prepare.take() {
+            if !is_transition_input(request.from_channel) || !is_transition_input(request.to_channel) {
+                log::warn!(
+                    "shader node {}: prepare requires declared non-empty fromChannel/toChannel slots",
+                    shader.base().id()
+                );
+            } else {
+                let capture_display = matches!(
+                    shader.transition_phase,
+                    TransitionPhase::Running | TransitionPhase::Finishing
+                ) && shader.display_view.is_some();
+
+                shader.apply_prepare_request(request, capture_display);
+            }
+        }
+
+        if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare)
+            && shader.prepare_ready_latched
+        {
+            shader.mark_prepare_captured();
+        }
+
+        if let Some(request) = shader.pending_perform.take() {
+            let Some(from_channel) = shader.transition_from_channel else {
+                log::warn!(
+                    "shader node {}: perform requires a prior prepare in transition mode",
+                    shader.base().id()
+                );
+                shader.present_bind_group = None;
+                shader.bind_group = None;
+                shader.finish_update();
+                return;
+            };
+            let Some(to_channel) = shader.transition_to_channel else {
+                log::warn!(
+                    "shader node {}: perform requires a prior prepare in transition mode",
+                    shader.base().id()
+                );
+                shader.present_bind_group = None;
+                shader.bind_group = None;
+                shader.finish_update();
+                return;
+            };
+
+            if !is_transition_input(from_channel) || !is_transition_input(to_channel) {
+                log::warn!(
+                    "shader node {}: perform requires existing from/to slots",
+                    shader.base().id()
+                );
+            } else {
+                shader.apply_perform_request(request.duration);
+            }
+        }
+
+        let from_channel = shader.transition_from_channel.map(|channel| channel as usize);
+        let to_channel = shader.transition_to_channel.map(|channel| channel as usize);
+        let has_to_slot =
+            to_channel.and_then(|channel| slots.descriptors[channel]).is_some_and(|slot| {
+                !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
+            });
+
+        let from_bounds = match (from_channel, shader.transition_from_source) {
+            (Some(_), TransitionFromSource::Display)
+                if shader.snapshot_display_rect.width() > 0.0
+                    && shader.snapshot_display_rect.height() > 0.0 =>
+            {
+                Some(Bound::from(shader.snapshot_display_rect))
+            }
+            (Some(channel), TransitionFromSource::Slot) => slots.descriptors[channel]
+                .filter(|slot| !slot.empty)
+                .and_then(|slot| slot.bounds),
+            _ => None,
+        };
+        let to_bounds = to_channel
+            .and_then(|channel| slots.descriptors[channel])
+            .filter(|slot| !slot.empty)
+            .and_then(|slot| slot.bounds);
+
+        if shader.is_active() {
+            if let Some(rect) = resolve_transition_rect(stage_rect, from_bounds, to_bounds) {
+                let (_, _, render_width, render_height) = calculate_surface_physical_coordinates(
+                    &rect,
+                    payload.stage_logical_size,
+                    payload.surface_logical_size,
+                    payload.scale_factor,
+                );
+
+                shader.shader_rect = rect;
+                shader.render_width = render_width;
+                shader.render_height = render_height;
+            } else if has_to_slot {
+                let rect = Rect::new(
+                    stage_rect.x(),
+                    stage_rect.y(),
+                    BOOTSTRAP_RECT_SIZE.min(stage_rect.width()),
+                    BOOTSTRAP_RECT_SIZE.min(stage_rect.height()),
+                );
+                let (_, _, render_width, render_height) = calculate_surface_physical_coordinates(
+                    &rect,
+                    payload.stage_logical_size,
+                    payload.surface_logical_size,
+                    payload.scale_factor,
+                );
+
+                shader.shader_rect = rect;
+                shader.render_width = render_width;
+                shader.render_height = render_height;
+            } else {
+                shader.shader_rect = Rect::default();
+                shader.render_width = 0;
+                shader.render_height = 0;
+            }
+
+            shader.last_active_at = Some(payload.timestamp);
+        } else {
+            shader.shader_rect = Rect::default();
+            shader.render_width = 0;
+            shader.render_height = 0;
+
+            if let Some(last_active_at) = shader.last_active_at {
+                if payload.timestamp - last_active_at >= IDLE_TEXTURE_GRACE_SECONDS {
+                    shader.clear_idle_runtime_state();
+                    shader.last_active_at = None;
+                }
+            }
+        }
+
+        if shader.is_active() && shader.render_width > 0 && shader.render_height > 0 {
+            for slot in slots.descriptors.iter().flatten() {
+                if shader.channel_static[slot.channel] != slot.is_static {
+                    shader.channel_static[slot.channel] = slot.is_static;
+                    if !slot.is_static {
+                        shader.channel_content_revisions[slot.channel] = 0;
+                    }
+                    shader.channel_needs_redraw[slot.channel] = true;
+                }
+
+                let skip_revision_check = Some(slot.channel) == from_channel
+                    && (shader.transition_from_source == TransitionFromSource::Display
+                        || matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare)
+                        || matches!(shader.retain, RetainMode::Static));
+
+                if slot.is_static
+                    && !slot.empty
+                    && !skip_revision_check
+                    && !shader.channel_needs_redraw[slot.channel]
+                {
+                    let Some(slot_node) = slots.slot_nodes[slot.channel].as_ref() else {
+                        continue;
+                    };
+                    let slot_guard = slot_node.read();
+                    let slot_ref = slot_guard.as_any().downcast_ref::<ShaderSlot>().unwrap();
+                    let content_revision = slot_content_revision(slot_ref);
+
+                    if shader.channel_content_revisions[slot.channel] != content_revision {
+                        shader.channel_needs_redraw[slot.channel] = true;
+                    }
+                }
+
+                let (width, height) = if slot.empty {
+                    (slot.width, slot.height)
+                } else {
+                    (shader.render_width, shader.render_height)
+                };
+
+                if slot.empty && (width == 0 || height == 0) {
+                    shader.mark_error(format!(
+                        "empty channel {} requires a non-zero width and height",
+                        slot.channel
+                    ));
+                    return;
+                }
+
+                let recreated =
+                    self.ensure_channel_texture(shader, device, slot.channel, width, height, slot.empty);
+
+                if recreated {
+                    shader.channel_needs_redraw[slot.channel] = true;
+
+                    if Some(slot.channel) == from_channel
+                        && (shader.transition_from_source == TransitionFromSource::Display
+                            || matches!(shader.retain, RetainMode::Static))
+                    {
+                        shader.from_texture_dirty = true;
+                    }
+                }
+            }
+
+            self.ensure_display_texture(shader, device, shader.render_width, shader.render_height);
+            shader.display_rect = shader.shader_rect;
+        }
+
+        let mut static_rendered_revisions = [None; Shader::CHANNEL_COUNT];
+        let mut prepare_capture_scheduled = false;
+        let mut frozen_from_rebuilt = false;
+        let mut snapshot_copy_scheduled = false;
+        let display_channel = shader.display_channel.map(|channel| channel as usize);
+
+        for slot_node in slots.slot_nodes.iter().flatten() {
+            let mut child = slot_node.write();
+            let Some(slot) = child.as_any_mut().downcast_mut::<ShaderSlot>() else {
+                continue;
+            };
+
+            slot.render_rect = shader.shader_rect;
+            slot.render_content_origin = slot_render_content_origin(slot, shader.shader_rect);
+
+            if slot.empty {
+                slot.render_target = None;
+                slot.render_children = false;
+                continue;
+            }
+
+            if matches!(shader.transition_phase, TransitionPhase::Stable) {
+                let should_display = display_channel == Some(slot.channel as usize);
+                slot.render_target = None;
+                slot.render_children = should_display;
+                continue;
+            }
+
+            if shader.render_width == 0 || shader.render_height == 0 {
+                slot.render_target = None;
+                slot.render_children = false;
+                continue;
+            }
+
+            let channel = slot.channel as usize;
+            let Some(target_view) = shader.channel_views[channel].clone() else {
+                slot.render_target = None;
+                slot.render_children = false;
+                continue;
+            };
+
+            if Some(channel) == from_channel {
+                match shader.transition_from_source {
+                    TransitionFromSource::Display => {
+                        slot.render_children = false;
+                        slot.render_target = None;
+
+                        if shader.from_texture_dirty {
+                            snapshot_copy_scheduled = true;
+                            if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare) {
+                                prepare_capture_scheduled = true;
+                            } else {
+                                frozen_from_rebuilt = true;
+                            }
+                        }
+                    }
+                    TransitionFromSource::Slot => match shader.transition_phase {
+                        TransitionPhase::AwaitingPrepare => {
+                            let should_capture = !shader.prepare_ready_latched;
+                            let slot_ready = slot.ready();
+                            slot.render_children = should_capture;
+                            slot.render_target = if should_capture {
+                                Some(target_view)
+                            } else {
+                                None
+                            };
+
+                            if should_capture && slot_ready {
+                                prepare_capture_scheduled = true;
+                                frozen_from_rebuilt = true;
+
+                                if slot.is_static {
+                                    static_rendered_revisions[channel] =
+                                        Some(slot_content_revision(slot));
+                                }
+                            }
+                        }
+                        TransitionPhase::Prepared
+                        | TransitionPhase::Running
+                        | TransitionPhase::Finishing => {
+                            if matches!(shader.retain, RetainMode::Live) {
+                                self.configure_cached_slot(
+                                    shader,
+                                    slot,
+                                    target_view,
+                                    &mut static_rendered_revisions,
+                                );
+                            } else {
+                                let should_refresh_frozen_from = shader.from_texture_dirty;
+                                let slot_ready = slot.ready();
+                                slot.render_children = should_refresh_frozen_from;
+                                slot.render_target = if should_refresh_frozen_from {
+                                    Some(target_view)
+                                } else {
+                                    None
+                                };
+
+                                if should_refresh_frozen_from && slot_ready {
+                                    frozen_from_rebuilt = true;
+
+                                    if slot.is_static {
+                                        static_rendered_revisions[channel] =
+                                            Some(slot_content_revision(slot));
+                                    }
+                                }
+                            }
+                        }
+                        TransitionPhase::Stable => {
+                            slot.render_children = false;
+                            slot.render_target = None;
+                        }
+                    },
+                }
+
+                continue;
+            }
+
+            if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare) {
+                slot.render_target = None;
+                slot.render_children = false;
+                continue;
+            }
+
+            self.configure_cached_slot(shader, slot, target_view, &mut static_rendered_revisions);
+        }
+
+        if prepare_capture_scheduled {
+            shader.prepare_ready_latched = true;
+        }
+
+        if frozen_from_rebuilt || snapshot_copy_scheduled {
+            shader.from_texture_dirty = false;
+        }
+
+        for (channel, revision) in static_rendered_revisions.iter().copied().enumerate() {
+            if let Some(revision) = revision {
+                shader.channel_content_revisions[channel] = revision;
+                shader.channel_needs_redraw[channel] = false;
+            }
+        }
+
+        if !shader.is_active() || shader.render_width == 0 || shader.render_height == 0 {
+            shader.bind_group = None;
+            shader.present_bind_group = None;
+            shader.snapshot_bind_group = None;
+            shader.finish_update();
+            return;
+        }
+
+        self.pass.ensure_uniform_buffers(
+            device,
+            &mut shader.render_uniform_buffer,
+            &mut shader.builtins_uniform_buffer,
+            &mut shader.params_uniform_buffer,
+        );
+
+        if let Some(buffer) = shader.render_uniform_buffer.as_ref() {
+            self.pass
+                .write_render_uniform(render_queue, buffer, shader.shader_rect);
+        }
+
+        let Some(render_uniform_buffer) = shader.render_uniform_buffer.as_ref() else {
+            shader.mark_error("shader render uniform buffer is not initialized");
+            return;
+        };
+
+        match shader.transition_phase {
+            TransitionPhase::AwaitingPrepare | TransitionPhase::Prepared => {
+                shader.bind_group = None;
+
+                let source_view =
+                    from_channel.and_then(|channel| shader.channel_views[channel].as_ref());
+                shader.present_bind_group = source_view.map(|source_view| {
+                    self.create_present_bind_group(device, render_uniform_buffer, source_view)
+                });
+
+                if snapshot_copy_scheduled {
+                    let Some(snapshot_display_view) = shader.snapshot_display_view.as_ref() else {
+                        shader.mark_error("display-backed transition snapshot is not available");
+                        return;
+                    };
+
+                    let snapshot_uniform_buffer = shader.snapshot_uniform_buffer.get_or_insert_with(|| {
+                        device.create_buffer(&BufferDescriptor {
+                            label: Some("Shader Snapshot Uniform Buffer"),
+                            size: 16,
+                            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                            mapped_at_creation: false,
+                        })
+                    });
+
+                    self.pass.write_render_uniform(
+                        render_queue,
+                        snapshot_uniform_buffer,
+                        shader.snapshot_display_rect,
+                    );
+
+                    shader.snapshot_bind_group = Some(self.create_present_bind_group(
+                        device,
+                        snapshot_uniform_buffer,
+                        snapshot_display_view,
+                    ));
+                } else {
+                    shader.snapshot_bind_group = None;
+                }
+            }
+            TransitionPhase::Running | TransitionPhase::Finishing => {
+                if snapshot_copy_scheduled {
+                    let Some(snapshot_display_view) = shader.snapshot_display_view.as_ref() else {
+                        shader.mark_error("display-backed transition snapshot is not available");
+                        return;
+                    };
+
+                    let snapshot_uniform_buffer = shader.snapshot_uniform_buffer.get_or_insert_with(|| {
+                        device.create_buffer(&BufferDescriptor {
+                            label: Some("Shader Snapshot Uniform Buffer"),
+                            size: 16,
+                            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                            mapped_at_creation: false,
+                        })
+                    });
+
+                    self.pass.write_render_uniform(
+                        render_queue,
+                        snapshot_uniform_buffer,
+                        shader.snapshot_display_rect,
+                    );
+
+                    shader.snapshot_bind_group = Some(self.create_present_bind_group(
+                        device,
+                        snapshot_uniform_buffer,
+                        snapshot_display_view,
+                    ));
+                } else {
+                    shader.snapshot_bind_group = None;
+                }
+
+                if shader.shader_dirty || shader.pipeline.is_none() || shader.needs_retry {
+                    match self.pass.compile_pipeline(device, &shader.shader) {
+                        Ok(pipeline) => {
+                            shader.pipeline = Some(pipeline);
+                            shader.bind_group = None;
+                        }
+                        Err(err) => {
+                            shader.mark_error(err);
+                            return;
+                        }
+                    }
+                }
+
+                if shader.bind_group.is_none() || shader.params_dirty || shader.slots_dirty {
+                    let (
+                        Some(render_uniform_buffer),
+                        Some(builtins_uniform_buffer),
+                        Some(params_uniform_buffer),
+                    ) = (
+                        shader.render_uniform_buffer.as_ref(),
+                        shader.builtins_uniform_buffer.as_ref(),
+                        shader.params_uniform_buffer.as_ref(),
+                    ) else {
+                        shader.mark_error("shader uniform buffers are not initialized");
+                        return;
+                    };
+
+                    shader.bind_group = Some(self.pass.create_bind_group(
+                        device,
+                        render_uniform_buffer,
+                        builtins_uniform_buffer,
+                        params_uniform_buffer,
+                        &shader.channel_views,
+                    ));
+                }
+
+                shader.present_bind_group = shader.display_view.as_ref().map(|display_view| {
+                    self.create_present_bind_group(device, render_uniform_buffer, display_view)
+                });
+
+                let (time, time_delta, frame, progress) =
+                    shader.advance_transition_timeline(payload.timestamp);
+
+                if let Some(buffer) = shader.builtins_uniform_buffer.as_ref() {
+                    self.pass.write_builtins_uniform(
+                        render_queue,
+                        buffer,
+                        ShaderPassBuiltins {
+                            time,
+                            time_delta,
+                            progress,
+                            effect_id,
+                            frame,
+                            channel_count: slots
+                                .declared_channels
+                                .iter()
+                                .filter(|declared| **declared)
+                                .count() as u32,
+                            stage_size: [payload.stage_logical_size.0, payload.stage_logical_size.1],
+                        },
+                    );
+                }
+
+                if let Some(buffer) = shader.params_uniform_buffer.as_ref() {
+                    let params = match shader.shader.pack_params_uniform_bytes() {
+                        Ok(params) => params,
+                        Err(err) => {
+                            shader.mark_error(err);
+                            return;
+                        }
+                    };
+
+                    if let Err(err) = self.pass.write_params_uniform(render_queue, buffer, &params) {
+                        shader.mark_error(err);
+                        return;
+                    }
+                }
+            }
+            TransitionPhase::Stable => {
+                shader.bind_group = None;
+                shader.present_bind_group = None;
+                shader.snapshot_bind_group = None;
+            }
+        }
+    }
 }
 
 impl ShaderSlotRenderer {
@@ -253,88 +1142,20 @@ impl Renderer for ShaderRenderer {
         payload: &RendererUpdatePayload,
     ) {
         let shader = node.as_any_mut().downcast_mut::<Shader>().unwrap();
-
         let stage_rect = Rect::new(
             0.0,
             0.0,
             payload.stage_logical_size.0,
             payload.stage_logical_size.1,
         );
-        let mut slots = [None; Shader::CHANNEL_COUNT];
-        let mut slot_nodes: [Option<NodeLock>; Shader::CHANNEL_COUNT] =
-            std::array::from_fn(|_| None);
-        let mut slot_layouts = [None; Shader::CHANNEL_COUNT];
-        let mut invalid_channel = None;
-        let mut duplicate_channel = None;
 
-        for child_node in shader.base().children() {
-            let child = child_node.read();
-            let Some(slot) = child.as_any().downcast_ref::<ShaderSlot>() else {
-                continue;
-            };
-
-            if slot.channel > 3 {
-                invalid_channel = Some(slot.channel);
-                break;
+        let slots = match self.collect_slots(shader) {
+            Ok(slots) => slots,
+            Err(err) => {
+                shader.mark_error(err);
+                return;
             }
-
-            let channel = slot.channel as usize;
-            if slot_nodes[channel].is_some() {
-                duplicate_channel = Some(slot.channel);
-                continue;
-            }
-
-            let bounds = if slot.empty || matches!(slot.space, ShaderSlotSpace::Shader) {
-                None
-            } else {
-                let mut bounds: Option<Bound> = None;
-                for child in slot.base().children() {
-                    let child = child.read();
-                    let child_bounds = *child.base().global_content_bounds();
-
-                    if child_bounds.is_empty() {
-                        continue;
-                    }
-
-                    bounds = Some(match bounds {
-                        Some(current) => current.union(&child_bounds),
-                        None => child_bounds,
-                    });
-                }
-                bounds
-            };
-
-            slot_nodes[channel] = Some(child_node.clone());
-            slot_layouts[channel] = Some(ShaderSlotLayout {
-                empty: slot.empty,
-                is_static: slot.is_static,
-                space: slot.space,
-                width: slot.width,
-                height: slot.height,
-            });
-            slots[channel] = Some(ShaderSlotDescriptor {
-                channel,
-                empty: slot.empty,
-                is_static: slot.is_static,
-                space: slot.space,
-                width: slot.width,
-                height: slot.height,
-                bounds,
-            });
-        }
-
-        if let Some(channel) = invalid_channel {
-            shader.mark_error(format!(
-                "channel {} is out of range, expected 0..3",
-                channel
-            ));
-            return;
-        }
-
-        if let Some(channel) = duplicate_channel {
-            shader.mark_error(format!("channel {} is declared more than once", channel));
-            return;
-        }
+        };
 
         if let Some(display_channel) = shader.display_channel {
             if display_channel > 3 {
@@ -346,799 +1167,30 @@ impl Renderer for ShaderRenderer {
             }
         }
 
-        shader.update_slot_layouts(slot_layouts);
+        shader.update_slot_layouts(slots.slot_layouts);
 
         if shader.error_state && !shader.needs_retry {
             return;
         }
 
-        let mut declared_channels = [false; 4];
-        for (channel, slot_node) in slot_nodes.iter().enumerate() {
-            declared_channels[channel] = slot_node.is_some();
-        }
-
-        for (index, declared) in declared_channels.iter().copied().enumerate() {
-            if !declared {
-                shader.channel_declared[index] = false;
-                shader.channel_empty[index] = false;
-                shader.channel_static[index] = false;
-                shader.channel_content_revisions[index] = 0;
-                shader.channel_texture_widths[index] = 0;
-                shader.channel_texture_heights[index] = 0;
-                shader.channel_views[index] = None;
-                shader.channel_needs_redraw[index] = true;
-                shader.present_bind_group = None;
-            }
-        }
-        shader.channel_declared = declared_channels;
+        self.sync_declared_channels(shader, slots.declared_channels);
 
         let effect_id = shader.shader.builtin_effect_id();
 
         match shader.time_control {
             ShaderTimeControl::Auto | ShaderTimeControl::Manual => {
-                if let Some(last_active_at) = shader.last_active_at {
-                    if !shader.base().visible()
-                        && payload.timestamp - last_active_at >= IDLE_TEXTURE_GRACE_SECONDS
-                    {
-                        shader.clear_idle_runtime_state();
-                        shader.last_active_at = None;
-                    }
-                }
-
-                let resolved_rect = resolve_shader_rect(stage_rect, &slots).or_else(|| {
-                    if slots
-                        .iter()
-                        .flatten()
-                        .any(|slot| !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal))
-                    {
-                        if shader.shader_rect.width() > 0.0 && shader.shader_rect.height() > 0.0 {
-                            Some(shader.shader_rect)
-                        } else {
-                            Some(stage_rect)
-                        }
-                    } else {
-                        None
-                    }
-                });
-
-                if let Some(rect) = resolved_rect {
-                    let (_, _, render_width, render_height) =
-                        calculate_surface_physical_coordinates(
-                            &rect,
-                            payload.stage_logical_size,
-                            payload.surface_logical_size,
-                            payload.scale_factor,
-                        );
-
-                    shader.shader_rect = rect;
-                    shader.render_width = render_width;
-                    shader.render_height = render_height;
-                    shader.last_active_at = Some(payload.timestamp);
-                } else {
-                    shader.shader_rect = Rect::default();
-                    shader.render_width = 0;
-                    shader.render_height = 0;
-                }
-
-                if shader.render_width > 0 && shader.render_height > 0 {
-                    for slot in slots.iter().flatten() {
-                        if shader.channel_static[slot.channel] != slot.is_static {
-                            shader.channel_static[slot.channel] = slot.is_static;
-                            if !slot.is_static {
-                                shader.channel_content_revisions[slot.channel] = 0;
-                            }
-                            shader.channel_needs_redraw[slot.channel] = true;
-                        }
-
-                        if slot.is_static
-                            && !slot.empty
-                            && !shader.channel_needs_redraw[slot.channel]
-                        {
-                            let Some(slot_node) = slot_nodes[slot.channel].as_ref() else {
-                                continue;
-                            };
-                            let slot_guard = slot_node.read();
-                            let slot_ref =
-                                slot_guard.as_any().downcast_ref::<ShaderSlot>().unwrap();
-                            let content_revision = slot_content_revision(slot_ref);
-
-                            if shader.channel_content_revisions[slot.channel] != content_revision {
-                                shader.channel_needs_redraw[slot.channel] = true;
-                            }
-                        }
-
-                        let (width, height) = if slot.empty {
-                            (slot.width, slot.height)
-                        } else {
-                            (shader.render_width, shader.render_height)
-                        };
-
-                        if slot.empty && (width == 0 || height == 0) {
-                            shader.mark_error(format!(
-                                "empty channel {} requires a non-zero width and height",
-                                slot.channel
-                            ));
-                            return;
-                        }
-
-                        let recreated = self.ensure_channel_texture(
-                            shader,
-                            device,
-                            slot.channel,
-                            width,
-                            height,
-                            slot.empty,
-                        );
-
-                        if recreated {
-                            shader.channel_needs_redraw[slot.channel] = true;
-                        }
-                    }
-                }
-
-                let mut static_rendered_revisions = [None; 4];
-                for slot_node in slot_nodes.iter().flatten() {
-                    let mut child = slot_node.write();
-                    let Some(slot) = child.as_any_mut().downcast_mut::<ShaderSlot>() else {
-                        continue;
-                    };
-
-                    slot.render_rect = shader.shader_rect;
-                    slot.render_content_origin =
-                        slot_render_content_origin(slot, shader.shader_rect);
-
-                    if shader.render_width == 0 || shader.render_height == 0 || slot.empty {
-                        slot.render_target = None;
-                        slot.render_children = false;
-                        continue;
-                    }
-
-                    let channel = slot.channel as usize;
-                    let Some(target_view) = shader.channel_views[channel].clone() else {
-                        slot.render_target = None;
-                        slot.render_children = false;
-                        continue;
-                    };
-
-                    if slot.is_static {
-                        let should_render = shader.channel_needs_redraw[channel];
-                        slot.render_children = should_render;
-                        slot.render_target = if should_render {
-                            Some(target_view)
-                        } else {
-                            None
-                        };
-
-                        if should_render {
-                            if slot.ready() {
-                                static_rendered_revisions[channel] =
-                                    Some(slot_content_revision(slot));
-                            }
-                        }
-                    } else {
-                        slot.render_children = true;
-                        slot.render_target = Some(target_view);
-                    }
-                }
-
-                for (channel, revision) in static_rendered_revisions.iter().copied().enumerate() {
-                    if let Some(revision) = revision {
-                        shader.channel_content_revisions[channel] = revision;
-                        shader.channel_needs_redraw[channel] = false;
-                    }
-                }
-
-                if shader.render_width == 0 || shader.render_height == 0 {
-                    shader.bind_group = None;
-                    shader.present_bind_group = None;
-                    shader.finish_update();
-                    return;
-                }
-
-                if shader.shader_dirty || shader.pipeline.is_none() || shader.needs_retry {
-                    match self.pass.compile_pipeline(device, &shader.shader) {
-                        Ok(pipeline) => {
-                            shader.pipeline = Some(pipeline);
-                            shader.bind_group = None;
-                        }
-                        Err(err) => {
-                            shader.mark_error(err);
-                            return;
-                        }
-                    }
-                }
-
-                self.pass.ensure_uniform_buffers(
-                    device,
-                    &mut shader.render_uniform_buffer,
-                    &mut shader.builtins_uniform_buffer,
-                    &mut shader.params_uniform_buffer,
-                );
-
-                if shader.bind_group.is_none() || shader.params_dirty || shader.slots_dirty {
-                    let (
-                        Some(render_uniform_buffer),
-                        Some(builtins_uniform_buffer),
-                        Some(params_uniform_buffer),
-                    ) = (
-                        shader.render_uniform_buffer.as_ref(),
-                        shader.builtins_uniform_buffer.as_ref(),
-                        shader.params_uniform_buffer.as_ref(),
-                    )
-                    else {
-                        shader.mark_error("shader uniform buffers are not initialized");
-                        return;
-                    };
-
-                    shader.bind_group = Some(self.pass.create_bind_group(
-                        device,
-                        render_uniform_buffer,
-                        builtins_uniform_buffer,
-                        params_uniform_buffer,
-                        &shader.channel_views,
-                    ));
-                }
-
-                shader.present_bind_group = None;
-
-                let (time, time_delta, frame) = shader.advance_generic_timeline(payload.timestamp);
-
-                if let Some(buffer) = shader.render_uniform_buffer.as_ref() {
-                    self.pass
-                        .write_render_uniform(render_queue, buffer, shader.shader_rect);
-                }
-
-                if let Some(buffer) = shader.builtins_uniform_buffer.as_ref() {
-                    self.pass.write_builtins_uniform(
-                        render_queue,
-                        buffer,
-                        ShaderPassBuiltins {
-                            time,
-                            time_delta,
-                            progress: 0.0,
-                            effect_id,
-                            frame,
-                            channel_count: declared_channels
-                                .iter()
-                                .filter(|declared| **declared)
-                                .count() as u32,
-                            stage_size: [
-                                payload.stage_logical_size.0,
-                                payload.stage_logical_size.1,
-                            ],
-                        },
-                    );
-                }
-
-                if let Some(buffer) = shader.params_uniform_buffer.as_ref() {
-                    let params = match shader.shader.pack_params_uniform_bytes() {
-                        Ok(params) => params,
-                        Err(err) => {
-                            shader.mark_error(err);
-                            return;
-                        }
-                    };
-
-                    if let Err(err) = self
-                        .pass
-                        .write_params_uniform(render_queue, buffer, &params)
-                    {
-                        shader.mark_error(err);
-                        return;
-                    }
-                }
+                self.update_generic(shader, device, render_queue, payload, stage_rect, &slots, effect_id);
             }
             ShaderTimeControl::Transition => {
-                shader.finish_transition_if_ready();
-
-                if let Some(request) = shader.pending_prepare.take() {
-                    let has_from_slot = slots[request.from_channel as usize].is_some_and(|slot| {
-                        !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
-                    });
-                    let has_to_slot = slots[request.to_channel as usize].is_some_and(|slot| {
-                        !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
-                    });
-
-                    if !has_from_slot || !has_to_slot {
-                        log::warn!(
-                            "shader node {}: prepare requires declared non-empty fromChannel/toChannel slots",
-                            shader.base().id()
-                        );
-                    } else {
-                        let capture_display = matches!(
-                            shader.transition_phase,
-                            TransitionPhase::Running | TransitionPhase::Finishing
-                        ) && shader.display_view.is_some();
-
-                        shader.apply_prepare_request(request, capture_display);
-                    }
-                }
-
-                if let Some(request) = shader.pending_perform.take() {
-                    let Some(from_channel) = shader.transition_from_channel else {
-                        log::warn!(
-                            "shader node {}: perform requires a prior prepare in transition mode",
-                            shader.base().id()
-                        );
-                        shader.present_bind_group = None;
-                        shader.bind_group = None;
-                        shader.finish_update();
-                        return;
-                    };
-                    let Some(to_channel) = shader.transition_to_channel else {
-                        log::warn!(
-                            "shader node {}: perform requires a prior prepare in transition mode",
-                            shader.base().id()
-                        );
-                        shader.present_bind_group = None;
-                        shader.bind_group = None;
-                        shader.finish_update();
-                        return;
-                    };
-
-                    let has_from_slot = slots[from_channel as usize].is_some_and(|slot| {
-                        !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
-                    });
-                    let has_to_slot = slots[to_channel as usize].is_some_and(|slot| {
-                        !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
-                    });
-
-                    if !has_from_slot || !has_to_slot {
-                        log::warn!(
-                            "shader node {}: perform requires existing from/to slots",
-                            shader.base().id()
-                        );
-                    } else {
-                        shader.apply_perform_request(request.duration);
-                    }
-                }
-
-                let from_channel = shader
-                    .transition_from_channel
-                    .map(|channel| channel as usize);
-                let to_channel = shader.transition_to_channel.map(|channel| channel as usize);
-
-                let from_bounds = from_channel
-                    .and_then(|channel| slots[channel])
-                    .filter(|slot| !slot.empty)
-                    .and_then(|slot| slot.bounds);
-                let to_bounds = to_channel
-                    .and_then(|channel| slots[channel])
-                    .filter(|slot| !slot.empty)
-                    .and_then(|slot| slot.bounds);
-                let has_to_slot =
-                    to_channel
-                        .and_then(|channel| slots[channel])
-                        .is_some_and(|slot| {
-                            !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
-                        });
-
-                if shader.is_active() {
-                    if let Some(rect) = resolve_transition_rect(stage_rect, from_bounds, to_bounds)
-                    {
-                        let (_, _, render_width, render_height) =
-                            calculate_surface_physical_coordinates(
-                                &rect,
-                                payload.stage_logical_size,
-                                payload.surface_logical_size,
-                                payload.scale_factor,
-                            );
-
-                        shader.shader_rect = rect;
-                        shader.render_width = render_width;
-                        shader.render_height = render_height;
-                    } else if has_to_slot {
-                        let rect = Rect::new(
-                            stage_rect.x(),
-                            stage_rect.y(),
-                            BOOTSTRAP_RECT_SIZE.min(stage_rect.width()),
-                            BOOTSTRAP_RECT_SIZE.min(stage_rect.height()),
-                        );
-                        let (_, _, render_width, render_height) =
-                            calculate_surface_physical_coordinates(
-                                &rect,
-                                payload.stage_logical_size,
-                                payload.surface_logical_size,
-                                payload.scale_factor,
-                            );
-
-                        shader.shader_rect = rect;
-                        shader.render_width = render_width;
-                        shader.render_height = render_height;
-                    } else {
-                        shader.shader_rect = Rect::default();
-                        shader.render_width = 0;
-                        shader.render_height = 0;
-                    }
-
-                    shader.last_active_at = Some(payload.timestamp);
-                } else {
-                    shader.shader_rect = Rect::default();
-                    shader.render_width = 0;
-                    shader.render_height = 0;
-
-                    if let Some(last_active_at) = shader.last_active_at {
-                        if payload.timestamp - last_active_at >= IDLE_TEXTURE_GRACE_SECONDS {
-                            shader.clear_idle_runtime_state();
-                            shader.last_active_at = None;
-                        }
-                    }
-                }
-
-                if shader.is_active() && shader.render_width > 0 && shader.render_height > 0 {
-                    for slot in slots.iter().flatten() {
-                        if shader.channel_static[slot.channel] != slot.is_static {
-                            shader.channel_static[slot.channel] = slot.is_static;
-                            if !slot.is_static {
-                                shader.channel_content_revisions[slot.channel] = 0;
-                            }
-                            shader.channel_needs_redraw[slot.channel] = true;
-                        }
-
-                        let needs_revision_check = slot.is_static
-                            && !slot.empty
-                            && Some(slot.channel) != from_channel
-                            && !shader.channel_needs_redraw[slot.channel];
-                        if needs_revision_check {
-                            let Some(slot_node) = slot_nodes[slot.channel].as_ref() else {
-                                continue;
-                            };
-                            let slot_guard = slot_node.read();
-                            let slot_ref =
-                                slot_guard.as_any().downcast_ref::<ShaderSlot>().unwrap();
-                            let content_revision = slot_content_revision(slot_ref);
-
-                            if shader.channel_content_revisions[slot.channel] != content_revision {
-                                shader.channel_needs_redraw[slot.channel] = true;
-                            }
-                        }
-
-                        let (width, height) = if slot.empty {
-                            (slot.width, slot.height)
-                        } else {
-                            (shader.render_width, shader.render_height)
-                        };
-
-                        if slot.empty && (width == 0 || height == 0) {
-                            shader.mark_error(format!(
-                                "empty channel {} requires a non-zero width and height",
-                                slot.channel
-                            ));
-                            return;
-                        }
-
-                        let recreated = self.ensure_channel_texture(
-                            shader,
-                            device,
-                            slot.channel,
-                            width,
-                            height,
-                            slot.empty,
-                        );
-
-                        if recreated {
-                            shader.channel_needs_redraw[slot.channel] = true;
-
-                            if Some(slot.channel) == from_channel
-                                && (shader.retain == RetainMode::Static
-                                    || shader.transition_from_source
-                                        == TransitionFromSource::Display)
-                            {
-                                shader.from_needs_redraw = true;
-                            }
-                        }
-                    }
-
-                    self.ensure_display_texture(
-                        shader,
-                        device,
-                        shader.render_width,
-                        shader.render_height,
-                    );
-                    shader.display_rect = shader.shader_rect;
-                }
-
-                let mut snapshot_from_rendered = false;
-                let mut static_rendered_revisions = [None; 4];
-                let mut awaiting_prepare_captured = false;
-                let display_channel = shader.display_channel.map(|channel| channel as usize);
-
-                for slot_node in slot_nodes.iter().flatten() {
-                    let mut child = slot_node.write();
-                    let Some(slot) = child.as_any_mut().downcast_mut::<ShaderSlot>() else {
-                        continue;
-                    };
-
-                    slot.render_rect = shader.shader_rect;
-                    slot.render_content_origin =
-                        slot_render_content_origin(slot, shader.shader_rect);
-
-                    if slot.empty {
-                        slot.render_target = None;
-                        slot.render_children = false;
-                        continue;
-                    }
-
-                    if matches!(shader.transition_phase, TransitionPhase::Stable) {
-                        let should_display = display_channel == Some(slot.channel as usize);
-                        slot.render_target = None;
-                        slot.render_children = should_display;
-                        continue;
-                    }
-
-                    if shader.render_width == 0 || shader.render_height == 0 {
-                        slot.render_target = None;
-                        slot.render_children = false;
-                        continue;
-                    }
-
-                    let channel = slot.channel as usize;
-                    let Some(target_view) = shader.channel_views[channel].clone() else {
-                        slot.render_target = None;
-                        slot.render_children = false;
-                        continue;
-                    };
-
-                    if Some(channel) == from_channel {
-                        if shader.transition_from_source == TransitionFromSource::Display {
-                            slot.render_children = false;
-                            slot.render_target = None;
-                            continue;
-                        }
-
-                        match shader.transition_phase {
-                            TransitionPhase::AwaitingPrepare => {
-                                slot.render_children = true;
-                                slot.render_target = Some(target_view);
-                                awaiting_prepare_captured = true;
-                            }
-                            TransitionPhase::Prepared
-                            | TransitionPhase::Running
-                            | TransitionPhase::Finishing => match shader.retain {
-                                RetainMode::Static => {
-                                    let should_render = shader.from_needs_redraw;
-                                    slot.render_children = should_render;
-                                    slot.render_target = if should_render {
-                                        Some(target_view)
-                                    } else {
-                                        None
-                                    };
-
-                                    if should_render {
-                                        snapshot_from_rendered = true;
-                                    }
-                                }
-                                RetainMode::Live => {
-                                    slot.render_children = true;
-                                    slot.render_target = Some(target_view);
-                                }
-                            },
-                            TransitionPhase::Stable => {
-                                slot.render_children = false;
-                                slot.render_target = None;
-                            }
-                        }
-
-                        continue;
-                    }
-
-                    if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare) {
-                        slot.render_children = false;
-                        slot.render_target = None;
-                        continue;
-                    }
-
-                    let should_render = if slot.is_static {
-                        shader.channel_needs_redraw[channel]
-                    } else {
-                        true
-                    };
-
-                    slot.render_children = should_render;
-                    slot.render_target = if should_render {
-                        Some(target_view)
-                    } else {
-                        None
-                    };
-
-                    if should_render && slot.is_static && slot.ready() {
-                        static_rendered_revisions[channel] = Some(slot_content_revision(slot));
-                    }
-                }
-
-                if awaiting_prepare_captured {
-                    shader.mark_prepare_captured();
-                }
-
-                if snapshot_from_rendered {
-                    shader.from_needs_redraw = false;
-                }
-
-                for (channel, revision) in static_rendered_revisions.iter().copied().enumerate() {
-                    if let Some(revision) = revision {
-                        shader.channel_content_revisions[channel] = revision;
-                        shader.channel_needs_redraw[channel] = false;
-                    }
-                }
-
-                if !shader.is_active() || shader.render_width == 0 || shader.render_height == 0 {
-                    shader.bind_group = None;
-                    shader.present_bind_group = None;
-                    shader.finish_update();
-                    return;
-                }
-
-                self.pass.ensure_uniform_buffers(
+                self.update_transition(
+                    shader,
                     device,
-                    &mut shader.render_uniform_buffer,
-                    &mut shader.builtins_uniform_buffer,
-                    &mut shader.params_uniform_buffer,
+                    render_queue,
+                    payload,
+                    stage_rect,
+                    &slots,
+                    effect_id,
                 );
-
-                if let Some(buffer) = shader.render_uniform_buffer.as_ref() {
-                    self.pass
-                        .write_render_uniform(render_queue, buffer, shader.shader_rect);
-                }
-
-                let Some(render_uniform_buffer) = shader.render_uniform_buffer.as_ref() else {
-                    shader.mark_error("shader render uniform buffer is not initialized");
-                    return;
-                };
-
-                match shader.transition_phase {
-                    TransitionPhase::AwaitingPrepare | TransitionPhase::Prepared => {
-                        shader.bind_group = None;
-                        shader.snapshot_bind_group = None;
-
-                        let source_view = match shader.transition_from_source {
-                            TransitionFromSource::Display => shader.snapshot_display_view.as_ref(),
-                            TransitionFromSource::Slot => from_channel
-                                .and_then(|channel| shader.channel_views[channel].as_ref()),
-                        };
-
-                        shader.present_bind_group = source_view.map(|source_view| {
-                            self.create_present_bind_group(
-                                device,
-                                render_uniform_buffer,
-                                source_view,
-                            )
-                        });
-                    }
-                    TransitionPhase::Running | TransitionPhase::Finishing => {
-                        if shader.shader_dirty || shader.pipeline.is_none() || shader.needs_retry {
-                            match self.pass.compile_pipeline(device, &shader.shader) {
-                                Ok(pipeline) => {
-                                    shader.pipeline = Some(pipeline);
-                                    shader.bind_group = None;
-                                }
-                                Err(err) => {
-                                    shader.mark_error(err);
-                                    return;
-                                }
-                            }
-                        }
-
-                        if shader.bind_group.is_none() || shader.params_dirty || shader.slots_dirty
-                        {
-                            let (
-                                Some(render_uniform_buffer),
-                                Some(builtins_uniform_buffer),
-                                Some(params_uniform_buffer),
-                            ) = (
-                                shader.render_uniform_buffer.as_ref(),
-                                shader.builtins_uniform_buffer.as_ref(),
-                                shader.params_uniform_buffer.as_ref(),
-                            )
-                            else {
-                                shader.mark_error("shader uniform buffers are not initialized");
-                                return;
-                            };
-
-                            shader.bind_group = Some(self.pass.create_bind_group(
-                                device,
-                                render_uniform_buffer,
-                                builtins_uniform_buffer,
-                                params_uniform_buffer,
-                                &shader.channel_views,
-                            ));
-                        }
-
-                        shader.present_bind_group =
-                            shader.display_view.as_ref().map(|display_view| {
-                                self.create_present_bind_group(
-                                    device,
-                                    render_uniform_buffer,
-                                    display_view,
-                                )
-                            });
-
-                        if shader.transition_from_source == TransitionFromSource::Display
-                            && shader.from_needs_redraw
-                        {
-                            let Some(snapshot_display_view) = shader.snapshot_display_view.as_ref()
-                            else {
-                                shader.mark_error(
-                                    "display-backed transition snapshot is not available",
-                                );
-                                return;
-                            };
-
-                            let snapshot_uniform_buffer =
-                                shader.snapshot_uniform_buffer.get_or_insert_with(|| {
-                                    device.create_buffer(&BufferDescriptor {
-                                        label: Some("Shader Snapshot Uniform Buffer"),
-                                        size: 16,
-                                        usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-                                        mapped_at_creation: false,
-                                    })
-                                });
-
-                            self.pass.write_render_uniform(
-                                render_queue,
-                                snapshot_uniform_buffer,
-                                shader.snapshot_display_rect,
-                            );
-
-                            shader.snapshot_bind_group = Some(self.create_present_bind_group(
-                                device,
-                                snapshot_uniform_buffer,
-                                snapshot_display_view,
-                            ));
-                            shader.from_needs_redraw = false;
-                        } else {
-                            shader.snapshot_bind_group = None;
-                        }
-
-                        let (time, time_delta, frame, progress) =
-                            shader.advance_transition_timeline(payload.timestamp);
-
-                        if let Some(buffer) = shader.builtins_uniform_buffer.as_ref() {
-                            self.pass.write_builtins_uniform(
-                                render_queue,
-                                buffer,
-                                ShaderPassBuiltins {
-                                    time,
-                                    time_delta,
-                                    progress,
-                                    effect_id,
-                                    frame,
-                                    channel_count: declared_channels
-                                        .iter()
-                                        .filter(|declared| **declared)
-                                        .count()
-                                        as u32,
-                                    stage_size: [
-                                        payload.stage_logical_size.0,
-                                        payload.stage_logical_size.1,
-                                    ],
-                                },
-                            );
-                        }
-
-                        if let Some(buffer) = shader.params_uniform_buffer.as_ref() {
-                            let params = match shader.shader.pack_params_uniform_bytes() {
-                                Ok(params) => params,
-                                Err(err) => {
-                                    shader.mark_error(err);
-                                    return;
-                                }
-                            };
-
-                            if let Err(err) =
-                                self.pass
-                                    .write_params_uniform(render_queue, buffer, &params)
-                            {
-                                shader.mark_error(err);
-                                return;
-                            }
-                        }
-                    }
-                    TransitionPhase::Stable => {
-                        shader.bind_group = None;
-                        shader.present_bind_group = None;
-                        shader.snapshot_bind_group = None;
-                    }
-                }
             }
         }
 
@@ -1201,48 +1253,11 @@ impl Renderer for ShaderRenderer {
             }
             ShaderTimeControl::Transition => match shader.transition_phase {
                 TransitionPhase::AwaitingPrepare | TransitionPhase::Prepared => {
-                    let Some(bind_group) = shader.present_bind_group.as_ref() else {
-                        return;
-                    };
-
-                    render_queue
-                        .send(RenderCommand::Draw {
-                            pipeline: self.present_pipeline.clone(),
-                            bind_group: bind_group.clone(),
-                            extra_bind_groups: vec![],
-                            vertex_buffer: None,
-                            index_buffer: None,
-                            instance_buffer: None,
-                            count: 6,
-                            instance_count: 1,
-                        })
-                        .unwrap();
-                }
-                TransitionPhase::Running | TransitionPhase::Finishing => {
-                    let (
-                        Some(display_view),
-                        Some(pipeline),
-                        Some(bind_group),
-                        Some(present_bind_group),
-                    ) = (
-                        shader.display_view.as_ref(),
-                        shader.pipeline.as_ref(),
-                        shader.bind_group.as_ref(),
-                        shader.present_bind_group.as_ref(),
-                    )
-                    else {
-                        return;
-                    };
-
-                    if shader.transition_from_source == TransitionFromSource::Display {
-                        let from_view = shader
-                            .transition_from_channel
-                            .and_then(|channel| shader.channel_views[channel as usize].as_ref());
-                        let snapshot_bind_group = shader.snapshot_bind_group.as_ref();
-
-                        if let (Some(from_view), Some(snapshot_bind_group)) =
-                            (from_view, snapshot_bind_group)
-                        {
+                    if let (Some(from_channel), Some(snapshot_bind_group)) = (
+                        shader.transition_from_channel,
+                        shader.snapshot_bind_group.as_ref(),
+                    ) {
+                        if let Some(from_view) = shader.channel_views[from_channel as usize].as_ref() {
                             render_queue
                                 .send(RenderCommand::BeginRenderTargetPass {
                                     target_view: from_view.clone(),
@@ -1269,6 +1284,70 @@ impl Renderer for ShaderRenderer {
                                 .unwrap();
                         }
                     }
+
+                    let Some(bind_group) = shader.present_bind_group.as_ref() else {
+                        return;
+                    };
+
+                    render_queue
+                        .send(RenderCommand::Draw {
+                            pipeline: self.present_pipeline.clone(),
+                            bind_group: bind_group.clone(),
+                            extra_bind_groups: vec![],
+                            vertex_buffer: None,
+                            index_buffer: None,
+                            instance_buffer: None,
+                            count: 6,
+                            instance_count: 1,
+                        })
+                        .unwrap();
+                }
+                TransitionPhase::Running | TransitionPhase::Finishing => {
+                    if let (Some(from_channel), Some(snapshot_bind_group)) = (
+                        shader.transition_from_channel,
+                        shader.snapshot_bind_group.as_ref(),
+                    ) {
+                        if let Some(from_view) = shader.channel_views[from_channel as usize].as_ref() {
+                            render_queue
+                                .send(RenderCommand::BeginRenderTargetPass {
+                                    target_view: from_view.clone(),
+                                    rect: shader.shader_rect,
+                                    content_origin: None,
+                                })
+                                .unwrap();
+
+                            render_queue
+                                .send(RenderCommand::Draw {
+                                    pipeline: self.present_pipeline.clone(),
+                                    bind_group: snapshot_bind_group.clone(),
+                                    extra_bind_groups: vec![],
+                                    vertex_buffer: None,
+                                    index_buffer: None,
+                                    instance_buffer: None,
+                                    count: 6,
+                                    instance_count: 1,
+                                })
+                                .unwrap();
+
+                            render_queue
+                                .send(RenderCommand::EndRenderTargetPass)
+                                .unwrap();
+                        }
+                    }
+
+                    let (
+                        Some(display_view),
+                        Some(pipeline),
+                        Some(bind_group),
+                        Some(present_bind_group),
+                    ) = (
+                        shader.display_view.as_ref(),
+                        shader.pipeline.as_ref(),
+                        shader.bind_group.as_ref(),
+                        shader.present_bind_group.as_ref(),
+                    ) else {
+                        return;
+                    };
 
                     render_queue
                         .send(RenderCommand::BeginRenderTargetPass {
