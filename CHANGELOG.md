@@ -7,10 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-06-26
+
 ### Fixed
 
 1. Crash when resuming from minimized state on Windows
 2. Optimize redraw scheduling on native platforms by only requesting redraw when necessary
+3. Disable auto destroy texture when `Texture` dropped to avoid potential use-after-free issues
+4. Fix texture UV coordinates in shader
+
+### Changed
+
+1. Refactor shader renderer
+
+### Added
+
+1. Add prepared event for shader node
 
 ## [0.15.0] - 2026-06-15
 
@@ -56,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - (Scenario) Support local context and add local variable management commands
-- (Core) Add ReadFile command and ReadFormat type for file reading 
+- (Core) Add ReadFile command and ReadFormat type for file reading
 - (Audio) Add LoadAndPlay command to AudioCommand
 
 ## [0.12.0] - 2026-05-09
