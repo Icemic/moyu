@@ -237,6 +237,7 @@ pub struct Shader {
     pub(crate) shader_rect: moyu_core::base::Rect,
     pub(crate) render_width: u32,
     pub(crate) render_height: u32,
+    pub(crate) render_sample_max_uv: [f32; 2],
     pub(crate) last_active_at: Option<f64>,
     pub(crate) prepare_ready_latched: bool,
     pub(crate) from_texture_dirty: bool,
@@ -249,6 +250,7 @@ pub struct Shader {
     pub(crate) display_rect: moyu_core::base::Rect,
     pub(crate) snapshot_display_view: Option<wgpu::TextureView>,
     pub(crate) snapshot_display_rect: moyu_core::base::Rect,
+    pub(crate) snapshot_sample_max_uv: [f32; 2],
     pub(crate) channel_declared: [bool; 4],
     pub(crate) channel_empty: [bool; 4],
     pub(crate) channel_static: [bool; 4],
@@ -259,9 +261,11 @@ pub struct Shader {
     pub(crate) present_bind_group: Option<wgpu::BindGroup>,
     pub(crate) snapshot_bind_group: Option<wgpu::BindGroup>,
     pub(crate) render_uniform_buffer: Option<wgpu::Buffer>,
+    pub(crate) hidden_uniform_buffer: Option<wgpu::Buffer>,
     pub(crate) builtins_uniform_buffer: Option<wgpu::Buffer>,
     pub(crate) params_uniform_buffer: Option<wgpu::Buffer>,
     pub(crate) snapshot_uniform_buffer: Option<wgpu::Buffer>,
+    pub(crate) snapshot_hidden_uniform_buffer: Option<wgpu::Buffer>,
 
     #[base]
     node_base: NodeBase,
@@ -295,6 +299,7 @@ impl Default for Shader {
             shader_rect: moyu_core::base::Rect::default(),
             render_width: 0,
             render_height: 0,
+            render_sample_max_uv: [1.0, 1.0],
             last_active_at: None,
             prepare_ready_latched: false,
             from_texture_dirty: false,
@@ -307,6 +312,7 @@ impl Default for Shader {
             display_rect: moyu_core::base::Rect::default(),
             snapshot_display_view: None,
             snapshot_display_rect: moyu_core::base::Rect::default(),
+            snapshot_sample_max_uv: [1.0, 1.0],
             channel_declared: [false; 4],
             channel_empty: [false; 4],
             channel_static: [false; 4],
@@ -317,9 +323,11 @@ impl Default for Shader {
             present_bind_group: None,
             snapshot_bind_group: None,
             render_uniform_buffer: None,
+            hidden_uniform_buffer: None,
             builtins_uniform_buffer: None,
             params_uniform_buffer: None,
             snapshot_uniform_buffer: None,
+            snapshot_hidden_uniform_buffer: None,
             node_base: NodeBase::default(),
         }
     }
@@ -424,6 +432,7 @@ impl Shader {
         self.from_texture_dirty = false;
         self.snapshot_display_view = None;
         self.snapshot_display_rect = moyu_core::base::Rect::default();
+        self.snapshot_sample_max_uv = [1.0, 1.0];
         self.snapshot_bind_group = None;
         self.reset_timeline();
     }
@@ -450,6 +459,8 @@ impl Shader {
         self.display_rect = moyu_core::base::Rect::default();
         self.snapshot_display_view = None;
         self.snapshot_display_rect = moyu_core::base::Rect::default();
+        self.render_sample_max_uv = [1.0, 1.0];
+        self.snapshot_sample_max_uv = [1.0, 1.0];
         self.channel_declared = [false; Self::CHANNEL_COUNT];
         self.channel_empty = [false; Self::CHANNEL_COUNT];
         self.channel_static = [false; Self::CHANNEL_COUNT];
@@ -505,10 +516,12 @@ impl Shader {
         self.transition_from_source = if capture_display {
             self.snapshot_display_view = self.display_view.clone();
             self.snapshot_display_rect = self.display_rect;
+            self.snapshot_sample_max_uv = self.render_sample_max_uv;
             TransitionFromSource::Display
         } else {
             self.snapshot_display_view = None;
             self.snapshot_display_rect = moyu_core::base::Rect::default();
+            self.snapshot_sample_max_uv = [1.0, 1.0];
             TransitionFromSource::Slot
         };
         self.prepare_ready_latched = false;

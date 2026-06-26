@@ -25,6 +25,13 @@ struct ShaderRenderUniform {
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
+struct ShaderHiddenUniform {
+    max_uv: [f32; 2],
+    padding: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
 struct ShaderBuiltinsUniform {
     time: f32,
     time_delta: f32,
@@ -107,17 +114,17 @@ impl ShaderPass {
                 BindGroupLayoutEntry {
                     binding: 3,
                     visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
                     count: None,
                 },
                 BindGroupLayoutEntry {
                     binding: 4,
                     visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Texture {
-                        sample_type: TextureSampleType::Float { filterable: true },
-                        view_dimension: TextureViewDimension::D2,
-                        multisampled: false,
-                    },
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
                 BindGroupLayoutEntry {
@@ -142,6 +149,16 @@ impl ShaderPass {
                 },
                 BindGroupLayoutEntry {
                     binding: 7,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Texture {
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 8,
                     visibility: ShaderStages::FRAGMENT,
                     ty: BindingType::Texture {
                         sample_type: TextureSampleType::Float { filterable: true },
@@ -235,7 +252,10 @@ impl ShaderPass {
             ShaderNodeSource::Builtin { .. } => {
                 Cow::Borrowed(include_str!("shaders/shader_transition_builtin.wgsl"))
             }
-            ShaderNodeSource::Raw { content, .. } => Cow::Owned(content.clone()),
+            ShaderNodeSource::Raw { content, .. } => Cow::Owned(format!(
+                "{}\n\n{content}",
+                include_str!("shaders/shader_raw_helpers.wgsl")
+            )),
         };
 
         #[cfg(native)]
@@ -298,6 +318,7 @@ impl ShaderPass {
         &self,
         device: &Device,
         render_uniform_buffer: &mut Option<Buffer>,
+        hidden_uniform_buffer: &mut Option<Buffer>,
         builtins_uniform_buffer: &mut Option<Buffer>,
         params_uniform_buffer: &mut Option<Buffer>,
     ) {
@@ -305,6 +326,17 @@ impl ShaderPass {
             *render_uniform_buffer = Some(device.create_buffer_init(&util::BufferInitDescriptor {
                 label: Some("Shader Render Uniform Buffer"),
                 contents: bytemuck::bytes_of(&ShaderRenderUniform::zeroed()),
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            }));
+        }
+
+        if hidden_uniform_buffer.is_none() {
+            *hidden_uniform_buffer = Some(device.create_buffer_init(&util::BufferInitDescriptor {
+                label: Some("Shader Sample Uniform Buffer"),
+                contents: bytemuck::bytes_of(&ShaderHiddenUniform {
+                    max_uv: [1.0, 1.0],
+                    padding: [0.0, 0.0],
+                }),
                 usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             }));
         }
@@ -331,6 +363,7 @@ impl ShaderPass {
         &self,
         device: &Device,
         render_uniform_buffer: &Buffer,
+        hidden_uniform_buffer: &Buffer,
         builtins_uniform_buffer: &Buffer,
         params_uniform_buffer: &Buffer,
         channel_views: &[Option<TextureView>; 4],
@@ -345,36 +378,40 @@ impl ShaderPass {
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: builtins_uniform_buffer.as_entire_binding(),
+                    resource: hidden_uniform_buffer.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: params_uniform_buffer.as_entire_binding(),
+                    resource: builtins_uniform_buffer.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: BindingResource::Sampler(&self.sampler),
+                    resource: params_uniform_buffer.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 4,
+                    resource: BindingResource::Sampler(&self.sampler),
+                },
+                BindGroupEntry {
+                    binding: 5,
                     resource: BindingResource::TextureView(
                         channel_views[0].as_ref().unwrap_or(&self.dummy_view),
                     ),
                 },
                 BindGroupEntry {
-                    binding: 5,
+                    binding: 6,
                     resource: BindingResource::TextureView(
                         channel_views[1].as_ref().unwrap_or(&self.dummy_view),
                     ),
                 },
                 BindGroupEntry {
-                    binding: 6,
+                    binding: 7,
                     resource: BindingResource::TextureView(
                         channel_views[2].as_ref().unwrap_or(&self.dummy_view),
                     ),
                 },
                 BindGroupEntry {
-                    binding: 7,
+                    binding: 8,
                     resource: BindingResource::TextureView(
                         channel_views[3].as_ref().unwrap_or(&self.dummy_view),
                     ),
@@ -418,6 +455,27 @@ impl ShaderPass {
             frame: builtins.frame,
             channel_count: builtins.channel_count,
             stage_size: builtins.stage_size,
+        };
+
+        render_queue
+            .send(RenderCommand::WriteBuffer {
+                buffer: buffer.clone(),
+                offset: 0,
+                data: bytemuck::bytes_of(&uniform).to_vec(),
+                use_staging_belt: true,
+            })
+            .unwrap();
+    }
+
+    pub fn write_hidden_uniform(
+        &self,
+        render_queue: &RenderCommandSender,
+        buffer: &Buffer,
+        max_uv: [f32; 2],
+    ) {
+        let uniform = ShaderHiddenUniform {
+            max_uv,
+            padding: [0.0, 0.0],
         };
 
         render_queue

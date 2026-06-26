@@ -1,11 +1,10 @@
 use glam::Vec3;
-use moyu_core::base::{Bound, MVPMatrix, Rect};
+use moyu_core::base::{Bound, MVPMatrix, Rect, get_scale_and_translate};
 use moyu_core::core::NodeLock;
 use moyu_core::core::render_command::RenderCommand;
 use moyu_core::traits::{
     Node, NodeBaseTrait, RenderCommandSender, Renderer, RendererUpdatePayload,
 };
-use moyu_core::utils::coordinates::calculate_surface_physical_coordinates;
 use wgpu::*;
 
 use super::pass::{ShaderPass, ShaderPassBuiltins};
@@ -44,6 +43,13 @@ pub struct ShaderRenderer {
 }
 
 pub struct ShaderSlotRenderer;
+
+#[derive(Clone, Copy)]
+struct ShaderRenderMetrics {
+    width: u32,
+    height: u32,
+    sample_max_uv: [f32; 2],
+}
 
 impl ShaderRenderer {
     fn ensure_channel_texture(
@@ -137,11 +143,21 @@ impl ShaderRenderer {
                     BindGroupLayoutEntry {
                         binding: 1,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
                         count: None,
                     },
                     BindGroupLayoutEntry {
                         binding: 2,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 3,
                         visibility: ShaderStages::FRAGMENT,
                         ty: BindingType::Texture {
                             sample_type: TextureSampleType::Float { filterable: true },
@@ -209,6 +225,7 @@ impl ShaderRenderer {
         &self,
         device: &Device,
         uniform_buffer: &Buffer,
+        hidden_uniform_buffer: &Buffer,
         source_view: &TextureView,
     ) -> BindGroup {
         device.create_bind_group(&BindGroupDescriptor {
@@ -221,10 +238,14 @@ impl ShaderRenderer {
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::Sampler(self.pass.sampler()),
+                    resource: hidden_uniform_buffer.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 2,
+                    resource: BindingResource::Sampler(self.pass.sampler()),
+                },
+                BindGroupEntry {
+                    binding: 3,
                     resource: BindingResource::TextureView(source_view),
                 },
             ],
@@ -252,7 +273,10 @@ impl ShaderRenderer {
 
             let channel = slot.channel as usize;
             if slot_nodes[channel].is_some() {
-                return Err(format!("channel {} is declared more than once", slot.channel));
+                return Err(format!(
+                    "channel {} is declared more than once",
+                    slot.channel
+                ));
             }
 
             let bounds = if slot.empty || matches!(slot.space, ShaderSlotSpace::Shader) {
@@ -363,7 +387,9 @@ impl ShaderRenderer {
         effect_id: i32,
     ) {
         if let Some(last_active_at) = shader.last_active_at {
-            if !shader.base().visible() && payload.timestamp - last_active_at >= IDLE_TEXTURE_GRACE_SECONDS {
+            if !shader.base().visible()
+                && payload.timestamp - last_active_at >= IDLE_TEXTURE_GRACE_SECONDS
+            {
                 shader.clear_idle_runtime_state();
                 shader.last_active_at = None;
             }
@@ -387,21 +413,33 @@ impl ShaderRenderer {
         });
 
         if let Some(rect) = resolved_rect {
-            let (_, _, render_width, render_height) = calculate_surface_physical_coordinates(
-                &rect,
+            let Some(metrics) = resolve_render_metrics(
+                rect,
                 payload.stage_logical_size,
                 payload.surface_logical_size,
                 payload.scale_factor,
-            );
+            ) else {
+                shader.shader_rect = Rect::default();
+                shader.render_width = 0;
+                shader.render_height = 0;
+                shader.render_sample_max_uv = [1.0, 1.0];
+                shader.bind_group = None;
+                shader.present_bind_group = None;
+                shader.snapshot_bind_group = None;
+                shader.finish_update();
+                return;
+            };
 
             shader.shader_rect = rect;
-            shader.render_width = render_width;
-            shader.render_height = render_height;
+            shader.render_width = metrics.width;
+            shader.render_height = metrics.height;
+            shader.render_sample_max_uv = metrics.sample_max_uv;
             shader.last_active_at = Some(payload.timestamp);
         } else {
             shader.shader_rect = Rect::default();
             shader.render_width = 0;
             shader.render_height = 0;
+            shader.render_sample_max_uv = [1.0, 1.0];
         }
 
         if shader.render_width > 0 && shader.render_height > 0 {
@@ -441,8 +479,14 @@ impl ShaderRenderer {
                     return;
                 }
 
-                let recreated =
-                    self.ensure_channel_texture(shader, device, slot.channel, width, height, slot.empty);
+                let recreated = self.ensure_channel_texture(
+                    shader,
+                    device,
+                    slot.channel,
+                    width,
+                    height,
+                    slot.empty,
+                );
 
                 if recreated {
                     shader.channel_needs_redraw[slot.channel] = true;
@@ -508,6 +552,7 @@ impl ShaderRenderer {
         self.pass.ensure_uniform_buffers(
             device,
             &mut shader.render_uniform_buffer,
+            &mut shader.hidden_uniform_buffer,
             &mut shader.builtins_uniform_buffer,
             &mut shader.params_uniform_buffer,
         );
@@ -515,13 +560,16 @@ impl ShaderRenderer {
         if shader.bind_group.is_none() || shader.params_dirty || shader.slots_dirty {
             let (
                 Some(render_uniform_buffer),
+                Some(hidden_uniform_buffer),
                 Some(builtins_uniform_buffer),
                 Some(params_uniform_buffer),
             ) = (
                 shader.render_uniform_buffer.as_ref(),
+                shader.hidden_uniform_buffer.as_ref(),
                 shader.builtins_uniform_buffer.as_ref(),
                 shader.params_uniform_buffer.as_ref(),
-            ) else {
+            )
+            else {
                 shader.mark_error("shader uniform buffers are not initialized");
                 return;
             };
@@ -529,6 +577,7 @@ impl ShaderRenderer {
             shader.bind_group = Some(self.pass.create_bind_group(
                 device,
                 render_uniform_buffer,
+                hidden_uniform_buffer,
                 builtins_uniform_buffer,
                 params_uniform_buffer,
                 &shader.channel_views,
@@ -543,6 +592,11 @@ impl ShaderRenderer {
         if let Some(buffer) = shader.render_uniform_buffer.as_ref() {
             self.pass
                 .write_render_uniform(render_queue, buffer, shader.shader_rect);
+        }
+
+        if let Some(buffer) = shader.hidden_uniform_buffer.as_ref() {
+            self.pass
+                .write_hidden_uniform(render_queue, buffer, shader.render_sample_max_uv);
         }
 
         if let Some(buffer) = shader.builtins_uniform_buffer.as_ref() {
@@ -574,7 +628,10 @@ impl ShaderRenderer {
                 }
             };
 
-            if let Err(err) = self.pass.write_params_uniform(render_queue, buffer, &params) {
+            if let Err(err) = self
+                .pass
+                .write_params_uniform(render_queue, buffer, &params)
+            {
                 shader.mark_error(err);
                 return;
             }
@@ -599,7 +656,9 @@ impl ShaderRenderer {
         };
 
         if let Some(request) = shader.pending_prepare.take() {
-            if !is_transition_input(request.from_channel) || !is_transition_input(request.to_channel) {
+            if !is_transition_input(request.from_channel)
+                || !is_transition_input(request.to_channel)
+            {
                 log::warn!(
                     "shader node {}: prepare requires declared non-empty fromChannel/toChannel slots",
                     shader.base().id()
@@ -652,12 +711,13 @@ impl ShaderRenderer {
             }
         }
 
-        let from_channel = shader.transition_from_channel.map(|channel| channel as usize);
+        let from_channel = shader
+            .transition_from_channel
+            .map(|channel| channel as usize);
         let to_channel = shader.transition_to_channel.map(|channel| channel as usize);
-        let has_to_slot =
-            to_channel.and_then(|channel| slots.descriptors[channel]).is_some_and(|slot| {
-                !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal)
-            });
+        let has_to_slot = to_channel
+            .and_then(|channel| slots.descriptors[channel])
+            .is_some_and(|slot| !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal));
 
         let from_bounds = match (from_channel, shader.transition_from_source) {
             (Some(_), TransitionFromSource::Display)
@@ -678,16 +738,27 @@ impl ShaderRenderer {
 
         if shader.is_active() {
             if let Some(rect) = resolve_transition_rect(stage_rect, from_bounds, to_bounds) {
-                let (_, _, render_width, render_height) = calculate_surface_physical_coordinates(
-                    &rect,
+                let Some(metrics) = resolve_render_metrics(
+                    rect,
                     payload.stage_logical_size,
                     payload.surface_logical_size,
                     payload.scale_factor,
-                );
+                ) else {
+                    shader.shader_rect = Rect::default();
+                    shader.render_width = 0;
+                    shader.render_height = 0;
+                    shader.render_sample_max_uv = [1.0, 1.0];
+                    shader.bind_group = None;
+                    shader.present_bind_group = None;
+                    shader.snapshot_bind_group = None;
+                    shader.finish_update();
+                    return;
+                };
 
                 shader.shader_rect = rect;
-                shader.render_width = render_width;
-                shader.render_height = render_height;
+                shader.render_width = metrics.width;
+                shader.render_height = metrics.height;
+                shader.render_sample_max_uv = metrics.sample_max_uv;
             } else if has_to_slot {
                 let rect = Rect::new(
                     stage_rect.x(),
@@ -695,20 +766,32 @@ impl ShaderRenderer {
                     BOOTSTRAP_RECT_SIZE.min(stage_rect.width()),
                     BOOTSTRAP_RECT_SIZE.min(stage_rect.height()),
                 );
-                let (_, _, render_width, render_height) = calculate_surface_physical_coordinates(
-                    &rect,
+                let Some(metrics) = resolve_render_metrics(
+                    rect,
                     payload.stage_logical_size,
                     payload.surface_logical_size,
                     payload.scale_factor,
-                );
+                ) else {
+                    shader.shader_rect = Rect::default();
+                    shader.render_width = 0;
+                    shader.render_height = 0;
+                    shader.render_sample_max_uv = [1.0, 1.0];
+                    shader.bind_group = None;
+                    shader.present_bind_group = None;
+                    shader.snapshot_bind_group = None;
+                    shader.finish_update();
+                    return;
+                };
 
                 shader.shader_rect = rect;
-                shader.render_width = render_width;
-                shader.render_height = render_height;
+                shader.render_width = metrics.width;
+                shader.render_height = metrics.height;
+                shader.render_sample_max_uv = metrics.sample_max_uv;
             } else {
                 shader.shader_rect = Rect::default();
                 shader.render_width = 0;
                 shader.render_height = 0;
+                shader.render_sample_max_uv = [1.0, 1.0];
             }
 
             shader.last_active_at = Some(payload.timestamp);
@@ -716,6 +799,7 @@ impl ShaderRenderer {
             shader.shader_rect = Rect::default();
             shader.render_width = 0;
             shader.render_height = 0;
+            shader.render_sample_max_uv = [1.0, 1.0];
 
             if let Some(last_active_at) = shader.last_active_at {
                 if payload.timestamp - last_active_at >= IDLE_TEXTURE_GRACE_SECONDS {
@@ -771,8 +855,14 @@ impl ShaderRenderer {
                     return;
                 }
 
-                let recreated =
-                    self.ensure_channel_texture(shader, device, slot.channel, width, height, slot.empty);
+                let recreated = self.ensure_channel_texture(
+                    shader,
+                    device,
+                    slot.channel,
+                    width,
+                    height,
+                    slot.empty,
+                );
 
                 if recreated {
                     shader.channel_needs_redraw[slot.channel] = true;
@@ -942,6 +1032,7 @@ impl ShaderRenderer {
         self.pass.ensure_uniform_buffers(
             device,
             &mut shader.render_uniform_buffer,
+            &mut shader.hidden_uniform_buffer,
             &mut shader.builtins_uniform_buffer,
             &mut shader.params_uniform_buffer,
         );
@@ -951,8 +1042,17 @@ impl ShaderRenderer {
                 .write_render_uniform(render_queue, buffer, shader.shader_rect);
         }
 
+        if let Some(buffer) = shader.hidden_uniform_buffer.as_ref() {
+            self.pass
+                .write_hidden_uniform(render_queue, buffer, shader.render_sample_max_uv);
+        }
+
         let Some(render_uniform_buffer) = shader.render_uniform_buffer.as_ref() else {
             shader.mark_error("shader render uniform buffer is not initialized");
+            return;
+        };
+        let Some(hidden_uniform_buffer) = shader.hidden_uniform_buffer.as_ref() else {
+            shader.mark_error("shader sample uniform buffer is not initialized");
             return;
         };
 
@@ -963,7 +1063,12 @@ impl ShaderRenderer {
                 let source_view =
                     from_channel.and_then(|channel| shader.channel_views[channel].as_ref());
                 shader.present_bind_group = source_view.map(|source_view| {
-                    self.create_present_bind_group(device, render_uniform_buffer, source_view)
+                    self.create_present_bind_group(
+                        device,
+                        render_uniform_buffer,
+                        hidden_uniform_buffer,
+                        source_view,
+                    )
                 });
 
                 if snapshot_copy_scheduled {
@@ -972,24 +1077,41 @@ impl ShaderRenderer {
                         return;
                     };
 
-                    let snapshot_uniform_buffer = shader.snapshot_uniform_buffer.get_or_insert_with(|| {
-                        device.create_buffer(&BufferDescriptor {
-                            label: Some("Shader Snapshot Uniform Buffer"),
-                            size: 16,
-                            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-                            mapped_at_creation: false,
-                        })
-                    });
+                    let snapshot_uniform_buffer =
+                        shader.snapshot_uniform_buffer.get_or_insert_with(|| {
+                            device.create_buffer(&BufferDescriptor {
+                                label: Some("Shader Snapshot Uniform Buffer"),
+                                size: 16,
+                                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                                mapped_at_creation: false,
+                            })
+                        });
+                    let snapshot_hidden_uniform_buffer = shader
+                        .snapshot_hidden_uniform_buffer
+                        .get_or_insert_with(|| {
+                            device.create_buffer(&BufferDescriptor {
+                                label: Some("Shader Snapshot Sample Uniform Buffer"),
+                                size: 16,
+                                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                                mapped_at_creation: false,
+                            })
+                        });
 
                     self.pass.write_render_uniform(
                         render_queue,
                         snapshot_uniform_buffer,
                         shader.snapshot_display_rect,
                     );
+                    self.pass.write_hidden_uniform(
+                        render_queue,
+                        snapshot_hidden_uniform_buffer,
+                        shader.snapshot_sample_max_uv,
+                    );
 
                     shader.snapshot_bind_group = Some(self.create_present_bind_group(
                         device,
                         snapshot_uniform_buffer,
+                        snapshot_hidden_uniform_buffer,
                         snapshot_display_view,
                     ));
                 } else {
@@ -1003,24 +1125,41 @@ impl ShaderRenderer {
                         return;
                     };
 
-                    let snapshot_uniform_buffer = shader.snapshot_uniform_buffer.get_or_insert_with(|| {
-                        device.create_buffer(&BufferDescriptor {
-                            label: Some("Shader Snapshot Uniform Buffer"),
-                            size: 16,
-                            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-                            mapped_at_creation: false,
-                        })
-                    });
+                    let snapshot_uniform_buffer =
+                        shader.snapshot_uniform_buffer.get_or_insert_with(|| {
+                            device.create_buffer(&BufferDescriptor {
+                                label: Some("Shader Snapshot Uniform Buffer"),
+                                size: 16,
+                                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                                mapped_at_creation: false,
+                            })
+                        });
+                    let snapshot_hidden_uniform_buffer = shader
+                        .snapshot_hidden_uniform_buffer
+                        .get_or_insert_with(|| {
+                            device.create_buffer(&BufferDescriptor {
+                                label: Some("Shader Snapshot Sample Uniform Buffer"),
+                                size: 16,
+                                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                                mapped_at_creation: false,
+                            })
+                        });
 
                     self.pass.write_render_uniform(
                         render_queue,
                         snapshot_uniform_buffer,
                         shader.snapshot_display_rect,
                     );
+                    self.pass.write_hidden_uniform(
+                        render_queue,
+                        snapshot_hidden_uniform_buffer,
+                        shader.snapshot_sample_max_uv,
+                    );
 
                     shader.snapshot_bind_group = Some(self.create_present_bind_group(
                         device,
                         snapshot_uniform_buffer,
+                        snapshot_hidden_uniform_buffer,
                         snapshot_display_view,
                     ));
                 } else {
@@ -1043,13 +1182,16 @@ impl ShaderRenderer {
                 if shader.bind_group.is_none() || shader.params_dirty || shader.slots_dirty {
                     let (
                         Some(render_uniform_buffer),
+                        Some(hidden_uniform_buffer),
                         Some(builtins_uniform_buffer),
                         Some(params_uniform_buffer),
                     ) = (
                         shader.render_uniform_buffer.as_ref(),
+                        shader.hidden_uniform_buffer.as_ref(),
                         shader.builtins_uniform_buffer.as_ref(),
                         shader.params_uniform_buffer.as_ref(),
-                    ) else {
+                    )
+                    else {
                         shader.mark_error("shader uniform buffers are not initialized");
                         return;
                     };
@@ -1057,6 +1199,7 @@ impl ShaderRenderer {
                     shader.bind_group = Some(self.pass.create_bind_group(
                         device,
                         render_uniform_buffer,
+                        hidden_uniform_buffer,
                         builtins_uniform_buffer,
                         params_uniform_buffer,
                         &shader.channel_views,
@@ -1064,7 +1207,12 @@ impl ShaderRenderer {
                 }
 
                 shader.present_bind_group = shader.display_view.as_ref().map(|display_view| {
-                    self.create_present_bind_group(device, render_uniform_buffer, display_view)
+                    self.create_present_bind_group(
+                        device,
+                        render_uniform_buffer,
+                        hidden_uniform_buffer,
+                        display_view,
+                    )
                 });
 
                 let (time, time_delta, frame, progress) =
@@ -1085,7 +1233,10 @@ impl ShaderRenderer {
                                 .iter()
                                 .filter(|declared| **declared)
                                 .count() as u32,
-                            stage_size: [payload.stage_logical_size.0, payload.stage_logical_size.1],
+                            stage_size: [
+                                payload.stage_logical_size.0,
+                                payload.stage_logical_size.1,
+                            ],
                         },
                     );
                 }
@@ -1099,7 +1250,10 @@ impl ShaderRenderer {
                         }
                     };
 
-                    if let Err(err) = self.pass.write_params_uniform(render_queue, buffer, &params) {
+                    if let Err(err) = self
+                        .pass
+                        .write_params_uniform(render_queue, buffer, &params)
+                    {
                         shader.mark_error(err);
                         return;
                     }
@@ -1179,7 +1333,15 @@ impl Renderer for ShaderRenderer {
 
         match shader.time_control {
             ShaderTimeControl::Auto | ShaderTimeControl::Manual => {
-                self.update_generic(shader, device, render_queue, payload, stage_rect, &slots, effect_id);
+                self.update_generic(
+                    shader,
+                    device,
+                    render_queue,
+                    payload,
+                    stage_rect,
+                    &slots,
+                    effect_id,
+                );
             }
             ShaderTimeControl::Transition => {
                 self.update_transition(
@@ -1257,7 +1419,9 @@ impl Renderer for ShaderRenderer {
                         shader.transition_from_channel,
                         shader.snapshot_bind_group.as_ref(),
                     ) {
-                        if let Some(from_view) = shader.channel_views[from_channel as usize].as_ref() {
+                        if let Some(from_view) =
+                            shader.channel_views[from_channel as usize].as_ref()
+                        {
                             render_queue
                                 .send(RenderCommand::BeginRenderTargetPass {
                                     target_view: from_view.clone(),
@@ -1307,7 +1471,9 @@ impl Renderer for ShaderRenderer {
                         shader.transition_from_channel,
                         shader.snapshot_bind_group.as_ref(),
                     ) {
-                        if let Some(from_view) = shader.channel_views[from_channel as usize].as_ref() {
+                        if let Some(from_view) =
+                            shader.channel_views[from_channel as usize].as_ref()
+                        {
                             render_queue
                                 .send(RenderCommand::BeginRenderTargetPass {
                                     target_view: from_view.clone(),
@@ -1345,7 +1511,8 @@ impl Renderer for ShaderRenderer {
                         shader.pipeline.as_ref(),
                         shader.bind_group.as_ref(),
                         shader.present_bind_group.as_ref(),
-                    ) else {
+                    )
+                    else {
                         return;
                     };
 
@@ -1476,6 +1643,44 @@ fn slot_content_revision(slot: &ShaderSlot) -> u64 {
     let mut revision = CONTENT_REVISION_OFFSET;
     accumulate_node_content_revision(slot, &mut revision);
     revision
+}
+
+fn resolve_render_metrics(
+    rect: Rect,
+    stage_logical_size: (f32, f32),
+    surface_logical_size: (f32, f32),
+    scale_factor: f32,
+) -> Option<ShaderRenderMetrics> {
+    if rect.width() <= 0.0 || rect.height() <= 0.0 {
+        return None;
+    }
+
+    let (scale, _, _) = get_scale_and_translate(
+        stage_logical_size.0,
+        stage_logical_size.1,
+        surface_logical_size.0,
+        surface_logical_size.1,
+    );
+
+    let exact_width = rect.width() * scale * scale_factor;
+    let exact_height = rect.height() * scale * scale_factor;
+
+    if exact_width <= 0.0 || exact_height <= 0.0 {
+        return None;
+    }
+
+    let width = exact_width.ceil() as u32;
+    let height = exact_height.ceil() as u32;
+
+    if width == 0 || height == 0 {
+        return None;
+    }
+
+    Some(ShaderRenderMetrics {
+        width,
+        height,
+        sample_max_uv: [exact_width / width as f32, exact_height / height as f32],
+    })
 }
 
 fn resolve_shader_rect(

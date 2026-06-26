@@ -1123,31 +1123,21 @@ impl Graphics {
                         surface_logical_size.1,
                     );
 
-                    let (_, _, w, h) =
-                        calculate_surface_physical_coordinates_by_scale_and_translate(
-                            &rect,
-                            scale,
-                            tx,
-                            ty,
-                            scale_factor,
-                        );
+                    let w = target_view.texture().width();
+                    let h = target_view.texture().height();
 
                     let content_origin = content_origin.unwrap_or((rect.x(), rect.y()));
-                    let (origin_x, origin_y, _, _) =
-                        calculate_surface_physical_coordinates_by_scale_and_translate(
-                            &Rect::new(content_origin.0, content_origin.1, 0.0, 0.0),
-                            scale,
-                            tx,
-                            ty,
-                            scale_factor,
-                        );
+                    let origin_x = (content_origin.0 * scale + tx) * scale_factor;
+                    let origin_y = (content_origin.1 * scale + ty) * scale_factor;
+                    let origin_px = origin_x as u32;
+                    let origin_py = origin_y as u32;
 
                     state.push_offscreen_state(
                         [0, 0, w, h],
-                        (origin_x, origin_y),
+                        (origin_px, origin_py),
                         [
-                            -(origin_x as f32),
-                            -(origin_y as f32),
+                            -origin_x,
+                            -origin_y,
                             surface_logical_size.0 * scale_factor,
                             surface_logical_size.1 * scale_factor,
                         ],
@@ -1195,19 +1185,25 @@ impl Graphics {
                         drop(pass);
                     }
 
-                    let (px, py, w, h) = calculate_surface_physical_coordinates(
-                        &rect,
-                        stage_logical_size,
-                        surface_logical_size,
-                        scale_factor,
+                    let w = offscreen_view.texture().width();
+                    let h = offscreen_view.texture().height();
+                    let (scale, tx, ty) = get_scale_and_translate(
+                        stage_logical_size.0,
+                        stage_logical_size.1,
+                        surface_logical_size.0,
+                        surface_logical_size.1,
                     );
+                    let origin_x = (rect.x() * scale + tx) * scale_factor;
+                    let origin_y = (rect.y() * scale + ty) * scale_factor;
+                    let origin_px = origin_x as u32;
+                    let origin_py = origin_y as u32;
 
                     state.push_offscreen_state(
                         [0, 0, w, h],
-                        (px, py),
+                        (origin_px, origin_py),
                         [
-                            -(px as f32),
-                            -(py as f32),
+                            -origin_x,
+                            -origin_y,
                             surface_logical_size.0 * scale_factor,
                             surface_logical_size.1 * scale_factor,
                         ],
