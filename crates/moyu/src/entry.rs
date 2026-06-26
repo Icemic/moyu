@@ -111,6 +111,32 @@ impl Application {
     }
 
     #[cfg(native)]
+    fn refresh_frame_interval(&mut self, window: &moyu_core::winit::window::Window) {
+        let refresh_rate = window
+            .current_monitor()
+            .and_then(|monitor| monitor.refresh_rate_millihertz())
+            .unwrap_or(60_000);
+
+        let next_frame_interval = Duration::from_secs_f64(1000.0 / refresh_rate as f64);
+
+        if self.frame_interval != next_frame_interval {
+            log::info!(
+                "Refresh rate changed from {:.1} to {:.1}",
+                1. / self.frame_interval.as_secs_f64(),
+                1. / next_frame_interval.as_secs_f64()
+            );
+            self.frame_interval = next_frame_interval;
+            self.next_redraw_at = None;
+
+            let size = window.inner_size();
+
+            if size.width > 0 && size.height > 0 {
+                self.schedule_next_redraw(Instant::now());
+            }
+        }
+    }
+
+    #[cfg(native)]
     fn schedule_next_redraw(&mut self, now: Instant) {
         let next = match self.next_redraw_at {
             Some(scheduled_at) => {
@@ -307,38 +333,15 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
         }
     }
     fn resumed(&mut self, event_loop: &moyu_core::winit::event_loop::ActiveEventLoop) {
-        #[cfg(native)]
-        {
-            // get max refresh rate of all monitors
-            #[allow(unused_mut)]
-            let mut refresh_rate_max = 60_000;
-
-            // For web, there's no implementation for available_monitors
-            for monitor in event_loop.available_monitors() {
-                refresh_rate_max = refresh_rate_max.max(
-                    monitor
-                        .refresh_rate_millihertz()
-                        .unwrap_or(refresh_rate_max),
-                );
-            }
-
-            log::info!("max refresh rate: {}", refresh_rate_max / 1000);
-
-            self.frame_interval = Duration::from_secs_f64(1000.0 / refresh_rate_max as f64);
-            self.next_redraw_at = None;
-        };
-
         if let Some(core) = self.core().cloned() {
+            #[cfg(native)]
+            self.refresh_frame_interval(core.window());
+
             #[cfg(mobile)]
             core.reconfigure_surface_with_window();
+
             core.window().set_visible(true);
             core.window().request_redraw();
-
-            #[cfg(native)]
-            {
-                let now = Instant::now();
-                self.schedule_next_redraw(now);
-            }
 
             return;
         }
@@ -348,6 +351,9 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
             #[cfg(web)]
             self.element_id.as_str(),
         );
+
+        #[cfg(native)]
+        self.refresh_frame_interval(&window);
 
         let core = Core::new(window);
         let core = Arc::new(core);
@@ -404,14 +410,21 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
             core.handle_window_event(&event, &window_id, event_loop);
 
             #[cfg(native)]
-            if let WindowEvent::RedrawRequested = event {
-                let size = core.window().inner_size();
-                if size.width == 0 || size.height == 0 {
-                    self.next_redraw_at = None;
-                } else {
-                    let now = Instant::now();
-                    self.schedule_next_redraw(now);
+            match &event {
+                WindowEvent::RedrawRequested => {
+                    let size = core.window().inner_size();
+                    if size.width == 0 || size.height == 0 {
+                        self.next_redraw_at = None;
+                    } else {
+                        let now = Instant::now();
+                        self.schedule_next_redraw(now);
+                    }
                 }
+                WindowEvent::Moved(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                    let core = core.clone();
+                    self.refresh_frame_interval(core.window());
+                }
+                _ => {}
             }
         }
     }
