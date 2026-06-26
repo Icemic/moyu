@@ -161,12 +161,11 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
         if matches!(cause, StartCause::ResumeTimeReached { .. })
             && self.initialized
             && self.next_redraw_at.is_some()
+            && let Some(core) = self.core()
         {
-            if let Some(core) = self.core() {
-                let size = core.window().inner_size();
-                if size.width > 0 && size.height > 0 {
-                    core.window().request_redraw();
-                }
+            let size = core.window().inner_size();
+            if size.width > 0 && size.height > 0 {
+                core.window().request_redraw();
             }
         }
     }
@@ -223,15 +222,15 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                     let device = graphics.device();
                     let config = graphics.config().lock().clone();
 
-                    let sprite_renderer = SpriteRenderer::new(&device, &config);
-                    let text_renderer = TextRenderer::new(&device, &config);
-                    let clip_renderer = ClipRenderer::new(&device, &config);
-                    let filter_renderer = OffscreenPassRenderer::new(&device, &config);
-                    let backdrop_renderer = BackdropRenderer::new(&device, &config);
-                    let animation_renderer = AnimationRenderer::new(&device, &config);
-                    let shader_renderer = ShaderRenderer::new(&device, &config);
+                    let sprite_renderer = SpriteRenderer::new(device, &config);
+                    let text_renderer = TextRenderer::new(device, &config);
+                    let clip_renderer = ClipRenderer::new(device, &config);
+                    let filter_renderer = OffscreenPassRenderer::new(device, &config);
+                    let backdrop_renderer = BackdropRenderer::new(device, &config);
+                    let animation_renderer = AnimationRenderer::new(device, &config);
+                    let shader_renderer = ShaderRenderer::new(device, &config);
                     let shader_slot_renderer = ShaderSlotRenderer::new();
-                    let video_renderer = VideoRenderer::new(&device, &config);
+                    let video_renderer = VideoRenderer::new(device, &config);
 
                     text_renderer.init_huozi_from_env();
 
@@ -283,7 +282,7 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 let core = get_core();
                 let event_proxy = self.event_proxy.clone();
                 // All plugins are ready, now we can spawn the runtime and execute scripts
-                let _vm_handle = match moyu_ops::spawn::spawn_runtime_with_core(&core, move || {
+                let _vm_handle = match moyu_ops::spawn::spawn_runtime_with_core(core, move || {
                     log::info!("User script loaded.");
                     event_proxy
                         .send_event(ApplicationInitEvent::ShowAndStart)

@@ -41,13 +41,13 @@ pub async fn show_splash_screen(core: Arc<moyu_core::core::Core>) {
         let mut node = node.write();
 
         // logo size is 3840x2400 (16:10), scale as cover the whole screen
-        let scale_x = width as f32 / 3840.0;
-        let scale_y = height as f32 / 2400.0;
+        let scale_x = width / 3840.0;
+        let scale_y = height / 2400.0;
         let scale = scale_x.max(scale_y);
         node.base_mut().set_scale(scale, scale);
         node.base_mut().set_translate(
-            (width as f32 / 2.0) - (3840.0 * scale / 2.0),
-            (height as f32 / 2.0) - (2400.0 * scale / 2.0),
+            (width / 2.0) - (3840.0 * scale / 2.0),
+            (height / 2.0) - (2400.0 * scale / 2.0),
         );
         node.base_mut().set_opacity(0.0);
         node.base_mut().set_interactive(false);
