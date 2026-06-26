@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use bytemuck::Zeroable;
-use glam::{vec3a, Vec3A};
+use glam::{Vec3A, vec3a};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Zeroable)]

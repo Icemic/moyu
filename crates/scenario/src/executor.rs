@@ -8,7 +8,7 @@ use sixu::format::*;
 use sixu::runtime::*;
 
 use crate::types::{
-    ExecutionCursor, MarkerEnter, RuntimeCheckpoint, ScenarioEvent, WarpBoundary, TextLine,
+    ExecutionCursor, MarkerEnter, RuntimeCheckpoint, ScenarioEvent, TextLine, WarpBoundary,
 };
 use crate::utils::create_runtime_snapshot_from_context;
 

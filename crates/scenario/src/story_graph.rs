@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
+use sixu::Fingerprint;
 use sixu::fingerprint_child_semantics;
 use sixu::fingerprint_paragraph_signature;
 use sixu::format::{Block, ChildContent, Story};
-use sixu::Fingerprint;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarkerNode {

@@ -14,10 +14,7 @@ pub async fn eval_in_sandbox(code: String) -> Result<serde_json::Value> {
             let code = to_js(&code).unwrap();
 
             let ret = match vm.call_function_direct("__moyu_eval_sandbox", vec![code]) {
-                Ok(result) => {
-
-                    from_js(&result)
-                },
+                Ok(result) => from_js(&result),
                 Err(err) => {
                     log::error!("failed to evaluate code: {}", err);
                     Err(anyhow::anyhow!("failed to evaluate code: {}", err))

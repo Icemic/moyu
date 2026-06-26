@@ -1,5 +1,5 @@
 #[cfg(target_os = "windows")]
-use windows::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
+use windows::Win32::System::Console::{ATTACH_PARENT_PROCESS, AttachConsole};
 
 #[cfg(debug_assertions)]
 const LOG_FILTER: &str = "info,moyu=debug,moyu_*=debug,console=debug,wgpu=error";

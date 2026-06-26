@@ -54,7 +54,11 @@ pub enum StoryReplaceMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(tag = "kind", rename_all = "kebab-case", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "kebab-case",
+    rename_all_fields = "camelCase"
+)]
 #[ts(export, optional_fields)]
 pub enum ExecutableRestartBoundary {
     Checkpoint { checkpoint_key: String },

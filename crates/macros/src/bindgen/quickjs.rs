@@ -2,8 +2,8 @@ use darling::ToTokens;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, ItemFn};
 use syn::{GenericArgument, Pat, PathArguments, ReturnType, Type};
+use syn::{ItemFn, parse_macro_input};
 
 /// `fn some_api(core: Arc<Core>, foo: u32, bar: Option<String>) -> Result<(), String>`
 /// to

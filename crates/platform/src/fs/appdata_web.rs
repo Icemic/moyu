@@ -5,11 +5,11 @@ use anyhow::Result;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::FileSystemRemoveOptions;
 use web_sys::js_sys::{Function, Promise, Reflect};
 use web_sys::wasm_bindgen::JsValue;
-use web_sys::FileSystemRemoveOptions;
 
-use super::{get_path_in_appdata, FileEntry};
+use super::{FileEntry, get_path_in_appdata};
 
 const LOCAL_STORAGE_PREFIX: &str = "moyu:appdata:";
 
@@ -34,7 +34,9 @@ fn opfs_root_promise() -> Result<Promise> {
         .call0(&storage)
         .map_err(|err| anyhow::anyhow!("Failed to call storage.getDirectory: {:?}", err))?
         .dyn_into::<Promise>()
-        .map_err(|err| anyhow::anyhow!("storage.getDirectory did not return a Promise: {:?}", err))?;
+        .map_err(|err| {
+            anyhow::anyhow!("storage.getDirectory did not return a Promise: {:?}", err)
+        })?;
 
     Ok(promise)
 }
@@ -220,8 +222,8 @@ async fn get_dir_from_appdata(
 ) -> Result<web_sys::FileSystemDirectoryHandle> {
     use std::path::Component;
 
-    use wasm_bindgen_futures::wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
+    use wasm_bindgen_futures::wasm_bindgen::JsCast;
     use web_sys::{FileSystemDirectoryHandle, FileSystemGetDirectoryOptions};
 
     let opfs_root = JsFuture::from(opfs_root_promise()?)
@@ -263,8 +265,8 @@ async fn get_file_from_appdata(
     create_parent: bool,
     create_file: bool,
 ) -> Result<Option<web_sys::FileSystemFileHandle>> {
-    use wasm_bindgen_futures::wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
+    use wasm_bindgen_futures::wasm_bindgen::JsCast;
     use web_sys::{FileSystemFileHandle, FileSystemGetFileOptions};
 
     let dir = get_dir_from_appdata(clean_path.parent(), create_parent).await?;
@@ -304,8 +306,8 @@ async fn get_file_from_appdata(
 /// For example, path `foo/bar` will be stored in the path `moyu/<app_name>/foo/bar`.
 pub async fn read_from_appdata(relative_path: &str) -> Result<Option<Vec<u8>>> {
     use wasm_bindgen_futures::JsFuture;
-    use web_sys::wasm_bindgen::JsCast;
     use web_sys::File;
+    use web_sys::wasm_bindgen::JsCast;
 
     if !opfs_supported() {
         return read_from_local_storage(relative_path);

@@ -10,7 +10,7 @@ pub fn moyu_bindgen(args: TokenStream, func_body: TokenStream) -> TokenStream {
 
 use proc_macro2::Span;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Fields};
+use syn::{Data, DeriveInput, Fields, parse_macro_input};
 
 /// It will automatically implement the `NodeBaseTrait` trait for the struct,
 /// the `node_base` field name will be marked by attr `#[base]`.

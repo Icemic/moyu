@@ -80,11 +80,7 @@ pub fn get_scale_and_translate(
     let scale = {
         let scale_x = surface_width / stage_width;
         let scale_y = surface_height / stage_height;
-        if scale_x > scale_y {
-            scale_y
-        } else {
-            scale_x
-        }
+        if scale_x > scale_y { scale_y } else { scale_x }
     };
 
     let translate_x = ((surface_width - stage_width * scale) / 2.).max(0.);

@@ -34,13 +34,13 @@ use sixu::format::{Block, ChildContent, Literal, Story};
 use sixu::runtime::{ExecutionState, Runtime, StepResult};
 use zip::write::SimpleFileOptions;
 
-use crate::executor::{ScenarioExecutor, WarpState};
 use crate::execution_path::capture_execution_path;
+use crate::executor::{ScenarioExecutor, WarpState};
 use crate::replace_recovery::plan_story_replace;
 use crate::story_graph::build_story_graph;
 use crate::types::{
     BacklogState, ExecutionCursor, GameData, RuntimeCheckpoint, RuntimeSnapshot, ScenarioEvent,
-    ScenarioRecord, WarpBoundary, WaitingState,
+    ScenarioRecord, WaitingState, WarpBoundary,
 };
 use crate::utils::{
     convert_to_literal, next_record_id, prune_backlog_blocks, snapshot_blocks, timestamp_millis,
@@ -309,9 +309,7 @@ impl ScenarioPlugin {
         Some(event)
     }
 
-    fn create_runtime_snapshot(
-        &self,
-    ) -> Result<(RuntimeSnapshot, HashMap<Fingerprint, Block>)> {
+    fn create_runtime_snapshot(&self) -> Result<(RuntimeSnapshot, HashMap<Fingerprint, Block>)> {
         let mut blocks = HashMap::new();
         let runtime = self.runtime.lock();
         let snapshot =
@@ -609,7 +607,10 @@ impl ScenarioPlugin {
         *self.checkpoint_blocks.lock() = replace_plan.checkpoint_blocks.clone();
 
         if current_story_affected
-            && !matches!(replace_plan.outcome.plan.mode, crate::types::StoryReplaceMode::Noop)
+            && !matches!(
+                replace_plan.outcome.plan.mode,
+                crate::types::StoryReplaceMode::Noop
+            )
         {
             *self.current_marker_id.lock() = None;
         }
@@ -891,8 +892,7 @@ impl ScenarioPlugin {
         let generation = self.begin_runtime_transition();
         self.disable_next_line.store(true, Ordering::Relaxed);
 
-        *self.warp_state.lock() =
-            Some(WarpState::new(marker_id.to_string(), boundary));
+        *self.warp_state.lock() = Some(WarpState::new(marker_id.to_string(), boundary));
 
         let runtime = self.runtime.clone();
         let sender = self.sender.clone();
@@ -903,13 +903,8 @@ impl ScenarioPlugin {
         let target_marker_id = marker_id.to_string();
 
         let future = async move {
-            let outcome = run_warp_loop(
-                &runtime,
-                &execution_generation,
-                generation,
-                &warp_state,
-            )
-            .await;
+            let outcome =
+                run_warp_loop(&runtime, &execution_generation, generation, &warp_state).await;
 
             let replay_state = warp_state.lock().take();
 
@@ -1236,9 +1231,7 @@ after
             Some(&Literal::Integer(1))
         );
         assert_eq!(
-            runtime
-                .context()
-                .get_local("choice"),
+            runtime.context().get_local("choice"),
             Some(&Literal::String("alpha".to_string()))
         );
         drop(runtime);

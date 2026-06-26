@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use anyhow::{Result, anyhow};
-use sixu::format::{Block, Story};
 use sixu::Fingerprint;
+use sixu::format::{Block, Story};
 
 use crate::execution_path::DynamicExecutionPath;
 use crate::story_graph::{MarkerNode, StoryGraphCache};
@@ -38,7 +38,10 @@ fn marker_ids(graph: &StoryGraphCache) -> impl Iterator<Item = &str> {
 }
 
 fn find_marker<'a>(graph: &'a StoryGraphCache, marker_id: &str) -> Option<&'a MarkerNode> {
-    graph.markers.iter().find(|marker| marker.marker_id == marker_id)
+    graph
+        .markers
+        .iter()
+        .find(|marker| marker.marker_id == marker_id)
 }
 
 fn marker_prefix_matches(left: &MarkerNode, right: &MarkerNode) -> bool {
@@ -61,7 +64,10 @@ fn paragraph_signatures_equal(old_graph: &StoryGraphCache, new_graph: &StoryGrap
     })
 }
 
-pub fn diff_story_graphs(old_graph: &StoryGraphCache, new_graph: &StoryGraphCache) -> StoryDiffResult {
+pub fn diff_story_graphs(
+    old_graph: &StoryGraphCache,
+    new_graph: &StoryGraphCache,
+) -> StoryDiffResult {
     // The longest stable marker prefix is our conservative approximation of the
     // unaffected CFG prefix. Any divergence in marker semantics/order, plus any
     // paragraph signature mismatch, marks the remainder as needing recovery.
@@ -163,7 +169,9 @@ fn patch_prefix_story_checkpoints(
             continue;
         };
 
-        if !can_patch_checkpoint(story_name, old_graph, new_graph, old_node, new_node, checkpoint) {
+        if !can_patch_checkpoint(
+            story_name, old_graph, new_graph, old_node, new_node, checkpoint,
+        ) {
             continue;
         }
 
@@ -363,11 +371,12 @@ pub fn plan_story_replace(
 
     surviving_checkpoints.extend(patched.checkpoints.clone());
 
-    let boundary = patched.boundary_checkpoint_key.as_ref().map(|checkpoint_key| {
-        ExecutableRestartBoundary::Checkpoint {
+    let boundary = patched
+        .boundary_checkpoint_key
+        .as_ref()
+        .map(|checkpoint_key| ExecutableRestartBoundary::Checkpoint {
             checkpoint_key: checkpoint_key.clone(),
-        }
-    });
+        });
 
     let plan = if boundary.is_some() {
         // Reusing the last proven-stable prefix checkpoint is the cheapest safe
@@ -397,11 +406,8 @@ pub fn plan_story_replace(
         }
     };
 
-    let checkpoint_blocks = rebuild_checkpoint_blocks(
-        &surviving_checkpoints,
-        checkpoint_blocks,
-        &patched.blocks,
-    )?;
+    let checkpoint_blocks =
+        rebuild_checkpoint_blocks(&surviving_checkpoints, checkpoint_blocks, &patched.blocks)?;
 
     Ok(ReplaceRecoveryPlan {
         outcome: StoryReplaceOutcome {
@@ -418,8 +424,8 @@ pub fn plan_story_replace(
 mod tests {
     use super::*;
     use crate::execution_path::{DynamicExecutionPath, DynamicFrameMeta};
-    use crate::types::{ExecutionCursor, RuntimeSnapshot, SavedExecutionState};
     use crate::story_graph::build_story_graph;
+    use crate::types::{ExecutionCursor, RuntimeSnapshot, SavedExecutionState};
     use sixu::parser;
 
     fn parse_story(name: &str, source: &str) -> Story {
@@ -428,16 +434,16 @@ mod tests {
 
     #[test]
     fn diff_is_noop_for_comment_only_changes() {
-        let old_story = parse_story(
-            "test",
-            "::entry {\n    //#marker id=L1\n    \"hello\"\n}\n",
-        );
+        let old_story = parse_story("test", "::entry {\n    //#marker id=L1\n    \"hello\"\n}\n");
         let new_story = parse_story(
             "test",
             "::entry {\n    // comment\n    //#marker id=L1\n    \"hello\"\n}\n",
         );
 
-        let diff = diff_story_graphs(&build_story_graph(&old_story), &build_story_graph(&new_story));
+        let diff = diff_story_graphs(
+            &build_story_graph(&old_story),
+            &build_story_graph(&new_story),
+        );
         assert!(!diff.has_executable_changes);
         assert!(!diff.changed_control_flow);
     }

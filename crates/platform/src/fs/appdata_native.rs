@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use super::{get_path_in_appdata, FileEntry};
+use super::{FileEntry, get_path_in_appdata};
 
 /// Read a file from the appdata directory.
 /// On Windows, the appdata directory is the `%APPDATA%/<app_name>` directory.
