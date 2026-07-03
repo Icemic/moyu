@@ -351,6 +351,15 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
             self.element_id.as_str(),
         );
 
+        #[cfg(windows)]
+        {
+            use moyu_core::winit::platform::windows::IconExtWindows;
+            use moyu_core::winit::window::Icon;
+            if let Ok(icon) = Icon::from_resource(1, None) {
+                window.set_window_icon(Some(icon));
+            }
+        }
+
         #[cfg(native)]
         self.refresh_frame_interval(&window);
 

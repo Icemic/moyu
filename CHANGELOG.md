@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 1. Change refresh rate when window moved to a different monitor.
+2. Set window icon on Windows platform.
 
 ## [0.15.1] - 2026-06-26
 
