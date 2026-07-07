@@ -1910,9 +1910,9 @@ dependencies = [
 
 [[package]]
 name = "libquickjs-ng-sys"
-version = "0.10.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d289f362bc9d4266183ec55d3bed47a43e1e3edb06e5e73117903d77b897a25"
+checksum = "a28a01012a25444b21ec6bc5666ba496513682d41a2a5d43dcfea72c6e999590"
 dependencies = [
  "bindgen",
  "cc",
@@ -3220,9 +3220,9 @@ dependencies = [
 
 [[package]]
 name = "quickjs-rusty"
-version = "0.11.1"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04fb1d8380044f05d62eba00512639362732d384df3c840b2f84ff7432bc0fc9"
+checksum = "da0e1bb92dca1d7e38e6f59178fe9da59d2876f39e145eed63a3ef7c8ba4d185"
 dependencies = [
  "anyhow",
  "chrono",
