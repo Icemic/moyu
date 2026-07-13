@@ -16,6 +16,11 @@ pub trait Focusable: Node {
 
         false
     }
+
+    /// Check whether descendants may participate in hit testing at the given local position.
+    fn contains_children(&self, _: f32, _: f32, _: &FocusablePayload) -> bool {
+        true
+    }
 }
 
 #[derive(Debug)]

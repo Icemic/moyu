@@ -5,8 +5,6 @@ use glam::vec3a;
 use crate::core::NodeLock;
 use crate::traits::{FocusablePayload, Node};
 
-use super::walk::walk_nodes_bottom_top;
-
 #[derive(Debug)]
 pub struct HitTestTarget {
     pub node: NodeLock,
@@ -26,37 +24,12 @@ pub fn hit_test<'a>(
     upload_payload: &FocusablePayload,
 ) -> Option<HitTestTarget> {
     let root_node = _root_node.read();
-    let mut focused_node = None;
-
-    walk_nodes_bottom_top(
+    let focused_node = hit_test_children(
         root_node.as_ref(),
-        &mut |child, _, parent_ids| {
-            let child_ref = child.read();
-
-            let (local_logical_x, local_logical_y) =
-                get_local_logical_position(child_ref.as_ref(), global_logical_x, global_logical_y);
-
-            let hit = match child_ref.as_focusable() {
-                Some(focusable) => {
-                    // check if pointer is over the node
-                    let hit = focusable.contains(local_logical_x, local_logical_y, upload_payload);
-
-                    if hit {
-                        focused_node = Some(HitTestTarget {
-                            node: child.clone(),
-                            parent_ids: parent_ids.to_vec(),
-                        });
-                    }
-
-                    hit
-                }
-                None => false,
-            };
-
-            hit
-        },
+        global_logical_x,
+        global_logical_y,
+        upload_payload,
         &[],
-        true,
     );
 
     // at least hit the root node
@@ -66,6 +39,59 @@ pub fn hit_test<'a>(
             parent_ids: vec![],
         })
     })
+}
+
+fn hit_test_children(
+    parent: &dyn Node,
+    global_logical_x: f32,
+    global_logical_y: f32,
+    payload: &FocusablePayload,
+    current_parent_ids: &[u32],
+) -> Option<HitTestTarget> {
+    for child in parent.base().children().iter().rev() {
+        let child_ref = child.read();
+
+        if !child_ref.base().interactive() {
+            continue;
+        }
+
+        let (local_logical_x, local_logical_y) =
+            get_local_logical_position(child_ref.as_ref(), global_logical_x, global_logical_y);
+
+        let focusable = child_ref.as_focusable();
+        let contains_children = focusable.is_none_or(|focusable| {
+            focusable.contains_children(local_logical_x, local_logical_y, payload)
+        });
+
+        if !child_ref.base().children().is_empty() && contains_children {
+            let parent_ids = current_parent_ids
+                .iter()
+                .chain([child_ref.base().id()])
+                .copied()
+                .collect::<Vec<_>>();
+
+            if let Some(target) = hit_test_children(
+                child_ref.as_ref(),
+                global_logical_x,
+                global_logical_y,
+                payload,
+                &parent_ids,
+            ) {
+                return Some(target);
+            }
+        }
+
+        if focusable
+            .is_some_and(|focusable| focusable.contains(local_logical_x, local_logical_y, payload))
+        {
+            return Some(HitTestTarget {
+                node: child.clone(),
+                parent_ids: current_parent_ids.to_vec(),
+            });
+        }
+    }
+
+    None
 }
 
 #[inline]

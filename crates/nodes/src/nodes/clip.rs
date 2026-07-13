@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use moyu_core::apply_patch;
 use moyu_core::nodes::NodeBase;
-use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
+use moyu_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js};
 use moyu_core::utils::patch::Patch;
 use ts_rs::TS;
@@ -25,9 +25,24 @@ impl Clip {
             node_base: NodeBase::new(label),
         }
     }
+
+    fn contains_bounds(&self, x: f32, y: f32) -> bool {
+        let width = *self.base().width() as f32;
+        let height = *self.base().height() as f32;
+
+        width > 0.0 && height > 0.0 && x >= 0.0 && x <= width && y >= 0.0 && y <= height
+    }
 }
 
-impl Focusable for Clip {}
+impl Focusable for Clip {
+    fn contains(&self, x: f32, y: f32, _: &FocusablePayload) -> bool {
+        self.contains_bounds(x, y)
+    }
+
+    fn contains_children(&self, x: f32, y: f32, _: &FocusablePayload) -> bool {
+        self.contains_bounds(x, y)
+    }
+}
 
 #[derive(Debug, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
