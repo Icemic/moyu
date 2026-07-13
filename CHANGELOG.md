@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.3] - 2026-07-14
+
 ### Fixed
 
 1. Add `contains_children` method in `Focusable` trait to allow shadowing children in hit testing.
