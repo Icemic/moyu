@@ -700,6 +700,19 @@ impl Graphics {
                         v,
                     );
 
+                    current_pass = Some(begin_main_render_pass(
+                        &mut encoder.as_mut().unwrap(),
+                        &state.get_current_view().unwrap(),
+                        state.get_current_resolve_view(),
+                        state.get_current_viewport(),
+                        color,
+                        true,
+                    ));
+                    current_pass
+                        .as_mut()
+                        .unwrap()
+                        .set_bind_group(0, &self.mvp_bind_group, &[]);
+
                     // Reset all filter renderers' frame-local state
                     filter_registry.reset_all_frames();
                 }
