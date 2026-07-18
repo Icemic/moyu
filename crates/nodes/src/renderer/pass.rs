@@ -55,6 +55,7 @@ pub struct ShaderPassBuiltins {
 
 pub struct ShaderPass {
     format: TextureFormat,
+    sample_count: u32,
     bind_group_layout: BindGroupLayout,
     sampler: Sampler,
     dummy_view: TextureView,
@@ -77,7 +78,7 @@ fn wait_for_future<T>(device: &Device, future: impl Future<Output = T>) -> T {
 }
 
 impl ShaderPass {
-    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Shader Bind Group Layout"),
             entries: &[
@@ -199,6 +200,7 @@ impl ShaderPass {
 
         Self {
             format: config.format,
+            sample_count,
             bind_group_layout,
             sampler,
             dummy_view,
@@ -211,6 +213,10 @@ impl ShaderPass {
 
     pub fn sampler(&self) -> &Sampler {
         &self.sampler
+    }
+
+    pub fn sample_count(&self) -> u32 {
+        self.sample_count
     }
 
     pub fn create_texture_view(
@@ -238,10 +244,38 @@ impl ShaderPass {
             .create_view(&TextureViewDescriptor::default())
     }
 
+    pub fn create_msaa_texture_view(
+        &self,
+        device: &Device,
+        width: u32,
+        height: u32,
+        label: &str,
+    ) -> Option<TextureView> {
+        (self.sample_count > 1).then(|| {
+            device
+                .create_texture(&TextureDescriptor {
+                    label: Some(label),
+                    size: Extent3d {
+                        width,
+                        height,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: self.sample_count,
+                    dimension: TextureDimension::D2,
+                    format: self.format,
+                    usage: TextureUsages::RENDER_ATTACHMENT,
+                    view_formats: &[],
+                })
+                .create_view(&TextureViewDescriptor::default())
+        })
+    }
+
     pub fn compile_pipeline(
         &self,
         device: &Device,
         shader_source: &ShaderNodeSource,
+        sample_count: u32,
     ) -> Result<RenderPipeline, String> {
         let vertex_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Shader Vertex Module"),
@@ -299,7 +333,10 @@ impl ShaderPass {
                 ..Default::default()
             },
             depth_stencil: None,
-            multisample: MultisampleState::default(),
+            multisample: MultisampleState {
+                count: sample_count,
+                ..Default::default()
+            },
             multiview_mask: None,
             cache: None,
         });

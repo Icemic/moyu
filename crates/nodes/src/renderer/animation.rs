@@ -24,7 +24,7 @@ pub struct AnimationRenderer {
 }
 
 impl AnimationRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
                 BindGroupLayoutEntry {
@@ -95,7 +95,7 @@ impl AnimationRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState {
-                count: 1,
+                count: sample_count,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },

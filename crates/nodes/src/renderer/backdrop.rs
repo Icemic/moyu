@@ -24,7 +24,7 @@ pub struct BackdropRenderer {
 }
 
 impl BackdropRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Backdrop Shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/backdrop.wgsl").into()),
@@ -98,7 +98,10 @@ impl BackdropRenderer {
                 ..Default::default()
             },
             depth_stencil: None,
-            multisample: MultisampleState::default(),
+            multisample: MultisampleState {
+                count: sample_count,
+                ..Default::default()
+            },
             multiview_mask: None,
             cache: None,
         });

@@ -20,13 +20,14 @@ pub struct FilterParams {
 
 pub struct OffscreenPassRenderer {
     format: TextureFormat,
+    sample_count: u32,
     pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     sampler: Sampler,
 }
 
 impl OffscreenPassRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Backdrop Shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/filter.wgsl").into()),
@@ -100,7 +101,10 @@ impl OffscreenPassRenderer {
                 ..Default::default()
             },
             depth_stencil: None,
-            multisample: MultisampleState::default(),
+            multisample: MultisampleState {
+                count: sample_count,
+                ..Default::default()
+            },
             multiview_mask: None,
             cache: None,
         });
@@ -118,6 +122,7 @@ impl OffscreenPassRenderer {
 
         Self {
             format: config.format,
+            sample_count,
             pipeline,
             bind_group_layout,
             sampler,
@@ -195,6 +200,28 @@ impl Renderer for OffscreenPassRenderer {
                 view_formats: &[],
             });
             let offscreen_view = offscreen_texture.create_view(&TextureViewDescriptor::default());
+            let msaa_view = if self.sample_count > 1 {
+                Some(
+                    device
+                        .create_texture(&TextureDescriptor {
+                            label: Some("Filter MSAA Texture"),
+                            size: Extent3d {
+                                width,
+                                height,
+                                depth_or_array_layers: 1,
+                            },
+                            mip_level_count: 1,
+                            sample_count: self.sample_count,
+                            dimension: TextureDimension::D2,
+                            format: self.format,
+                            usage: TextureUsages::RENDER_ATTACHMENT,
+                            view_formats: &[],
+                        })
+                        .create_view(&TextureViewDescriptor::default()),
+                )
+            } else {
+                None
+            };
 
             // Create final texture for filter results
             let final_texture = device.create_texture(&TextureDescriptor {
@@ -255,6 +282,7 @@ impl Renderer for OffscreenPassRenderer {
             // TODO: Call .destroy() on old textures to free memory immediately?
             // But currently there may be pending references in the render queue.
             filter.offscreen_view = Some(offscreen_view);
+            filter.msaa_view = msaa_view;
             filter.final_view = Some(final_view);
             filter.rect = Some(rect);
             filter.buffer = Some(params_buffer);
@@ -304,7 +332,11 @@ impl Renderer for OffscreenPassRenderer {
 
         render_queue
             .send(RenderCommand::BeginOffscreenPass {
-                offscreen_view,
+                offscreen_view: filter
+                    .msaa_view
+                    .clone()
+                    .unwrap_or_else(|| offscreen_view.clone()),
+                resolve_view: filter.msaa_view.as_ref().map(|_| offscreen_view),
                 rect,
             })
             .unwrap();

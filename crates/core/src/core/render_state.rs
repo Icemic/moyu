@@ -3,10 +3,16 @@ use wgpu::{TextureFormat, TextureView};
 #[derive(Debug, Default)]
 pub struct RenderState {
     scissor_stack: Vec<[u32; 4]>,
-    offscreen_stack: Vec<(wgpu::TextureView, (u32, u32), [f32; 4])>,
+    offscreen_stack: Vec<(
+        wgpu::TextureView,
+        Option<wgpu::TextureView>,
+        (u32, u32),
+        [f32; 4],
+    )>,
     current_offscreen_offset: (u32, u32),
     current_viewport: [f32; 4],
     current_view: Option<TextureView>,
+    current_resolve_view: Option<TextureView>,
     current_format: Option<TextureFormat>,
 }
 
@@ -17,11 +23,16 @@ impl RenderState {
         self.current_offscreen_offset = (0, 0);
         self.current_viewport = [0.0, 0.0, 0.0, 0.0];
         self.current_view = None;
+        self.current_resolve_view = None;
         self.current_format = None;
     }
 
     pub fn get_current_view(&self) -> Option<&TextureView> {
         self.current_view.as_ref()
+    }
+
+    pub fn get_current_resolve_view(&self) -> Option<&TextureView> {
+        self.current_resolve_view.as_ref()
     }
 
     pub fn get_current_format(&self) -> Option<TextureFormat> {
@@ -42,6 +53,7 @@ impl RenderState {
         viewport_width: f32,
         viewport_height: f32,
         view: TextureView,
+        resolve_view: Option<TextureView>,
     ) {
         self.clear_frame_resources();
 
@@ -49,6 +61,7 @@ impl RenderState {
         self.current_viewport = [0.0, 0.0, viewport_width, viewport_height];
         self.current_format = Some(view.texture().format());
         self.current_view = Some(view);
+        self.current_resolve_view = resolve_view;
     }
 
     pub fn push_scissor_rect(&mut self, x: i32, y: i32, w: i32, h: i32) -> (u32, u32, u32, u32) {
@@ -86,9 +99,11 @@ impl RenderState {
         offset: (u32, u32),
         viewport: [f32; 4],
         view: TextureView,
+        resolve_view: Option<TextureView>,
     ) {
         self.offscreen_stack.push((
             self.current_view.as_ref().cloned().unwrap().clone(),
+            self.current_resolve_view.clone(),
             self.current_offscreen_offset,
             self.current_viewport,
         ));
@@ -99,11 +114,13 @@ impl RenderState {
         self.current_offscreen_offset = offset;
         self.current_viewport = viewport;
         self.current_view = Some(view);
+        self.current_resolve_view = resolve_view;
     }
 
     pub fn pop_offscreen_state(&mut self) {
-        if let Some((view, offset, viewport)) = self.offscreen_stack.pop() {
+        if let Some((view, resolve_view, offset, viewport)) = self.offscreen_stack.pop() {
             self.current_view = Some(view);
+            self.current_resolve_view = resolve_view;
             self.current_offscreen_offset = offset;
             self.current_viewport = viewport;
         } else {

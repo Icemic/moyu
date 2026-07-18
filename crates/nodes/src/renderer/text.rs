@@ -35,7 +35,7 @@ pub struct TextRenderer {
 }
 
 impl TextRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
+    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
         let size = wgpu::Extent3d {
             width: TEXTURE_SIZE,
             height: TEXTURE_SIZE,
@@ -158,7 +158,7 @@ impl TextRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState {
-                count: 1,
+                count: sample_count,
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },

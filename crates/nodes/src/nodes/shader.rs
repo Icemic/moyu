@@ -245,6 +245,7 @@ pub struct Shader {
     pub(crate) prepare_ready_latched: AtomicBool,
     pub(crate) from_texture_dirty: bool,
     pub(crate) channel_views: [Option<wgpu::TextureView>; 4],
+    pub(crate) channel_msaa_views: [Option<wgpu::TextureView>; 4],
     pub(crate) channel_texture_widths: [u32; 4],
     pub(crate) channel_texture_heights: [u32; 4],
     pub(crate) display_view: Option<wgpu::TextureView>,
@@ -308,6 +309,7 @@ impl Default for Shader {
             prepare_ready_latched: AtomicBool::new(false),
             from_texture_dirty: false,
             channel_views: std::array::from_fn(|_| None),
+            channel_msaa_views: std::array::from_fn(|_| None),
             channel_texture_widths: [0; 4],
             channel_texture_heights: [0; 4],
             display_view: None,
@@ -449,6 +451,8 @@ impl Shader {
 
         self.time_control = time_control;
         self.reset_transition_state();
+        self.pipeline = None;
+        self.bind_group = None;
         self.playing = matches!(time_control, ShaderTimeControl::Auto);
         self.transition_progress = 0.0;
         self.channel_needs_redraw = [true; Self::CHANNEL_COUNT];
@@ -456,6 +460,7 @@ impl Shader {
 
     pub(crate) fn clear_idle_runtime_state(&mut self) {
         self.channel_views = std::array::from_fn(|_| None);
+        self.channel_msaa_views = std::array::from_fn(|_| None);
         self.channel_texture_widths = [0; Self::CHANNEL_COUNT];
         self.channel_texture_heights = [0; Self::CHANNEL_COUNT];
         self.display_view = None;

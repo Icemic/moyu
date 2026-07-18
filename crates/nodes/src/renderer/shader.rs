@@ -42,6 +42,7 @@ pub struct ShaderRenderer {
     pass: ShaderPass,
     present_bind_group_layout: BindGroupLayout,
     present_pipeline: RenderPipeline,
+    single_sample_present_pipeline: RenderPipeline,
 }
 
 pub struct ShaderSlotRenderer;
@@ -65,6 +66,7 @@ impl ShaderRenderer {
     ) -> bool {
         if width == 0 || height == 0 {
             shader.channel_views[channel] = None;
+            shader.channel_msaa_views[channel] = None;
             shader.channel_texture_widths[channel] = 0;
             shader.channel_texture_heights[channel] = 0;
             shader.channel_empty[channel] = empty;
@@ -82,6 +84,16 @@ impl ShaderRenderer {
             let label = format!("Shader Channel {channel}");
             shader.channel_views[channel] =
                 Some(self.pass.create_texture_view(device, width, height, &label));
+            shader.channel_msaa_views[channel] = if empty {
+                None
+            } else {
+                self.pass.create_msaa_texture_view(
+                    device,
+                    width,
+                    height,
+                    &format!("Shader Channel {channel} MSAA"),
+                )
+            };
             shader.channel_texture_widths[channel] = width;
             shader.channel_texture_heights[channel] = height;
             shader.channel_empty[channel] = empty;
@@ -125,8 +137,8 @@ impl ShaderRenderer {
         needs_recreation
     }
 
-    pub fn new(device: &Device, config: &SurfaceConfiguration) -> Self {
-        let pass = ShaderPass::new(device, config);
+    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
+        let pass = ShaderPass::new(device, config, sample_count);
 
         let present_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -187,39 +199,51 @@ impl ShaderRenderer {
             ],
             immediate_size: 0,
         });
-        let present_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Shader Present Pipeline"),
-            layout: Some(&present_pipeline_layout),
-            vertex: VertexState {
-                module: &present_vertex_module,
-                entry_point: Some("vs_main"),
-                buffers: &[],
-                compilation_options: Default::default(),
-            },
-            fragment: Some(FragmentState {
-                module: &present_fragment_module,
-                entry_point: Some("fs_main"),
-                targets: &[Some(ColorTargetState {
-                    format: config.format,
-                    blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                    write_mask: ColorWrites::ALL,
-                })],
-                compilation_options: Default::default(),
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                ..Default::default()
-            },
-            depth_stencil: None,
-            multisample: MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        });
+        let create_present_pipeline = |label, count| {
+            device.create_render_pipeline(&RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(&present_pipeline_layout),
+                vertex: VertexState {
+                    module: &present_vertex_module,
+                    entry_point: Some("vs_main"),
+                    buffers: &[],
+                    compilation_options: Default::default(),
+                },
+                fragment: Some(FragmentState {
+                    module: &present_fragment_module,
+                    entry_point: Some("fs_main"),
+                    targets: &[Some(ColorTargetState {
+                        format: config.format,
+                        blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                        write_mask: ColorWrites::ALL,
+                    })],
+                    compilation_options: Default::default(),
+                }),
+                primitive: PrimitiveState {
+                    topology: PrimitiveTopology::TriangleList,
+                    ..Default::default()
+                },
+                depth_stencil: None,
+                multisample: MultisampleState {
+                    count,
+                    ..Default::default()
+                },
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+        let present_pipeline = create_present_pipeline("Shader Present Pipeline", sample_count);
+        let single_sample_present_pipeline = if sample_count == 1 {
+            present_pipeline.clone()
+        } else {
+            create_present_pipeline("Shader Single Sample Present Pipeline", 1)
+        };
 
         Self {
             pass,
             present_bind_group_layout,
             present_pipeline,
+            single_sample_present_pipeline,
         }
     }
 
@@ -345,6 +369,7 @@ impl ShaderRenderer {
             shader.channel_texture_widths[channel] = 0;
             shader.channel_texture_heights[channel] = 0;
             shader.channel_views[channel] = None;
+            shader.channel_msaa_views[channel] = None;
             shader.channel_needs_redraw[channel] = true;
             shader.present_bind_group = None;
         }
@@ -368,10 +393,20 @@ impl ShaderRenderer {
 
         slot.render_children = should_render;
         slot.render_target = if should_render {
-            Some(target_view)
+            Some(
+                shader.channel_msaa_views[channel]
+                    .clone()
+                    .unwrap_or_else(|| target_view.clone()),
+            )
         } else {
             None
         };
+        slot.render_resolve_target =
+            if should_render && shader.channel_msaa_views[channel].is_some() {
+                Some(target_view)
+            } else {
+                None
+            };
 
         if should_render && slot.is_static && slot.ready() {
             static_rendered_revisions[channel] = Some(slot_content_revision(slot));
@@ -509,6 +544,7 @@ impl ShaderRenderer {
 
             if shader.render_width == 0 || shader.render_height == 0 || slot.empty {
                 slot.render_target = None;
+                slot.render_resolve_target = None;
                 slot.render_children = false;
                 continue;
             }
@@ -516,6 +552,7 @@ impl ShaderRenderer {
             let channel = slot.channel as usize;
             let Some(target_view) = shader.channel_views[channel].clone() else {
                 slot.render_target = None;
+                slot.render_resolve_target = None;
                 slot.render_children = false;
                 continue;
             };
@@ -539,7 +576,10 @@ impl ShaderRenderer {
         }
 
         if shader.shader_dirty || shader.pipeline.is_none() || shader.needs_retry {
-            match self.pass.compile_pipeline(device, &shader.shader) {
+            match self
+                .pass
+                .compile_pipeline(device, &shader.shader, self.pass.sample_count())
+            {
                 Ok(pipeline) => {
                     shader.pipeline = Some(pipeline);
                     shader.bind_group = None;
@@ -921,6 +961,7 @@ impl ShaderRenderer {
 
             if slot.empty {
                 slot.render_target = None;
+                slot.render_resolve_target = None;
                 slot.render_children = false;
                 continue;
             }
@@ -928,12 +969,14 @@ impl ShaderRenderer {
             if matches!(shader.transition_phase, TransitionPhase::Stable) {
                 let should_display = display_channel == Some(slot.channel as usize);
                 slot.render_target = None;
+                slot.render_resolve_target = None;
                 slot.render_children = should_display;
                 continue;
             }
 
             if shader.render_width == 0 || shader.render_height == 0 {
                 slot.render_target = None;
+                slot.render_resolve_target = None;
                 slot.render_children = false;
                 continue;
             }
@@ -941,6 +984,7 @@ impl ShaderRenderer {
             let channel = slot.channel as usize;
             let Some(target_view) = shader.channel_views[channel].clone() else {
                 slot.render_target = None;
+                slot.render_resolve_target = None;
                 slot.render_children = false;
                 continue;
             };
@@ -950,6 +994,7 @@ impl ShaderRenderer {
                     TransitionFromSource::Display => {
                         slot.render_children = false;
                         slot.render_target = None;
+                        slot.render_resolve_target = None;
 
                         if shader.from_texture_dirty {
                             snapshot_copy_scheduled = true;
@@ -967,10 +1012,20 @@ impl ShaderRenderer {
                             let should_capture = prepare_inputs_ready;
                             slot.render_children = true;
                             slot.render_target = if should_capture {
-                                Some(target_view)
+                                Some(
+                                    shader.channel_msaa_views[channel]
+                                        .clone()
+                                        .unwrap_or_else(|| target_view.clone()),
+                                )
                             } else {
                                 None
                             };
+                            slot.render_resolve_target =
+                                if should_capture && shader.channel_msaa_views[channel].is_some() {
+                                    Some(target_view.clone())
+                                } else {
+                                    None
+                                };
 
                             if should_capture {
                                 prepare_from_scheduled = true;
@@ -991,7 +1046,18 @@ impl ShaderRenderer {
                                 let slot_ready = slot.ready();
                                 slot.render_children = should_refresh_frozen_from;
                                 slot.render_target = if should_refresh_frozen_from {
-                                    Some(target_view)
+                                    Some(
+                                        shader.channel_msaa_views[channel]
+                                            .clone()
+                                            .unwrap_or_else(|| target_view.clone()),
+                                    )
+                                } else {
+                                    None
+                                };
+                                slot.render_resolve_target = if should_refresh_frozen_from
+                                    && shader.channel_msaa_views[channel].is_some()
+                                {
+                                    Some(target_view.clone())
                                 } else {
                                     None
                                 };
@@ -1009,6 +1075,7 @@ impl ShaderRenderer {
                         TransitionPhase::Stable => {
                             slot.render_children = false;
                             slot.render_target = None;
+                            slot.render_resolve_target = None;
                         }
                     },
                 }
@@ -1019,10 +1086,20 @@ impl ShaderRenderer {
             if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare) {
                 let should_render = Some(channel) == to_channel;
                 slot.render_target = if should_render {
-                    Some(target_view)
+                    Some(
+                        shader.channel_msaa_views[channel]
+                            .clone()
+                            .unwrap_or_else(|| target_view.clone()),
+                    )
                 } else {
                     None
                 };
+                slot.render_resolve_target =
+                    if should_render && shader.channel_msaa_views[channel].is_some() {
+                        Some(target_view)
+                    } else {
+                        None
+                    };
                 slot.render_children = should_render;
                 prepare_to_scheduled |= should_render && prepare_inputs_ready;
                 continue;
@@ -1192,7 +1269,7 @@ impl ShaderRenderer {
                 }
 
                 if shader.shader_dirty || shader.pipeline.is_none() || shader.needs_retry {
-                    match self.pass.compile_pipeline(device, &shader.shader) {
+                    match self.pass.compile_pipeline(device, &shader.shader, 1) {
                         Ok(pipeline) => {
                             shader.pipeline = Some(pipeline);
                             shader.bind_group = None;
@@ -1456,6 +1533,7 @@ impl Renderer for ShaderRenderer {
                             render_queue
                                 .send(RenderCommand::BeginRenderTargetPass {
                                     target_view: from_view.clone(),
+                                    resolve_view: None,
                                     rect: shader.shader_rect,
                                     content_origin: None,
                                 })
@@ -1463,7 +1541,7 @@ impl Renderer for ShaderRenderer {
 
                             render_queue
                                 .send(RenderCommand::Draw {
-                                    pipeline: self.present_pipeline.clone(),
+                                    pipeline: self.single_sample_present_pipeline.clone(),
                                     bind_group: snapshot_bind_group.clone(),
                                     extra_bind_groups: vec![],
                                     vertex_buffer: None,
@@ -1514,6 +1592,7 @@ impl Renderer for ShaderRenderer {
                             render_queue
                                 .send(RenderCommand::BeginRenderTargetPass {
                                     target_view: from_view.clone(),
+                                    resolve_view: None,
                                     rect: shader.shader_rect,
                                     content_origin: None,
                                 })
@@ -1521,7 +1600,7 @@ impl Renderer for ShaderRenderer {
 
                             render_queue
                                 .send(RenderCommand::Draw {
-                                    pipeline: self.present_pipeline.clone(),
+                                    pipeline: self.single_sample_present_pipeline.clone(),
                                     bind_group: snapshot_bind_group.clone(),
                                     extra_bind_groups: vec![],
                                     vertex_buffer: None,
@@ -1556,6 +1635,7 @@ impl Renderer for ShaderRenderer {
                     render_queue
                         .send(RenderCommand::BeginRenderTargetPass {
                             target_view: display_view.clone(),
+                            resolve_view: None,
                             rect: shader.shader_rect,
                             content_origin: None,
                         })
@@ -1636,6 +1716,7 @@ impl Renderer for ShaderSlotRenderer {
             render_queue
                 .send(RenderCommand::BeginRenderTargetPass {
                     target_view: target_view.clone(),
+                    resolve_view: slot.render_resolve_target.clone(),
                     rect: slot.render_rect,
                     content_origin: Some(slot.render_content_origin),
                 })

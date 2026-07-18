@@ -54,6 +54,8 @@ pub struct MoyuConfig {
     pub background_color: Color,
     #[serde(rename = "showFPS")]
     pub show_fps: bool,
+    #[serde(rename = "enableMSAA")]
+    pub enable_msaa: bool,
     pub enable_gamepads: bool,
     pub skip_splash: bool,
     /// Custom parameters that can be accessed in the engine.
@@ -79,6 +81,7 @@ impl Default for MoyuConfig {
             desired_maximum_frame_latency: 2,
             background_color: Color::from_html("transparent").unwrap(),
             show_fps: false,
+            enable_msaa: false,
             enable_gamepads: false,
             skip_splash: false,
             params: String::new(),

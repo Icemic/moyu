@@ -17,6 +17,7 @@ pub struct Filter {
 
     /// Offscreen texture for rendering child nodes
     pub offscreen_view: Option<wgpu::TextureView>,
+    pub msaa_view: Option<wgpu::TextureView>,
 
     /// Final texture after applying filters
     pub final_view: Option<wgpu::TextureView>,
@@ -39,6 +40,7 @@ impl Default for Filter {
         Self {
             filters: Vec::new(),
             offscreen_view: None,
+            msaa_view: None,
             final_view: None,
             rect: None,
             buffer: None,
@@ -55,6 +57,7 @@ impl Filter {
         Self {
             filters: Vec::new(),
             offscreen_view: None,
+            msaa_view: None,
             final_view: None,
             rect: None,
             buffer: None,

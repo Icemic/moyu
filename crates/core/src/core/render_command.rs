@@ -95,6 +95,7 @@ pub enum RenderCommand {
     /// Generic render-target pass for subtree rendering.
     BeginRenderTargetPass {
         target_view: TextureView,
+        resolve_view: Option<TextureView>,
         rect: Rect,
         content_origin: Option<(f32, f32)>,
     },
@@ -103,6 +104,7 @@ pub enum RenderCommand {
     /// 离屏渲染（用于滤镜）
     BeginOffscreenPass {
         offscreen_view: TextureView,
+        resolve_view: Option<TextureView>,
         rect: Rect,
     },
     EndOffscreenPass {

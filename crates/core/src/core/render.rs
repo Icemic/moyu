@@ -34,6 +34,8 @@ pub struct Graphics {
     pub(crate) device: Device,
     pub(crate) queue: Queue,
     pub(crate) config: Arc<Mutex<SurfaceConfiguration>>,
+    sample_count: u32,
+    msaa_view: Mutex<Option<wgpu::TextureView>>,
 
     pub(crate) resource_manager: Arc<ResourceManager>,
     pub(crate) sender: std::sync::mpsc::SyncSender<RenderCommand>,
@@ -88,6 +90,11 @@ impl Graphics {
 
         let (instance, surface, device, queue, config) =
             create_wgpu_surface(window, &physical_size).await;
+        let sample_count = if get_engine_config().enable_msaa {
+            4
+        } else {
+            1
+        };
 
         device.on_uncaptured_error(Arc::new(|error| {
             log::error!("wgpu fatal error: {}", error);
@@ -147,6 +154,8 @@ impl Graphics {
             device,
             queue,
             config: Arc::new(Mutex::new(config)),
+            sample_count,
+            msaa_view: Mutex::new(None),
             resource_manager: Arc::new(resource_manager),
             sender,
             receiver,
@@ -240,6 +249,10 @@ impl Graphics {
         &self.config
     }
 
+    pub fn sample_count(&self) -> u32 {
+        self.sample_count
+    }
+
     pub fn resource_manager(&self) -> &Arc<ResourceManager> {
         &self.resource_manager
     }
@@ -320,6 +333,8 @@ impl Graphics {
         if let Some(surface) = self.surface.lock().as_ref() {
             surface.configure(&self.device, &config);
         }
+
+        self.msaa_view.lock().take();
 
         self.texture_pool.borrow_mut().cleanup(f64::MAX);
     }
@@ -481,6 +496,7 @@ impl Graphics {
         fn begin_main_render_pass<'a>(
             encoder: &'a mut wgpu::CommandEncoder,
             view: &'a wgpu::TextureView,
+            resolve_view: Option<&'a wgpu::TextureView>,
             viewport: [f32; 4],
             clear_color: wgpu::Color,
             clear: bool,
@@ -491,7 +507,7 @@ impl Graphics {
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                         view,
                         depth_slice: None,
-                        resolve_target: None,
+                        resolve_target: resolve_view,
                         ops: wgpu::Operations {
                             load: if clear {
                                 wgpu::LoadOp::Clear(clear_color)
@@ -693,11 +709,44 @@ impl Graphics {
                     stage_logical_size = stage;
                     scale_factor = scale;
 
+                    let (render_view, resolve_view) = if self.sample_count > 1 {
+                        let mut msaa_view = self.msaa_view.lock();
+                        let needs_recreation = msaa_view.as_ref().is_none_or(|view| {
+                            view.texture().width() != v.texture().width()
+                                || view.texture().height() != v.texture().height()
+                                || view.texture().format() != v.texture().format()
+                        });
+
+                        if needs_recreation {
+                            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                                label: Some("Main MSAA Texture"),
+                                size: wgpu::Extent3d {
+                                    width: v.texture().width(),
+                                    height: v.texture().height(),
+                                    depth_or_array_layers: 1,
+                                },
+                                mip_level_count: 1,
+                                sample_count: self.sample_count,
+                                dimension: wgpu::TextureDimension::D2,
+                                format: v.texture().format(),
+                                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                                view_formats: &[],
+                            });
+                            *msaa_view =
+                                Some(texture.create_view(&wgpu::TextureViewDescriptor::default()));
+                        }
+
+                        (msaa_view.as_ref().unwrap().clone(), Some(v))
+                    } else {
+                        (v, None)
+                    };
+
                     state.reset(
-                        [0, 0, v.texture().width(), v.texture().height()],
+                        [0, 0, expected_width, expected_height],
                         surface.0 * scale,
                         surface.1 * scale,
-                        v,
+                        render_view,
+                        resolve_view,
                     );
 
                     current_pass = Some(begin_main_render_pass(
@@ -843,6 +892,7 @@ impl Graphics {
                         current_pass = Some(begin_main_render_pass(
                             &mut encoder.as_mut().unwrap(),
                             &state.get_current_view().unwrap(),
+                            state.get_current_resolve_view(),
                             state.get_current_viewport(),
                             color,
                             false,
@@ -887,6 +937,7 @@ impl Graphics {
                         current_pass = Some(begin_main_render_pass(
                             &mut encoder.as_mut().unwrap(),
                             &state.get_current_view().unwrap(),
+                            state.get_current_resolve_view(),
                             state.get_current_viewport(),
                             color,
                             false,
@@ -919,6 +970,7 @@ impl Graphics {
                             current_pass = Some(begin_main_render_pass(
                                 &mut encoder.as_mut().unwrap(),
                                 &state.get_current_view().unwrap(),
+                                state.get_current_resolve_view(),
                                 state.get_current_viewport(),
                                 color,
                                 false,
@@ -1112,6 +1164,7 @@ impl Graphics {
                 }
                 RenderCommand::BeginRenderTargetPass {
                     target_view,
+                    resolve_view,
                     rect,
                     content_origin,
                 } => {
@@ -1145,11 +1198,13 @@ impl Graphics {
                             surface_logical_size.1 * scale_factor,
                         ],
                         target_view,
+                        resolve_view,
                     );
 
                     current_pass = Some(begin_main_render_pass(
                         &mut encoder.as_mut().unwrap(),
                         &state.get_current_view().unwrap(),
+                        state.get_current_resolve_view(),
                         state.get_current_viewport(),
                         wgpu::Color::TRANSPARENT,
                         true,
@@ -1170,6 +1225,7 @@ impl Graphics {
                     current_pass = Some(begin_main_render_pass(
                         &mut encoder.as_mut().unwrap(),
                         &state.get_current_view().unwrap(),
+                        state.get_current_resolve_view(),
                         state.get_current_viewport(),
                         color,
                         false,
@@ -1182,6 +1238,7 @@ impl Graphics {
                 }
                 RenderCommand::BeginOffscreenPass {
                     offscreen_view,
+                    resolve_view,
                     rect,
                 } => {
                     if let Some(pass) = current_pass.take() {
@@ -1211,12 +1268,14 @@ impl Graphics {
                             surface_logical_size.1 * scale_factor,
                         ],
                         offscreen_view.clone(),
+                        resolve_view,
                     );
 
                     // 开始新的 pass（清屏）
                     current_pass = Some(begin_main_render_pass(
                         &mut encoder.as_mut().unwrap(),
                         &state.get_current_view().unwrap(),
+                        state.get_current_resolve_view(),
                         state.get_current_viewport(),
                         wgpu::Color::TRANSPARENT,
                         true,
@@ -1296,6 +1355,7 @@ impl Graphics {
                     current_pass = Some(begin_main_render_pass(
                         &mut encoder.as_mut().unwrap(),
                         &state.get_current_view().unwrap(),
+                        state.get_current_resolve_view(),
                         state.get_current_viewport(),
                         color,
                         false,

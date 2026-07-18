@@ -221,16 +221,17 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 if let Some(graphics) = core.graphics() {
                     let device = graphics.device();
                     let config = graphics.config().lock().clone();
+                    let sample_count = graphics.sample_count();
 
-                    let sprite_renderer = SpriteRenderer::new(device, &config);
-                    let text_renderer = TextRenderer::new(device, &config);
+                    let sprite_renderer = SpriteRenderer::new(device, &config, sample_count);
+                    let text_renderer = TextRenderer::new(device, &config, sample_count);
                     let clip_renderer = ClipRenderer::new(device, &config);
-                    let filter_renderer = OffscreenPassRenderer::new(device, &config);
-                    let backdrop_renderer = BackdropRenderer::new(device, &config);
-                    let animation_renderer = AnimationRenderer::new(device, &config);
-                    let shader_renderer = ShaderRenderer::new(device, &config);
+                    let filter_renderer = OffscreenPassRenderer::new(device, &config, sample_count);
+                    let backdrop_renderer = BackdropRenderer::new(device, &config, sample_count);
+                    let animation_renderer = AnimationRenderer::new(device, &config, sample_count);
+                    let shader_renderer = ShaderRenderer::new(device, &config, sample_count);
                     let shader_slot_renderer = ShaderSlotRenderer::new();
-                    let video_renderer = VideoRenderer::new(device, &config);
+                    let video_renderer = VideoRenderer::new(device, &config, sample_count);
 
                     text_renderer.init_huozi_from_env();
 
