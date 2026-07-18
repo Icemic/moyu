@@ -4,8 +4,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::{Result, anyhow};
 use arc_swap::ArcSwapOption;
-use symphonia::core::audio::{AudioBufferRef, Signal};
-use symphonia::core::conv::IntoSample;
+use symphonia::core::audio::GenericAudioBufferRef;
+use symphonia::core::codecs::audio::AudioDecoder;
+use symphonia::core::packet::Packet;
 
 use crate::audio_playback::clock::AudioClock;
 #[cfg(native)]
@@ -44,7 +45,7 @@ pub struct VideoPlayer {
     // Internal decode state (all owned, not shared across threads)
     demuxer: Option<Demuxer>,
     video_decoder: Option<Box<dyn VideoDecoder>>,
-    audio_decoder: Option<Box<dyn symphonia::core::codecs::Decoder>>,
+    audio_decoder: Option<Box<dyn AudioDecoder>>,
     #[cfg(not(target_arch = "wasm32"))]
     audio_output: Option<AudioOutput>,
     #[cfg(target_arch = "wasm32")]
@@ -57,7 +58,7 @@ pub struct VideoPlayer {
     /// Buffered decoded video frames, sorted by PTS
     video_buffer: VecDeque<Arc<DecodedFrame>>,
     /// Video packets deferred while audio is recovering.
-    pending_video_packets: VecDeque<symphonia::core::formats::Packet>,
+    pending_video_packets: VecDeque<Packet>,
 
     /// Video time base (numer/denom) for converting packet timestamps to microseconds
     video_time_base: Option<(u32, u32)>,
@@ -167,11 +168,11 @@ impl VideoPlayer {
             // Provide a stereo default so the decoder can initialize; actual channel
             // count will be read from each decoded AudioBuffer's spec.
             if params.channels.is_none() {
-                use symphonia::core::audio::Channels;
-                params.channels = Some(Channels::FRONT_LEFT | Channels::FRONT_RIGHT);
+                use symphonia::core::audio::layouts::CHANNEL_LAYOUT_STEREO;
+                params.channels = Some(CHANNEL_LAYOUT_STEREO);
             }
             let codecs = moyu_pal::symphonia::get_codec();
-            match codecs.make(&params, &Default::default()) {
+            match codecs.make_audio_decoder(&params, &Default::default()) {
                 Ok(audio_dec) => {
                     self.audio_decoder = Some(audio_dec);
 
@@ -608,10 +609,10 @@ impl VideoPlayer {
         }
     }
 
-    fn decode_video_packet(&mut self, packet: &symphonia::core::formats::Packet) {
+    fn decode_video_packet(&mut self, packet: &Packet) {
         // Compute pts_us before borrowing decoder
         let video_time_base = self.video_time_base;
-        let pts_us = Self::ts_to_us(packet.ts(), video_time_base);
+        let pts_us = Self::ts_to_us(packet.pts.get(), video_time_base);
 
         let decoder = match self.video_decoder.as_mut() {
             Some(d) => d,
@@ -713,7 +714,7 @@ impl VideoPlayer {
         }
     }
 
-    fn decode_audio_packet(&mut self, packet: &symphonia::core::formats::Packet) {
+    fn decode_audio_packet(&mut self, packet: &Packet) {
         let (decoder, ring_buffer) =
             match (self.audio_decoder.as_mut(), self.audio_ring_buffer.as_mut()) {
                 (Some(d), Some(r)) => (d, r),
@@ -726,8 +727,8 @@ impl VideoPlayer {
         match decoder.decode(packet) {
             Ok(buffer_ref) => {
                 // Read actual format from the decoded buffer (more reliable than codec params)
-                let src_rate = buffer_ref.spec().rate;
-                let src_ch = buffer_ref.spec().channels.count();
+                let src_rate = buffer_ref.spec().rate();
+                let src_ch = buffer_ref.spec().channels().count();
 
                 let mut samples = audio_buffer_to_interleaved_f32(&buffer_ref);
 
@@ -805,7 +806,7 @@ impl VideoPlayer {
     }
 
     /// Convert a packet timestamp to microseconds using the track's time base.
-    fn ts_to_us(ts: u64, time_base: Option<(u32, u32)>) -> i64 {
+    fn ts_to_us(ts: i64, time_base: Option<(u32, u32)>) -> i64 {
         match time_base {
             Some((numer, denom)) if denom > 0 => {
                 (ts as f64 * numer as f64 / denom as f64 * 1_000_000.0) as i64
@@ -821,52 +822,10 @@ impl Default for VideoPlayer {
     }
 }
 
-/// Convert an AudioBufferRef to interleaved f32 samples.
-fn audio_buffer_to_interleaved_f32(buffer: &AudioBufferRef) -> Vec<f32> {
-    match buffer {
-        AudioBufferRef::F32(buf) => interleave_buffer(buf),
-        AudioBufferRef::S16(buf) => interleave_buffer_convert(buf),
-        AudioBufferRef::S32(buf) => interleave_buffer_convert(buf),
-        AudioBufferRef::U8(buf) => interleave_buffer_convert(buf),
-        AudioBufferRef::U16(buf) => interleave_buffer_convert(buf),
-        AudioBufferRef::U24(buf) => interleave_buffer_convert(buf),
-        AudioBufferRef::U32(buf) => interleave_buffer_convert(buf),
-        AudioBufferRef::S8(buf) => interleave_buffer_convert(buf),
-        AudioBufferRef::S24(buf) => interleave_buffer_convert(buf),
-        AudioBufferRef::F64(buf) => interleave_buffer_convert(buf),
-    }
-}
-
-fn interleave_buffer(buf: &symphonia::core::audio::AudioBuffer<f32>) -> Vec<f32> {
-    let channels = buf.spec().channels.count();
-    let frames = buf.frames();
-    let mut output = Vec::with_capacity(frames * channels);
-
-    for frame_idx in 0..frames {
-        for ch in 0..channels {
-            output.push(buf.chan(ch)[frame_idx]);
-        }
-    }
-
-    output
-}
-
-fn interleave_buffer_convert<S: symphonia::core::sample::Sample>(
-    buf: &symphonia::core::audio::AudioBuffer<S>,
-) -> Vec<f32>
-where
-    f32: symphonia::core::conv::FromSample<S>,
-{
-    let channels = buf.spec().channels.count();
-    let frames = buf.frames();
-    let mut output = Vec::with_capacity(frames * channels);
-
-    for frame_idx in 0..frames {
-        for ch in 0..channels {
-            output.push(buf.chan(ch)[frame_idx].into_sample());
-        }
-    }
-
+/// Convert a generic audio buffer to interleaved f32 samples.
+fn audio_buffer_to_interleaved_f32(buffer: &GenericAudioBufferRef<'_>) -> Vec<f32> {
+    let mut output = Vec::with_capacity(buffer.samples_interleaved());
+    buffer.copy_to_vec_interleaved(&mut output);
     output
 }
 

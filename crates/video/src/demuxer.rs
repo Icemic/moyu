@@ -2,12 +2,17 @@ use std::collections::VecDeque;
 use std::io::Cursor;
 
 use anyhow::{Result, anyhow};
-use symphonia::core::codecs::{CODEC_TYPE_NULL, CodecParameters};
-use symphonia::core::formats::{FormatReader, Packet, SeekMode, SeekTo};
+use symphonia::core::codecs::audio::AudioCodecParameters;
+use symphonia::core::codecs::{
+    CodecParameters,
+    video::well_known::{CODEC_ID_AV1, CODEC_ID_VP9},
+};
+use symphonia::core::formats::probe::Hint;
+use symphonia::core::formats::{FormatReader, SeekMode, SeekTo};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
-use symphonia::core::units::Time;
+use symphonia::core::packet::Packet;
+use symphonia::core::units::{Time, Timestamp};
 
 use crate::types::VideoCodec;
 
@@ -57,7 +62,8 @@ pub struct TrackInfo {
     id: u32,
     #[allow(dead_code)]
     kind: TrackKind,
-    codec_params: CodecParameters,
+    audio_codec_params: Option<AudioCodecParameters>,
+    time_base: Option<(u32, u32)>,
     /// For video tracks, the identified codec
     #[allow(dead_code)]
     video_codec: Option<VideoCodec>,
@@ -91,16 +97,14 @@ impl Demuxer {
 
         let probe = moyu_pal::symphonia::get_probe();
 
-        let probed = probe
-            .format(
+        let mut reader = probe
+            .probe(
                 &probe_hint,
                 mss,
-                &Default::default(),
-                &MetadataOptions::default(),
+                Default::default(),
+                MetadataOptions::default(),
             )
             .map_err(|e| anyhow!("Failed to probe media format: {}", e))?;
-
-        let mut reader = probed.format;
 
         let mut video_track_id = None;
         let mut audio_track_id = None;
@@ -108,53 +112,54 @@ impl Demuxer {
         let mut duration_secs = None;
         let mut video_codec = None;
 
-        // Symphonia is audio-focused. Video tracks appear as tracks with
-        // CODEC_TYPE_NULL (unrecognized codec) and no sample_rate.
-        // Audio tracks have a recognized codec type and/or sample_rate.
         for track in reader.tracks() {
-            let codec_type = track.codec_params.codec;
-            let has_sample_rate = track.codec_params.sample_rate.is_some();
-            let is_null_codec = codec_type == CODEC_TYPE_NULL;
-
-            // Video track: null codec and no sample rate (not audio)
-            if is_null_codec && !has_sample_rate {
-                if video_track_id.is_none() {
-                    video_track_id = Some(track.id);
-                    if video_codec.is_none() {
-                        video_codec = track
-                            .codec_params
-                            .extra_data
-                            .as_deref()
-                            .and_then(detect_codec_from_extra_data);
+            match track.codec_params.as_ref() {
+                Some(CodecParameters::Video(params)) => {
+                    if video_track_id.is_none() {
+                        video_track_id = Some(track.id);
+                        if video_codec.is_none() {
+                            video_codec = match params.codec {
+                                CODEC_ID_AV1 => Some(VideoCodec::Av1),
+                                CODEC_ID_VP9 => Some(VideoCodec::Vp9),
+                                _ => params
+                                    .extra_data
+                                    .first()
+                                    .and_then(|data| detect_codec_from_extra_data(&data.data)),
+                            };
+                        }
                     }
-                }
 
-                tracks.push(TrackInfo {
-                    id: track.id,
-                    kind: TrackKind::Video,
-                    codec_params: track.codec_params.clone(),
-                    video_codec,
-                });
-            } else {
-                // Audio track
-                if audio_track_id.is_none() {
-                    audio_track_id = Some(track.id);
+                    tracks.push(TrackInfo {
+                        id: track.id,
+                        kind: TrackKind::Video,
+                        audio_codec_params: None,
+                        time_base: track.time_base.map(|tb| (tb.numer.get(), tb.denom.get())),
+                        video_codec,
+                    });
                 }
+                Some(CodecParameters::Audio(params)) => {
+                    if audio_track_id.is_none() {
+                        audio_track_id = Some(track.id);
+                    }
 
-                tracks.push(TrackInfo {
-                    id: track.id,
-                    kind: TrackKind::Audio,
-                    codec_params: track.codec_params.clone(),
-                    video_codec: None,
-                });
+                    tracks.push(TrackInfo {
+                        id: track.id,
+                        kind: TrackKind::Audio,
+                        audio_codec_params: Some(params.clone()),
+                        time_base: track.time_base.map(|tb| (tb.numer.get(), tb.denom.get())),
+                        video_codec: None,
+                    });
+                }
+                _ => continue,
             }
 
             // Try to get duration from track params
             if duration_secs.is_none() {
-                if let Some(n_frames) = track.codec_params.n_frames {
-                    if let Some(tb) = track.codec_params.time_base {
-                        let d = tb.calc_time(n_frames);
-                        duration_secs = Some(d.seconds as f64 + d.frac);
+                if let (Some(duration), Some(tb)) = (track.duration, track.time_base) {
+                    if let Some(timestamp) = duration.timestamp_from(Timestamp::ZERO) {
+                        if let Some(time) = tb.calc_time(timestamp) {
+                            duration_secs = Some(time.as_secs_f64());
+                        }
                     }
                 }
             }
@@ -166,8 +171,8 @@ impl Demuxer {
         if video_codec.is_none() && video_track_id.is_some() {
             for _ in 0..50 {
                 match reader.next_packet() {
-                    Ok(packet) => {
-                        let track_id = packet.track_id();
+                    Ok(Some(packet)) => {
+                        let track_id = packet.track_id;
                         let mut pkt_kind = None;
                         if Some(track_id) == video_track_id {
                             pkt_kind = Some(TrackKind::Video);
@@ -186,6 +191,7 @@ impl Demuxer {
                             }
                         }
                     }
+                    Ok(None) => break,
                     Err(_) => break,
                 }
             }
@@ -218,12 +224,12 @@ impl Demuxer {
     }
 
     /// Get codec parameters for the audio track.
-    pub fn audio_codec_params(&self) -> Option<&CodecParameters> {
+    pub fn audio_codec_params(&self) -> Option<&AudioCodecParameters> {
         self.audio_track_id.and_then(|id| {
             self.tracks
                 .iter()
                 .find(|t| t.id == id)
-                .map(|t| &t.codec_params)
+                .and_then(|t| t.audio_codec_params.as_ref())
         })
     }
 
@@ -242,8 +248,8 @@ impl Demuxer {
 
         loop {
             match self.reader.next_packet() {
-                Ok(packet) => {
-                    let track_id = packet.track_id();
+                Ok(Some(packet)) => {
+                    let track_id = packet.track_id;
 
                     if Some(track_id) == self.video_track_id {
                         return Ok(Some((TrackKind::Video, packet)));
@@ -253,6 +259,7 @@ impl Demuxer {
                     // Skip packets for tracks we don't care about
                     continue;
                 }
+                Ok(None) => return Ok(None),
                 Err(symphonia::core::errors::Error::IoError(ref e))
                     if e.kind() == std::io::ErrorKind::UnexpectedEof =>
                 {
@@ -266,7 +273,8 @@ impl Demuxer {
     /// Seek to a position in seconds.
     pub fn seek(&mut self, time_secs: f64) -> Result<()> {
         let seek_to = SeekTo::Time {
-            time: Time::new(time_secs as u64, time_secs.fract()),
+            time: Time::try_from_secs_f64(time_secs)
+                .ok_or_else(|| anyhow!("Invalid seek time: {}", time_secs))?,
             track_id: None, // seek all tracks
         };
 
@@ -283,7 +291,7 @@ impl Demuxer {
             self.tracks
                 .iter()
                 .find(|t| t.id == id)
-                .and_then(|t| t.codec_params.time_base.map(|tb| (tb.numer, tb.denom)))
+                .and_then(|t| t.time_base)
         })
     }
 
@@ -293,7 +301,7 @@ impl Demuxer {
             self.tracks
                 .iter()
                 .find(|t| t.id == id)
-                .and_then(|t| t.codec_params.time_base.map(|tb| (tb.numer, tb.denom)))
+                .and_then(|t| t.time_base)
         })
     }
 }

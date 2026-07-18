@@ -64,7 +64,7 @@ impl AudioOutput {
 
         let stream = device
             .build_output_stream(
-                &config,
+                config,
                 move |data: &mut [f32], _| {
                     if !clock_clone.is_playing() {
                         data.fill(0.0);

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+1. Update `huozi` to 0.17
+2. Update `wgpu` to 29.0 and fix breaking changes in the API
+3. Update `glam` to 0.33
+4. Update `symphonia` to 0.6, `kira` to latest and fix breaking changes in the API
+
 ### Fixed
 
 1. Clamp opacity value in `set_opacity` method of `Node` to ensure it stays within the range of 0.0 to 1.0.

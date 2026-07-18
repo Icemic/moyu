@@ -19,8 +19,8 @@ symphonia = {workspace = true}
 moyu_pal = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cpal = "0.17"
-libloading = "0.9"
+cpal = {workspace = true}
+libloading = {workspace = true}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = "0.3"
