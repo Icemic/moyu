@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicBool;
+
 use anyhow::Result;
 use csscolorparser::Color;
 use moyu_core::nodes::NodeBase;
@@ -239,7 +241,8 @@ pub struct Shader {
     pub(crate) render_height: u32,
     pub(crate) render_sample_max_uv: [f32; 2],
     pub(crate) last_active_at: Option<f64>,
-    pub(crate) prepare_ready_latched: bool,
+    pub(crate) prepare_capture_scheduled: bool,
+    pub(crate) prepare_ready_latched: AtomicBool,
     pub(crate) from_texture_dirty: bool,
     pub(crate) channel_views: [Option<wgpu::TextureView>; 4],
     pub(crate) channel_texture_widths: [u32; 4],
@@ -301,7 +304,8 @@ impl Default for Shader {
             render_height: 0,
             render_sample_max_uv: [1.0, 1.0],
             last_active_at: None,
-            prepare_ready_latched: false,
+            prepare_capture_scheduled: false,
+            prepare_ready_latched: AtomicBool::new(false),
             from_texture_dirty: false,
             channel_views: std::array::from_fn(|_| None),
             channel_texture_widths: [0; 4],
@@ -428,7 +432,8 @@ impl Shader {
         self.transition_from_source = TransitionFromSource::Slot;
         self.pending_prepare = None;
         self.pending_perform = None;
-        self.prepare_ready_latched = false;
+        self.prepare_capture_scheduled = false;
+        *self.prepare_ready_latched.get_mut() = false;
         self.from_texture_dirty = false;
         self.snapshot_display_view = None;
         self.snapshot_display_rect = moyu_core::base::Rect::default();
@@ -524,7 +529,8 @@ impl Shader {
             self.snapshot_sample_max_uv = [1.0, 1.0];
             TransitionFromSource::Slot
         };
-        self.prepare_ready_latched = false;
+        self.prepare_capture_scheduled = false;
+        *self.prepare_ready_latched.get_mut() = false;
         self.from_texture_dirty = true;
         self.snapshot_bind_group = None;
         self.reset_timeline();
@@ -538,7 +544,8 @@ impl Shader {
         } else {
             0.0
         };
-        self.prepare_ready_latched = false;
+        self.prepare_capture_scheduled = false;
+        *self.prepare_ready_latched.get_mut() = false;
         self.snapshot_bind_group = None;
         self.reset_timeline();
 
@@ -551,7 +558,8 @@ impl Shader {
 
     pub(crate) fn mark_prepare_captured(&mut self) {
         self.transition_phase = TransitionPhase::Prepared;
-        self.prepare_ready_latched = false;
+        self.prepare_capture_scheduled = false;
+        *self.prepare_ready_latched.get_mut() = false;
         self.from_texture_dirty = false;
         self.snapshot_bind_group = None;
         self.send_event(ShaderEvent::Prepared);

@@ -1,3 +1,5 @@
+use std::sync::atomic::Ordering;
+
 use glam::Vec3;
 use moyu_core::base::{Bound, MVPMatrix, Rect, get_scale_and_translate};
 use moyu_core::core::NodeLock;
@@ -674,12 +676,14 @@ impl ShaderRenderer {
         }
 
         if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare)
-            && shader.prepare_ready_latched
+            && *shader.prepare_ready_latched.get_mut()
         {
             shader.mark_prepare_captured();
         }
 
-        if let Some(request) = shader.pending_perform.take() {
+        if !matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare)
+            && let Some(request) = shader.pending_perform.take()
+        {
             let Some(from_channel) = shader.transition_from_channel else {
                 log::warn!(
                     "shader node {}: perform requires a prior prepare in transition mode",
@@ -881,10 +885,30 @@ impl ShaderRenderer {
         }
 
         let mut static_rendered_revisions = [None; Shader::CHANNEL_COUNT];
-        let mut prepare_capture_scheduled = false;
         let mut frozen_from_rebuilt = false;
         let mut snapshot_copy_scheduled = false;
         let display_channel = shader.display_channel.map(|channel| channel as usize);
+        shader.prepare_capture_scheduled = false;
+
+        let prepare_inputs_ready =
+            if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare) {
+                let from_ready = match shader.transition_from_source {
+                    TransitionFromSource::Display => shader.snapshot_display_view.is_some(),
+                    TransitionFromSource::Slot => from_channel
+                        .and_then(|channel| slots.slot_nodes[channel].as_ref())
+                        .is_some_and(|slot_node| slot_node.read().ready()),
+                };
+                let to_ready = to_channel
+                    .and_then(|channel| slots.slot_nodes[channel].as_ref())
+                    .is_some_and(|slot_node| slot_node.read().ready());
+
+                from_ready && to_ready
+            } else {
+                false
+            };
+
+        let mut prepare_from_scheduled = false;
+        let mut prepare_to_scheduled = false;
 
         for slot_node in slots.slot_nodes.iter().flatten() {
             let mut child = slot_node.write();
@@ -929,8 +953,10 @@ impl ShaderRenderer {
 
                         if shader.from_texture_dirty {
                             snapshot_copy_scheduled = true;
-                            if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare) {
-                                prepare_capture_scheduled = true;
+                            if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare)
+                                && prepare_inputs_ready
+                            {
+                                prepare_from_scheduled = true;
                             } else {
                                 frozen_from_rebuilt = true;
                             }
@@ -938,23 +964,16 @@ impl ShaderRenderer {
                     }
                     TransitionFromSource::Slot => match shader.transition_phase {
                         TransitionPhase::AwaitingPrepare => {
-                            let should_capture = !shader.prepare_ready_latched;
-                            let slot_ready = slot.ready();
-                            slot.render_children = should_capture;
+                            let should_capture = prepare_inputs_ready;
+                            slot.render_children = true;
                             slot.render_target = if should_capture {
                                 Some(target_view)
                             } else {
                                 None
                             };
 
-                            if should_capture && slot_ready {
-                                prepare_capture_scheduled = true;
-                                frozen_from_rebuilt = true;
-
-                                if slot.is_static {
-                                    static_rendered_revisions[channel] =
-                                        Some(slot_content_revision(slot));
-                                }
+                            if should_capture {
+                                prepare_from_scheduled = true;
                             }
                         }
                         TransitionPhase::Prepared
@@ -998,19 +1017,25 @@ impl ShaderRenderer {
             }
 
             if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare) {
-                slot.render_target = None;
-                slot.render_children = false;
+                let should_render = Some(channel) == to_channel;
+                slot.render_target = if should_render {
+                    Some(target_view)
+                } else {
+                    None
+                };
+                slot.render_children = should_render;
+                prepare_to_scheduled |= should_render && prepare_inputs_ready;
                 continue;
             }
 
             self.configure_cached_slot(shader, slot, target_view, &mut static_rendered_revisions);
         }
 
-        if prepare_capture_scheduled {
-            shader.prepare_ready_latched = true;
-        }
+        shader.prepare_capture_scheduled = prepare_from_scheduled && prepare_to_scheduled;
 
-        if frozen_from_rebuilt || snapshot_copy_scheduled {
+        if (frozen_from_rebuilt || snapshot_copy_scheduled)
+            && !matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare)
+        {
             shader.from_texture_dirty = false;
         }
 
@@ -1367,9 +1392,15 @@ impl Renderer for ShaderRenderer {
                 shader.pipeline.is_some() && shader.bind_group.is_some()
             }
             ShaderTimeControl::Transition => match shader.transition_phase {
-                TransitionPhase::AwaitingPrepare | TransitionPhase::Prepared => {
+                TransitionPhase::AwaitingPrepare => {
                     shader.present_bind_group.is_some()
+                        && (shader.prepare_capture_scheduled
+                            || matches!(
+                                shader.transition_from_source,
+                                TransitionFromSource::Display
+                            ))
                 }
+                TransitionPhase::Prepared => shader.present_bind_group.is_some(),
                 TransitionPhase::Running | TransitionPhase::Finishing => {
                     shader.pipeline.is_some()
                         && shader.bind_group.is_some()
@@ -1465,6 +1496,12 @@ impl Renderer for ShaderRenderer {
                             instance_count: 1,
                         })
                         .unwrap();
+
+                    if matches!(shader.transition_phase, TransitionPhase::AwaitingPrepare)
+                        && shader.prepare_capture_scheduled
+                    {
+                        shader.prepare_ready_latched.store(true, Ordering::Relaxed);
+                    }
                 }
                 TransitionPhase::Running | TransitionPhase::Finishing => {
                     if let (Some(from_channel), Some(snapshot_bind_group)) = (
