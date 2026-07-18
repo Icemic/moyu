@@ -300,7 +300,7 @@ impl NodeBase {
     }
     #[inline]
     pub fn set_opacity(&mut self, opacity: f32) {
-        self.opacity = opacity;
+        self.opacity = opacity.clamp(0.0, 1.0);
         self._update_id += 1;
     }
     #[inline]

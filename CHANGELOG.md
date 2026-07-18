@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+1. Clamp opacity value in `set_opacity` method of `Node` to ensure it stays within the range of 0.0 to 1.0.
+
 ## [0.15.3] - 2026-07-14
 
 ### Fixed
