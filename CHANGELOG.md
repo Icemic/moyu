@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+1. Implement MSAA support and update rendering pipeline
+
+### Fixed
+
+1. Create render pass in BeginFrame command to ensure screen is cleared at first
+
 ## [0.16.0] - 2026-07-18
 
 ### Changed
