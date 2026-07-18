@@ -5,10 +5,16 @@ use moyu_pal::{fs, task};
 use std::sync::Arc;
 use wgpu::{Device, Queue};
 
+use crate::mipmap::MipmapGenerator;
 use crate::types::{Texture, TextureStatus};
 use crate::utils::premultiply_alpha;
 
-pub(crate) fn load_texture(device: &Device, queue: &Queue, url: &Url) -> Arc<Texture> {
+pub(crate) fn load_texture(
+    device: &Device,
+    queue: &Queue,
+    url: &Url,
+    mipmap_generator: Option<Arc<MipmapGenerator>>,
+) -> Arc<Texture> {
     debug!("loading texture from {}", url);
 
     let texture = Arc::new(Texture::new());
@@ -27,9 +33,14 @@ pub(crate) fn load_texture(device: &Device, queue: &Queue, url: &Url) -> Arc<Tex
                 }
             };
 
-            if let Err(err) =
-                load_image_to_texture(&texture, &device, &queue, &bytes, Some(url.as_str()))
-            {
+            if let Err(err) = load_image_to_texture(
+                &texture,
+                &device,
+                &queue,
+                &bytes,
+                Some(url.as_str()),
+                mipmap_generator.as_deref(),
+            ) {
                 log::error!("Failed to load image '{}': {}", url, err);
             } else {
                 debug!("texture '{}' loaded", url);
@@ -48,6 +59,7 @@ pub(crate) fn load_image_to_texture(
     queue: &Queue,
     bytes: &[u8],
     label: Option<&str>,
+    mipmap_generator: Option<&MipmapGenerator>,
 ) -> anyhow::Result<()> {
     let img = image::load_from_memory(&bytes)?;
 
@@ -66,16 +78,25 @@ pub(crate) fn load_image_to_texture(
         height: dimensions.1,
         depth_or_array_layers: 1,
     };
+    let mip_level_count = mipmap_generator
+        .map(|_| dimensions.0.max(dimensions.1).ilog2() + 1)
+        .unwrap_or(1);
 
     let texture_gpu = device.create_texture(&wgpu::TextureDescriptor {
         label,
         size,
-        mip_level_count: 1,
+        mip_level_count,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8Unorm,
         view_formats: &[],
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING
+            | wgpu::TextureUsages::COPY_DST
+            | if mipmap_generator.is_some() {
+                wgpu::TextureUsages::RENDER_ATTACHMENT
+            } else {
+                wgpu::TextureUsages::empty()
+            },
     });
 
     queue.write_texture(
@@ -93,6 +114,10 @@ pub(crate) fn load_image_to_texture(
         },
         size,
     );
+
+    if let Some(mipmap_generator) = mipmap_generator {
+        mipmap_generator.generate(device, queue, &texture_gpu, mip_level_count);
+    }
 
     let view = texture_gpu.create_view(&wgpu::TextureViewDescriptor::default());
 

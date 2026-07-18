@@ -1,8 +1,11 @@
 mod loaders;
+mod mipmap;
 pub mod types;
 pub mod utils;
 
 use dashmap::DashMap;
+use mipmap::MipmapGenerator;
+use moyu_pal::config::get_engine_config;
 use moyu_pal::dir::assets_dir;
 use std::sync::Arc;
 use wgpu::{Device, Queue};
@@ -14,12 +17,16 @@ use crate::types::*;
 pub struct ResourceManager {
     device: Device,
     queue: Queue,
+    mipmap_generator: Option<Arc<MipmapGenerator>>,
     assets_map: Arc<DashMap<Arc<AssetId>, Arc<Asset>>>,
 }
 
 impl ResourceManager {
     pub fn new(device: Device, queue: Queue) -> Self {
         let assets_map = Arc::new(DashMap::new());
+        let mipmap_generator = get_engine_config()
+            .enable_mipmaps
+            .then(|| Arc::new(MipmapGenerator::new(&device)));
 
         {
             let assets_map_weak = Arc::downgrade(&assets_map);
@@ -45,6 +52,7 @@ impl ResourceManager {
         Self {
             device,
             queue,
+            mipmap_generator,
             assets_map,
         }
     }
@@ -67,7 +75,12 @@ impl ResourceManager {
 
         match kind {
             AssetKind::Texture => {
-                let texture = load_texture(&self.device, &self.queue, &url);
+                let texture = load_texture(
+                    &self.device,
+                    &self.queue,
+                    &url,
+                    self.mipmap_generator.clone(),
+                );
                 let asset = Arc::new(Asset::Texture(texture));
                 asset_id.attach_asset(&asset);
                 let asset_id = Arc::new(asset_id);
@@ -87,9 +100,14 @@ impl ResourceManager {
         let asset = match kind {
             AssetKind::Texture => {
                 let texture = Arc::new(Texture::new());
-                if let Err(err) =
-                    load_image_to_texture(&texture, &self.device, &self.queue, &data, None)
-                {
+                if let Err(err) = load_image_to_texture(
+                    &texture,
+                    &self.device,
+                    &self.queue,
+                    &data,
+                    None,
+                    self.mipmap_generator.as_deref(),
+                ) {
                     log::error!("failed to load texture from raw image data: {}", err);
                     texture.set_status(TextureStatus::Error);
                 }
