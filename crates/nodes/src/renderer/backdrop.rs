@@ -67,8 +67,11 @@ impl BackdropRenderer {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Backdrop Pipeline Layout"),
-            bind_group_layouts: &[&MVPMatrix::bind_group_layout(device), &bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[
+                Some(&MVPMatrix::bind_group_layout(device)),
+                Some(&bind_group_layout),
+            ],
+            immediate_size: 0,
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -96,7 +99,7 @@ impl BackdropRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -107,7 +110,7 @@ impl BackdropRenderer {
             address_mode_w: AddressMode::ClampToEdge,
             mag_filter: FilterMode::Linear,
             min_filter: FilterMode::Linear,
-            mipmap_filter: FilterMode::Linear,
+            mipmap_filter: MipmapFilterMode::Linear,
             ..Default::default()
         });
 

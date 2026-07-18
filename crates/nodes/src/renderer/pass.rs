@@ -177,7 +177,7 @@ impl ShaderPass {
             address_mode_w: AddressMode::ClampToEdge,
             mag_filter: FilterMode::Linear,
             min_filter: FilterMode::Linear,
-            mipmap_filter: FilterMode::Linear,
+            mipmap_filter: MipmapFilterMode::Linear,
             ..Default::default()
         });
 
@@ -259,7 +259,7 @@ impl ShaderPass {
         };
 
         #[cfg(native)]
-        device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let error_scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
 
         let fragment_module = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Shader Fragment Module"),
@@ -269,10 +269,10 @@ impl ShaderPass {
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Shader Pipeline Layout"),
             bind_group_layouts: &[
-                &MVPMatrix::bind_group_layout(device),
-                &self.bind_group_layout,
+                Some(&MVPMatrix::bind_group_layout(device)),
+                Some(&self.bind_group_layout),
             ],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
 
         let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -300,13 +300,13 @@ impl ShaderPass {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
         #[cfg(native)]
         {
-            if let Some(err) = wait_for_future(device, device.pop_error_scope()) {
+            if let Some(err) = wait_for_future(device, error_scope.pop()) {
                 return Err(err.to_string());
             }
         }

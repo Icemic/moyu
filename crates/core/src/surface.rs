@@ -117,17 +117,10 @@ pub async fn create_wgpu_surface(
         RenderingBackend::GLES => wgpu::Backends::GL,
     };
 
-    let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-        backends,
-        backend_options: wgpu::BackendOptions {
-            dx12: wgpu::Dx12BackendOptions {
-                shader_compiler: wgpu::Dx12Compiler::Fxc,
-                ..Default::default()
-            },
-            ..Default::default()
-        },
-        ..Default::default()
-    });
+    let mut instance_descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
+    instance_descriptor.backends = backends;
+    instance_descriptor.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::Fxc;
+    let instance = wgpu::Instance::new(instance_descriptor);
     let surface = instance
         .create_surface(window.clone())
         .expect("Failed to create surface.");

@@ -182,10 +182,10 @@ impl ShaderRenderer {
         let present_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Shader Present Pipeline Layout"),
             bind_group_layouts: &[
-                &MVPMatrix::bind_group_layout(device),
-                &present_bind_group_layout,
+                Some(&MVPMatrix::bind_group_layout(device)),
+                Some(&present_bind_group_layout),
             ],
-            push_constant_ranges: &[],
+            immediate_size: 0,
         });
         let present_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
             label: Some("Shader Present Pipeline"),
@@ -212,7 +212,7 @@ impl ShaderRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 

@@ -74,8 +74,8 @@ impl BlurPerfectFilterRenderer {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Blur Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&bind_group_layout)],
+            immediate_size: 0,
         });
 
         let horizontal_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -103,7 +103,7 @@ impl BlurPerfectFilterRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -132,7 +132,7 @@ impl BlurPerfectFilterRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -146,7 +146,7 @@ impl BlurPerfectFilterRenderer {
             // Must be linear for fast gaussian blur algorithm
             mag_filter: FilterMode::Linear,
             min_filter: FilterMode::Linear,
-            mipmap_filter: FilterMode::Linear,
+            mipmap_filter: MipmapFilterMode::Linear,
             ..Default::default()
         });
 
@@ -283,6 +283,7 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             pass.set_pipeline(&self.horizontal_pipeline);
@@ -332,6 +333,7 @@ impl FilterRenderer for BlurPerfectFilterRenderer {
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             pass.set_pipeline(&self.vertical_pipeline);

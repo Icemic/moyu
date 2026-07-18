@@ -141,20 +141,20 @@ impl BlurFilterRenderer {
 
         let pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Blur Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&bind_group_layout)],
+            immediate_size: 0,
         });
 
         let blit_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Blur Blit Pipeline Layout"),
-            bind_group_layouts: &[&blit_bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&blit_bind_group_layout)],
+            immediate_size: 0,
         });
 
         let blend_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Blur Blend Pipeline Layout"),
-            bind_group_layouts: &[&blit_bind_group_layout, &blend_bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&blit_bind_group_layout), Some(&blend_bind_group_layout)],
+            immediate_size: 0,
         });
 
         let horizontal_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -182,7 +182,7 @@ impl BlurFilterRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -211,7 +211,7 @@ impl BlurFilterRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -240,7 +240,7 @@ impl BlurFilterRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -269,7 +269,7 @@ impl BlurFilterRenderer {
             },
             depth_stencil: None,
             multisample: MultisampleState::default(),
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -280,7 +280,7 @@ impl BlurFilterRenderer {
             address_mode_w: AddressMode::MirrorRepeat,
             mag_filter: FilterMode::Linear,
             min_filter: FilterMode::Linear,
-            mipmap_filter: FilterMode::Linear,
+            mipmap_filter: MipmapFilterMode::Linear,
             ..Default::default()
         });
 

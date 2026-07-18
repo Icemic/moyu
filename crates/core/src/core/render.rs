@@ -96,7 +96,7 @@ impl Graphics {
 
         let renderers = Arc::new(Mutex::new(HashMap::default()));
 
-        let staging_belt = RefCell::new(StagingBelt::new(1024 * 10));
+        let staging_belt = RefCell::new(StagingBelt::new(device.clone(), 1024 * 10));
 
         let surface_logical_size = surface_size.logical_size_f32();
         let stage_logical_size = stage_size.logical_size_f32();
@@ -465,7 +465,7 @@ impl Graphics {
         Ok(())
     }
 
-    pub fn render(&self, block: bool) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&self, block: bool) -> Result<()> {
         let device = self.device.clone();
         let queue = self.queue.clone();
 
@@ -622,38 +622,29 @@ impl Graphics {
                     stage_logical_size: stage,
                     scale_factor: scale,
                 } => {
-                    let o = match self
-                        .surface
-                        .lock()
-                        .as_ref()
-                        .ok_or(wgpu::SurfaceError::Lost)
-                        .and_then(|surface| surface.get_current_texture())
-                    {
-                        Ok(v) => v,
-                        // Reconfigure the surface if lost
-                        Err(wgpu::SurfaceError::Lost) => {
-                            log::warn!("surface lost, reconfigure.");
-                            self.refresh();
-                            need_skip_current_frame = true;
-                            continue;
-                        }
-                        // The system is out of memory, we should probably quit
-                        Err(wgpu::SurfaceError::OutOfMemory) => {
-                            log::error!("surface out of memory, quit.");
-                            std::process::exit(1);
-                        }
-                        Err(wgpu::SurfaceError::Outdated) => {
-                            self.refresh();
-                            need_skip_current_frame = true;
-                            continue;
-                        }
-                        Err(wgpu::SurfaceError::Timeout) => {
-                            log::warn!("surface timeout, ignored.");
-                            need_skip_current_frame = true;
-                            continue;
-                        }
-                        Err(wgpu::SurfaceError::Other) => {
-                            log::warn!("surface other error, ignored.");
+                    let o = match self.surface.lock().as_ref() {
+                        Some(surface) => match surface.get_current_texture() {
+                            wgpu::CurrentSurfaceTexture::Success(frame) => frame,
+                            wgpu::CurrentSurfaceTexture::Lost
+                            | wgpu::CurrentSurfaceTexture::Outdated
+                            | wgpu::CurrentSurfaceTexture::Suboptimal(_) => {
+                                log::warn!("surface needs reconfiguration.");
+                                self.refresh();
+                                need_skip_current_frame = true;
+                                continue;
+                            }
+                            wgpu::CurrentSurfaceTexture::Timeout
+                            | wgpu::CurrentSurfaceTexture::Occluded => {
+                                need_skip_current_frame = true;
+                                continue;
+                            }
+                            wgpu::CurrentSurfaceTexture::Validation => {
+                                log::error!("surface validation error, frame skipped.");
+                                need_skip_current_frame = true;
+                                continue;
+                            }
+                        },
+                        None => {
                             need_skip_current_frame = true;
                             continue;
                         }
@@ -799,7 +790,6 @@ impl Graphics {
                                 &buffer,
                                 offset,
                                 (data.len() as u64).try_into().unwrap(),
-                                &device,
                             )
                             .copy_from_slice(&data);
                     } else {

@@ -29,7 +29,7 @@ cfg_aliases = "0.2.1"
 csscolorparser = {version = "0.8", features = ["serde"]}
 dashmap = "6.1.0"
 glam = {version = "0.32", features = ["bytemuck"]}
-huozi = "0.16"
+huozi = "0.17"
 image = {version = "0.25", default-features = false, features = ["bmp", "jpeg", "png", "webp"]}
 log = "0.4"
 quickjs-rusty = "0.13"
@@ -43,7 +43,7 @@ wasm-bindgen = {version = "0.2", default-features = false}
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
 web-time = "1.1"
-wgpu = {version = "27.0", features = ["fragile-send-sync-non-atomic-wasm", "webgl"]}
+wgpu = {version = "29.0", features = ["fragile-send-sync-non-atomic-wasm", "webgl"]}
 winit = "0.30"
 zip = {version = "8.5.1", default-features = false, features = ["zstd"]}
 
