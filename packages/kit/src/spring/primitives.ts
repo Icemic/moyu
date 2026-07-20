@@ -3,6 +3,8 @@ export type Primitives = keyof JSX.IntrinsicElements;
 
 export const primitives: Primitives[] = [
   'container',
+  'vbox',
+  'hbox',
   'sprite',
   'text',
   'clip',

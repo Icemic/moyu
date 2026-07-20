@@ -6,6 +6,8 @@ import type { MouseEvent } from './events/mouse';
 import type { TouchEvent } from './events/touch';
 import type { KeyboardEvent } from './events/keyboard';
 import type { NodeProps } from './bindings/NodeProps';
+import type { VBoxProps } from './bindings/VBoxProps';
+import type { HBoxProps } from './bindings/HBoxProps';
 import type { ClipProps } from './bindings/ClipProps';
 import type { FilterProps } from './bindings/FilterProps';
 import type { BackdropProps } from './bindings/BackdropProps';
@@ -51,6 +53,8 @@ export type MoyuNodeAttributes = MoyuListenerAttributes &
   };
 
 export type MoyuContainerAttributes = MoyuNodeAttributes;
+export type MoyuVBoxAttributes = VBoxProps & MoyuNodeAttributes;
+export type MoyuHBoxAttributes = HBoxProps & MoyuNodeAttributes;
 export type MoyuClipAttributes = ClipProps & MoyuNodeAttributes;
 export type MoyuFilterAttributes = FilterProps & MoyuNodeAttributes;
 export type MoyuBackdropAttributes = BackdropProps & MoyuNodeAttributes;
@@ -93,6 +97,8 @@ export declare namespace JSX {
 
   interface IntrinsicElements {
     container: DetailedMoyuProps<MoyuContainerAttributes>;
+    vbox: DetailedMoyuProps<MoyuVBoxAttributes>;
+    hbox: DetailedMoyuProps<MoyuHBoxAttributes>;
     sprite: DetailedMoyuProps<MoyuSpriteAttributes>;
     text: DetailedMoyuProps<MoyuTextAttributes>;
     clip: DetailedMoyuProps<MoyuClipAttributes>;
