@@ -2,12 +2,14 @@ use anyhow::Result;
 use log::warn;
 use moyu_core::core::NodeLock;
 use moyu_core::nodes::NodeBase;
-use moyu_core::traits::{Node, NodeBaseTrait};
+use moyu_core::traits::{Node, NodeBaseTrait, NodeEventSource};
 use moyu_core::utils::convert::{JSValue, from_js};
 use moyu_core::utils::patch::Patch;
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+
+use crate::events::LayoutEvent;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "kebab-case")]
@@ -328,7 +330,13 @@ impl Node for VBox {
     fn measure(&mut self) {
         let children = self.base().children().clone();
         let size = self.layout.measured_size(&children, Axis::Vertical);
-        self.base_mut().set_layout_size(size.0, size.1);
+        if self.base().layout_size() != size {
+            self.base_mut().set_layout_size(size.0, size.1);
+            self.send_event(LayoutEvent {
+                width: size.0,
+                height: size.1,
+            });
+        }
     }
 
     fn arrange(&mut self) {
@@ -336,6 +344,10 @@ impl Node for VBox {
         self.layout
             .arrange(&children, self.base().layout_size(), Axis::Vertical);
     }
+}
+
+impl NodeEventSource for VBox {
+    type Event = LayoutEvent;
 }
 
 #[derive(Debug, Default, Node)]
@@ -377,7 +389,13 @@ impl Node for HBox {
     fn measure(&mut self) {
         let children = self.base().children().clone();
         let size = self.layout.measured_size(&children, Axis::Horizontal);
-        self.base_mut().set_layout_size(size.0, size.1);
+        if self.base().layout_size() != size {
+            self.base_mut().set_layout_size(size.0, size.1);
+            self.send_event(LayoutEvent {
+                width: size.0,
+                height: size.1,
+            });
+        }
     }
 
     fn arrange(&mut self) {
@@ -385,4 +403,8 @@ impl Node for HBox {
         self.layout
             .arrange(&children, self.base().layout_size(), Axis::Horizontal);
     }
+}
+
+impl NodeEventSource for HBox {
+    type Event = LayoutEvent;
 }
