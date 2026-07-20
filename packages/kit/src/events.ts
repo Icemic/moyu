@@ -20,6 +20,7 @@ export * from './bindings/GamepadEvent';
 export * from './bindings/GamepadHapticActuator';
 export * from './bindings/KeyboardEventKind';
 export * from './bindings/KeyboardLocation';
+export * from './bindings/LayoutEvent';
 export * from './bindings/Literal';
 export * from './bindings/MouseEventKind';
 export * from './bindings/NodeEvent';

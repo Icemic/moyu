@@ -11,6 +11,7 @@ export * from './commands';
 export * from './gameState';
 export * from './runtime-globals';
 export * from './components/navigation';
+export * from './components/scroll-view';
 export * from './debug';
 export * from './hooks';
 export * from './ui';

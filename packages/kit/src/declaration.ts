@@ -5,6 +5,8 @@ import type { BubbleEvent } from './events/base';
 import type { MouseEvent } from './events/mouse';
 import type { TouchEvent } from './events/touch';
 import type { KeyboardEvent } from './events/keyboard';
+import type { WheelEvent } from './events/wheel';
+import type { LayoutEvent } from './bindings/LayoutEvent';
 import type { NodeProps } from './bindings/NodeProps';
 import type { VBoxProps } from './bindings/VBoxProps';
 import type { HBoxProps } from './bindings/HBoxProps';
@@ -41,6 +43,7 @@ export interface MoyuListenerAttributes {
   onKeyDown?: MoyuEventHandler<KeyboardEvent>;
   onKeyUp?: MoyuEventHandler<KeyboardEvent>;
   onKeyPress?: MoyuEventHandler<KeyboardEvent>;
+  onWheel?: MoyuEventHandler<WheelEvent>;
   onTouchStart?: MoyuEventHandler<TouchEvent>;
   onTouchMove?: MoyuEventHandler<TouchEvent>;
   onTouchEnd?: MoyuEventHandler<TouchEvent>;
@@ -53,8 +56,8 @@ export type MoyuNodeAttributes = MoyuListenerAttributes &
   };
 
 export type MoyuContainerAttributes = MoyuNodeAttributes;
-export type MoyuVBoxAttributes = VBoxProps & MoyuNodeAttributes;
-export type MoyuHBoxAttributes = HBoxProps & MoyuNodeAttributes;
+export type MoyuVBoxAttributes = VBoxProps & MoyuNodeAttributes & { onLayout?: (event: LayoutEvent) => void };
+export type MoyuHBoxAttributes = HBoxProps & MoyuNodeAttributes & { onLayout?: (event: LayoutEvent) => void };
 export type MoyuClipAttributes = ClipProps & MoyuNodeAttributes;
 export type MoyuFilterAttributes = FilterProps & MoyuNodeAttributes;
 export type MoyuBackdropAttributes = BackdropProps & MoyuNodeAttributes;
