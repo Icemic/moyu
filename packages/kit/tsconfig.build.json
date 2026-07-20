@@ -3,7 +3,12 @@
   "compilerOptions": {
     "lib": ["ESNext"],
     "types": [],
-    "sourceMap": false
+    "sourceMap": false,
+    "jsxImportSource": "@momoyu-ink/kit",
+    "paths": {
+      "@momoyu-ink/kit/jsx-runtime": ["./src/jsx-runtime.ts"],
+      "@momoyu-ink/kit/jsx-dev-runtime": ["./src/jsx-dev-runtime.ts"]
+    }
   },
   "include": ["src"],
   "exclude": ["dist"]

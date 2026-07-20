@@ -4,7 +4,11 @@
     "lib": ["ESNext"],
     "types": [],
     "jsx": "react-jsx",
-    "jsxImportSource": "@momoyu-ink/kit"
+    "jsxImportSource": "@momoyu-ink/kit",
+    "paths": {
+      "@momoyu-ink/kit/jsx-runtime": ["./src/jsx-runtime.ts"],
+      "@momoyu-ink/kit/jsx-dev-runtime": ["./src/jsx-dev-runtime.ts"]
+    }
   },
   "include": ["src", "stories", "tsup.config.ts"],
   "exclude": ["dist"]
