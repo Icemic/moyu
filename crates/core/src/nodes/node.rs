@@ -20,10 +20,14 @@ pub struct NodeBase {
     label: String,
     /// id
     id: u32,
-    /// calculated width of the node
-    width: u32,
-    /// calculated height of the node
-    height: u32,
+    /// Natural width produced by node content or renderer preparation.
+    intrinsic_width: f32,
+    /// Natural height produced by node content or renderer preparation.
+    intrinsic_height: f32,
+    /// Final width used by layout, transforms, and rendering.
+    layout_width: f32,
+    /// Final height used by layout, transforms, and rendering.
+    layout_height: f32,
     /// anchor point
     anchor: Point,
     /// pivot point
@@ -74,8 +78,10 @@ impl NodeBase {
         Self {
             label,
             id,
-            width: 0,
-            height: 0,
+            intrinsic_width: 0.0,
+            intrinsic_height: 0.0,
+            layout_width: 0.0,
+            layout_height: 0.0,
             anchor: Point::default(),
             pivot: Point::default(),
             translate: Point::default(),
@@ -141,12 +147,20 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn width(&self) -> &u32 {
-        &self.width
+    pub fn width(&self) -> &f32 {
+        &self.layout_width
     }
     #[inline]
-    pub fn height(&self) -> &u32 {
-        &self.height
+    pub fn height(&self) -> &f32 {
+        &self.layout_height
+    }
+    #[inline]
+    pub fn intrinsic_size(&self) -> (f32, f32) {
+        (self.intrinsic_width, self.intrinsic_height)
+    }
+    #[inline]
+    pub fn layout_size(&self) -> (f32, f32) {
+        (self.layout_width, self.layout_height)
     }
     #[inline]
     pub fn anchor(&self) -> &Point {
@@ -208,19 +222,37 @@ impl NodeBase {
     }
 
     #[inline]
-    pub fn set_size(&mut self, width: u32, height: u32) {
-        self.width = width;
-        self.height = height;
+    pub fn set_intrinsic_size(&mut self, width: f32, height: f32) {
+        if self.intrinsic_width == width && self.intrinsic_height == height {
+            return;
+        }
+        self.intrinsic_width = width;
+        self.intrinsic_height = height;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_width(&mut self, width: u32) {
-        self.width = width;
+    pub fn set_intrinsic_width(&mut self, width: f32) {
+        if self.intrinsic_width == width {
+            return;
+        }
+        self.intrinsic_width = width;
         self._update_id += 1;
     }
     #[inline]
-    pub fn set_height(&mut self, height: u32) {
-        self.height = height;
+    pub fn set_intrinsic_height(&mut self, height: f32) {
+        if self.intrinsic_height == height {
+            return;
+        }
+        self.intrinsic_height = height;
+        self._update_id += 1;
+    }
+    #[inline]
+    pub fn set_layout_size(&mut self, width: f32, height: f32) {
+        if self.layout_width == width && self.layout_height == height {
+            return;
+        }
+        self.layout_width = width;
+        self.layout_height = height;
         self._update_id += 1;
     }
     #[inline]
@@ -417,7 +449,7 @@ impl NodeBase {
     }
 
     pub fn calculate_content_bounds(&mut self) {
-        let mut bounds = Bound::new(0.0, 0.0, self.width as f32, self.height as f32);
+        let mut bounds = Bound::new(0.0, 0.0, self.layout_width, self.layout_height);
         for child in &self.children {
             let child_read = child.read();
             let child_base = child_read.base();
@@ -441,10 +473,10 @@ impl NodeBase {
             let skew_x = self.skew.x;
             let skew_y = self.skew.y;
 
-            let pivot_x = self.pivot.x * self.width as f32;
-            let pivot_y = self.pivot.y * self.height as f32;
-            let anchor_x = self.anchor.x * parent.width as f32;
-            let anchor_y = self.anchor.y * parent.height as f32;
+            let pivot_x = self.pivot.x * self.layout_width;
+            let pivot_y = self.pivot.y * self.layout_height;
+            let anchor_x = self.anchor.x * parent.layout_width;
+            let anchor_y = self.anchor.y * parent.layout_height;
 
             let a = (rotation + skew_y).cos() * scale_x;
             let b = (rotation + skew_y).sin() * scale_x;

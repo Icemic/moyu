@@ -94,8 +94,8 @@ impl Node for Backdrop {
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: BackdropProps = from_js(props).unwrap();
         apply_patch!(props.filters => self.filters, Vec::new());
-        apply_patch!(props.width => |v| self.base_mut().set_width(v), 0);
-        apply_patch!(props.height => |v| self.base_mut().set_height(v), 0);
+        apply_patch!(props.width => |v| self.base_mut().set_intrinsic_width(v as f32), 0);
+        apply_patch!(props.height => |v| self.base_mut().set_intrinsic_height(v as f32), 0);
         self.base_mut().pend_update();
     }
 

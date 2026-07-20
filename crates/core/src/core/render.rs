@@ -413,6 +413,10 @@ impl Graphics {
         {
             let root_node = self.node_map.get(&0).unwrap();
             let mut root_node = root_node.upgradable_read();
+            root_node.with_upgraded(|node| {
+                node.base_mut()
+                    .set_layout_size(stage_logical_size.0, stage_logical_size.1);
+            });
             let upload_payload = RendererUpdatePayload {
                 timestamp,
                 resource_manager: self.resource_manager.clone(),
@@ -454,6 +458,7 @@ impl Graphics {
                 &mut |child, _, collect_command| {
                     {
                         let mut _child = child.write();
+                        _child.measure();
                         _child.base_mut().calculate_content_bounds();
                     }
 

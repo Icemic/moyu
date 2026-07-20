@@ -345,7 +345,7 @@ impl VideoRenderer {
         node.current_format = Some(format);
 
         // Reset size to force recalculation
-        node.base_mut().set_size(0, 0);
+        node.base_mut().set_intrinsic_size(0.0, 0.0);
     }
 
     /// Upload YUV frame data to GPU textures.
@@ -675,8 +675,9 @@ impl Renderer for VideoRenderer {
             // Update node size
             {
                 let base = node.base();
-                if base.width() == &0 && base.height() == &0 {
-                    node.base_mut().set_size(width, height);
+                if base.intrinsic_size() == (0.0, 0.0) {
+                    node.base_mut()
+                        .set_intrinsic_size(width as f32, height as f32);
                 }
             }
         }

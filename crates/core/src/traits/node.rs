@@ -47,6 +47,17 @@ pub trait Node: NodeBaseTrait + Debug + Send + Sync {
     /// inherited size, before transform and anchor calculations run.
     fn pre_update(&mut self, _parent: &NodeBase) {}
 
+    /// Resolve this node's final layout size after its children have been measured.
+    fn measure(&mut self) {
+        let (width, height) = self.base().intrinsic_size();
+        self.base_mut().set_layout_size(width, height);
+    }
+
+    /// Whether this node contributes its layout rectangle to an auto-sized parent.
+    fn participates_in_parent_measure(&self) -> bool {
+        true
+    }
+
     /// Whether this node shadows part of its subtree lifecycle for the given kind.
     ///
     /// Shadowing means the parent node is intentionally taking over that aspect

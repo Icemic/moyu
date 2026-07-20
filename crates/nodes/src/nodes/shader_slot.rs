@@ -99,8 +99,14 @@ impl Node for ShaderSlot {
         let height = *parent.height();
 
         if *self.base().width() != width || *self.base().height() != height {
-            self.base_mut().set_size(width, height);
+            self.base_mut().set_layout_size(width, height);
         }
+    }
+
+    fn measure(&mut self) {}
+
+    fn participates_in_parent_measure(&self) -> bool {
+        false
     }
 
     fn update_properties(&mut self, props: &mut JSValue) {

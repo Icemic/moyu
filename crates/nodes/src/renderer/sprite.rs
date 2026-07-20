@@ -341,7 +341,7 @@ impl Renderer for SpriteRenderer {
             if TextureStatus::Ready == texture.status() {
                 node.texture_id.store(node.next_texture_id.swap(None));
                 // clean base node size, and re-assign it later
-                node.base_mut().set_size(0, 0);
+                node.base_mut().set_intrinsic_size(0.0, 0.0);
             }
         }
 
@@ -358,20 +358,23 @@ impl Renderer for SpriteRenderer {
             {
                 // set size if not set
                 let node_base = node.base();
-                if node_base.width() == &0 && node_base.height() == &0 {
+                if node_base.intrinsic_size() == (0.0, 0.0) {
                     match node.mode {
                         SpriteMode::Normal => {
                             let [x1, y1, x2, y2] = node.area;
                             let (tex_width, tex_height) = texture.size();
-                            node.base_mut().set_size(
-                                (tex_width as f32 * (x2 - x1)).round() as u32,
-                                (tex_height as f32 * (y2 - y1)).round() as u32,
+                            node.base_mut().set_intrinsic_size(
+                                tex_width as f32 * (x2 - x1),
+                                tex_height as f32 * (y2 - y1),
                             );
                         }
                         SpriteMode::Nineslice => {
                             let target_width = node.target_width;
                             let target_height = node.target_height;
-                            node.base_mut().set_size(target_width, target_height);
+                            node.base_mut().set_intrinsic_size(
+                                target_width as f32,
+                                target_height as f32,
+                            );
                         }
                     }
                 }

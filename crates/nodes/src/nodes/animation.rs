@@ -137,7 +137,7 @@ impl Node for Animation {
         apply_patch!(props.area => |area| {
             self.area = area;
             // clean base node size, and re-assign it in renderer
-            self.base_mut().set_size(0, 0);
+            self.base_mut().set_intrinsic_size(0.0, 0.0);
         }, [0.0, 0.0, 1.0, 1.0]);
 
         apply_patch!(props.format => self.format, AnimationFormat::default());

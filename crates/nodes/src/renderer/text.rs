@@ -422,8 +422,8 @@ impl Renderer for TextRenderer {
                     // this will trigger another relayout which is in fact unnecessary.
                     // What we need is to update the vertices only (base_mut().update() is called before
                     // child's update, so we have to emit update again).
-                    if node.base_mut().width() != &total_width
-                        || node.base_mut().height() != &total_height
+                    if node.base().intrinsic_size()
+                        != (total_width as f32, total_height as f32)
                     {
                         // But the second transform pass is only
                         // needed when pivot depends on the current size.
@@ -432,7 +432,8 @@ impl Renderer for TextRenderer {
                             pivot.x != 0.0 || pivot.y != 0.0
                         };
 
-                        node.base_mut().set_size(total_width, total_height);
+                        node.base_mut()
+                            .set_intrinsic_size(total_width as f32, total_height as f32);
                         node.base_mut().calculate_content_bounds();
 
                         if needs_transform_refresh {

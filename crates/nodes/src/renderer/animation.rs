@@ -279,7 +279,7 @@ impl Renderer for AnimationRenderer {
             // TODO: reset states
 
             // reset size to let it be recalculated
-            node.base_mut().set_size(0, 0);
+            node.base_mut().set_intrinsic_size(0.0, 0.0);
         }
 
         if node.view.is_some() {
@@ -290,12 +290,12 @@ impl Renderer for AnimationRenderer {
             {
                 // set size if not set
                 let node_base = node.base();
-                if node_base.width() == &0 && node_base.height() == &0 {
+                if node_base.intrinsic_size() == (0.0, 0.0) {
                     let [x1, y1, x2, y2] = node.area;
                     let size = texture.size();
-                    node.base_mut().set_size(
-                        (size.width as f32 * (x2 - x1)).round() as u32,
-                        (size.height as f32 * (y2 - y1)).round() as u32,
+                    node.base_mut().set_intrinsic_size(
+                        size.width as f32 * (x2 - x1),
+                        size.height as f32 * (y2 - y1),
                     );
                 }
             }

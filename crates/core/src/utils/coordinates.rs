@@ -12,8 +12,8 @@ pub fn calculate_bounding_box(
     let base = node.base();
     let x = base.translate().x;
     let y = base.translate().y;
-    let width = *base.width() as f32;
-    let height = *base.height() as f32;
+    let width = *base.width();
+    let height = *base.height();
 
     // check for invalid dimensions
     if x + width <= 0.0 || y + height <= 0.0 || x >= bound_width || y >= bound_height {
