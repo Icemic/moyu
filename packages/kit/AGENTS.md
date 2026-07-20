@@ -259,6 +259,8 @@ Sandbox 为剧本表达式提供受控求值环境：
 | 组件          | 用途     | 关键 Props                                   |
 | ------------- | -------- | -------------------------------------------- |
 | `<container>` | 容器     | 基础变换属性                                 |
+| `<vbox>`      | 纵向布局 | `width`, `height`, `gap`, `padding`, `justifyContent`, `alignItems` |
+| `<hbox>`      | 横向布局 | `width`, `height`, `gap`, `padding`, `justifyContent`, `alignItems` |
 | `<sprite>`    | 图片精灵 | `src`, `area`, `mode`, `bounds`              |
 | `<text>`      | 文本     | `text`, `fontSize`, `fillColor`, `printMode`, `onFinish`, `onProgress` |
 | `<clip>`      | 裁剪     | 区域尺寸                                     |
