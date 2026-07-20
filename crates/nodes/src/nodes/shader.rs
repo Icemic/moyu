@@ -214,6 +214,8 @@ pub(crate) struct ShaderSlotLayout {
 
 #[derive(Debug, Node)]
 pub struct Shader {
+    width: Option<f32>,
+    height: Option<f32>,
     pub(crate) shader: ShaderSource,
     pub(crate) time_control: ShaderTimeControl,
     pub(crate) display_channel: Option<u32>,
@@ -278,6 +280,8 @@ pub struct Shader {
 impl Default for Shader {
     fn default() -> Self {
         Self {
+            width: None,
+            height: None,
             shader: ShaderSource::default(),
             time_control: ShaderTimeControl::Auto,
             display_channel: None,
@@ -915,6 +919,8 @@ impl ShaderSource {
 #[serde(rename_all = "camelCase", default)]
 #[ts(export, optional_fields)]
 pub struct ShaderProps {
+    pub width: Patch<f32>,
+    pub height: Patch<f32>,
     pub shader: Patch<ShaderSource>,
     pub time_control: Patch<ShaderTimeControl>,
     pub display_channel: Patch<Option<u32>>,
@@ -951,19 +957,24 @@ impl Node for Shader {
         "shader"
     }
 
-    fn pre_update(&mut self, parent: &NodeBase) {
-        let width = *parent.width();
-        let height = *parent.height();
+    fn measure(&mut self) {
+        let mut content_width = 0.0_f32;
+        let mut content_height = 0.0_f32;
 
-        if *self.base().width() != width || *self.base().height() != height {
-            self.base_mut().set_layout_size(width, height);
+        for child in self.base().children() {
+            let child = child.read();
+            let Some(slot) = child.as_any().downcast_ref::<super::ShaderSlot>() else {
+                continue;
+            };
+            if !slot.empty && matches!(slot.space, ShaderSlotSpace::Normal) {
+                content_width = content_width.max(slot.content_layout_size.0);
+                content_height = content_height.max(slot.content_layout_size.1);
+            }
         }
-    }
 
-    fn measure(&mut self) {}
-
-    fn participates_in_parent_measure(&self) -> bool {
-        false
+        let width = self.width.unwrap_or(content_width);
+        let height = self.height.unwrap_or(content_height);
+        self.base_mut().set_layout_size(width, height);
     }
 
     fn update_properties(&mut self, props: &mut JSValue) {
@@ -978,6 +989,37 @@ impl Node for Shader {
                 return;
             }
         };
+
+        let node_id = *self.base().id();
+        match props.width {
+            Patch::Set(width) if width.is_finite() && width >= 0.0 => self.width = Some(width),
+            Patch::Set(width) => {
+                log::warn!(
+                    "shader node {}: width must be finite and non-negative, got {}; using 0",
+                    node_id,
+                    width
+                );
+                self.width = Some(0.0);
+            }
+            Patch::Reset => self.width = None,
+            Patch::Missing => {}
+        }
+
+        match props.height {
+            Patch::Set(height) if height.is_finite() && height >= 0.0 => {
+                self.height = Some(height);
+            }
+            Patch::Set(height) => {
+                log::warn!(
+                    "shader node {}: height must be finite and non-negative, got {}; using 0",
+                    node_id,
+                    height
+                );
+                self.height = Some(0.0);
+            }
+            Patch::Reset => self.height = None,
+            Patch::Missing => {}
+        }
 
         match props.shader {
             Patch::Set(shader) => {

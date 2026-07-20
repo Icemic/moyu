@@ -2,4 +2,10 @@
 import type { ShaderSource } from './ShaderSource';
 import type { ShaderTimeControl } from './ShaderTimeControl';
 
-export type ShaderProps = { shader?: ShaderSource; timeControl?: ShaderTimeControl; displayChannel?: number | null };
+export type ShaderProps = {
+  width?: number;
+  height?: number;
+  shader?: ShaderSource;
+  timeControl?: ShaderTimeControl;
+  displayChannel?: number | null;
+};

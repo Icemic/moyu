@@ -35,6 +35,7 @@ pub struct ShaderSlot {
     pub(crate) render_rect: Rect,
     pub(crate) render_content_origin: (f32, f32),
     pub(crate) render_children: bool,
+    pub(crate) content_layout_size: (f32, f32),
 
     #[base]
     node_base: NodeBase,
@@ -54,6 +55,7 @@ impl Default for ShaderSlot {
             render_rect: Rect::default(),
             render_content_origin: (0.0, 0.0),
             render_children: true,
+            content_layout_size: (0.0, 0.0),
             node_base: NodeBase::default(),
         }
     }
@@ -94,16 +96,27 @@ impl Node for ShaderSlot {
         "shader-slot"
     }
 
-    fn pre_update(&mut self, parent: &NodeBase) {
-        let width = *parent.width();
-        let height = *parent.height();
+    fn measure(&mut self) {
+        let mut width = 0.0_f32;
+        let mut height = 0.0_f32;
 
-        if *self.base().width() != width || *self.base().height() != height {
-            self.base_mut().set_layout_size(width, height);
+        for child in self.base().children() {
+            let child = child.read();
+            if !child.participates_in_parent_measure() {
+                continue;
+            }
+
+            let child_base = child.base();
+            let (child_width, child_height) = child_base.layout_size();
+            let child_pivot = child_base.pivot();
+            width = width.max(child_base.translate().x - child_pivot.x * child_width + child_width);
+            height =
+                height.max(child_base.translate().y - child_pivot.y * child_height + child_height);
         }
-    }
 
-    fn measure(&mut self) {}
+        self.content_layout_size = (width, height);
+        self.base_mut().set_layout_size(0.0, 0.0);
+    }
 
     fn participates_in_parent_measure(&self) -> bool {
         false
@@ -124,5 +137,22 @@ impl Node for ShaderSlot {
         match kind {
             ShadowKind::Rendering => !self.render_children,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shader_slot_keeps_zero_layout_size_without_children() {
+        let mut slot = ShaderSlot::default();
+        slot.base_mut().set_layout_size(320.0, 180.0);
+
+        slot.measure();
+
+        assert_eq!(slot.content_layout_size, (0.0, 0.0));
+        assert_eq!(slot.base().layout_size(), (0.0, 0.0));
+        assert!(!slot.participates_in_parent_measure());
     }
 }

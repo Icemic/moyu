@@ -7,6 +7,7 @@ use moyu_core::core::render_command::RenderCommand;
 use moyu_core::traits::{
     Node, NodeBaseTrait, RenderCommandSender, Renderer, RendererUpdatePayload,
 };
+use moyu_core::utils::coordinates::calculate_layout_rect;
 use wgpu::*;
 
 use super::pass::{ShaderPass, ShaderPassBuiltins};
@@ -432,6 +433,11 @@ impl ShaderRenderer {
             }
         }
 
+        let layout_rect = calculate_layout_rect(
+            shader,
+            payload.stage_logical_size.0,
+            payload.stage_logical_size.1,
+        );
         let resolved_rect = resolve_shader_rect(stage_rect, &slots.descriptors).or_else(|| {
             if slots
                 .descriptors
@@ -441,9 +447,13 @@ impl ShaderRenderer {
             {
                 if shader.shader_rect.width() > 0.0 && shader.shader_rect.height() > 0.0 {
                     Some(shader.shader_rect)
+                } else if layout_rect.width() > 0.0 && layout_rect.height() > 0.0 {
+                    Some(layout_rect)
                 } else {
                     Some(stage_rect)
                 }
+            } else if layout_rect.width() > 0.0 && layout_rect.height() > 0.0 {
+                Some(layout_rect)
             } else {
                 None
             }
@@ -779,6 +789,11 @@ impl ShaderRenderer {
             .and_then(|channel| slots.descriptors[channel])
             .filter(|slot| !slot.empty)
             .and_then(|slot| slot.bounds);
+        let layout_rect = calculate_layout_rect(
+            shader,
+            payload.stage_logical_size.0,
+            payload.stage_logical_size.1,
+        );
 
         if shader.is_active() {
             if let Some(rect) = resolve_transition_rect(stage_rect, from_bounds, to_bounds) {
@@ -804,12 +819,16 @@ impl ShaderRenderer {
                 shader.render_height = metrics.height;
                 shader.render_sample_max_uv = metrics.sample_max_uv;
             } else if has_to_slot {
-                let rect = Rect::new(
-                    stage_rect.x(),
-                    stage_rect.y(),
-                    BOOTSTRAP_RECT_SIZE.min(stage_rect.width()),
-                    BOOTSTRAP_RECT_SIZE.min(stage_rect.height()),
-                );
+                let rect = if layout_rect.width() > 0.0 && layout_rect.height() > 0.0 {
+                    layout_rect
+                } else {
+                    Rect::new(
+                        stage_rect.x(),
+                        stage_rect.y(),
+                        BOOTSTRAP_RECT_SIZE.min(stage_rect.width()),
+                        BOOTSTRAP_RECT_SIZE.min(stage_rect.height()),
+                    )
+                };
                 let Some(metrics) = resolve_render_metrics(
                     rect,
                     payload.stage_logical_size,

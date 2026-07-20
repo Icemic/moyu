@@ -165,7 +165,7 @@ impl LinearLayout {
 
         if has_unsupported_child && !self.warned_unsupported_child {
             warn!(
-                "Shader and ShaderSlot nodes cannot be direct VBox/HBox children; they use zero layout space"
+                "ShaderSlot nodes cannot be direct VBox/HBox children; they use zero layout space"
             );
         }
         self.warned_unsupported_child = has_unsupported_child;

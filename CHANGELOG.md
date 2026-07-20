@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 2. Implement mipmap support and enable mipmap generation in texture loading
 3. Add VBox and HBox nodes with automatic sizing, padding, gaps, and alignment options.
 4. Add layout events and Kit ScrollView support for content-sized scrolling.
+5. Add content-based Shader layout sizing with optional explicit width and height.
 
 ### Fixed
 
