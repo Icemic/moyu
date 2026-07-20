@@ -260,7 +260,7 @@ impl Node for Text {
         }
 
         // force update vertices
-        self.base_mut().pend_update();
+        self.base_mut().pend_prepare();
     }
 
     fn as_focusable(&self) -> Option<&dyn Focusable> {
@@ -295,7 +295,7 @@ impl Command for Text {
                         self.print_start_time = None;
                     }
                 }
-                self.base_mut().pend_update();
+                self.base_mut().pend_prepare();
             }
             TextCommand::FinishPrinting => {
                 // Set to f64::MIN to make renderer feel it's finished.

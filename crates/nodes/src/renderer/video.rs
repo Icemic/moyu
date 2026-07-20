@@ -558,13 +558,12 @@ impl Renderer for VideoRenderer {
         &self.bind_group_layout
     }
 
-    fn update(
+    fn prepare(
         &mut self,
         node: &mut dyn Node,
         device: &Device,
-        queue: &Queue,
-        render_queue: &RenderCommandSender,
-        _payload: &RendererUpdatePayload,
+        _: &Queue,
+        _: &RendererUpdatePayload,
     ) {
         let node = node.as_any_mut().downcast_mut::<Video>().unwrap();
 
@@ -620,66 +619,57 @@ impl Renderer for VideoRenderer {
             }
         }
 
-        // Tick the player to advance decode state
-        {
+        let current_state = {
             let mut player = node.player.lock();
             player.tick();
-
-            // Detect state changes and emit events
-            let current_state = player.state();
-            if current_state != node.prev_state {
-                let state_str = match current_state {
-                    PlaybackState::Idle => "idle",
-                    PlaybackState::Loading => "loading",
-                    PlaybackState::Playing => "playing",
-                    PlaybackState::Paused => "paused",
-                    PlaybackState::Stopped => "stopped",
-                    PlaybackState::Ended => "ended",
-                    PlaybackState::Error => "error",
-                };
-                node.prev_state = current_state;
-                // Drop the lock before sending events to avoid deadlock
-                drop(player);
-                node.send_event(VideoEvent::StateChange(state_str.to_string()));
-                if current_state == PlaybackState::Ended {
-                    node.send_event(VideoEvent::Ended);
-                }
+            player.state()
+        };
+        if current_state != node.prev_state {
+            let state_str = match current_state {
+                PlaybackState::Idle => "idle",
+                PlaybackState::Loading => "loading",
+                PlaybackState::Playing => "playing",
+                PlaybackState::Paused => "paused",
+                PlaybackState::Stopped => "stopped",
+                PlaybackState::Ended => "ended",
+                PlaybackState::Error => "error",
+            };
+            node.prev_state = current_state;
+            node.send_event(VideoEvent::StateChange(state_str.to_string()));
+            if current_state == PlaybackState::Ended {
+                node.send_event(VideoEvent::Ended);
             }
         }
 
-        // Skip texture upload if playback has ended
-        {
-            let player = node.player.lock();
-            if player.state() == PlaybackState::Ended {
-                return;
-            }
+        if current_state == PlaybackState::Ended {
+            return;
         }
 
-        // Get the current frame and upload to GPU
+        let frame = node.player.lock().current_frame();
+        if let Some(frame) = frame {
+            self.ensure_textures(node, device, frame.width, frame.height, frame.format);
+            node.base_mut()
+                .set_intrinsic_size(frame.width as f32, frame.height as f32);
+        }
+    }
+
+    fn update(
+        &mut self,
+        node: &mut dyn Node,
+        device: &Device,
+        queue: &Queue,
+        render_queue: &RenderCommandSender,
+        _payload: &RendererUpdatePayload,
+    ) {
+        let node = node.as_any_mut().downcast_mut::<Video>().unwrap();
+
         let frame = {
             let player = node.player.lock();
             player.current_frame()
         };
 
         if let Some(frame) = frame {
-            let width = frame.width;
-            let height = frame.height;
-            let format = frame.format;
-
-            // Ensure textures exist at the right size and format
-            self.ensure_textures(node, device, width, height, format);
-
-            // Upload frame to GPU
             self.upload_frame(node, queue, &frame);
-
-            // Update node size
-            {
-                let base = node.base();
-                if base.intrinsic_size() == (0.0, 0.0) {
-                    node.base_mut()
-                        .set_intrinsic_size(width as f32, height as f32);
-                }
-            }
         }
 
         // Update vertex buffer if needed

@@ -311,17 +311,13 @@ impl Renderer for SpriteRenderer {
         &self.bind_group_layout
     }
 
-    fn update(
+    fn prepare(
         &mut self,
         node: &mut dyn Node,
-        device: &Device,
+        _: &Device,
         _: &Queue,
-        render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     ) {
-        // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
-        // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
-
         let node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
 
         if let Some(next_src) = node.next_src.take() {
@@ -342,6 +338,7 @@ impl Renderer for SpriteRenderer {
                 node.texture_id.store(node.next_texture_id.swap(None));
                 // clean base node size, and re-assign it later
                 node.base_mut().set_intrinsic_size(0.0, 0.0);
+                node.base_mut().mark_update_vertices();
             }
         }
 
@@ -355,29 +352,39 @@ impl Renderer for SpriteRenderer {
                 return;
             }
 
-            {
-                // set size if not set
-                let node_base = node.base();
-                if node_base.intrinsic_size() == (0.0, 0.0) {
-                    match node.mode {
-                        SpriteMode::Normal => {
-                            let [x1, y1, x2, y2] = node.area;
-                            let (tex_width, tex_height) = texture.size();
-                            node.base_mut().set_intrinsic_size(
-                                tex_width as f32 * (x2 - x1),
-                                tex_height as f32 * (y2 - y1),
-                            );
-                        }
-                        SpriteMode::Nineslice => {
-                            let target_width = node.target_width;
-                            let target_height = node.target_height;
-                            node.base_mut().set_intrinsic_size(
-                                target_width as f32,
-                                target_height as f32,
-                            );
-                        }
-                    }
+            let size = match node.mode {
+                SpriteMode::Normal => {
+                    let [x1, y1, x2, y2] = node.area;
+                    let (width, height) = texture.size();
+                    (width as f32 * (x2 - x1), height as f32 * (y2 - y1))
                 }
+                SpriteMode::Nineslice => (node.target_width as f32, node.target_height as f32),
+            };
+            node.base_mut().set_intrinsic_size(size.0, size.1);
+        }
+    }
+
+    fn update(
+        &mut self,
+        node: &mut dyn Node,
+        device: &Device,
+        _: &Queue,
+        render_queue: &RenderCommandSender,
+        payload: &RendererUpdatePayload,
+    ) {
+        // (image_logical_size * image_scale_factor) / (screen_logical_size * screen_scale_factor) * coordinate_factor
+        // TODO: use scale_factor as image_scale_factor means force stretch, to be fixed
+
+        let node = node.as_any_mut().downcast_mut::<Sprite>().unwrap();
+
+        if let Some(texture_id) = node.texture_id.load().as_ref() {
+            let texture = texture_id.asset_unchecked();
+            let Asset::Texture(texture) = texture.as_ref() else {
+                unreachable!("asset kind is not texture");
+            };
+
+            if TextureStatus::Ready != texture.status() {
+                return;
             }
 
             let (tex_width, tex_height) = texture.size();

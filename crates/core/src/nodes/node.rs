@@ -34,6 +34,10 @@ pub struct NodeBase {
     pivot: Point,
     /// translate relative to parent
     translate: Point,
+    /// Position assigned by a parent layout container.
+    layout_position: Point,
+    /// Whether the parent controls this node's untransformed layout position.
+    parent_controls_layout: bool,
     /// scale relative to parent
     scale: Point,
     /// rotation relative to parent
@@ -59,6 +63,7 @@ pub struct NodeBase {
     /// for update transform dirty check
     _update_id: u32,
     _current_update_id: u32,
+    _need_prepare: bool,
     _need_update_vertices: bool,
     /// transform matrix relative to parent
     transform: Transform,
@@ -85,6 +90,8 @@ impl NodeBase {
             anchor: Point::default(),
             pivot: Point::default(),
             translate: Point::default(),
+            layout_position: Point::default(),
+            parent_controls_layout: false,
             scale: Point::one(),
             rotation: 0.,
             skew: Point::default(),
@@ -99,6 +106,7 @@ impl NodeBase {
 
             _update_id: 0,
             _current_update_id: 0,
+            _need_prepare: true,
             _need_update_vertices: true,
 
             transform: Transform::default(),
@@ -119,6 +127,12 @@ impl NodeBase {
     }
 
     #[inline]
+    pub fn pend_prepare(&mut self) {
+        self._need_prepare = true;
+        self.pend_update();
+    }
+
+    #[inline]
     pub fn cancel_update(&mut self) {
         self._update_id = self._current_update_id;
     }
@@ -129,6 +143,18 @@ impl NodeBase {
         let flag = self._need_update_vertices;
         self._need_update_vertices = false;
         flag
+    }
+
+    #[inline]
+    pub fn take_prepare(&mut self) -> bool {
+        let flag = self._need_prepare;
+        self._need_prepare = false;
+        flag
+    }
+
+    #[inline]
+    pub fn mark_update_vertices(&mut self) {
+        self._need_update_vertices = true;
     }
 
     #[inline]
@@ -173,6 +199,14 @@ impl NodeBase {
     #[inline]
     pub fn translate(&self) -> &Point {
         &self.translate
+    }
+    #[inline]
+    pub fn layout_position(&self) -> &Point {
+        &self.layout_position
+    }
+    #[inline]
+    pub fn parent_controls_layout(&self) -> bool {
+        self.parent_controls_layout
     }
     #[inline]
     pub fn scale(&self) -> &Point {
@@ -271,6 +305,26 @@ impl NodeBase {
     pub fn set_translate(&mut self, x: f32, y: f32) {
         self.translate.x = x;
         self.translate.y = y;
+        self._update_id += 1;
+    }
+    #[inline]
+    pub fn set_layout_position(&mut self, x: f32, y: f32) {
+        if self.parent_controls_layout && self.layout_position.x == x && self.layout_position.y == y
+        {
+            return;
+        }
+        self.layout_position.x = x;
+        self.layout_position.y = y;
+        self.parent_controls_layout = true;
+        self._update_id += 1;
+    }
+    #[inline]
+    pub fn clear_layout_position(&mut self) {
+        if !self.parent_controls_layout {
+            return;
+        }
+        self.layout_position = Point::default();
+        self.parent_controls_layout = false;
         self._update_id += 1;
     }
     #[inline]
@@ -475,15 +529,25 @@ impl NodeBase {
 
             let pivot_x = self.pivot.x * self.layout_width;
             let pivot_y = self.pivot.y * self.layout_height;
-            let anchor_x = self.anchor.x * parent.layout_width;
-            let anchor_y = self.anchor.y * parent.layout_height;
-
             let a = (rotation + skew_y).cos() * scale_x;
             let b = (rotation + skew_y).sin() * scale_x;
             let c = -(rotation - skew_x).sin() * scale_y;
             let d = (rotation - skew_x).cos() * scale_y;
-            let tx = x - ((pivot_x * a) + (pivot_y * c)) + anchor_x;
-            let ty = y - ((pivot_x * b) + (pivot_y * d)) + anchor_y;
+            let transformed_pivot_x = (pivot_x * a) + (pivot_y * c);
+            let transformed_pivot_y = (pivot_x * b) + (pivot_y * d);
+            let (tx, ty) = if self.parent_controls_layout {
+                (
+                    self.layout_position.x + x + pivot_x - transformed_pivot_x,
+                    self.layout_position.y + y + pivot_y - transformed_pivot_y,
+                )
+            } else {
+                let anchor_x = self.anchor.x * parent.layout_width;
+                let anchor_y = self.anchor.y * parent.layout_height;
+                (
+                    x + anchor_x - transformed_pivot_x,
+                    y + anchor_y - transformed_pivot_y,
+                )
+            };
 
             self.transform.x_axis.x = a;
             self.transform.x_axis.y = b;

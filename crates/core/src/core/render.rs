@@ -25,7 +25,7 @@ use crate::utils::coordinates::{
     calculate_surface_physical_coordinates_by_scale_and_translate,
 };
 use crate::utils::fps_meter::FpsMeter;
-use crate::utils::walk::walk_nodes_enter_leave;
+use crate::utils::walk::{walk_nodes_enter_leave, walk_nodes_enter_leave_logical};
 
 pub struct Graphics {
     pub(crate) window: Arc<Window>,
@@ -427,12 +427,42 @@ impl Graphics {
 
             let stage_bound = Bound::new(0., 0., stage_logical_size.0, stage_logical_size.1);
 
-            walk_nodes_enter_leave(
+            // Pass A: prepare renderer-backed content, then measure bottom-up.
+            walk_nodes_enter_leave_logical(
+                root_node.as_ref(),
+                &mut |child, _| {
+                    let mut child = child.write();
+                    let renderer_type = child.renderer_type();
+                    if let Some(renderer) = self.renderers.lock().get_mut(renderer_type) {
+                        renderer.prepare(child.as_mut(), &device, &queue, &upload_payload);
+                    }
+                },
+                &mut |child, _| {
+                    child.write().measure();
+                },
+            );
+
+            // Pass B: arrange and transform top-down, then calculate visual bounds bottom-up.
+            root_node.with_upgraded(|node| node.arrange());
+            walk_nodes_enter_leave_logical(
                 root_node.as_ref(),
                 &mut |child, parent| {
+                    let mut child = child.write();
+                    child.pre_update(parent.base());
+                    child.base_mut().update(parent.base(), false);
+                    child.arrange();
+                },
+                &mut |child, _| {
+                    child.write().base_mut().calculate_content_bounds();
+                },
+            );
+            root_node.with_upgraded(|node| node.base_mut().calculate_content_bounds());
+
+            // Pass C: update renderer resources and collect commands using current-frame bounds.
+            walk_nodes_enter_leave(
+                root_node.as_ref(),
+                &mut |child, _parent| {
                     let mut _child = child.write();
-                    _child.pre_update(parent.base());
-                    _child.base_mut().update(parent.base(), false);
 
                     let renderer_type = _child.renderer_type();
                     let mut collect_command = false;
@@ -456,12 +486,6 @@ impl Graphics {
                     collect_command
                 },
                 &mut |child, _, collect_command| {
-                    {
-                        let mut _child = child.write();
-                        _child.measure();
-                        _child.base_mut().calculate_content_bounds();
-                    }
-
                     let _child = child.read();
                     let renderer_type = _child.renderer_type();
 
@@ -472,8 +496,6 @@ impl Graphics {
                     }
                 },
             );
-
-            root_node.with_upgraded(|n| n.base_mut().calculate_content_bounds());
         }
 
         self.sender

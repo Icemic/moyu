@@ -17,6 +17,16 @@ pub trait Renderer {
     fn begin(&self) {}
     fn finish(&self) {}
 
+    #[allow(unused_variables)]
+    fn prepare(
+        &mut self,
+        node: &mut dyn Node,
+        device: &Device,
+        queue: &Queue,
+        payload: &RendererUpdatePayload,
+    ) {
+    }
+
     fn update(
         &mut self,
         node: &mut dyn Node,

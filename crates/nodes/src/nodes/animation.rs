@@ -142,7 +142,7 @@ impl Node for Animation {
 
         apply_patch!(props.format => self.format, AnimationFormat::default());
 
-        self.base_mut().pend_update();
+        self.base_mut().pend_prepare();
     }
 
     fn ready(&self) -> bool {

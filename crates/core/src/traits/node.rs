@@ -53,6 +53,13 @@ pub trait Node: NodeBaseTrait + Debug + Send + Sync {
         self.base_mut().set_layout_size(width, height);
     }
 
+    /// Arrange direct children after this node's layout size has been resolved.
+    fn arrange(&mut self) {
+        for child in self.base().children() {
+            child.write().base_mut().clear_layout_position();
+        }
+    }
+
     /// Whether this node contributes its layout rectangle to an auto-sized parent.
     fn participates_in_parent_measure(&self) -> bool {
         true

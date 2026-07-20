@@ -157,7 +157,7 @@ impl Node for Sprite {
         }, 0);
 
         // force update vertices
-        self.base_mut().pend_update();
+        self.base_mut().pend_prepare();
     }
 
     fn ready(&self) -> bool {

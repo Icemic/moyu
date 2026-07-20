@@ -156,7 +156,7 @@ impl Node for Video {
             self.player.lock().set_muted(v);
         }, false);
 
-        self.base_mut().pend_update();
+        self.base_mut().pend_prepare();
     }
 
     fn ready(&self) -> bool {

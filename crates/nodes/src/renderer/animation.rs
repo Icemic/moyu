@@ -145,13 +145,12 @@ impl Renderer for AnimationRenderer {
         &self.bind_group_layout
     }
 
-    fn update(
+    fn prepare(
         &mut self,
         node: &mut dyn Node,
         device: &Device,
-        queue: &Queue,
-        render_queue: &RenderCommandSender,
-        payload: &RendererUpdatePayload,
+        _: &Queue,
+        _: &RendererUpdatePayload,
     ) {
         let node = node.as_any_mut().downcast_mut::<Animation>().unwrap();
 
@@ -271,34 +270,37 @@ impl Renderer for AnimationRenderer {
                 label: None,
             });
 
-            node.frames = frames.map(|v| FrameIterator(v));
+            node.frames = frames.map(FrameIterator);
             node.next_frame = None;
             node.view = Some(view);
             node.bind_group = Some(bind_group);
-
-            // TODO: reset states
-
-            // reset size to let it be recalculated
-            node.base_mut().set_intrinsic_size(0.0, 0.0);
+            node.base_mut().mark_update_vertices();
         }
+
+        if let Some(view) = &node.view {
+            let size = view.texture().size();
+            let [x1, y1, x2, y2] = node.area;
+            node.base_mut().set_intrinsic_size(
+                size.width as f32 * (x2 - x1),
+                size.height as f32 * (y2 - y1),
+            );
+        }
+    }
+
+    fn update(
+        &mut self,
+        node: &mut dyn Node,
+        device: &Device,
+        queue: &Queue,
+        render_queue: &RenderCommandSender,
+        payload: &RendererUpdatePayload,
+    ) {
+        let node = node.as_any_mut().downcast_mut::<Animation>().unwrap();
 
         if node.view.is_some() {
             let view = node.view.as_ref().unwrap().clone();
             let texture = view.texture().clone();
             let size = texture.size();
-
-            {
-                // set size if not set
-                let node_base = node.base();
-                if node_base.intrinsic_size() == (0.0, 0.0) {
-                    let [x1, y1, x2, y2] = node.area;
-                    let size = texture.size();
-                    node.base_mut().set_intrinsic_size(
-                        size.width as f32 * (x2 - x1),
-                        size.height as f32 * (y2 - y1),
-                    );
-                }
-            }
 
             if node.base_mut().pop_update_vertices() {
                 let vertices = calculate_quad_vertices(

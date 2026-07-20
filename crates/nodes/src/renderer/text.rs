@@ -382,6 +382,75 @@ impl Renderer for TextRenderer {
         &self.bind_group_layout
     }
 
+    fn prepare(
+        &mut self,
+        node: &mut dyn Node,
+        _: &Device,
+        queue: &Queue,
+        _: &RendererUpdatePayload,
+    ) {
+        // update only when huozi is ready
+        let mut huozi = self.huozi.lock();
+        let Some(huozi) = huozi.as_mut() else {
+            return;
+        };
+
+        let node = node.as_any_mut().downcast_mut::<Text>().unwrap();
+        if !node.base_mut().take_prepare() {
+            return;
+        }
+
+        match huozi.layout_parse_with::<'<', '>'>(
+            &node.segments,
+            &node.layout_style,
+            &node.text_style,
+            huozi::ColorSpace::SRGB,
+            None,
+        ) {
+            Ok((glyphs, ranges, total_width, total_height)) => {
+                node.total_width = total_width;
+                node.total_height = total_height;
+                node.glyph_vertices = glyphs;
+                node.glyph_ranges = ranges;
+                node.base_mut()
+                    .set_intrinsic_size(total_width as f32, total_height as f32);
+                node.base_mut().mark_update_vertices();
+
+                let image_version = huozi.image_version();
+                if self.last_texture_version.load(Ordering::Relaxed) != image_version {
+                    self.last_texture_version
+                        .store(image_version, Ordering::Relaxed);
+
+                    let sdf_bitmap = huozi.texture_image();
+                    let dimensions = sdf_bitmap.dimensions();
+                    queue.write_texture(
+                        wgpu::TexelCopyTextureInfo {
+                            aspect: wgpu::TextureAspect::All,
+                            texture: &self.texture,
+                            mip_level: 0,
+                            origin: wgpu::Origin3d::ZERO,
+                        },
+                        sdf_bitmap,
+                        wgpu::TexelCopyBufferLayout {
+                            offset: 0,
+                            bytes_per_row: Some(4 * sdf_bitmap.width()),
+                            rows_per_image: Some(sdf_bitmap.height()),
+                        },
+                        wgpu::Extent3d {
+                            width: dimensions.0,
+                            height: dimensions.1,
+                            depth_or_array_layers: 1,
+                        },
+                    );
+                }
+            }
+            Err(err_msg) => {
+                error!("{}", err_msg);
+                node.base_mut().pend_prepare();
+            }
+        }
+    }
+
     fn update(
         &mut self,
         node: &mut dyn Node,
@@ -390,100 +459,8 @@ impl Renderer for TextRenderer {
         render_queue: &RenderCommandSender,
         payload: &RendererUpdatePayload,
     ) {
-        // update only when huozi is ready
-        let mut huozi = self.huozi.lock();
-        let huozi = match huozi.as_mut() {
-            Some(huozi) => huozi,
-            None => {
-                return;
-            }
-        };
-
         let node = node.as_any_mut().downcast_mut::<Text>().unwrap();
-        let need_relayout = node.base_mut().pop_update_vertices();
-
-        if need_relayout {
-            match huozi.layout_parse_with::<'<', '>'>(
-                &node.segments,
-                &node.layout_style,
-                &node.text_style,
-                huozi::ColorSpace::SRGB,
-                None,
-            ) {
-                Ok((glyphs, ranges, total_width, total_height)) => {
-                    // set layout size
-                    node.total_width = total_width;
-                    node.total_height = total_height;
-
-                    node.glyph_vertices = glyphs;
-                    node.glyph_ranges = ranges;
-
-                    // Set size if size is different,
-                    // this will trigger another relayout which is in fact unnecessary.
-                    // What we need is to update the vertices only (base_mut().update() is called before
-                    // child's update, so we have to emit update again).
-                    if node.base().intrinsic_size()
-                        != (total_width as f32, total_height as f32)
-                    {
-                        // But the second transform pass is only
-                        // needed when pivot depends on the current size.
-                        let needs_transform_refresh = {
-                            let pivot = node.base().pivot();
-                            pivot.x != 0.0 || pivot.y != 0.0
-                        };
-
-                        node.base_mut()
-                            .set_intrinsic_size(total_width as f32, total_height as f32);
-                        node.base_mut().calculate_content_bounds();
-
-                        if needs_transform_refresh {
-                            // Hide stale geometry until NodeBase::update recomputes the transform
-                            // with the new size on the next tick.
-                            // FIXME: This may cause a flicker when the text changes frequently.
-                            node.num_indices = 0;
-                            return;
-                        }
-                    }
-
-                    // updates the sdf texture only when the image version is changed
-                    let image_version = huozi.image_version();
-
-                    if self.last_texture_version.load(Ordering::Relaxed) != image_version {
-                        self.last_texture_version
-                            .store(image_version, Ordering::Relaxed);
-
-                        // update sdf texture
-                        let sdf_bitmap = huozi.texture_image();
-                        let dimensions = sdf_bitmap.dimensions();
-
-                        let size = wgpu::Extent3d {
-                            width: dimensions.0,
-                            height: dimensions.1,
-                            depth_or_array_layers: 1,
-                        };
-
-                        queue.write_texture(
-                            wgpu::TexelCopyTextureInfo {
-                                aspect: wgpu::TextureAspect::All,
-                                texture: &self.texture,
-                                mip_level: 0,
-                                origin: wgpu::Origin3d::ZERO,
-                            },
-                            sdf_bitmap,
-                            wgpu::TexelCopyBufferLayout {
-                                offset: 0,
-                                bytes_per_row: Some(4 * sdf_bitmap.width()),
-                                rows_per_image: Some(sdf_bitmap.height()),
-                            },
-                            size,
-                        );
-                    }
-                }
-                Err(err_msg) => {
-                    error!("{}", err_msg);
-                }
-            }
-        }
+        let need_update_vertices = node.base_mut().pop_update_vertices();
 
         // update vertices no matter if it is needed when it is printing
         if let Some(mut print_start_time) = node.print_start_time {
@@ -625,7 +602,7 @@ impl Renderer for TextRenderer {
             }
 
             self.update_cursor_position(node, index);
-        } else if need_relayout {
+        } else if need_update_vertices {
             // re-render all when vertices need update and not printing
             self.update_vertices(
                 device,
