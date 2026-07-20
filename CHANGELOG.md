@@ -11,10 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 1. Implement MSAA support and update rendering pipeline
 2. Implement mipmap support and enable mipmap generation in texture loading
+3. Add VBox and HBox nodes with automatic sizing, padding, gaps, and alignment options.
+4. Add layout events and Kit ScrollView support for content-sized scrolling.
 
 ### Fixed
 
 1. Create render pass in BeginFrame command to ensure screen is cleared at first
+2. Measure Container and Filter layout sizes from child bounds, including pivot offsets.
+3. Normalize wheel event kinds for consistent node event dispatching.
 
 ## [0.16.0] - 2026-07-18
 
