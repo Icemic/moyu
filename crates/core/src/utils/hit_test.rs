@@ -48,7 +48,7 @@ fn hit_test_children(
     payload: &FocusablePayload,
     current_parent_ids: &[u32],
 ) -> Option<HitTestTarget> {
-    for child in parent.base().children().iter().rev() {
+    for child in parent.base().children_in_paint_order().iter().rev() {
         let child_ref = child.read();
 
         if !child_ref.base().interactive() {

@@ -28,8 +28,8 @@ where
     E: FnMut(NodeLock, &dyn Node) -> R,
     L: FnMut(NodeLock, &dyn Node, R),
 {
-    let children = root_node.base().children();
-    for child in children.iter() {
+    let children = root_node.base().children_in_paint_order();
+    for child in children {
         let r = enter(child.clone(), root_node);
 
         {
@@ -42,6 +42,6 @@ where
             }
         }
 
-        leave(child.clone(), root_node, r);
+        leave(child, root_node, r);
     }
 }

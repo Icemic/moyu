@@ -56,6 +56,8 @@ pub struct NodeBase {
     interactive: bool,
     /// cursor style
     cursor: MoyuCursor,
+    /// Paint order among direct siblings.
+    z_index: i32,
     /// AABB bounds of the node, relative to itself
     content_bounds: Bound,
     /// AABB bounds of the node, relative to global(stage)
@@ -101,6 +103,7 @@ impl NodeBase {
             global_opacity: 1.0,
             interactive: true,
             cursor: MoyuCursor::default(),
+            z_index: 0,
             content_bounds: Bound::default(),
             global_content_bounds: Bound::default(),
 
@@ -243,6 +246,10 @@ impl NodeBase {
     #[inline]
     pub fn cursor(&self) -> &MoyuCursor {
         &self.cursor
+    }
+    #[inline]
+    pub fn z_index(&self) -> i32 {
+        self.z_index
     }
 
     #[inline]
@@ -397,6 +404,14 @@ impl NodeBase {
     pub fn set_cursor(&mut self, cursor: MoyuCursor) {
         self.cursor = cursor;
     }
+    #[inline]
+    pub fn set_z_index(&mut self, z_index: i32) {
+        if self.z_index == z_index {
+            return;
+        }
+        self.z_index = z_index;
+        self._update_id += 1;
+    }
 
     pub fn transform(&self) -> &Transform {
         &self.transform
@@ -406,6 +421,12 @@ impl NodeBase {
     }
     pub fn children(&self) -> &Vec<NodeLock> {
         &self.children
+    }
+
+    pub fn children_in_paint_order(&self) -> Vec<NodeLock> {
+        let mut children = self.children.clone();
+        children.sort_by_key(|child| child.read().base().z_index());
+        children
     }
 
     // pub fn as_any(&self) -> &dyn Any {
@@ -443,6 +464,7 @@ impl NodeBase {
         apply_patch!(props.opacity => |v| self.set_opacity(v), 1.0);
         apply_patch!(props.interactive => |v| self.set_interactive(v), true);
         apply_patch!(props.cursor => |v| self.set_cursor(v), MoyuCursor::default());
+        apply_patch!(props.z_index => |v| self.set_z_index(v), 0);
     }
 
     #[inline]
@@ -599,10 +621,44 @@ pub struct NodeProps {
     pub opacity: Patch<f32>,
     pub interactive: Patch<bool>,
     pub cursor: Patch<MoyuCursor>,
+    pub z_index: Patch<i32>,
 }
 
 impl Drop for NodeBase {
     fn drop(&mut self) {
         dispatch_event(NodeEvent::Destory { target_id: self.id });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::nodes::Container;
+    use crate::traits::{Node, NodeBaseTrait};
+
+    #[test]
+    fn children_in_paint_order_is_stable_and_supports_negative_values() {
+        let mut parent = Container::default();
+        let first = Container::new("first".into()).into_node_lock();
+        let second = Container::new("second".into()).into_node_lock();
+        let third = Container::new("third".into()).into_node_lock();
+
+        first.write().base_mut().set_z_index(10);
+        second.write().base_mut().set_z_index(-1);
+        third.write().base_mut().set_z_index(10);
+        parent.base_mut().add_child(first.clone());
+        parent.base_mut().add_child(second.clone());
+        parent.base_mut().add_child(third.clone());
+
+        let order = parent.base().children_in_paint_order();
+        assert!(Arc::ptr_eq(&order[0], &second));
+        assert!(Arc::ptr_eq(&order[1], &first));
+        assert!(Arc::ptr_eq(&order[2], &third));
+
+        third.write().base_mut().set_z_index(-2);
+        let order = parent.base().children_in_paint_order();
+        assert!(Arc::ptr_eq(&order[0], &third));
+        assert!(Arc::ptr_eq(&order[1], &second));
+        assert!(Arc::ptr_eq(&order[2], &first));
     }
 }

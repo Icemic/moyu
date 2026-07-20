@@ -19,4 +19,5 @@ export type NodeProps = {
   opacity?: number;
   interactive?: boolean;
   cursor?: MoyuCursor;
+  zIndex?: number;
 };

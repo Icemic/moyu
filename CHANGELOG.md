@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 3. Add VBox and HBox nodes with automatic sizing, padding, gaps, and alignment options.
 4. Add layout events and Kit ScrollView support for content-sized scrolling.
 5. Add content-based Shader layout sizing with optional explicit width and height.
+6. Add sibling `zIndex` ordering for rendering and pointer hit testing.
 
 ### Fixed
 
