@@ -279,7 +279,7 @@ Sandbox 为剧本表达式提供受控求值环境：
 type NodeProps = {
   label?: string;
   anchor?: [number, number];  // 0.0-1.0
-  pivot?: [number, number];   // pixels
+  pivot?: [number, number];   // 0.0-1.0
   x?: number; y?: number;
   scale?: number; scaleX?: number; scaleY?: number;
   rotation?: number;
