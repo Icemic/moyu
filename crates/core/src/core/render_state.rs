@@ -132,3 +132,24 @@ impl RenderState {
         self.scissor_stack.pop();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nested_empty_scissor_restores_parent_rect() {
+        let mut state = RenderState::default();
+        state.scissor_stack.push([0, 0, 1920, 1080]);
+
+        assert_eq!(
+            state.push_scissor_rect(100, 80, 300, 200),
+            (100, 80, 300, 200)
+        );
+        assert_eq!(state.push_scissor_rect(500, 400, 100, 100), (0, 0, 1, 1));
+        assert_eq!(state.get_current_scissor_rect(), Some(&[500, 400, 0, 0]));
+
+        state.pop_scissor_rect();
+        assert_eq!(state.get_current_scissor_rect(), Some(&[100, 80, 300, 200]));
+    }
+}

@@ -12,7 +12,7 @@ use ts_rs::TS;
 
 #[derive(Debug, Default, Node)]
 pub struct Clip {
-    pub rect: Option<Rect>,
+    pub rect: Rect,
 
     #[base]
     node_base: NodeBase,
@@ -21,7 +21,7 @@ pub struct Clip {
 impl Clip {
     pub fn new(label: String) -> Self {
         Self {
-            rect: None,
+            rect: Rect::default(),
             node_base: NodeBase::new(label),
         }
     }

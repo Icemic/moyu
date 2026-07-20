@@ -913,6 +913,13 @@ impl Graphics {
                     count,
                     instance_count,
                 } => {
+                    if state
+                        .get_current_scissor_rect()
+                        .is_some_and(|rect| rect[2] == 0 || rect[3] == 0)
+                    {
+                        continue;
+                    }
+
                     // 确保有活动的 pass
                     let need_create_pass = current_pass.is_none();
                     if need_create_pass {
