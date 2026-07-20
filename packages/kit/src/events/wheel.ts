@@ -2,7 +2,7 @@ import type { WheelEventDeltaMode } from '../events';
 import type { MouseEvent } from './mouse';
 
 export interface WheelEvent extends Omit<MouseEvent, 'kind'> {
-  kind: 'wheel';
+  kind: 'Wheel';
   deltaX: number;
   deltaY: number;
   deltaZ: number;

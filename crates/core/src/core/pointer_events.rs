@@ -7,6 +7,7 @@ use crate::base::*;
 use crate::core::FocusablePayload;
 use crate::events::{
     MouseEvent, MouseEventKind, TouchEvent, TouchEventKind, WheelEvent, WheelEventDeltaMode,
+    WheelEventKind,
 };
 use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerState};
 use crate::utils::dispatch_event::dispatch_event;
@@ -234,7 +235,7 @@ impl Core {
                     match delta {
                         MouseScrollDelta::LineDelta(x, y) => {
                             dispatch_event(WheelEvent {
-                                kind: "wheel".to_string(),
+                                kind: WheelEventKind::Wheel,
                                 target_id,
                                 bubble_target_ids,
                                 delta_x: *x as f64,
@@ -245,7 +246,7 @@ impl Core {
                         }
                         MouseScrollDelta::PixelDelta(pos) => {
                             dispatch_event(WheelEvent {
-                                kind: "wheel".to_string(),
+                                kind: WheelEventKind::Wheel,
                                 target_id,
                                 bubble_target_ids,
                                 delta_x: pos.x,

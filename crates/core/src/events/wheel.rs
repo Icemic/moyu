@@ -4,6 +4,11 @@ use ts_rs::TS;
 use crate::traits::Event;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
+pub enum WheelEventKind {
+    Wheel,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum WheelEventDeltaMode {
     Pixel = 0,
@@ -15,7 +20,7 @@ pub enum WheelEventDeltaMode {
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename = "RawWheelEvent")]
 pub struct WheelEvent {
-    pub kind: String,
+    pub kind: WheelEventKind,
     pub target_id: u32,
     pub bubble_target_ids: Vec<u32>,
     pub delta_x: f64,
