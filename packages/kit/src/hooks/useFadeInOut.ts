@@ -80,7 +80,7 @@ export function useFadeOut(
 
   const skip = () => {
     api.stop();
-    api.set({ opacity: 1 });
+    api.set({ opacity: 0 });
     onFinished?.();
   };
 
