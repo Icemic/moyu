@@ -110,8 +110,10 @@ impl Node for Filter {
 
             let child_base = child.base();
             let (child_width, child_height) = child_base.layout_size();
-            width = width.max(child_base.translate().x + child_width);
-            height = height.max(child_base.translate().y + child_height);
+            let child_pivot = child_base.pivot();
+            width = width.max(child_base.translate().x - child_pivot.x * child_width + child_width);
+            height =
+                height.max(child_base.translate().y - child_pivot.y * child_height + child_height);
         }
 
         self.base_mut().set_layout_size(width, height);
