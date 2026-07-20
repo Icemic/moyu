@@ -12,6 +12,16 @@ export * from './gameState';
 export * from './runtime-globals';
 export * from './components/navigation';
 export * from './components/scroll-view';
+export type {
+	ControlSpriteProps,
+	ControlState,
+	ControlStateValue,
+	ControlTextStyle,
+} from './components/control';
+export * from './components/button';
+export * from './components/checkbox';
+export * from './components/select';
+export * from './components/slider';
 export * from './debug';
 export * from './hooks';
 export * from './ui';
