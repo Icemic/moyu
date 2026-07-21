@@ -151,7 +151,6 @@ pub enum ShaderBuiltin {
         steps: u32,
     },
     Mask {
-        rule: String,
         #[serde(default = "default_mask_softness")]
         softness: f64,
         #[serde(default)]
@@ -747,7 +746,6 @@ impl ShaderBuiltin {
                 }
             }
             Self::Mask {
-                rule,
                 mut softness,
                 reverse,
             } => {
@@ -761,11 +759,7 @@ impl ShaderBuiltin {
                     softness = default_mask_softness();
                 }
 
-                Self::Mask {
-                    rule,
-                    softness,
-                    reverse,
-                }
+                Self::Mask { softness, reverse }
             }
             _ => self,
         }
