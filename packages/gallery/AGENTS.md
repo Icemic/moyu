@@ -51,6 +51,7 @@ packages/gallery/
 - 页面间重复的展示框架优先复用 `src/components/chrome.tsx`，颜色和 sprite 配置统一从 `src/theme.ts` 获取。
 - 页面既是展示页面也是手动测试用例。新增能力时应给出可观察的输入、状态或预期结果，避免只放静态说明文字。
 - Gallery 依赖工作区内的 `@momoyu-ink/kit`。修改 Kit 公共 API 后，应更新对应 Gallery 用例并运行 Gallery 类型检查与构建。
+- Gallery 中需要直接、简明地体现引擎提供的接口，而不是通过复杂的封装或间接调用。避免在 Gallery 中隐藏引擎能力或使用不必要的中间层。
 
 ### 运行时兼容
 
