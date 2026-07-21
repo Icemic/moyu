@@ -1,0 +1,31 @@
+{
+  "name": "@momoyu-ink/gallery",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive gallery for Moyu engine and Kit capabilities.",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "rspack dev",
+    "generate:assets": "node scripts/generate-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "rspack build"
+  },
+  "author": "Icemic <bingfeng.web@gmail.com>",
+  "license": "MPL-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@momoyu-ink/kit": "workspace:*",
+    "react": "19.2.1"
+  },
+  "devDependencies": {
+    "@rspack/cli": "^1.7.11",
+    "@rspack/core": "^1.7.11",
+    "@rspack/plugin-react-refresh": "^1.6.2",
+    "@types/node": ">=24",
+    "@types/react": "^19.2.7",
+    "react-refresh": "^0.18.0",
+    "typescript": "^5.9.3"
+  }
+}
