@@ -1,0 +1,10 @@
+{
+  "$schema": "https://gist.githubusercontent.com/Icemic/55a8cd86b02c0c310f51833e88f7d083/raw/moyu-config.schema.json",
+  "initialSurfaceSize": "1280x720",
+  "stageSize": "1920x1080",
+  "windowTitle": "Moyu Gallery",
+  "entryFilename": "index.js",
+  "fontFile": "fonts/SourceHanSansSC-Regular.otf",
+  "showFPS": true,
+  "skipSplash": true
+}
