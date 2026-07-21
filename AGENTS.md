@@ -5,9 +5,10 @@
 本仓库是 **末语（Moyu）** 引擎的核心单体仓库，包含：
 
 - `crates/` — Rust 实现的引擎核心、运行时、节点、平台抽象等
-- `packages/` — JavaScript/TypeScript 上层：`@momoyu-ink/kit`（React SDK）、`@momoyu-ink/cli`（CLI）、`bunnymark`（基准）
+- `packages/` — JavaScript/TypeScript 上层：`@momoyu-ink/kit`（React SDK）、`@momoyu-ink/cli`（CLI）、`gallery`（组件展示与手动测试）、`bunnymark`（基准）
 
 > 关于 `packages/kit` 的详细 SDK 约定，见 [packages/kit/AGENTS.md](packages/kit/AGENTS.md)。
+> 关于 `packages/gallery` 的展示应用与资产约定，见 [packages/gallery/AGENTS.md](packages/gallery/AGENTS.md)。
 > 关于上层视觉小说框架（基于 kit），见 moyu-framework 仓库的 AGENTS.md。
 
 ---
@@ -112,6 +113,7 @@ crates/
 packages/
 ├── kit/           # @momoyu-ink/kit — React SDK，见 packages/kit/AGENTS.md
 ├── cli/           # @momoyu-ink/cli — 项目初始化、引擎下载/切换、调试运行、打包与 schema 生成命令行
+├── gallery/       # 基于 kit + rspack 的组件展示与手动测试应用，见 packages/gallery/AGENTS.md
 └── bunnymark/     # 基于 kit + rspack 的性能基准 demo（依赖 @momoyu-ink/kit）
 ```
 
