@@ -9,4 +9,4 @@ export type ShaderBuiltin =
   | { name: 'slideaway'; direction: ShaderDirection }
   | { name: 'zoom'; startScale: number; endScale: number; origin: [number, number] }
   | { name: 'pixellate'; steps: number }
-  | { name: 'mask'; rule: string; softness: number; reverse: boolean };
+  | { name: 'mask'; softness: number; reverse: boolean };
