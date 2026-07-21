@@ -17,6 +17,7 @@ import { PrimitivesPage } from './pages/primitives';
 import { RawShadersPage } from './pages/raw-shaders';
 import { ShaderTransitionsPage } from './pages/shader-transitions';
 import { SpringTransitionsPage } from './pages/spring-transitions';
+import { SteamPage } from './pages/steam';
 import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, PANEL_SPRITE, PIXEL_SPRITE } from './theme';
 
 const STAGE_WIDTH = 1920;
@@ -87,6 +88,12 @@ const PAGES: readonly GalleryPageDefinition[] = [
     title: '自定义 Shader',
     description: 'Raw WGSL、参数槽与时间控制。',
     component: RawShadersPage,
+  },
+  {
+    key: 'steam',
+    title: 'Steam（仅桌面端）',
+    description: 'Achievement 与 Steamworks API 手动测试。',
+    component: SteamPage,
   },
 ];
 

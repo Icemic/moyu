@@ -6,5 +6,10 @@
   "entryFilename": "index.js",
   "fontFile": "fonts/SourceHanSansSC-Regular.otf",
   "showFPS": true,
-  "skipSplash": true
+  "skipSplash": true,
+  "steam": {
+    "appId": 480,
+    "required": false,
+    "restartThroughClient": false
+  }
 }
