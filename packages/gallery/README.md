@@ -1,8 +1,6 @@
-# Moyu Gallery 末语画廊
+# Moyu Gallery
 
-末语引擎节点与 `@momoyu-ink/kit` 组件的交互式画廊。既是开发时的手动测试台，也是对外的能力展示应用。
-
-视觉设计为 **Midnight Console**（深夜控制台）：深海军蓝底、暗色描边面板、金色标题、五色演示色块。设计令牌统一收敛在 `src/theme.ts`，迭代文档见 `docs/2026-07-21-midnight-console-redesign.md`。
+末语引擎节点与 `@momoyu-ink/kit` 组件的交互式组件展示。既是开发时的手动测试台，也是对外的能力展示应用。
 
 ## 开发
 

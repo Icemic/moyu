@@ -202,8 +202,7 @@ export function Gallery() {
       <container x={-STAGE_WIDTH / 2} y={-STAGE_HEIGHT / 2}>
         {/* Sidebar: nav panel top aligns with the content area at y=136. */}
         <container x={SIDEBAR_X} y={40}>
-          <text text="末语画廊" fontSize={46} fillColor={COLOR.pageTitle} />
-          <text text="MOYU GALLERY" fontSize={18} fillColor={COLOR.accent} y={64} />
+          <text text="末语 Gallery" fontSize={46} fillColor={COLOR.pageTitle} />
 
           <sprite {...PANEL_SPRITE} targetWidth={SIDEBAR_WIDTH} targetHeight={NAV_PANEL_HEIGHT} y={NAV_PANEL_Y}>
             <container x={12} y={12}>
