@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { MouseEvent, TouchEvent } from '../events';
+import { addEventListener, type MouseEvent, type TouchEvent } from '../events';
 import type { MoyuNodeAttributes } from '../declaration';
 import { mergeEvent } from '../utils';
 import {
@@ -34,6 +34,7 @@ export function Button({
   textOffsetX,
   textOffsetY,
   textAlign = 'center',
+  children,
   anchor,
   pivot = anchor,
   interactive,
@@ -48,6 +49,21 @@ export function Button({
 }: ButtonProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
+
+  useEffect(() => {
+    if (!pressed) {
+      return;
+    }
+    const release = () => setPressed(false);
+    const removeMouseUp = addEventListener('mouseup', release);
+    const removeTouchEnd = addEventListener('touchend', release);
+    const removeTouchCancel = addEventListener('touchcancel', release);
+    return () => {
+      removeMouseUp();
+      removeTouchEnd();
+      removeTouchCancel();
+    };
+  }, [pressed]);
 
   useEffect(() => {
     if (disabled) {
@@ -112,6 +128,7 @@ export function Button({
             pivot={textAnchor}
           />
         ) : undefined}
+        {children}
       </sprite>
     </container>
   );
