@@ -34,6 +34,14 @@ pub enum AutorunMode {
     NativeOnly,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct SteamConfig {
+    pub app_id: u32,
+    pub required: bool,
+    pub restart_through_client: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct MoyuConfig {
@@ -59,6 +67,7 @@ pub struct MoyuConfig {
     pub enable_mipmaps: bool,
     pub enable_gamepads: bool,
     pub skip_splash: bool,
+    pub steam: Option<SteamConfig>,
     /// Custom parameters that can be accessed in the engine.
     /// The content is not interpreted by the platform, it's just passed to the engine as-is.
     pub params: String,
@@ -86,6 +95,7 @@ impl Default for MoyuConfig {
             enable_mipmaps: false,
             enable_gamepads: false,
             skip_splash: false,
+            steam: None,
             params: String::new(),
         }
     }

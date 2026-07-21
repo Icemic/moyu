@@ -2,6 +2,7 @@ import type { AudioCommand } from './bindings/AudioCommand';
 import type { GamepadCommand } from './bindings/GamepadCommand';
 import type { ScenarioCommand } from './bindings/ScenarioCommand';
 import type { ShaderCommand } from './bindings/ShaderCommand';
+import type { SteamCommand } from './bindings/SteamCommand';
 import type { SystemCommand } from './bindings/SystemCommand';
 import type { TextCommand } from './bindings/TextCommand';
 import type { MakeNullOptional } from './utils';
@@ -12,6 +13,7 @@ type _Command =
   | GamepadCommand
   | ScenarioCommand
   | ShaderCommand
+  | SteamCommand
   | SystemCommand;
 
 export type Command = MakeNullOptional<_Command>;
@@ -33,4 +35,10 @@ export * from './bindings/ShaderParam';
 export * from './bindings/ShaderParamType';
 export * from './bindings/ShaderSource';
 export * from './bindings/ShaderTimeControl';
+export * from './bindings/DlcProgress';
+export * from './bindings/OverlayDialog';
+export * from './bindings/OverlayNotificationPosition';
+export * from './bindings/OverlayStoreFlag';
+export * from './bindings/SteamCommand';
+export * from './bindings/TimelinePossibleClip';
 export * from './bindings/WindowState';

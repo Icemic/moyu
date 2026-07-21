@@ -14,6 +14,7 @@ members = [
   "crates/video",
   "crates/scenario",
   "crates/gamepad",
+  "crates/steam",
 ]
 resolver = "2"
 
@@ -51,6 +52,7 @@ zip = {version = "8.5.1", default-features = false, features = ["zstd"]}
 
 kira = {version = "0.12", git = "https://github.com/Icemic/kira", branch = "stopped_callback"}
 opus = {version = "0.3", git = "https://github.com/Icemic/opus-rs", branch = "dev"}
+steamworks = {git = "https://github.com/DeepSpaceMill/steamworks-rs", branch = "main"}
 
 moyu_audio = {path = "crates/audio"}
 moyu_core = {path = "crates/core"}
@@ -62,6 +64,7 @@ moyu_pal = {path = "crates/platform"}
 moyu_resource = {path = "crates/resource"}
 moyu_runtime = {path = "crates/runtime"}
 moyu_scenario = {path = "crates/scenario"}
+moyu_steam = {path = "crates/steam"}
 moyu_video = {path = "crates/video"}
 
 [patch.crates-io]

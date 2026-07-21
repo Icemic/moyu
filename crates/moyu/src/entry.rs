@@ -29,11 +29,17 @@ use moyu_pal::visible_hand::VisibleHand;
 #[cfg(native)]
 use moyu_runtime::QuickVM;
 use moyu_scenario::ScenarioPlugin;
+#[cfg(desktop)]
+use moyu_steam::SteamPlugin;
 #[cfg(native)]
 use std::time::{Duration, Instant};
 
 #[allow(dead_code)]
-pub async fn main_entry(event_loop: EventLoop<ApplicationInitEvent>, #[cfg(web)] element_id: &str) {
+pub async fn main_entry(
+    event_loop: EventLoop<ApplicationInitEvent>,
+    #[cfg(web)] element_id: &str,
+    #[cfg(desktop)] steam_plugin: Option<SteamPlugin>,
+) {
     // hold the global variable lifetime using VisibleHand
     let _async_runtime_handle = platform::setup();
 
@@ -53,6 +59,8 @@ pub async fn main_entry(event_loop: EventLoop<ApplicationInitEvent>, #[cfg(web)]
         event_proxy,
         #[cfg(web)]
         element_id,
+        #[cfg(desktop)]
+        steam_plugin,
     );
 
     event_loop.run_app(&mut app).ok();
@@ -73,6 +81,8 @@ struct Application {
     event_proxy: EventLoopProxy<ApplicationInitEvent>,
     #[cfg(web)]
     element_id: String,
+    #[cfg(desktop)]
+    steam_plugin: Option<SteamPlugin>,
     #[cfg(native)]
     frame_interval: Duration,
     #[cfg(native)]
@@ -91,11 +101,14 @@ impl Application {
     fn new(
         event_proxy: EventLoopProxy<ApplicationInitEvent>,
         #[cfg(web)] element_id: &str,
+        #[cfg(desktop)] steam_plugin: Option<SteamPlugin>,
     ) -> Self {
         Application {
             event_proxy,
             #[cfg(web)]
             element_id: element_id.to_string(),
+            #[cfg(desktop)]
+            steam_plugin,
             #[cfg(native)]
             frame_interval: Duration::from_secs_f64(1.0 / 60.0),
             #[cfg(native)]
@@ -246,6 +259,11 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                     graphics.register_renderer("shader", Box::new(shader_renderer));
                     graphics.register_renderer("shader-slot", Box::new(shader_slot_renderer));
                     graphics.register_renderer("video", Box::new(video_renderer));
+                }
+
+                #[cfg(desktop)]
+                if let Some(plugin) = self.steam_plugin.take() {
+                    core.register_plugin("steam", Arc::new(Mutex::new(plugin)));
                 }
 
                 let core = get_core().clone();

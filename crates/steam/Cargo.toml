@@ -1,0 +1,19 @@
+[package]
+authors = ["Icemic <bingfeng.web@gmail.com>"]
+description = "Steam integration plugin for Moyu."
+edition = "2024"
+license = "MPL-2.0"
+name = "moyu_steam"
+repository = "https://github.com/DeepSpaceMill/moyu"
+version.workspace = true
+
+[target.'cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))'.dependencies]
+anyhow = {workspace = true}
+moyu_core = {workspace = true, features = ["js_runtime"]}
+moyu_macros = {workspace = true}
+serde = {workspace = true}
+steamworks = {workspace = true}
+ts-rs = {workspace = true}
+
+[build-dependencies]
+cfg_aliases = {workspace = true}

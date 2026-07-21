@@ -288,6 +288,29 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bindgen"
+version = "0.69.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "271383c67ccabffb7381723dea0672a673f292304fcb45c01cc648c7a8d58088"
+dependencies = [
+ "bitflags 2.13.1",
+ "cexpr",
+ "clang-sys",
+ "itertools 0.12.1",
+ "lazy_static",
+ "lazycell",
+ "log",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "rustc-hash 1.1.0",
+ "shlex 1.3.0",
+ "syn",
+ "which 4.4.2",
+]
+
+[[package]]
+name = "bindgen"
 version = "0.72.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
@@ -1442,6 +1465,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
+name = "home"
+version = "0.5.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc627f471c528ff0c4a49e1d5e60450c8f6461dd6d10ba9dcd3a61d3dff7728d"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "http"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1685,6 +1717,15 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "itertools"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
@@ -1851,6 +1892,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "lazycell"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
+
+[[package]]
 name = "leb128"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1918,7 +1965,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a28a01012a25444b21ec6bc5666ba496513682d41a2a5d43dcfea72c6e999590"
 dependencies = [
- "bindgen",
+ "bindgen 0.72.1",
  "cc",
  "copy_dir",
 ]
@@ -2102,6 +2149,7 @@ dependencies = [
  "moyu_resource",
  "moyu_runtime",
  "moyu_scenario",
+ "moyu_steam",
  "moyu_video",
  "tokio",
  "wasm-bindgen",
@@ -2312,6 +2360,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "moyu_steam"
+version = "0.16.0"
+dependencies = [
+ "anyhow",
+ "cfg_aliases",
+ "moyu_core",
+ "moyu_macros",
+ "serde",
+ "steamworks",
+ "ts-rs",
+]
+
+[[package]]
 name = "moyu_video"
 version = "0.16.0"
 dependencies = [
@@ -2374,7 +2435,7 @@ dependencies = [
  "thiserror 2.0.18",
  "versions",
  "wfd",
- "which",
+ "which 7.0.3",
  "winapi",
 ]
 
@@ -3818,6 +3879,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
+name = "steamworks"
+version = "0.13.1"
+source = "git+https://github.com/DeepSpaceMill/steamworks-rs?branch=main#2671d14d88f334f4a8a80f865ad584da0f723c2c"
+dependencies = [
+ "bitflags 2.13.1",
+ "pastey",
+ "steamworks-sys",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "steamworks-sys"
+version = "0.13.0"
+source = "git+https://github.com/DeepSpaceMill/steamworks-rs?branch=main#2671d14d88f334f4a8a80f865ad584da0f723c2c"
+dependencies = [
+ "bindgen 0.69.5",
+ "libloading 0.8.9",
+]
+
+[[package]]
 name = "strict-num"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4895,6 +4976,18 @@ dependencies = [
  "log",
  "raw-window-handle",
  "web-sys",
+]
+
+[[package]]
+name = "which"
+version = "4.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87ba24419a2078cd2b0f2ede2691b6c66d8e47836da3b6db8265ebad47afbfc7"
+dependencies = [
+ "either",
+ "home",
+ "once_cell",
+ "rustix 0.38.44",
 ]
 
 [[package]]
