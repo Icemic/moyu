@@ -30,7 +30,7 @@ const SMALL_BUTTON = {
 
 function ResultPanel({ command, result }: { command: string; result: string }) {
   return (
-    <Panel title="最近一次调用" width={1460} height={180} note="显示实际提交的 subCommand 与同步返回值或错误。">
+    <Panel title="最近一次调用" width={1460} height={200} note="显示实际提交的 subCommand 与同步返回值或错误。">
       <vbox gap={10}>
         <text {...TEXT.body} text={command || '尚未调用'} />
         <text {...TEXT.caption} text={result || '点击按钮开始测试。'} boxWidth={1400} lineHeight={28} />
@@ -45,7 +45,7 @@ function AchievementSection({ run }: { run: (command: SteamCommand) => void }) {
 
   return (
     <vbox gap={24}>
-      <Panel title="Spacewar Achievement" width={1460} height={410} note="API name 来自 App ID 480 的真实后台配置。">
+      <Panel title="Spacewar Achievement" width={1460} height={370} note="API name 来自 App ID 480 的真实后台配置。">
         <vbox gap={18}>
           <Select
             value={achievement}
@@ -57,10 +57,30 @@ function AchievementSection({ run }: { run: (command: SteamCommand) => void }) {
             textStyle={{ ...BUTTON_TEXT_STYLE, fontSize: 18, glyphGridSize: 18 }}
           />
           <hbox gap={16}>
-            <Button sprite={SMALL_BUTTON} text="achievementGet" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'achievementGet', name: achievement })} />
-            <Button sprite={SMALL_BUTTON} text="achievementSet" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'achievementSet', name: achievement })} />
-            <Button sprite={SMALL_BUTTON} text="achievementClear" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'achievementClear', name: achievement })} />
-            <Button sprite={SMALL_BUTTON} text="achievementClearAll" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'achievementClearAll' })} />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="achievementGet"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'achievementGet', name: achievement })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="achievementSet"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'achievementSet', name: achievement })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="achievementClear"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'achievementClear', name: achievement })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="achievementClearAll"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'achievementClearAll' })}
+            />
           </hbox>
           <hbox gap={16}>
             <Button
@@ -73,8 +93,8 @@ function AchievementSection({ run }: { run: (command: SteamCommand) => void }) {
                 run({ subCommand: 'achievementIndicateProgress', name: PROGRESS_ACHIEVEMENT, current, max: 100 });
               }}
             />
-            <text {...TEXT.caption} text="进度通知不保存数值；真实进度通过 Stats 页的 NumWins 读写。" />
           </hbox>
+          <text {...TEXT.caption} text="进度通知不保存数值；真实进度通过 Stats 页的 NumWins 读写。" />
         </vbox>
       </Panel>
     </vbox>
@@ -84,31 +104,94 @@ function AchievementSection({ run }: { run: (command: SteamCommand) => void }) {
 function AppsOverlaySection({ run }: { run: (command: SteamCommand) => void }) {
   return (
     <vbox gap={24}>
-      <Panel title="Apps · App ID 480" width={1460} height={300}>
+      <Panel title="Apps · App ID 480" width={1460} height={200}>
         <vbox gap={18}>
           <hbox gap={16}>
-            <Button sprite={SMALL_BUTTON} text="appsGetAppBuildId" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'appsGetAppBuildId' })} />
-            <Button sprite={SMALL_BUTTON} text="appsGetCurrentBetaName" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'appsGetCurrentBetaName' })} />
-            <Button sprite={SMALL_BUTTON} text="appsGetGameLanguage" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'appsGetCurrentGameLanguage' })} />
-            <Button sprite={SMALL_BUTTON} text="appsGetSteamUiLanguage" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'appsGetSteamUiLanguage' })} />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="appsGetAppBuildId"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'appsGetAppBuildId' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="appsGetCurrentBetaName"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'appsGetCurrentBetaName' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="appsGetGameLanguage"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'appsGetCurrentGameLanguage' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="appsGetSteamUiLanguage"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'appsGetSteamUiLanguage' })}
+            />
           </hbox>
-          <Button sprite={SMALL_BUTTON} text="appsIsSubscribedApp(480)" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'appsIsSubscribedApp', appId: APP_ID })} />
+          <Button
+            sprite={SMALL_BUTTON}
+            text="appsIsSubscribedApp(480)"
+            textStyle={BUTTON_TEXT_STYLE}
+            onPress={() => run({ subCommand: 'appsIsSubscribedApp', appId: APP_ID })}
+          />
         </vbox>
       </Panel>
-      <Panel title="Overlay" width={1460} height={300}>
+      <Panel title="Overlay" width={1460} height={250}>
         <vbox gap={18}>
           <hbox gap={16}>
-            <Button sprite={SMALL_BUTTON} text="overlayIsEnabled" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'overlayIsEnabled' })} />
-            <Button sprite={SMALL_BUTTON} text="overlayNeedsPresent" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'overlayNeedsPresent' })} />
-            <Button sprite={SMALL_BUTTON} text="overlayActivate(friends)" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'overlayActivate', dialog: 'friends' })} />
-            <Button sprite={SMALL_BUTTON} text="overlayActivate(settings)" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'overlayActivate', dialog: 'settings' })} />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="overlayIsEnabled"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'overlayIsEnabled' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="overlayNeedsPresent"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'overlayNeedsPresent' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="overlayActivate(friends)"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'overlayActivate', dialog: 'friends' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="overlayActivate(settings)"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'overlayActivate', dialog: 'settings' })}
+            />
           </hbox>
           <hbox gap={16}>
-            <Button sprite={SMALL_BUTTON} text="overlayActivate(stats)" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'overlayActivate', dialog: 'stats' })} />
-            <Button sprite={SMALL_BUTTON} text="overlayActivate(achievements)" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'overlayActivate', dialog: 'achievements' })} />
-            <Button sprite={SMALL_BUTTON} text="notification: topRight" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'overlaySetNotificationPosition', position: 'topRight' })} />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="overlayActivate(stats)"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'overlayActivate', dialog: 'stats' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="overlayActivate(achievements)"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'overlayActivate', dialog: 'achievements' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="notification: topRight"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'overlaySetNotificationPosition', position: 'topRight' })}
+            />
           </hbox>
-          <text {...TEXT.caption} text="未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。" />
+          <text
+            {...TEXT.caption}
+            text="未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。"
+          />
         </vbox>
       </Panel>
     </vbox>
@@ -120,16 +203,46 @@ function StatsSection({ run }: { run: (command: SteamCommand) => void }) {
 
   return (
     <vbox gap={24}>
-      <Panel title="UserStats · Spacewar" width={1460} height={400} note="NumWins 是 App ID 480 的 INT stat；写入 stat 不会自动解锁 achievement。">
+      <Panel
+        title="UserStats · Spacewar"
+        width={1460}
+        height={360}
+        note="Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
+      >
         <vbox gap={18}>
           <hbox gap={16}>
-            <Button sprite={SMALL_BUTTON} text="statsListAchievements" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'statsListAchievements' })} />
-            <Button sprite={SMALL_BUTTON} text="statsGetAchievement" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'statsGetAchievement', name: 'ACH_WIN_ONE_GAME' })} />
-            <Button sprite={SMALL_BUTTON} text="statsSetAchievement" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'statsSetAchievement', name: 'ACH_WIN_ONE_GAME' })} />
-            <Button sprite={SMALL_BUTTON} text="statsClearAchievement" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'statsClearAchievement', name: 'ACH_WIN_ONE_GAME' })} />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="statsListAchievements"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'statsListAchievements' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="statsGetAchievement"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'statsGetAchievement', name: 'ACH_WIN_ONE_GAME' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="statsSetAchievement"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'statsSetAchievement', name: 'ACH_WIN_ONE_GAME' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="statsClearAchievement"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'statsClearAchievement', name: 'ACH_WIN_ONE_GAME' })}
+            />
           </hbox>
           <hbox gap={16}>
-            <Button sprite={SMALL_BUTTON} text="statsGetIntStat(NumWins)" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'statsGetIntStat', name: 'NumWins' })} />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="statsGetIntStat(NumWins)"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'statsGetIntStat', name: 'NumWins' })}
+            />
             <Button
               sprite={SMALL_BUTTON}
               text={`statsSetIntStat(${wins})`}
@@ -140,9 +253,41 @@ function StatsSection({ run }: { run: (command: SteamCommand) => void }) {
                 run({ subCommand: 'statsSetIntStat', name: 'NumWins', value });
               }}
             />
-            <Button sprite={SMALL_BUTTON} text="statsIndicateProgress" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'statsIndicateAchievementProgress', name: PROGRESS_ACHIEVEMENT, current: Math.min(99, wins), max: 100 })} />
-            <Button sprite={SMALL_BUTTON} text="statsStoreStats" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'statsStoreStats' })} />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="statsIndicateProgress"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() =>
+                run({
+                  subCommand: 'statsIndicateAchievementProgress',
+                  name: PROGRESS_ACHIEVEMENT,
+                  current: Math.min(99, wins),
+                  max: 100,
+                })
+              }
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="statsStoreStats"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'statsStoreStats' })}
+            />
           </hbox>
+          <hbox gap={16}>
+            <Button
+              sprite={SMALL_BUTTON}
+              text="get FeetTraveled"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'statsGetFloatStat', name: 'FeetTraveled' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="set FeetTraveled: 2640"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'statsSetFloatStat', name: 'FeetTraveled', value: 2640 })}
+            />
+          </hbox>
+          <text {...TEXT.caption} text="ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet" />
         </vbox>
       </Panel>
     </vbox>
@@ -152,19 +297,49 @@ function StatsSection({ run }: { run: (command: SteamCommand) => void }) {
 function OtherSection({ run }: { run: (command: SteamCommand) => void }) {
   return (
     <vbox gap={24}>
-      <Panel title="User / Workshop" width={1460} height={300}>
+      <Panel title="User / Workshop" width={1460} height={240}>
         <vbox gap={18}>
           <hbox gap={16}>
-            <Button sprite={SMALL_BUTTON} text="userGetAccountId" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'userGetAccountId' })} />
-            <Button sprite={SMALL_BUTTON} text="userGetCSteamId" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'userGetCSteamId' })} />
-            <Button sprite={SMALL_BUTTON} text="userGetPersonaName" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'userGetPersonaName' })} />
-            <Button sprite={SMALL_BUTTON} text="userGetGameBadgeLevel" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'userGetGameBadgeLevel', series: 1, foil: false })} />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="userGetAccountId"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'userGetAccountId' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="userGetCSteamId"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'userGetCSteamId' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="userGetPersonaName"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'userGetPersonaName' })}
+            />
+            <Button
+              sprite={SMALL_BUTTON}
+              text="userGetGameBadgeLevel"
+              textStyle={BUTTON_TEXT_STYLE}
+              onPress={() => run({ subCommand: 'userGetGameBadgeLevel', series: 1, foil: false })}
+            />
           </hbox>
-          <Button sprite={SMALL_BUTTON} text="workshopGetSubscribedItems" textStyle={BUTTON_TEXT_STYLE} onPress={() => run({ subCommand: 'workshopGetSubscribedItems', includeDisabled: false })} />
+          <Button
+            sprite={SMALL_BUTTON}
+            text="workshopGetSubscribedItems"
+            textStyle={BUTTON_TEXT_STYLE}
+            onPress={() => run({ subCommand: 'workshopGetSubscribedItems', includeDisabled: false })}
+          />
           <text {...TEXT.caption} text="未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。" />
         </vbox>
       </Panel>
-      <Panel title="Timeline / Float Stats" width={1460} height={240} note="App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。">
+      <Panel
+        title="Timeline / Float Stats"
+        width={1460}
+        height={200}
+        note="App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。"
+      >
         <vbox gap={12}>
           <text {...TEXT.body} text="timelineSetStateDescription · timelineAddEvent · timelineClearStateDescription" />
           <text {...TEXT.body} text="statsGetFloatStat · statsSetFloatStat" />
