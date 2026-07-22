@@ -56,7 +56,7 @@ const PAGES: readonly GalleryPageDefinition[] = [
   {
     key: 'controls',
     title: '封装组件',
-    description: 'Button、Checkbox、Select、Slider 与 ScrollView。',
+    description: 'Button、Checkbox、Radio、Select、Slider 与 ScrollView。',
     component: ControlsPage,
   },
   {

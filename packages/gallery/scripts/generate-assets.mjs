@@ -263,6 +263,18 @@ function checkboxSprite(checked) {
   return c;
 }
 
+function radioSprite(checked, fill) {
+  const s = SUPERSAMPLE;
+  const size = 48 * s;
+  const c = createCanvas(size, size);
+  fillCircle(c, size / 2, size / 2, 20 * s, GRAY(fill));
+  strokeCircle(c, size / 2, size / 2, 18.5 * s, 3 * s, WHITE);
+  if (checked) {
+    fillCircle(c, size / 2, size / 2, 9 * s, WHITE);
+  }
+  return c;
+}
+
 function dropdownTriggerSprite(fill) {
   const c = chromeSprite({ size: 64, radius: 6, fill });
   const s = SUPERSAMPLE;
@@ -421,6 +433,13 @@ save(chromeSprite({ size: 48, radius: 6, fill: 48 }), 'unchecked_press.png');
   strokeSegment(press, u(20), u(33), u(37), u(14), u(5), WHITE);
   save(press, 'checked_press.png');
 }
+
+save(radioSprite(false, 64), 'radio_unchecked.png');
+save(radioSprite(false, 96), 'radio_unchecked_hover.png');
+save(radioSprite(false, 48), 'radio_unchecked_press.png');
+save(radioSprite(true, 64), 'radio_checked.png');
+save(radioSprite(true, 96), 'radio_checked_hover.png');
+save(radioSprite(true, 48), 'radio_checked_press.png');
 
 save(dropdownTriggerSprite(128), 'dropdown.png');
 save(dropdownTriggerSprite(166), 'dropdown_hover.png');

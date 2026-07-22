@@ -1,4 +1,4 @@
-import { Button, Checkbox, ScrollView, Select, Slider, useScrollView } from '@momoyu-ink/kit';
+import { Button, Checkbox, Radio, RadioGroup, ScrollView, Select, Slider, useScrollView } from '@momoyu-ink/kit';
 import { useState } from 'react';
 import { DemoChip, Panel } from '../components/chrome';
 import {
@@ -8,6 +8,8 @@ import {
   CHECKBOX_UNCHECKED_SPRITE,
   COLOR,
   ITEM_COLORS,
+  RADIO_CHECKED_SPRITE,
+  RADIO_UNCHECKED_SPRITE,
   SELECT_LIST,
   SELECT_OPTION,
   SELECT_TRIGGER,
@@ -114,6 +116,59 @@ function SliderPanel() {
   );
 }
 
+function RadioPanel() {
+  const [selected, setSelected] = useState('1920');
+
+  return (
+    <Panel title="Radio 单选框" width={1504} height={320} note="RadioGroup 统一管理同组互斥选择。">
+      <hbox gap={120}>
+        <vbox gap={18}>
+          <text {...GROUP_LABEL} text="受控组件" />
+          <RadioGroup value={selected} onValueChange={setSelected}>
+            <hbox gap={32}>
+              {[
+                { value: '1920', label: '1920' },
+                { value: '1280', label: '1280' },
+                { value: '800', label: '800' },
+              ].map((option) => (
+                <hbox key={option.value} gap={12} alignItems="center">
+                  <Radio
+                    value={option.value}
+                    uncheckedSprite={RADIO_UNCHECKED_SPRITE}
+                    checkedSprite={RADIO_CHECKED_SPRITE}
+                  />
+                  <text {...TEXT.body} text={option.label} />
+                </hbox>
+              ))}
+            </hbox>
+          </RadioGroup>
+          <text {...TEXT.caption} text={`当前值：${selected}`} />
+        </vbox>
+        <vbox gap={18}>
+          <text {...GROUP_LABEL} text="非受控组件" />
+          <RadioGroup defaultValue="windowed">
+            <hbox gap={32}>
+              <hbox gap={12} alignItems="center">
+                <Radio value="windowed" uncheckedSprite={RADIO_UNCHECKED_SPRITE} checkedSprite={RADIO_CHECKED_SPRITE} />
+                <text {...TEXT.body} text="窗口" />
+              </hbox>
+              <hbox gap={12} alignItems="center">
+                <Radio
+                  value="fullscreen"
+                  uncheckedSprite={RADIO_UNCHECKED_SPRITE}
+                  checkedSprite={RADIO_CHECKED_SPRITE}
+                />
+                <text {...TEXT.body} text="全屏" />
+              </hbox>
+            </hbox>
+          </RadioGroup>
+          <text {...TEXT.caption} text="内部维护当前值" />
+        </vbox>
+      </hbox>
+    </Panel>
+  );
+}
+
 function SelectPanel() {
   const [selected, setSelected] = useState('spring');
 
@@ -183,6 +238,7 @@ export function ControlsPage() {
           <SelectPanel />
           <ScrollViewPanel />
         </hbox>
+        <RadioPanel />
       </vbox>
     </container>
   );

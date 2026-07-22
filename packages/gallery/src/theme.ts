@@ -108,6 +108,16 @@ export const CHECKBOX_CHECKED_SPRITE: ControlSpriteProps = {
   tint: COLOR.controlTint,
 };
 
+export const RADIO_UNCHECKED_SPRITE: ControlSpriteProps = {
+  src: [`${IMAGES}radio_unchecked.png`, `${IMAGES}radio_unchecked_hover.png`, `${IMAGES}radio_unchecked_press.png`],
+  tint: COLOR.controlTint,
+};
+
+export const RADIO_CHECKED_SPRITE: ControlSpriteProps = {
+  src: [`${IMAGES}radio_checked.png`, `${IMAGES}radio_checked_hover.png`, `${IMAGES}radio_checked_press.png`],
+  tint: COLOR.controlTint,
+};
+
 export const SELECT_TRIGGER: ControlSpriteProps = {
   src: [`${IMAGES}dropdown.png`, `${IMAGES}dropdown_hover.png`, `${IMAGES}dropdown_press.png`],
   ...DROPDOWN_NINE_SLICE,
