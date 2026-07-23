@@ -4,6 +4,7 @@ use moyu_core::base::Rect;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Node, NodeBaseTrait, ShadowKind};
 use moyu_core::utils::convert::{JSValue, from_js};
+use moyu_core::utils::layout::measure_children_layout_size;
 use moyu_core::utils::patch::Patch;
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
@@ -97,24 +98,7 @@ impl Node for ShaderSlot {
     }
 
     fn measure(&mut self) {
-        let mut width = 0.0_f32;
-        let mut height = 0.0_f32;
-
-        for child in self.base().children() {
-            let child = child.read();
-            if !child.participates_in_parent_measure() {
-                continue;
-            }
-
-            let child_base = child.base();
-            let (child_width, child_height) = child_base.layout_size();
-            let child_pivot = child_base.pivot();
-            width = width.max(child_base.translate().x - child_pivot.x * child_width + child_width);
-            height =
-                height.max(child_base.translate().y - child_pivot.y * child_height + child_height);
-        }
-
-        self.content_layout_size = (width, height);
+        self.content_layout_size = measure_children_layout_size(self.base());
         self.base_mut().set_layout_size(0.0, 0.0);
     }
 
