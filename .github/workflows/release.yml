@@ -189,6 +189,7 @@ jobs:
 
       - name: Build Gallery
         run: |
+          yarn workspace @momoyu-ink/kit build
           yarn workspace @momoyu-ink/gallery typecheck
           yarn workspace @momoyu-ink/gallery build
 
