@@ -167,6 +167,75 @@ jobs:
           path: '*.tar.zst'
           retention-days: 30
 
+  gallery-pages-build:
+    name: Build Gallery for GitHub Pages
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          lfs: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          yarn install --immutable
+
+      - name: Build Gallery
+        run: |
+          yarn workspace @momoyu-ink/gallery typecheck
+          yarn workspace @momoyu-ink/gallery build
+
+      - name: Download Web engine
+        uses: actions/download-artifact@v7
+        with:
+          name: web-universal-dev
+          path: artifacts/web-universal-dev
+
+      - name: Assemble Gallery site
+        shell: bash
+        run: |
+          mkdir -p site
+          tar --zstd -xf artifacts/web-universal-dev/web-universal-dev.tar.zst -C site
+          cp packages/gallery/index.html site/index.html
+          cp packages/gallery/index.json site/index.json
+          cp packages/gallery/dist/index.js site/index.js
+          cp -R packages/gallery/assets site/assets
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy-gallery-pages:
+    name: Deploy Gallery to GitHub Pages
+    if: github.ref == 'refs/heads/main'
+    needs: gallery-pages-build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
   release:
     name: Create Release
     needs: build

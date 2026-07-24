@@ -492,7 +492,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@momoyu-ink/cli@workspace:packages/cli":
+"@momoyu-ink/cli@workspace:*, @momoyu-ink/cli@workspace:packages/cli":
   version: 0.0.0-use.local
   resolution: "@momoyu-ink/cli@workspace:packages/cli"
   dependencies:
@@ -514,6 +514,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@momoyu-ink/gallery@workspace:packages/gallery"
   dependencies:
+    "@momoyu-ink/cli": "workspace:*"
     "@momoyu-ink/kit": "workspace:*"
     "@rspack/cli": "npm:^1.7.11"
     "@rspack/core": "npm:^1.7.11"

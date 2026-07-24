@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d1322" />
+    <title>Moyu Gallery</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #0d1322;
+        color: #dbe4f3;
+        font-family: system-ui, sans-serif;
+      }
+
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+
+      #start-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 50% 35%, rgb(61 90 128 / 35%), transparent 40%),
+          #0d1322;
+        transition: opacity 180ms ease;
+      }
+
+      #start-screen[hidden] {
+        display: none;
+      }
+
+      .start-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0;
+        color: #f4f7ff;
+        font-size: clamp(36px, 7vw, 64px);
+        font-weight: 500;
+        letter-spacing: 0.04em;
+      }
+
+      p {
+        min-height: 1.5em;
+        margin: 0;
+        color: #8fa0bd;
+      }
+
+      button {
+        min-width: 180px;
+        padding: 12px 24px;
+        border: 1px solid #6079a3;
+        border-radius: 8px;
+        background: #3d5a80;
+        color: #fff;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="start-screen">
+      <div class="start-panel">
+        <h1>Moyu Gallery</h1>
+        <p id="status">正在加载引擎…</p>
+        <button id="start-button" type="button" disabled>启动 Gallery</button>
+      </div>
+    </div>
+
+    <script type="module">
+      const startScreen = document.querySelector('#start-screen');
+      const startButton = document.querySelector('#start-button');
+      const status = document.querySelector('#status');
+
+      window.__moyu_entry = new URL('./index.json', import.meta.url).href;
+
+      try {
+        const moyu = await import('./moyu.js');
+        await moyu.default();
+
+        window.moyu = {
+          pushCommand(name, args) {
+            return moyu[name](...args);
+          },
+          executeNodeCommand(...args) {
+            return moyu.execute_node_command(...args);
+          },
+          executePluginCommand(...args) {
+            return moyu.execute_plugin_command(...args);
+          },
+        };
+
+        status.textContent = '引擎已就绪';
+        startButton.disabled = false;
+        startButton.addEventListener(
+          'click',
+          async () => {
+            startButton.disabled = true;
+            status.textContent = '正在启动…';
+            try {
+              await moyu.moyu_init('root');
+              startScreen.hidden = true;
+            } catch (error) {
+              console.error('Failed to start Moyu Gallery:', error);
+              status.textContent = '启动失败，请查看浏览器控制台';
+              startButton.disabled = false;
+            }
+          },
+        );
+      } catch (error) {
+        console.error('Failed to load Moyu engine:', error);
+        status.textContent = '引擎加载失败，请刷新页面重试';
+      }
+    </script>
+  </body>
+</html>

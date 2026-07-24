@@ -13,6 +13,17 @@
 
 应用只使用 Moyu intrinsic JSX 元素与 Kit 自定义渲染器，不包含 DOM 元素或 `react-dom`。
 
+## GitHub Pages
+
+`main` 分支的 Release workflow 会在全部引擎平台构建完成后：
+
+1. 构建并类型检查 Gallery；
+2. 下载同次运行产生的 `web-universal-dev` 引擎 artifact；
+3. 组合 Web 引擎、Gallery bundle、`index.json`、`index.html` 和 `assets/`；
+4. 部署组合产物到 GitHub Pages。
+
+仓库需要在 GitHub Settings 中启用 Actions 作为 Pages source，并创建名为 `github-pages` 的 environment。tag 发布不会覆盖 Gallery Pages。
+
 ## 页面
 
 - 01 基础组件 — Sprite、Text、Clip、Animation 与通用节点属性
