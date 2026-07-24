@@ -21,9 +21,20 @@
         font-family: system-ui, sans-serif;
       }
 
-      #root {
+      #wrapper {
         width: 100%;
         height: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #root {
+        position: relative;
+        flex: none;
+        overflow: hidden;
+        transform-origin: center;
       }
 
       #start-screen {
@@ -76,13 +87,15 @@
       }
 
       button:disabled {
-        cursor: wait;
+        cursor: default;
         opacity: 0.65;
       }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="wrapper">
+      <div id="root"></div>
+    </div>
     <div id="start-screen">
       <div class="start-panel">
         <h1>Moyu Gallery</h1>
@@ -97,6 +110,67 @@
       const status = document.querySelector('#status');
 
       window.__moyu_entry = new URL('./index.json', import.meta.url).href;
+
+      function setupCanvasAdaptation() {
+        const root = document.querySelector('#root');
+        const mobilePointer = window.matchMedia('(hover: none) and (pointer: coarse)');
+        let canvas;
+        let canvasResizeObserver;
+
+        const adapt = () => {
+          if (!canvas) return;
+
+          const dpr = window.devicePixelRatio || 1;
+          const gameWidth = canvas.width / dpr;
+          const gameHeight = canvas.height / dpr;
+          if (!gameWidth || !gameHeight) return;
+
+          root.style.width = `${gameWidth}px`;
+          root.style.height = `${gameHeight}px`;
+
+          if (!mobilePointer.matches) {
+            root.style.position = 'relative';
+            root.style.left = '';
+            root.style.top = '';
+            root.style.transform = '';
+            return;
+          }
+
+          const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+          const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+          const rotate = (gameWidth > gameHeight) !== (viewportWidth > viewportHeight);
+          const displayWidth = rotate ? gameHeight : gameWidth;
+          const displayHeight = rotate ? gameWidth : gameHeight;
+          const scale = Math.min(viewportWidth / displayWidth, viewportHeight / displayHeight);
+
+          root.style.position = 'absolute';
+          root.style.left = '50%';
+          root.style.top = '50%';
+          root.style.transform = `translate(-50%, -50%)${rotate ? ' rotate(90deg)' : ''} scale(${scale})`;
+        };
+
+        const observeCanvas = (nextCanvas) => {
+          if (canvas === nextCanvas) return;
+          canvas = nextCanvas;
+          canvasResizeObserver?.disconnect();
+          canvasResizeObserver = new ResizeObserver(adapt);
+          canvasResizeObserver.observe(canvas);
+          adapt();
+        };
+
+        const existingCanvas = root.querySelector('canvas');
+        if (existingCanvas) observeCanvas(existingCanvas);
+
+        const mutationObserver = new MutationObserver(() => {
+          const nextCanvas = root.querySelector('canvas');
+          if (nextCanvas) observeCanvas(nextCanvas);
+        });
+        mutationObserver.observe(root, { childList: true, subtree: true });
+
+        window.addEventListener('resize', adapt);
+        window.visualViewport?.addEventListener('resize', adapt);
+        mobilePointer.addEventListener('change', adapt);
+      }
 
       try {
         const moyu = await import('./moyu.js');
@@ -116,21 +190,18 @@
 
         status.textContent = '引擎已就绪';
         startButton.disabled = false;
-        startButton.addEventListener(
-          'click',
-          async () => {
-            startButton.disabled = true;
-            status.textContent = '正在启动…';
-            try {
-              await moyu.moyu_init('root');
-              startScreen.hidden = true;
-            } catch (error) {
-              console.error('Failed to start Moyu Gallery:', error);
-              status.textContent = '启动失败，请查看浏览器控制台';
-              startButton.disabled = false;
-            }
-          },
-        );
+        startButton.addEventListener('click', () => {
+          startButton.disabled = true;
+          status.textContent = '正在启动…';
+          startScreen.hidden = true;
+          setupCanvasAdaptation();
+          void moyu.moyu_init('root').catch((error) => {
+            console.error('Failed to start Moyu Gallery:', error);
+            status.textContent = '启动失败，请查看浏览器控制台';
+            startButton.disabled = false;
+            startScreen.hidden = false;
+          });
+        });
       } catch (error) {
         console.error('Failed to load Moyu engine:', error);
         status.textContent = '引擎加载失败，请刷新页面重试';
