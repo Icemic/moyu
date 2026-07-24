@@ -1,6 +1,8 @@
 import type {
   ControlSpriteProps,
   ControlTextStyle,
+  InputBackground,
+  InputCaretStyle,
   SelectListProps,
   SelectOptionSpriteProps,
   SliderThumbProps,
@@ -35,6 +37,10 @@ export const COLOR = {
   panelTint: '#2c3a52',
   /** Tint for interactive controls in idle state. */
   controlTint: '#54688c',
+  /** Tint for hovered controls. */
+  controlTintHover: '#6079a3',
+  /** Tint for pressed controls. */
+  controlTintPress: '#405475',
   /** Tint for selected/active controls. */
   controlTintActive: '#3d5a80',
   /** Navigation item text. */
@@ -163,6 +169,47 @@ export const SLIDER_THUMB: SliderThumbProps = {
   tint: COLOR.controlTint,
   targetWidth: 28,
   targetHeight: 40,
+};
+
+export const INPUT_BACKGROUND: InputBackground = {
+  idle: {
+    src: `${IMAGES}panel.png`,
+    ...NINE_SLICE,
+    tint: COLOR.controlTint,
+  },
+  hover: {
+    src: `${IMAGES}panel.png`,
+    ...NINE_SLICE,
+    tint: COLOR.controlTintHover,
+  },
+  press: {
+    src: `${IMAGES}panel.png`,
+    ...NINE_SLICE,
+    tint: COLOR.controlTintPress,
+  },
+  focused: {
+    src: `${IMAGES}panel.png`,
+    ...NINE_SLICE,
+    tint: COLOR.controlTintActive,
+  },
+  readOnly: {
+    src: `${IMAGES}panel.png`,
+    ...NINE_SLICE,
+    tint: COLOR.panelTint,
+  },
+  disabled: {
+    src: `${IMAGES}panel.png`,
+    ...NINE_SLICE,
+    tint: COLOR.dim,
+  },
+};
+
+export const INPUT_CARET: InputCaretStyle = {
+  src: PIXEL_SPRITE,
+  tint: COLOR.accent,
+  width: 3,
+  height: 36,
+  blinkInterval: 500,
 };
 
 /** Solid dark rectangle for visualizing fixed-size layout zones. */

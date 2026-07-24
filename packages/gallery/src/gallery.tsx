@@ -13,6 +13,7 @@ import { BackdropsPage } from './pages/backdrops';
 import { ControlsPage } from './pages/controls';
 import { FiltersPage } from './pages/filters';
 import { LayoutsPage } from './pages/layouts';
+import { InputPage } from './pages/input';
 import { PrimitivesPage } from './pages/primitives';
 import { RawShadersPage } from './pages/raw-shaders';
 import { ShaderTransitionsPage } from './pages/shader-transitions';
@@ -58,6 +59,12 @@ const PAGES: readonly GalleryPageDefinition[] = [
     title: '封装组件',
     description: 'Button、Checkbox、Radio、Select、Slider 与 ScrollView。',
     component: ControlsPage,
+  },
+  {
+    key: 'input',
+    title: 'Input 输入框',
+    description: 'Editable 节点、末尾输入、IME、焦点与受控状态。',
+    component: InputPage,
   },
   {
     key: 'filters',

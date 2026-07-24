@@ -20,6 +20,7 @@ export type {
 } from './components/control';
 export * from './components/button';
 export * from './components/checkbox';
+export * from './components/input';
 export * from './components/radio';
 export * from './components/select';
 export * from './components/slider';
