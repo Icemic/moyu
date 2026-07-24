@@ -1,3 +1,4 @@
+mod editable;
 pub mod filter_registry;
 mod global;
 mod handle_events;
@@ -12,6 +13,7 @@ use anyhow::Result;
 use arc_swap::{ArcSwap, ArcSwapOption};
 use dashmap::DashMap;
 use dashmap::mapref::one::Ref;
+use editable::EditableManager;
 use log::{debug, error};
 use moyu_pal::config::{WindowState, get_engine_config};
 use moyu_pal::sync::{Mutex, RwLock};
@@ -53,6 +55,7 @@ pub struct Core {
     pub(crate) node_map: NodeMap,
     /// map for current pointer states, mouse event is stored in index -1 while touch events are stored in their identifier
     pub(crate) pointer_map: DashMap<i32, PointerState>,
+    editable: EditableManager,
 
     pub(crate) window_state: ArcSwap<WindowState>,
     pub(crate) cursor_state: ArcSwap<MoyuCursor>,
@@ -129,6 +132,9 @@ impl Core {
         // add mouse pointer which is always there
         pointer_map.insert(MOUSE_IDENTIFIER, PointerState::default());
 
+        let editable =
+            EditableManager::new(window.clone(), node_map.clone(), stage_transform.clone());
+
         Self {
             window,
             graphics: ArcSwapOption::empty(),
@@ -142,6 +148,7 @@ impl Core {
 
             node_map,
             pointer_map,
+            editable,
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
             cursor_state: ArcSwap::new(Arc::new(MoyuCursor::default())),
@@ -422,6 +429,10 @@ impl Core {
 
     pub fn graphics(&self) -> Option<Arc<Graphics>> {
         self.graphics.load().as_ref().cloned()
+    }
+
+    pub fn editable(&self) -> &EditableManager {
+        &self.editable
     }
 
     pub fn surface_size(&self) -> SurfaceSize {

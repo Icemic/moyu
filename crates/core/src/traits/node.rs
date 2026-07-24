@@ -7,8 +7,7 @@ use moyu_pal::sync::RwLock;
 use crate::nodes::NodeBase;
 use crate::utils::convert::JSValue;
 
-use super::Command;
-use super::Focusable;
+use super::{Command, EditableTarget, Focusable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShadowKind {
@@ -92,6 +91,16 @@ pub trait Node: NodeBaseTrait + Debug + Send + Sync {
 
     /// return Some(self) manually if you've implemented Focusable for the node
     fn as_focusable(&self) -> Option<&dyn Focusable> {
+        None
+    }
+
+    /// return Some(self) manually if you've implemented EditableTarget for the node
+    fn as_editable_target(&self) -> Option<&dyn EditableTarget> {
+        None
+    }
+
+    /// return Some(self) manually if you've implemented EditableTarget for the node
+    fn as_editable_target_mut(&mut self) -> Option<&mut dyn EditableTarget> {
         None
     }
 

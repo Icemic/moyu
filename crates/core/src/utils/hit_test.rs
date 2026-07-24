@@ -51,7 +51,7 @@ fn hit_test_children(
     for child in parent.base().children_in_paint_order().iter().rev() {
         let child_ref = child.read();
 
-        if !child_ref.base().interactive() {
+        if !child_ref.base().interactive() || !child_ref.base().visible() {
             continue;
         }
 

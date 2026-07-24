@@ -11,10 +11,13 @@ import type { NodeProps } from './bindings/NodeProps';
 import type { VBoxProps } from './bindings/VBoxProps';
 import type { HBoxProps } from './bindings/HBoxProps';
 import type { ClipProps } from './bindings/ClipProps';
+import type { EditableEvent } from './bindings/EditableEvent';
+import type { EditableProps } from './bindings/EditableProps';
 import type { FilterProps } from './bindings/FilterProps';
 import type { BackdropProps } from './bindings/BackdropProps';
 import type { SpriteProps } from './bindings/SpriteProps';
 import type { TextProps } from './bindings/TextProps';
+import type { TextLayoutEvent } from './bindings/TextLayoutEvent';
 import type { ShaderProps } from './bindings/ShaderProps';
 import type { ShaderSlotProps } from './bindings/ShaderSlotProps';
 import type { AnimationProps } from './bindings/AnimationProps';
@@ -59,6 +62,16 @@ export type MoyuContainerAttributes = MoyuNodeAttributes;
 export type MoyuVBoxAttributes = VBoxProps & MoyuNodeAttributes & { onLayout?: (event: LayoutEvent) => void };
 export type MoyuHBoxAttributes = HBoxProps & MoyuNodeAttributes & { onLayout?: (event: LayoutEvent) => void };
 export type MoyuClipAttributes = ClipProps & MoyuNodeAttributes;
+export type MoyuEditableAttributes = EditableProps &
+  MoyuNodeAttributes & {
+    onFocus?: (event: Extract<EditableEvent, { type: 'focus' }>) => void;
+    onBlur?: (event: Extract<EditableEvent, { type: 'blur' }>) => void;
+    onInput?: (event: Extract<EditableEvent, { type: 'input' }>) => void;
+    onChange?: (event: Extract<EditableEvent, { type: 'change' }>) => void;
+    onCompositionStart?: (event: Extract<EditableEvent, { type: 'compositionStart' }>) => void;
+    onCompositionUpdate?: (event: Extract<EditableEvent, { type: 'compositionUpdate' }>) => void;
+    onCompositionEnd?: (event: Extract<EditableEvent, { type: 'compositionEnd' }>) => void;
+  };
 export type MoyuFilterAttributes = FilterProps & MoyuNodeAttributes;
 export type MoyuBackdropAttributes = BackdropProps & MoyuNodeAttributes;
 export type MoyuAnimationAttributes = AnimationProps & MoyuNodeAttributes;
@@ -79,6 +92,7 @@ export type MoyuTextAttributes = TextProps &
     onStart?: () => void;
     onFinish?: () => void;
     onProgress?: (progress: number) => void;
+    onTextLayout?: (event: TextLayoutEvent) => void;
   };
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -105,6 +119,7 @@ export declare namespace JSX {
     sprite: DetailedMoyuProps<MoyuSpriteAttributes>;
     text: DetailedMoyuProps<MoyuTextAttributes>;
     clip: DetailedMoyuProps<MoyuClipAttributes>;
+    editable: DetailedMoyuProps<MoyuEditableAttributes>;
     filter: DetailedMoyuProps<MoyuFilterAttributes>;
     backdrop: DetailedMoyuProps<MoyuBackdropAttributes>;
     animation: DetailedMoyuProps<MoyuAnimationAttributes>;

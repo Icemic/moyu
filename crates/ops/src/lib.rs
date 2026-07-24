@@ -1,3 +1,4 @@
+pub mod focus;
 pub mod node;
 pub mod spawn;
 
@@ -10,6 +11,7 @@ use moyu_runtime::{
 #[cfg(web)]
 use wasm_bindgen::prelude::wasm_bindgen;
 
+use self::focus::*;
 use self::node::*;
 
 #[cfg(native)]
@@ -81,6 +83,8 @@ fn receive_command(
         "remove_child" => remove_child(context, command_args),
         "remove_child_at" => remove_child_at(context, command_args),
         "update_props" => update_props(context, command_args),
+        "focus_editable" => focus_editable(context, command_args),
+        "blur_editable" => blur_editable(context, command_args),
         _ => Err(anyhow::anyhow!("Unknown command '{}'", command_name)),
     }
 }

@@ -1,4 +1,5 @@
 import type { AudioCommand } from './bindings/AudioCommand';
+import type { EditableCommand } from './bindings/EditableCommand';
 import type { GamepadCommand } from './bindings/GamepadCommand';
 import type { ScenarioCommand } from './bindings/ScenarioCommand';
 import type { ShaderCommand } from './bindings/ShaderCommand';
@@ -9,6 +10,7 @@ import type { MakeNullOptional } from './utils';
 
 type _Command =
   | AudioCommand
+  | EditableCommand
   | TextCommand
   | GamepadCommand
   | ScenarioCommand
@@ -21,6 +23,10 @@ export type Command = MakeNullOptional<_Command>;
 export type MaybePromise = any;
 
 export * from './bindings/AudioCommand';
+export * from './bindings/EditableChangeSource';
+export * from './bindings/EditableCommand';
+export * from './bindings/EditableEvent';
+export * from './bindings/EditableState';
 export * from './bindings/GamepadCommand';
 export * from './bindings/ScenarioCommand';
 export * from './bindings/SystemCommand';

@@ -100,6 +100,8 @@ impl Core {
 
                     match state {
                         ElementState::Pressed => {
+                            self.editable.handle_pointer_down(target_id);
+
                             dispatch_event(MouseEvent {
                                 kind: MouseEventKind::MouseDown,
                                 target_id,
@@ -184,6 +186,8 @@ impl Core {
 
                     match touch.phase {
                         TouchPhase::Started => {
+                            self.editable.handle_pointer_down(target_id);
+
                             dispatch_event(TouchEvent {
                                 kind: TouchEventKind::TouchStart,
                                 target_id,

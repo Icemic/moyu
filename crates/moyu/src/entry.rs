@@ -16,7 +16,7 @@ use moyu_core::winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, Even
 #[cfg(any(desktop, web))]
 use moyu_gamepad::GamepadPlugin;
 use moyu_nodes::nodes::{
-    Animation, Backdrop, Clip, Filter, HBox, Shader, ShaderSlot, Sprite, Text, VBox, Video,
+    Animation, Backdrop, Clip, Editable, Filter, HBox, Shader, ShaderSlot, Sprite, Text, VBox, Video,
 };
 use moyu_nodes::renderer::{
     AnimationRenderer, BackdropRenderer, ClipRenderer, OffscreenPassRenderer, ShaderRenderer,
@@ -226,6 +226,7 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 core.register_node_type::<Sprite>("sprite");
                 core.register_node_type::<Text>("text");
                 core.register_node_type::<Clip>("clip");
+                core.register_node_type::<Editable>("editable");
                 core.register_node_type::<Filter>("filter");
                 core.register_node_type::<Backdrop>("backdrop");
                 core.register_node_type::<Animation>("animation");

@@ -34,6 +34,7 @@ pub struct Text {
     /// or lines per second if `print_mode` is [`TextPrintMode::Printer`],
     /// and it will be ignored if `print_mode` is [`TextPrintMode::Instant`].
     pub print_speed: f64,
+    pub parse_markup: bool,
 
     pub segments: Vec<Segment<'static>>,
     /// glyph vertices after layout
@@ -82,6 +83,7 @@ impl Text {
             text_style: TextStyle::default(),
             print_mode: TextPrintMode::default(),
             print_speed: 2.0,
+            parse_markup: true,
             total_width: 0,
             total_height: 0,
             segments: vec![],
@@ -95,6 +97,25 @@ impl Text {
             cursor_position: None,
             node_base: NodeBase::new(label),
         }
+    }
+
+    fn set_text(&mut self, text: String) {
+        if !self.text.is_empty() && text.starts_with(&self.text) {
+            let (_, appended) = text.split_at(self.text.len());
+            self.segments.push(Segment {
+                id: Some(SegmentId::Lite(self.segments.len() as u32)),
+                content: Cow::Owned(appended.to_owned()),
+            });
+        } else {
+            self.current_range_index = 0;
+            self.segments = vec![Segment {
+                id: Some(SegmentId::Lite(0)),
+                content: Cow::Owned(text.clone()),
+            }];
+        }
+
+        self.text = text;
+        self.cursor_position = None;
     }
 }
 
@@ -112,6 +133,7 @@ pub struct TextProps {
     pub text: Patch<String>,
     pub print_mode: Patch<TextPrintMode>,
     pub print_speed: Patch<f64>,
+    pub parse_markup: Patch<bool>,
 
     /* layout styles */
     /// the writing direction of the text in the box,
@@ -172,23 +194,7 @@ impl Node for Text {
 
         match props.text {
             Patch::Set(text) => {
-                let prev_text = self.text.clone();
-
-                if !prev_text.is_empty() && text.starts_with(&prev_text) {
-                    let (_, cur) = text.split_at(prev_text.len());
-                    self.segments.push(Segment {
-                        id: Some(SegmentId::Lite(self.segments.len() as u32)),
-                        content: Cow::Owned(cur.to_owned()),
-                    });
-                } else {
-                    self.current_range_index = 0;
-                    self.segments = vec![Segment {
-                        id: Some(SegmentId::Lite(0)),
-                        content: Cow::Owned(text.clone()),
-                    }];
-                };
-
-                self.text = text;
+                self.set_text(text);
 
                 if self.print_start_time.is_none() {
                     // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
@@ -211,6 +217,7 @@ impl Node for Text {
         }
 
         apply_patch!(props.print_speed => self.print_speed, 2.0);
+        apply_patch!(props.parse_markup => self.parse_markup, true);
         apply_patch!(props.direction => self.layout_style.direction, LayoutDirection::default());
         apply_patch!(props.box_width => self.layout_style.box_width, LayoutStyle::default().box_width);
         apply_patch!(props.box_height => self.layout_style.box_height, LayoutStyle::default().box_height);
@@ -260,6 +267,7 @@ impl Node for Text {
         }
 
         // force update vertices
+        self.cursor_position = None;
         self.base_mut().pend_prepare();
     }
 
@@ -287,7 +295,7 @@ impl Command for Text {
         let payload: TextCommand = from_js(_payload)?;
         match payload {
             TextCommand::SetText { text, instant } => {
-                self.text = text;
+                self.set_text(text);
                 // set to 0 to tell renderer start printing, its value will be updated to real time in renderer.
                 self.print_start_time = Some(0.);
                 if let Some(instant) = instant {

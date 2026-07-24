@@ -1,6 +1,7 @@
 mod animation;
 pub mod backdrop;
 mod clip;
+mod editable;
 mod filter;
 mod linear_layout;
 mod shader;
@@ -13,6 +14,7 @@ mod video;
 pub use animation::*;
 pub use backdrop::*;
 pub use clip::*;
+pub use editable::*;
 pub use filter::*;
 pub use linear_layout::*;
 pub use shader::*;

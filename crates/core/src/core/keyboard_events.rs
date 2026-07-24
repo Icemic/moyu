@@ -33,6 +33,8 @@ impl Core {
 
                     let modifiers_state = self.modifiers_state.load().clone();
 
+                    self.editable.handle_keyboard_input(event, *modifiers_state);
+
                     let kind = if event.state.is_pressed() {
                         KeyboardEventKind::KeyDown
                     } else {

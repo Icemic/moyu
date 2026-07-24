@@ -58,6 +58,14 @@ export function updateProps(nodeId: number, props: Record<string, any>) {
   moyu.pushCommand('update_props', [nodeId, props]);
 }
 
+export function focusEditable(nodeId: number) {
+  moyu.pushCommand('focus_editable', [nodeId]);
+}
+
+export function blurEditable(nodeId: number) {
+  moyu.pushCommand('blur_editable', [nodeId]);
+}
+
 export function executeNodeCommand(nodeId: number, payload: Command): MaybePromise {
   return moyu.executeNodeCommand(nodeId, payload);
 }

@@ -10,6 +10,7 @@ export type TextProps = {
   text?: string;
   printMode?: TextPrintMode;
   printSpeed?: number;
+  parseMarkup?: boolean;
   /**
    * the writing direction of the text in the box,
    * only `Horizontal` (right-to-left) or `Vertical` (top-to-bottom) is valid.

@@ -17,7 +17,7 @@ use moyu_core::core::render_command::RenderCommand;
 use moyu_core::traits::{Node, NodeBaseTrait, RenderCommandSender, RendererUpdatePayload};
 use moyu_core::traits::{NodeEventSource, Renderer};
 
-use crate::events::TextEvent;
+use crate::events::{TextEvent, TextLayoutEvent};
 use crate::nodes::{Text, TextPrintMode};
 
 /// the number of vertices in a sprite is always 4.
@@ -345,27 +345,7 @@ impl TextRenderer {
     }
 
     fn update_cursor_position(&self, node: &mut Text, next_index: usize) {
-        // next_index is the end value of an open interval, but we need the end value of a closed interval,
-        // so -1.
-        let last_index = next_index as i32 - 1;
-        if last_index < 0 {
-            node.cursor_position = Some((0., 0.));
-            return;
-        }
-
-        if let Some(glyph) = &node.glyph_vertices.get(last_index as usize) {
-            let (next_x, next_y);
-            if node.layout_style.direction == huozi::layout::LayoutDirection::Horizontal {
-                // the last graph is top-right corner, this may be changed by huozi in the future
-                next_x = (glyph.x + glyph.width) as f32 * glyph.scale_ratio as f32;
-                next_y = glyph.y as f32 * glyph.scale_ratio as f32;
-            } else {
-                // bottom-left corner
-                next_x = glyph.x as f32 * glyph.scale_ratio as f32;
-                next_y = (glyph.y + glyph.height) as f32 * glyph.scale_ratio as f32;
-            }
-            node.cursor_position = Some((next_x, next_y));
-        }
+        node.cursor_position = Some(get_cursor_position(node, next_index));
     }
 }
 
@@ -400,13 +380,24 @@ impl Renderer for TextRenderer {
             return;
         }
 
-        match huozi.layout_parse_with::<'<', '>'>(
-            &node.segments,
-            &node.layout_style,
-            &node.text_style,
-            huozi::ColorSpace::SRGB,
-            None,
-        ) {
+        let layout_result = if node.parse_markup {
+            huozi.layout_parse_with::<'<', '>'>(
+                &node.segments,
+                &node.layout_style,
+                &node.text_style,
+                huozi::ColorSpace::SRGB,
+                None,
+            )
+        } else {
+            huozi.layout_plain(
+                &node.segments,
+                &node.layout_style,
+                &node.text_style,
+                huozi::ColorSpace::SRGB,
+            )
+        };
+
+        match layout_result {
             Ok((glyphs, ranges, total_width, total_height)) => {
                 node.total_width = total_width;
                 node.total_height = total_height;
@@ -415,6 +406,14 @@ impl Renderer for TextRenderer {
                 node.base_mut()
                     .set_intrinsic_size(total_width as f32, total_height as f32);
                 node.base_mut().mark_update_vertices();
+
+                let end_cursor_position = get_cursor_position(node, node.glyph_vertices.len());
+                node.send_event(TextEvent::Layout(TextLayoutEvent {
+                    text: node.text.clone(),
+                    width: total_width,
+                    height: total_height,
+                    end_cursor_position,
+                }));
 
                 let image_version = huozi.image_version();
                 if self.last_texture_version.load(Ordering::Relaxed) != image_version {
@@ -446,7 +445,6 @@ impl Renderer for TextRenderer {
             }
             Err(err_msg) => {
                 error!("{}", err_msg);
-                node.base_mut().pend_prepare();
             }
         }
     }
@@ -645,4 +643,31 @@ impl Renderer for TextRenderer {
                 .unwrap();
         }
     }
+}
+
+fn get_cursor_position(node: &Text, next_index: usize) -> (f32, f32) {
+    // next_index is the end value of an open interval, but we need the end value of a closed interval,
+    // so -1.
+    let last_index = next_index as i32 - 1;
+    if last_index < 0 {
+        return (0., 0.);
+    }
+
+    if let Some(glyph) = &node.glyph_vertices.get(last_index as usize) {
+        if node.layout_style.direction == huozi::layout::LayoutDirection::Horizontal {
+            // the last graph is top-right corner, this may be changed by huozi in the future
+            return (
+                (glyph.x + glyph.width) as f32 * glyph.scale_ratio as f32,
+                glyph.y as f32 * glyph.scale_ratio as f32,
+            );
+        } else {
+            // bottom-left corner
+            return (
+                glyph.x as f32 * glyph.scale_ratio as f32,
+                (glyph.y + glyph.height) as f32 * glyph.scale_ratio as f32,
+            );
+        }
+    }
+
+    (0., 0.)
 }

@@ -13,6 +13,7 @@ text = ["dep:huozi"]
 
 [dependencies]
 reiterator = "0.3.0"
+unicode-segmentation = "1.12"
 weak-table = "0.3.2"
 
 anyhow = {workspace = true}

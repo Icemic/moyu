@@ -1459,9 +1459,9 @@ checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
 name = "huozi"
-version = "0.17.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc97c4efef81b7ea21ab86797cae98ebe7843cb12f5fe7d24b2d7b5f1179b87f"
+checksum = "b105caf805c88d1c2da2e51ddf5fe9c5dac41dcc9dd0947d873e0ed6409cd66d"
 dependencies = [
  "ab_glyph",
  "anyhow",
@@ -2202,6 +2202,7 @@ dependencies = [
  "reiterator",
  "serde",
  "ts-rs",
+ "unicode-segmentation",
  "weak-table",
  "wgpu",
 ]

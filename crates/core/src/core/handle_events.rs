@@ -19,6 +19,8 @@ use super::Core;
 
 impl Core {
     pub fn handle_about_to_wait(&self, _: &ActiveEventLoop) {
+        self.editable.maintain();
+
         // poll all plugins
         for plugin in self.plugins.iter() {
             plugin.lock().update(false);
@@ -148,6 +150,9 @@ impl Core {
                         self.surface_size.write().set_scale_factor(*scale_factor);
                     }
                     WindowEvent::Focused(focused) => {
+                        if !focused {
+                            self.editable.blur_active();
+                        }
                         dispatch_event(FocusEvent {
                             kind: if *focused {
                                 FocusEventKind::Focus
@@ -156,6 +161,9 @@ impl Core {
                             },
                             target_id: 0,
                         });
+                    }
+                    WindowEvent::Ime(ime) => {
+                        self.editable.handle_ime(ime);
                     }
                     _ => {}
                 }

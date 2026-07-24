@@ -30,6 +30,7 @@ export * from './bindings/ResolvedCommandLine';
 export * from './bindings/ResolvedSystemCallLine';
 export * from './bindings/ShaderEvent';
 export * from './bindings/TextLine';
+export * from './bindings/TextLayoutEvent';
 export * from './bindings/ScenarioEvent';
 export * from './bindings/TouchEventKind';
 export * from './bindings/WheelEventDeltaMode';
