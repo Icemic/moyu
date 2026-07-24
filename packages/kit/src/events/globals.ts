@@ -11,7 +11,8 @@ import type { TouchEvent } from './touch';
 import type { WheelEvent } from './wheel';
 
 export const globalEventListeners: Record<string, ((event: unknown) => void)[]> = {};
-export const globalRequestAnimationFrameListeners: FrameRequestCallback[] = [];
+export const globalRequestAnimationFrameListeners = new Map<number, FrameRequestCallback>();
+let nextAnimationFrameHandle = 0;
 
 const BUBBLE_EVENT_NAMES = ['mouseevent', 'touchevent', 'keyboardevent', 'wheelevent'];
 
@@ -43,7 +44,8 @@ globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
         return;
       }
       case 'animationframecallbackevent': {
-        const listeners = globalRequestAnimationFrameListeners.splice(0);
+        const listeners = [...globalRequestAnimationFrameListeners.values()];
+        globalRequestAnimationFrameListeners.clear();
         const { timestamp } = body as unknown as AnimationFrameCallbackEvent;
         for (const listener of listeners) {
           listener?.(timestamp);
@@ -130,10 +132,13 @@ function handleBubbleEvent(name: string, body: RawMouseEvent | RawTouchEvent | R
 if ((globalThis as any).__moyu_native) {
   // detect if it is running in browser, if not, polyfill requestAnimationFrame
   globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
-    return globalRequestAnimationFrameListeners.push(callback) - 1;
+    const handle = nextAnimationFrameHandle;
+    nextAnimationFrameHandle += 1;
+    globalRequestAnimationFrameListeners.set(handle, callback);
+    return handle;
   };
 
   globalThis.cancelAnimationFrame = (handle: number) => {
-    globalRequestAnimationFrameListeners.splice(handle, 1);
+    globalRequestAnimationFrameListeners.delete(handle);
   };
 }
