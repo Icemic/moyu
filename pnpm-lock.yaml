@@ -137,6 +137,9 @@ importers:
       '@react-spring/shared':
         specifier: ^10.0.3
         version: 10.0.3(react@19.2.1)
+      '@react-spring/types':
+        specifier: ^10.0.3
+        version: 10.0.3
       react-reconciler:
         specifier: ^0.33.0
         version: 0.33.0(react@19.2.1)

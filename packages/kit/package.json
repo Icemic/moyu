@@ -48,6 +48,7 @@
     "@react-spring/core": "^10.0.3",
     "@react-spring/rafz": "^10.0.3",
     "@react-spring/shared": "^10.0.3",
+    "@react-spring/types": "^10.0.3",
     "react-reconciler": "^0.33.0",
     "valtio": "^2.1.7",
     "zod": "^4.2.0"
