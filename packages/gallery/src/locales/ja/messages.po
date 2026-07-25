@@ -1,45 +1,45 @@
 msgid ""
 msgstr ""
-"POT-Creation-Date: 2026-07-25 00:00+0800\n"
+"POT-Creation-Date: 2026-07-25 09:38+0800\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: @lingui/cli\n"
-"Language: zh\n"
-"Project-Id-Version: moyu-gallery\n"
+"Language: ja\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
-"Plural-Forms: \n"
 
 #: src/pages/layouts.tsx:249
 msgid "· B 变宽：B 宽度变为 260，C 相应后移。"
-msgstr "· B 变宽：B 宽度变为 260，C 相应后移。"
+msgstr "· B を拡幅：B の幅が 260 になり、C もそれに応じて後方へ移動します。"
 
 #: src/pages/layouts.tsx:250
 msgid "· B 隐藏但占位：visible = false 不渲染，但布局位置保留。"
-msgstr "· B 隐藏但占位：visible = false 不渲染，但布局位置保留。"
+msgstr "· B を非表示のまま領域確保：visible = false では描画されませんが、レイアウト上の位置は維持されます。"
 
 #: src/pages/layouts.tsx:248
 msgid "· 初始布局：A、B、C 顺序排列，B 宽 150。"
-msgstr "· 初始布局：A、B、C 顺序排列，B 宽 150。"
+msgstr "· 初期レイアウト：A、B、C の順に並び、B の幅は 150 です。"
 
 #: src/pages/layouts.tsx:251
 msgid "· 删除 B 并重排：B 从树中移除，C 移动到 A 之前。"
-msgstr "· 删除 B 并重排：B 从树中移除，C 移动到 A 之前。"
+msgstr "· B を削除して並べ替え：B をツリーから削除し、C を A の前へ移動します。"
 
 #: src/pages/layouts.tsx:26
 msgid "1. 自动 VBox"
-msgstr "1. 自动 VBox"
+msgstr "1. 自動 VBox"
 
 #: src/pages/layouts.tsx:41
 msgid "2. 自动 HBox"
-msgstr "2. 自动 HBox"
+msgstr "2. 自動 HBox"
 
 #: src/pages/layouts.tsx:57
 msgid "3. 嵌套：VBox → HBox → VBox"
-msgstr "3. 嵌套：VBox → HBox → VBox"
+msgstr "3. ネスト：VBox → HBox → VBox"
 
 #: src/pages/layouts.tsx:107
 msgid "4. 固定 VBox：520 × 560"
@@ -51,107 +51,107 @@ msgstr "5. 固定 HBox：780 × 420"
 
 #: src/pages/layouts.tsx:146
 msgid "6. 直接子项的 x/y 是视觉偏移"
-msgstr "6. 直接子项的 x/y 是视觉偏移"
+msgstr "6. 直下の子要素の x/y は表示上のオフセット"
 
 #: src/pages/layouts.tsx:165
 msgid "7. 变换与测量"
-msgstr "7. 变换与测量"
+msgstr "7. 変形と計測"
 
 #: src/pages/layouts.tsx:184
 msgid "8. onLayout 测量回读"
-msgstr "8. onLayout 测量回读"
+msgstr "8. onLayout による計測値の取得"
 
 #: src/pages/layouts.tsx:219
 msgid "9. 动态尺寸 / 隐藏 / 删除 / 重排"
-msgstr "9. 动态尺寸 / 隐藏 / 删除 / 重排"
+msgstr "9. 動的サイズ / 非表示 / 削除 / 並べ替え"
 
 #: src/pages/steam.tsx:297
 msgid "ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet"
-msgstr "ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet"
+msgstr "ACH_TRAVEL_FAR_ACCUM · 累積 Stat、進行のみ可能；2640 / 5280 feet"
 
 #: src/gallery.tsx:156
 msgid "Achievement 与 Steamworks API 手动测试。"
-msgstr "Achievement 与 Steamworks API 手动测试。"
+msgstr "Achievement と Steamworks API の手動テスト。"
 
 #: src/pages/steam.tsx:217
 msgid "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
-msgstr "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
+msgstr "Achievement ページに表示される数値進捗は、バックエンドで紐付けられた Stat から取得されます。書き込み後は StoreStats が必要です。"
 
 #: src/pages/primitives.tsx:116
 msgid "Animation 帧动画"
-msgstr "Animation 帧动画"
+msgstr "Animation フレームアニメーション"
 
 #: src/pages/steam.tsx:52
 msgid "API name 来自 App ID 480 的真实后台配置。"
-msgstr "API name 来自 App ID 480 的真实后台配置。"
+msgstr "API name は App ID 480 の実際のバックエンド設定を使用しています。"
 
 #: src/pages/primitives.tsx:116
 msgid "APNG 格式帧动画；tint 同样作用于动画帧。"
-msgstr "APNG 格式帧动画；tint 同样作用于动画帧。"
+msgstr "APNG 形式のフレームアニメーションです。tint はアニメーションフレームにも適用されます。"
 
 #: src/pages/steam.tsx:350
 msgid "App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。"
-msgstr "App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。"
+msgstr "App 480 には確認可能な Timeline と float stat の設定がないため、成功するような偽のパラメーターは使用しません。"
 
 #: src/pages/primitives.tsx:86
 msgid "area 裁剪源图区域；nineslice 保持边角不变形地拉伸。"
-msgstr "area 裁剪源图区域；nineslice 保持边角不变形地拉伸。"
+msgstr "area は元画像の領域を切り抜きます。nineslice は角を変形させずに引き伸ばします。"
 
 #: src/pages/primitives.tsx:94
 msgid "area：从中间截取"
-msgstr "area：从中间截取"
+msgstr "area：中央部分を切り抜き"
 
 #: src/pages/layouts.tsx:214
 msgid "B 变宽"
-msgstr "B 变宽"
+msgstr "B を拡幅"
 
 #: src/pages/layouts.tsx:214
 msgid "B 隐藏但占位"
-msgstr "B 隐藏但占位"
+msgstr "B を非表示のまま領域確保"
 
 #: src/pages/backdrops.tsx:109
 msgid "backdrop 之后绘制的内容保持清晰"
-msgstr "backdrop 之后绘制的内容保持清晰"
+msgstr "backdrop より後に描画された内容は鮮明なままです"
 
 #: src/pages/backdrops.tsx:56
 msgid "Backdrop 捕获其身后已绘制的画面并应用滤镜；在它之后绘制的内容不受影响。"
-msgstr "Backdrop 捕获其身后已绘制的画面并应用滤镜；在它之后绘制的内容不受影响。"
+msgstr "Backdrop は背後に描画済みの画面をキャプチャしてフィルターを適用します。それより後に描画される内容には影響しません。"
 
 #: src/gallery.tsx:131
 msgid "Backdrop 背景滤镜"
-msgstr "Backdrop 背景滤镜"
+msgstr "Backdrop 背景フィルター"
 
 #: src/pages/controls.tsx:29
 msgid "Button 按钮"
-msgstr "Button 按钮"
+msgstr "Button ボタン"
 
 #: src/gallery.tsx:114
 msgid "Button、Checkbox、Radio、Select、Slider 与 ScrollView。"
-msgstr "Button、Checkbox、Radio、Select、Slider 与 ScrollView。"
+msgstr "Button、Checkbox、Radio、Select、Slider、ScrollView。"
 
 #: src/pages/controls.tsx:74
 msgid "Checkbox 勾选框"
-msgstr "Checkbox 勾选框"
+msgstr "Checkbox チェックボックス"
 
 #: src/pages/primitives.tsx:135
 msgid "Clip 裁剪"
-msgstr "Clip 裁剪"
+msgstr "Clip クリッピング"
 
 #: src/pages/primitives.tsx:50
 msgid "Container 变换"
-msgstr "Container 变换"
+msgstr "Container 変形"
 
 #: src/pages/input.tsx:152
 msgid "disabled：点击后不获得焦点"
-msgstr "disabled：点击后不获得焦点"
+msgstr "disabled：クリックしてもフォーカスされません"
 
 #: src/gallery.tsx:120
 msgid "Editable 节点、末尾输入、IME、焦点与受控状态。"
-msgstr "Editable 节点、末尾输入、IME、焦点与受控状态。"
+msgstr "Editable ノード、末尾への入力、IME、フォーカス、制御状態。"
 
 #: src/gallery.tsx:125
 msgid "Filter 滤镜"
-msgstr "Filter 滤镜"
+msgstr "Filter フィルター"
 
 #: src/pages/layouts.tsx:201
 msgid "HBox onLayout：{measured}"
@@ -159,120 +159,120 @@ msgstr "HBox onLayout：{measured}"
 
 #: src/gallery.tsx:119
 msgid "Input 输入框"
-msgstr "Input 输入框"
+msgstr "Input 入力欄"
 
 #: src/pages/controls.tsx:128
 msgid "Radio 单选框"
-msgstr "Radio 单选框"
+msgstr "Radio ラジオボタン"
 
 #: src/pages/controls.tsx:128
 msgid "RadioGroup 统一管理同组互斥选择。"
-msgstr "RadioGroup 统一管理同组互斥选择。"
+msgstr "RadioGroup は同じグループの排他的な選択を一元管理します。"
 
 #: src/pages/controls.tsx:192
 msgid "Raw WGSL 着色器"
-msgstr "Raw WGSL 着色器"
+msgstr "Raw WGSL シェーダー"
 
 #: src/gallery.tsx:150
 msgid "Raw WGSL、参数槽与时间控制。"
-msgstr "Raw WGSL、参数槽与时间控制。"
+msgstr "Raw WGSL、パラメータースロット、時間制御。"
 
 #: src/pages/input.tsx:135
 msgid "readOnly：允许聚焦，不允许输入"
-msgstr "readOnly：允许聚焦，不允许输入"
+msgstr "readOnly：フォーカス可能ですが、入力はできません"
 
 #: src/pages/controls.tsx:218
 msgid "ScrollView 滚动视图"
-msgstr "ScrollView 滚动视图"
+msgstr "ScrollView スクロールビュー"
 
 #: src/pages/controls.tsx:182
 msgid "Select 下拉选择"
-msgstr "Select 下拉选择"
+msgstr "Select ドロップダウン選択"
 
 #: src/gallery.tsx:143
 msgid "Shader 转场"
-msgstr "Shader 转场"
+msgstr "Shader トランジション"
 
 #: src/pages/controls.tsx:191
 msgid "Shader 过渡 Transition"
-msgstr "Shader 过渡 Transition"
+msgstr "Shader トランジション Transition"
 
 #: src/pages/controls.tsx:105
 msgid "Slider 滑块"
-msgstr "Slider 滑块"
+msgstr "Slider スライダー"
 
 #: src/pages/layouts.tsx:122
 msgid "space-between：间隔相等且不小于 gap = 20。"
-msgstr "space-between：间隔相等且不小于 gap = 20。"
+msgstr "space-between：間隔は均等で、gap = 20 以上になります。"
 
 #: src/gallery.tsx:137
 msgid "Spring 动画"
-msgstr "Spring 动画"
+msgstr "Spring アニメーション"
 
 #: src/pages/primitives.tsx:86
 msgid "Sprite 精灵"
-msgstr "Sprite 精灵"
+msgstr "Sprite スプライト"
 
 #: src/gallery.tsx:107
 msgid "Sprite、Text、Clip、Animation 与通用节点属性。"
-msgstr "Sprite、Text、Clip、Animation 与通用节点属性。"
+msgstr "Sprite、Text、Clip、Animation、および共通ノードプロパティ。"
 
 #: src/gallery.tsx:155
 msgid "Steam（仅桌面端）"
-msgstr "Steam（仅桌面端）"
+msgstr "Steam（デスクトップ版のみ）"
 
 #: src/pages/primitives.tsx:10
 msgid "Text 文本样式"
-msgstr "Text 文本样式"
+msgstr "Text テキストスタイル"
 
 #: src/pages/primitives.tsx:124
 msgid "tint 金色"
-msgstr "tint 金色"
+msgstr "tint ゴールド"
 
 #: src/pages/spring-transitions.tsx:19
 msgid "useSpring 属性动画"
-msgstr "useSpring 属性动画"
+msgstr "useSpring プロパティアニメーション"
 
 #: src/gallery.tsx:138
 msgid "useSpring 属性动画与 useTransition 进出场动画。"
-msgstr "useSpring 属性动画与 useTransition 进出场动画。"
+msgstr "useSpring のプロパティアニメーションと useTransition の出入りアニメーション。"
 
 #: src/pages/spring-transitions.tsx:63
 msgid "useTransition 进出场"
-msgstr "useTransition 进出场"
+msgstr "useTransition 出入りアニメーション"
 
 #: src/gallery.tsx:110
 msgid "VBox、HBox、测量、对齐与动态重排。"
-msgstr "VBox、HBox、测量、对齐与动态重排。"
+msgstr "VBox、HBox、計測、配置、動的な並べ替え。"
 
 #: src/pages/primitives.tsx:53
 msgid "x / scale / rotation 作用于整个子树；点击色块切换两组目标值。"
-msgstr "x / scale / rotation 作用于整个子树；点击色块切换两组目标值。"
+msgstr "x / scale / rotation はサブツリー全体に適用されます。カラーブロックをクリックすると、2 組の目標値が切り替わります。"
 
 #: src/pages/raw-shaders.tsx:185
 msgid "一道明亮的扫描带扫过输入画面。"
-msgstr "一道明亮的扫描带扫过输入画面。"
+msgstr "明るいスキャン帯が入力画面を横切ります。"
 
 #. placeholder {0}: dynamicLabels[(mode + 1) % dynamicLabels.length]
 #: src/pages/layouts.tsx:227
 msgid "下一状态：{0}"
-msgstr "下一状态：{0}"
+msgstr "次の状態：{0}"
 
 #: src/pages/controls.tsx:182
 msgid "下拉列表展开时会覆盖下方内容（zIndex）。"
-msgstr "下拉列表展开时会覆盖下方内容（zIndex）。"
+msgstr "ドロップダウンリストを開くと、下の内容に重なって表示されます（zIndex）。"
 
 #: src/pages/primitives.tsx:99
 msgid "九宫格：圆角与描边不随拉伸变形，线条不模糊"
-msgstr "九宫格：圆角与描边不随拉伸变形，线条不模糊"
+msgstr "9 スライス：引き伸ばしても角丸と枠線は変形せず、線もぼやけません"
 
 #: src/pages/filters.tsx:39
 msgid "亮度 Brightness"
-msgstr "亮度 Brightness"
+msgstr "明るさ Brightness"
 
 #: src/pages/input.tsx:83
 msgid "使用 Microsoft 拼音输入时，候选窗应跟随缩放、旋转后的文字末尾，并保持在 caret 附近。"
-msgstr "使用 Microsoft 拼音输入时，候选窗应跟随缩放、旋转后的文字末尾，并保持在 caret 附近。"
+msgstr "Microsoft Pinyin で入力すると、候補ウィンドウは拡大・回転後のテキスト末尾に追従し、caret の近くに表示される必要があります。"
 
 #: src/pages/raw-shaders.tsx:154
 msgid "停止"
@@ -280,129 +280,129 @@ msgstr "停止"
 
 #: src/pages/controls.tsx:166
 msgid "全屏"
-msgstr "全屏"
+msgstr "全画面"
 
 #: src/pages/layouts.tsx:69
 msgid "内 VBox A"
-msgstr "内 VBox A"
+msgstr "内側 VBox A"
 
 #: src/pages/layouts.tsx:70
 msgid "内 VBox B"
-msgstr "内 VBox B"
+msgstr "内側 VBox B"
 
 #: src/pages/controls.tsx:170
 msgid "内部维护当前值"
-msgstr "内部维护当前值"
+msgstr "現在値を内部で管理"
 
 #: src/pages/controls.tsx:93
 msgid "内部维护状态"
-msgstr "内部维护状态"
+msgstr "状態を内部で管理"
 
 #: src/pages/steam.tsx:36
 msgid "最近一次调用"
-msgstr "最近一次调用"
+msgstr "直近の呼び出し"
 
 #: src/pages/shader-transitions.tsx:50
 msgid "准备中"
-msgstr "准备中"
+msgstr "準備中"
 
 #: src/pages/input.tsx:148
 msgid "切换为只读"
-msgstr "切换为只读"
+msgstr "読み取り専用に切り替え"
 
 #: src/pages/input.tsx:148
 msgid "切换为可编辑"
-msgstr "切换为可编辑"
+msgstr "編集可能に切り替え"
 
 #. placeholder {0}: String(index + 1).padStart(2, '0')
 #: src/pages/controls.tsx:224
 msgid "列表项 {0}"
-msgstr "列表项 {0}"
+msgstr "リスト項目 {0}"
 
 #: src/pages/layouts.tsx:214
 msgid "初始布局"
-msgstr "初始布局"
+msgstr "初期レイアウト"
 
 #: src/pages/layouts.tsx:214
 msgid "删除 B 并重排"
-msgstr "删除 B 并重排"
+msgstr "B を削除して並べ替え"
 
 #: src/pages/backdrops.tsx:110
 msgid "前景内容"
-msgstr "前景内容"
+msgstr "前景コンテンツ"
 
 #: src/pages/layouts.tsx:272
 msgid "动态重排"
-msgstr "动态重排"
+msgstr "動的な並べ替え"
 
 #: src/pages/controls.tsx:185
 msgid "动画 / Shader 方案"
-msgstr "动画 / Shader 方案"
+msgstr "アニメーション / Shader 方式"
 
 #: src/pages/filters.tsx:37
 msgid "原始对照 Original"
-msgstr "原始对照 Original"
+msgstr "元画像 Original"
 
 #: src/pages/primitives.tsx:120
 msgid "原色"
-msgstr "原色"
+msgstr "元の色"
 
 #: src/pages/raw-shaders.tsx:208
 msgid "参数槽 · 通道采样 · builtins.time"
-msgstr "参数槽 · 通道采样 · builtins.time"
+msgstr "パラメータースロット · チャンネルサンプリング · builtins.time"
 
 #: src/gallery.tsx:144
 msgid "双通道画面的 GPU 转场状态机。"
-msgstr "双通道画面的 GPU 转场状态机。"
+msgstr "2 チャンネル画面の GPU トランジションステートマシン。"
 
 #: src/pages/filters.tsx:52
 msgid "反色 Invert"
-msgstr "反色 Invert"
+msgstr "色反転 Invert"
 
 #: src/pages/input.tsx:99
 msgid "受控、只读与禁用"
-msgstr "受控、只读与禁用"
+msgstr "制御、読み取り専用、無効化"
 
 #: src/pages/controls.tsx:74
 msgid "受控与非受控两种用法。"
-msgstr "受控与非受控两种用法。"
+msgstr "制御コンポーネントと非制御コンポーネントの 2 通りの使い方。"
 
 #: src/pages/input.tsx:102
 msgid "受控值应跟随 onChange 回写；只读可聚焦但不能编辑；点击禁用输入会清除当前焦点。"
-msgstr "受控值应跟随 onChange 回写；只读可聚焦但不能编辑；点击禁用输入会清除当前焦点。"
+msgstr "制御値は onChange に応じて書き戻します。読み取り専用ではフォーカスできますが編集はできません。無効な入力欄をクリックすると現在のフォーカスが解除されます。"
 
 #: src/pages/input.tsx:23
 msgid "受控初始值"
-msgstr "受控初始值"
+msgstr "制御された初期値"
 
 #: src/pages/controls.tsx:107
 msgid "受控滑块"
-msgstr "受控滑块"
+msgstr "制御スライダー"
 
 #: src/pages/controls.tsx:76
 #: src/pages/controls.tsx:131
 msgid "受控组件"
-msgstr "受控组件"
+msgstr "制御コンポーネント"
 
 #: src/pages/input.tsx:106
 msgid "受控输入"
-msgstr "受控输入"
+msgstr "制御入力"
 
 #: src/pages/layouts.tsx:271
 msgid "变换与测量"
-msgstr "变换与测量"
+msgstr "変形と計測"
 
 #: src/pages/input.tsx:80
 msgid "变换后的候选窗位置"
-msgstr "变换后的候选窗位置"
+msgstr "変形後の候補ウィンドウ位置"
 
 #: src/pages/primitives.tsx:135
 msgid "只有落在 440×260 视口内的内容会被绘制。"
-msgstr "只有落在 440×260 视口内的内容会被绘制。"
+msgstr "440×260 のビューポート内にある内容だけが描画されます。"
 
 #: src/pages/input.tsx:137
 msgid "只读内容"
-msgstr "只读内容"
+msgstr "読み取り専用の内容"
 
 #: src/pages/layouts.tsx:72
 msgid "右"
@@ -410,99 +410,99 @@ msgstr "右"
 
 #: src/pages/controls.tsx:58
 msgid "右对齐"
-msgstr "右对齐"
+msgstr "右揃え"
 
 #: src/pages/raw-shaders.tsx:154
 msgid "启动"
-msgstr "启动"
+msgstr "開始"
 
 #: src/pages/backdrops.tsx:34
 msgid "启用背景滤镜"
-msgstr "启用背景滤镜"
+msgstr "背景フィルターを有効化"
 
 #: src/pages/input.tsx:166
 msgid "启用输入框"
-msgstr "启用输入框"
+msgstr "入力欄を有効化"
 
 #: src/pages/primitives.tsx:33
 msgid "固定宽度文本框：设定 boxWidth 后，这段文字会在到达宽度上限时自动换行，并可通过 lineHeight 控制行距。"
-msgstr "固定宽度文本框：设定 boxWidth 后，这段文字会在到达宽度上限时自动换行，并可通过 lineHeight 控制行距。"
+msgstr "固定幅テキストボックス：boxWidth を設定すると、このテキストは幅の上限に達した時点で自動的に折り返され、lineHeight で行間を調整できます。"
 
 #: src/pages/layouts.tsx:34
 msgid "固有尺寸文本项"
-msgstr "固有尺寸文本项"
+msgstr "固有サイズのテキスト項目"
 
 #: src/pages/layouts.tsx:152
 msgid "基准 A"
-msgstr "基准 A"
+msgstr "基準 A"
 
 #: src/pages/layouts.tsx:156
 msgid "基准 B"
-msgstr "基准 B"
+msgstr "基準 B"
 
 #: src/pages/layouts.tsx:160
 msgid "基准 C"
-msgstr "基准 C"
+msgstr "基準 C"
 
 #: src/pages/layouts.tsx:269
 msgid "基础与嵌套"
-msgstr "基础与嵌套"
+msgstr "基本とネスト"
 
 #: src/gallery.tsx:106
 msgid "基础组件"
-msgstr "基础组件"
+msgstr "基本コンポーネント"
 
 #: src/pages/input.tsx:36
 msgid "基础输入与 IME"
-msgstr "基础输入与 IME"
+msgstr "基本入力と IME"
 
 #: src/pages/primitives.tsx:28
 msgid "填充"
-msgstr "填充"
+msgstr "塗りつぶし"
 
 #: src/gallery.tsx:132
 msgid "处理节点背后已经绘制的画面，之后绘制的内容保持清晰。"
-msgstr "处理节点背后已经绘制的画面，之后绘制的内容保持清晰。"
+msgstr "ノードの背後に描画済みの画面を処理し、その後に描画される内容は鮮明なまま保ちます。"
 
 #: src/pages/layouts.tsx:65
 msgid "外层 VBox"
-msgstr "外层 VBox"
+msgstr "外側 VBox"
 
 #: src/pages/primitives.tsx:27
 msgid "多彩"
-msgstr "多彩"
+msgstr "カラフル"
 
 #: src/pages/primitives.tsx:89
 msgid "完整原图 250x240"
-msgstr "完整原图 250x240"
+msgstr "元画像全体 250x240"
 
 #: src/pages/filters.tsx:40
 msgid "对比度 Contrast"
-msgstr "对比度 Contrast"
+msgstr "コントラスト Contrast"
 
 #: src/gallery.tsx:126
 msgid "对节点自身子树的离屏渲染结果应用滤镜链。"
-msgstr "对节点自身子树的离屏渲染结果应用滤镜链。"
+msgstr "ノード自身のサブツリーをオフスクリーン描画した結果に、フィルターチェーンを適用します。"
 
 #: src/pages/layouts.tsx:270
 msgid "对齐交互"
-msgstr "对齐交互"
+msgstr "配置の操作"
 
 #: src/gallery.tsx:113
 msgid "封装组件"
-msgstr "封装组件"
+msgstr "ラッパーコンポーネント"
 
 #: src/pages/steam.tsx:38
 msgid "尚未调用"
-msgstr "尚未调用"
+msgstr "未呼び出し"
 
 #: src/pages/shader-transitions.tsx:49
 msgid "就绪"
-msgstr "就绪"
+msgstr "準備完了"
 
 #: src/pages/primitives.tsx:30
 msgid "展示"
-msgstr "展示"
+msgstr "表示"
 
 #: src/pages/layouts.tsx:67
 msgid "左"
@@ -510,73 +510,73 @@ msgstr "左"
 
 #: src/pages/controls.tsx:50
 msgid "左对齐"
-msgstr "左对齐"
+msgstr "左揃え"
 
 #: src/pages/shader-transitions.tsx:52
 msgid "已完成"
-msgstr "已完成"
+msgstr "完了"
 
 #: src/pages/controls.tsx:34
 msgid "已点击 {pressCount} 次"
-msgstr "已点击 {pressCount} 次"
+msgstr "{pressCount} 回クリック済み"
 
 #: src/gallery.tsx:110
 msgid "布局"
-msgstr "布局"
+msgstr "レイアウト"
 
 #: src/pages/controls.tsx:31
 msgid "常态按钮"
-msgstr "常态按钮"
+msgstr "通常ボタン"
 
 #: src/pages/backdrops.tsx:31
 msgid "开关 Toggle"
-msgstr "开关 Toggle"
+msgstr "切り替え Toggle"
 
 #: src/pages/controls.tsx:190
 msgid "弹簧动画 Spring"
-msgstr "弹簧动画 Spring"
+msgstr "スプリングアニメーション Spring"
 
 #. placeholder {0}: strength.toFixed(2)
 #: src/pages/raw-shaders.tsx:148
 msgid "强度 {0}"
-msgstr "强度 {0}"
+msgstr "強度 {0}"
 
 #. placeholder {0}: dynamicLabels[mode]
 #: src/pages/layouts.tsx:231
 msgid "当前：{0}"
-msgstr "当前：{0}"
+msgstr "現在：{0}"
 
 #: src/pages/controls.tsx:84
 msgid "当前：已勾选"
-msgstr "当前：已勾选"
+msgstr "現在：チェック済み"
 
 #: src/pages/controls.tsx:84
 msgid "当前：未勾选"
-msgstr "当前：未勾选"
+msgstr "現在：未チェック"
 
 #. placeholder {0}: sliderValue.toFixed(2)
 #: src/pages/controls.tsx:114
 msgid "当前值 {0}"
-msgstr "当前值 {0}"
+msgstr "現在値 {0}"
 
 #: src/pages/controls.tsx:150
 msgid "当前值：{selected}"
-msgstr "当前值：{selected}"
+msgstr "現在値：{selected}"
 
 #. placeholder {0}: transformed ? 460 : 140
 #. placeholder {1}: transformed ? 1.3 : 1.0
 #. placeholder {2}: transformed ? 0.15 : 0
 #: src/pages/primitives.tsx:74
 msgid "当前目标：x={0} · scale={1} · rotation={2}"
-msgstr "当前目标：x={0} · scale={1} · rotation={2}"
+msgstr "現在の目標：x={0} · scale={1} · rotation={2}"
 
 #: src/pages/controls.tsx:200
 msgid "当前选中：{selected}"
-msgstr "当前选中：{selected}"
+msgstr "現在の選択：{selected}"
 
 #: src/pages/input.tsx:39
 msgid "悬停和按住输入框应切换背景；聚焦后应显示 focused 背景。再验证焦点切换、末尾输入、Backspace 与中文输入法候选窗位置。"
-msgstr "悬停和按住输入框应切换背景；聚焦后应显示 focused 背景。再验证焦点切换、末尾输入、Backspace 与中文输入法候选窗位置。"
+msgstr "入力欄にホバーしたときや押している間は背景が切り替わり、フォーカス後は focused 背景が表示される必要があります。さらに、フォーカスの切り替え、末尾への入力、Backspace、中国語 IME の候補ウィンドウ位置を確認します。"
 
 #: src/pages/steam.tsx:371
 msgid "成功（void）"
@@ -584,138 +584,138 @@ msgstr "成功（void）"
 
 #: src/pages/raw-shaders.tsx:139
 msgid "手动时间"
-msgstr "手动时间"
+msgstr "手動時間"
 
 #: src/pages/raw-shaders.tsx:206
 msgid "手动时间控制"
-msgstr "手动时间控制"
+msgstr "手動時間制御"
 
 #: src/pages/shader-transitions.tsx:109
 msgid "按钮只发送 prepare；perform 由 onPrepared 触发，onFinished 解锁下一次播放。"
-msgstr "按钮只发送 prepare；perform 由 onPrepared 触发，onFinished 解锁下一次播放。"
+msgstr "ボタンは prepare だけを送信します。perform は onPrepared から呼び出され、onFinished が次の再生を有効にします。"
 
 #: src/pages/backdrops.tsx:29
 #: src/pages/raw-shaders.tsx:119
 #: src/pages/shader-transitions.tsx:73
 msgid "控制台"
-msgstr "控制台"
+msgstr "コントロール"
 
 #: src/pages/primitives.tsx:10
 msgid "描边、阴影、颜色与 boxWidth 自动换行。"
-msgstr "描边、阴影、颜色与 boxWidth 自动换行。"
+msgstr "枠線、影、色、boxWidth による自動折り返し。"
 
 #: src/pages/primitives.tsx:14
 msgid "描边与阴影 Stroke & Shadow"
-msgstr "描边与阴影 Stroke & Shadow"
+msgstr "枠線と影 Stroke & Shadow"
 
 #: src/pages/shader-transitions.tsx:51
 #: src/pages/shader-transitions.tsx:96
 msgid "播放中"
-msgstr "播放中"
+msgstr "再生中"
 
 #: src/pages/shader-transitions.tsx:96
 msgid "播放转场"
-msgstr "播放转场"
+msgstr "トランジションを再生"
 
 #: src/pages/layouts.tsx:50
 msgid "文字固有尺寸"
-msgstr "文字固有尺寸"
+msgstr "テキストの固有サイズ"
 
 #: src/pages/filters.tsx:37
 msgid "无滤镜，作为对照基准。"
-msgstr "无滤镜，作为对照基准。"
+msgstr "フィルターなしの比較基準です。"
 
 #: src/pages/shader-transitions.tsx:93
 msgid "时长 {duration} ms"
-msgstr "时长 {duration} ms"
+msgstr "時間 {duration} ms"
 
 #: src/pages/steam.tsx:36
 msgid "显示实际提交的 subCommand 与同步返回值或错误。"
-msgstr "显示实际提交的 subCommand 与同步返回值或错误。"
+msgstr "実際に送信した subCommand と、同期的な戻り値またはエラーを表示します。"
 
 #: src/pages/steam.tsx:199
 msgid "未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。"
-msgstr "未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。"
+msgstr "テストボタンなし：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 で確認済みのパラメーターがないため）。"
 
 #: src/pages/steam.tsx:343
 msgid "未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。"
-msgstr "未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。"
+msgstr "テストボタンなし：workshopGetSubscribedItemPath（確認済みの item ID がないため）。"
 
 #: src/gallery.tsx:232
 msgid "末语 Gallery"
-msgstr "末语 Gallery"
+msgstr "Moyu Gallery"
 
 #: src/pages/filters.tsx:38
 msgid "模糊 Blur"
-msgstr "模糊 Blur"
+msgstr "ぼかし Blur"
 
 #: src/pages/backdrops.tsx:88
 msgid "模糊与饱和度实时作用于捕获画面。"
-msgstr "模糊与饱和度实时作用于捕获画面。"
+msgstr "ぼかしと彩度がキャプチャ画面にリアルタイムで適用されます。"
 
 #: src/pages/backdrops.tsx:45
 msgid "模糊半径 {blurRadius}"
-msgstr "模糊半径 {blurRadius}"
+msgstr "ぼかし半径 {blurRadius}"
 
 #: src/pages/backdrops.tsx:38
 msgid "模糊半径 Blur"
-msgstr "模糊半径 Blur"
+msgstr "ぼかし半径 Blur"
 
 #: src/pages/layouts.tsx:172
 msgid "正常"
-msgstr "正常"
+msgstr "通常"
 
 #: src/pages/spring-transitions.tsx:150
 msgid "淡入 FADE IN"
-msgstr "淡入 FADE IN"
+msgstr "フェードイン FADE IN"
 
 #: src/pages/spring-transitions.tsx:121
 msgid "淡入淡出辅助"
-msgstr "淡入淡出辅助"
+msgstr "フェード補助"
 
 #: src/pages/spring-transitions.tsx:152
 msgid "淡出 FADE OUT"
-msgstr "淡出 FADE OUT"
+msgstr "フェードアウト FADE OUT"
 
 #: src/pages/layouts.tsx:107
 msgid "深色区域为容器的固定尺寸。"
-msgstr "深色区域为容器的固定尺寸。"
+msgstr "暗色の領域がコンテナの固定サイズです。"
 
 #: src/pages/spring-transitions.tsx:71
 msgid "添加"
-msgstr "添加"
+msgstr "追加"
 
 #: src/pages/spring-transitions.tsx:66
 msgid "添加 / 移除 keyed 项目，from → enter → leave 自动补间。"
-msgstr "添加 / 移除 keyed 项目，from → enter → leave 自动补间。"
+msgstr "keyed 項目を追加 / 削除すると、from → enter → leave が自動補間されます。"
 
 #: src/pages/backdrops.tsx:92
 msgid "渲染管线"
-msgstr "渲染管线"
+msgstr "レンダリングパイプライン"
 
 #: src/pages/raw-shaders.tsx:192
 msgid "渲染结果"
-msgstr "渲染结果"
+msgstr "レンダリング結果"
 
 #: src/pages/backdrops.tsx:29
 msgid "滑块实时调整右侧场景的滤镜参数。"
-msgstr "滑块实时调整右侧场景的滤镜参数。"
+msgstr "スライダーで右側のシーンのフィルターパラメーターをリアルタイムに調整します。"
 
 #: src/pages/filters.tsx:15
 msgid "滤镜文字 Aa123"
-msgstr "滤镜文字 Aa123"
+msgstr "フィルターテキスト Aa123"
 
 #: src/pages/controls.tsx:218
 msgid "滚轮或拖拽滚动。"
-msgstr "滚轮或拖拽滚动。"
+msgstr "ホイールまたはドラッグでスクロールします。"
 
 #: src/pages/backdrops.tsx:88
 msgid "演示场景"
-msgstr "演示场景"
+msgstr "デモシーン"
 
 #: src/pages/filters.tsx:43
 msgid "灰度 Grayscale"
-msgstr "灰度 Grayscale"
+msgstr "グレースケール Grayscale"
 
 #. placeholder {0}: moved ? 620 : 80
 #. placeholder {1}: moved ? 0.15 : -0.08
@@ -724,246 +724,246 @@ msgstr "灰度 Grayscale"
 #: src/pages/spring-transitions.tsx:40
 msgid "点击 SPRING 切换目标状态。\n"
 "当前目标：x={0} · rotation={1} · scale={2} · opacity={3}"
-msgstr "点击 SPRING 切换目标状态。\n"
-"当前目标：x={0} · rotation={1} · scale={2} · opacity={3}"
+msgstr "SPRING をクリックして目標状態を切り替えます。\n"
+"現在の目標：x={0} · rotation={1} · scale={2} · opacity={3}"
 
 #: src/pages/primitives.tsx:69
 msgid "点击切换变换"
-msgstr "点击切换变换"
+msgstr "クリックして変形を切り替え"
 
 #: src/pages/steam.tsx:39
 msgid "点击按钮开始测试。"
-msgstr "点击按钮开始测试。"
+msgstr "ボタンをクリックしてテストを開始します。"
 
 #: src/pages/layouts.tsx:104
 msgid "点击按钮循环切换；两块区域同步变化。"
-msgstr "点击按钮循环切换；两块区域同步变化。"
+msgstr "ボタンをクリックするたびに循環して切り替わり、2 つの領域が同期して変化します。"
 
 #: src/pages/controls.tsx:29
 msgid "点击计数、禁用态与文本对齐方式。"
-msgstr "点击计数、禁用态与文本对齐方式。"
+msgstr "クリック回数、無効状態、テキストの配置。"
 
 #. placeholder {0}: statusLabels[status] ?? status
 #: src/pages/shader-transitions.tsx:101
 msgid "状态：{0}"
-msgstr "状态：{0}"
+msgstr "状態：{0}"
 
 #: src/pages/layouts.tsx:247
 msgid "状态说明"
-msgstr "状态说明"
+msgstr "状態の説明"
 
 #: src/pages/layouts.tsx:202
 msgid "理论值：150 + 220 + 180 + 2 × 18 = 586"
-msgstr "理论值：150 + 220 + 180 + 2 × 18 = 586"
+msgstr "理論値：150 + 220 + 180 + 2 × 18 = 586"
 
 #: src/pages/raw-shaders.tsx:184
 msgid "用移动的正弦波横向扭曲输入画面。"
-msgstr "用移动的正弦波横向扭曲输入画面。"
+msgstr "移動する正弦波で入力画面を水平方向に歪ませます。"
 
 #: src/pages/input.tsx:125
 msgid "由外部状态设置"
-msgstr "由外部状态设置"
+msgstr "外部状態から設定"
 
 #: src/pages/input.tsx:154
 msgid "禁用内容"
-msgstr "禁用内容"
+msgstr "無効な内容"
 
 #: src/pages/controls.tsx:38
 msgid "禁用按钮"
-msgstr "禁用按钮"
+msgstr "無効なボタン"
 
 #: src/pages/controls.tsx:43
 msgid "禁用状态"
-msgstr "禁用状态"
+msgstr "無効状態"
 
 #: src/pages/backdrops.tsx:34
 msgid "禁用背景滤镜"
-msgstr "禁用背景滤镜"
+msgstr "背景フィルターを無効化"
 
 #: src/pages/input.tsx:166
 msgid "禁用输入框"
-msgstr "禁用输入框"
+msgstr "入力欄を無効化"
 
 #: src/pages/spring-transitions.tsx:77
 msgid "移除"
-msgstr "移除"
+msgstr "削除"
 
 #: src/pages/input.tsx:123
 msgid "程序设置受控值"
-msgstr "程序设置受控值"
+msgstr "プログラムから制御値を設定"
 
 #: src/pages/controls.tsx:158
 msgid "窗口"
-msgstr "窗口"
+msgstr "ウィンドウ"
 
 #: src/pages/spring-transitions.tsx:131
 msgid "立即完成"
-msgstr "立即完成"
+msgstr "即時完了"
 
 #: src/pages/input.tsx:64
 msgid "第二个输入框"
-msgstr "第二个输入框"
+msgstr "2 番目の入力欄"
 
 #: src/pages/input.tsx:62
 msgid "第二个输入框（用于焦点切换）"
-msgstr "第二个输入框（用于焦点切换）"
+msgstr "2 番目の入力欄（フォーカス切り替え用）"
 
 #: src/pages/filters.tsx:16
 msgid "第二行 Second line"
-msgstr "第二行 Second line"
+msgstr "2 行目 Second line"
 
 #: src/pages/layouts.tsx:141
 msgid "等待测量"
-msgstr "等待测量"
+msgstr "計測待ち"
 
 #: src/pages/input.tsx:27
 msgid "等待输入事件"
-msgstr "等待输入事件"
+msgstr "入力イベント待ち"
 
 #: src/pages/backdrops.tsx:93
 msgid "背景捕获区域"
-msgstr "背景捕获区域"
+msgstr "背景キャプチャ領域"
 
 #: src/pages/spring-transitions.tsx:154
 msgid "背景目标 BACKDROP"
-msgstr "背景目标 BACKDROP"
+msgstr "背景ターゲット BACKDROP"
 
 #: src/pages/raw-shaders.tsx:140
 msgid "自动时间"
-msgstr "自动时间"
+msgstr "自動時間"
 
 #: src/gallery.tsx:149
 msgid "自定义 Shader"
-msgstr "自定义 Shader"
+msgstr "カスタム Shader"
 
 #: src/pages/filters.tsx:42
 msgid "色相旋转 Hue Rotate"
-msgstr "色相旋转 Hue Rotate"
+msgstr "色相回転 Hue Rotate"
 
 #: src/pages/primitives.tsx:137
 msgid "被裁剪的内容"
-msgstr "被裁剪的内容"
+msgstr "クリッピングされる内容"
 
 #: src/pages/filters.tsx:45
 msgid "褐调 Sepia"
-msgstr "褐调 Sepia"
+msgstr "セピア Sepia"
 
 #: src/pages/input.tsx:45
 msgid "请输入内容"
-msgstr "请输入内容"
+msgstr "内容を入力してください"
 
 #: src/pages/controls.tsx:105
 msgid "轨道宽度可随面板收窄。"
-msgstr "轨道宽度可随面板收窄。"
+msgstr "トラック幅はパネルに合わせて縮められます。"
 
 #: src/pages/shader-transitions.tsx:106
 msgid "转场画面"
-msgstr "转场画面"
+msgstr "トランジション画面"
 
 #: src/pages/primitives.tsx:139
 msgid "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
-msgstr "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
+msgstr "このテキストはクリッピング領域の右端と下端を超えており、はみ出した部分は表示されません。"
 
 #: src/pages/steam.tsx:101
 msgid "进度通知不保存数值；真实进度通过 Stats 页的 NumWins 读写。"
-msgstr "进度通知不保存数值；真实进度通过 Stats 页的 NumWins 读写。"
+msgstr "進捗通知は数値を保存しません。実際の進捗は Stats ページの NumWins を通じて読み書きします。"
 
 #: src/pages/controls.tsx:203
 msgid "选项取自动画与 Shader 渲染管线；展开的列表会浮在下方的状态文字之上。"
-msgstr "选项取自动画与 Shader 渲染管线；展开的列表会浮在下方的状态文字之上。"
+msgstr "選択肢はアニメーションと Shader のレンダリングパイプラインから取得します。開いたリストは下の状態テキストより前面に表示されます。"
 
 #: src/pages/shader-transitions.tsx:132
 msgid "通道 0 · 由 prepare 捕获"
-msgstr "通道 0 · 由 prepare 捕获"
+msgstr "チャンネル 0 · prepare でキャプチャ"
 
 #: src/pages/shader-transitions.tsx:146
 msgid "通道 1 · 稳定显示"
-msgstr "通道 1 · 稳定显示"
+msgstr "チャンネル 1 · 安定表示"
 
 #: src/pages/spring-transitions.tsx:125
 msgid "重播"
-msgstr "重播"
+msgstr "再生し直す"
 
 #: src/pages/raw-shaders.tsx:169
 msgid "重置"
-msgstr "重置"
+msgstr "リセット"
 
 #: src/pages/controls.tsx:46
 msgid "锁定悬停与左右对齐"
-msgstr "锁定悬停与左右对齐"
+msgstr "ホバー固定と左右揃え"
 
 #. placeholder {0}: error instanceof Error ? error.message : String(error)
 #: src/pages/steam.tsx:373
 msgid "错误：{0}"
-msgstr "错误：{0}"
+msgstr "エラー：{0}"
 
 #: src/pages/raw-shaders.tsx:182
 msgid "随时间偏移红蓝通道采样。"
-msgstr "随时间偏移红蓝通道采样。"
+msgstr "時間に応じて赤と青のチャンネルのサンプリング位置をずらします。"
 
 #: src/pages/controls.tsx:115
 msgid "非受控滑块"
-msgstr "非受控滑块"
+msgstr "非制御スライダー"
 
 #: src/pages/controls.tsx:86
 #: src/pages/controls.tsx:153
 msgid "非受控组件"
-msgstr "非受控组件"
+msgstr "非制御コンポーネント"
 
 #: src/pages/input.tsx:42
 msgid "非受控输入（autoFocus）"
-msgstr "非受控输入（autoFocus）"
+msgstr "非制御入力（autoFocus）"
 
 #: src/pages/spring-transitions.tsx:88
 msgid "项目 {item}"
-msgstr "项目 {item}"
+msgstr "項目 {item}"
 
 #: src/pages/layouts.tsx:189
 msgid "预期：onLayout 报告的宽度 = 三个色块 + 两个间隔。"
-msgstr "预期：onLayout 报告的宽度 = 三个色块 + 两个间隔。"
+msgstr "期待値：onLayout が報告する幅 = 3 つのカラーブロック + 2 つの間隔。"
 
 #: src/pages/layouts.tsx:149
 msgid "预期：x = 45 的项目向右覆盖部分间隔，但兄弟项仍按原占位排列；anchor 被布局忽略。"
-msgstr "预期：x = 45 的项目向右覆盖部分间隔，但兄弟项仍按原占位排列；anchor 被布局忽略。"
+msgstr "期待値：x = 45 の項目は右側の間隔に一部重なりますが、兄弟項目は元の占有領域に従って配置されます。anchor はレイアウトで無視されます。"
 
 #: src/pages/layouts.tsx:169
 msgid "预期：变换项按未变换尺寸占位；pivot 右对齐文字不扩大容器测量宽度。"
-msgstr "预期：变换项按未变换尺寸占位；pivot 右对齐文字不扩大容器测量宽度。"
+msgstr "期待値：変形した項目は変形前のサイズで領域を確保します。pivot で右揃えしたテキストは、コンテナの計測幅を広げません。"
 
 #: src/pages/layouts.tsx:45
 msgid "预期：垂直居中；paddingX/Y 覆盖 padding；所有直接子项参与测量。"
-msgstr "预期：垂直居中；paddingX/Y 覆盖 padding；所有直接子项参与测量。"
+msgstr "期待値：垂直方向に中央揃え。paddingX/Y は padding を上書きし、直下の子要素はすべて計測に含まれます。"
 
 #: src/pages/layouts.tsx:62
 msgid "预期：嵌套尺寸逐层传递；内层两项右对齐；兄弟间无重叠。"
-msgstr "预期：嵌套尺寸逐层传递；内层两项右对齐；兄弟间无重叠。"
+msgstr "期待値：ネストしたサイズが階層ごとに伝わり、内側の 2 項目は右揃えになり、兄弟要素は重なりません。"
 
 #: src/pages/layouts.tsx:29
 msgid "预期：左侧对齐；最宽项决定宽度；间距一致。"
-msgstr "预期：左侧对齐；最宽项决定宽度；间距一致。"
+msgstr "期待値：左揃え。最も幅の広い項目が全体の幅を決め、間隔は均一です。"
 
 #: src/pages/layouts.tsx:222
 msgid "预期：每次点击同帧完成重排；visible = false 仍占位；删除后兄弟项递补到最前。"
-msgstr "预期：每次点击同帧完成重排；visible = false 仍占位；删除后兄弟项递补到最前。"
+msgstr "期待値：クリックするたびに同一フレーム内で並べ替えが完了します。visible = false でも領域は確保され、削除後は兄弟項目が先頭側へ詰められます。"
 
 #: src/pages/primitives.tsx:29
 msgid "颜色"
-msgstr "颜色"
+msgstr "色"
 
 #. placeholder {0}: saturation.toFixed(2)
 #: src/pages/backdrops.tsx:53
 msgid "饱和度 {0}"
-msgstr "饱和度 {0}"
+msgstr "彩度 {0}"
 
 #: src/pages/backdrops.tsx:46
 #: src/pages/filters.tsx:41
 msgid "饱和度 Saturation"
-msgstr "饱和度 Saturation"
+msgstr "彩度 Saturation"
 
 #: src/pages/controls.tsx:117
 msgid "默认值 0.35，内部维护状态"
-msgstr "默认值 0.35，内部维护状态"
+msgstr "デフォルト値 0.35、状態を内部で管理"
 
 #: src/pages/primitives.tsx:12
 msgid "默认文本样式 Default 30px"
-msgstr "默认文本样式 Default 30px"
+msgstr "デフォルトのテキストスタイル Default 30px"

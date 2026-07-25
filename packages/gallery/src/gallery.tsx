@@ -11,7 +11,7 @@ import {
 } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
-import { activateLocale, DEFAULT_LOCALE } from './i18n';
+import { activateLocale, DEFAULT_LOCALE, type Locale } from './i18n';
 import { BackdropsPage } from './pages/backdrops';
 import { ControlsPage } from './pages/controls';
 import { FiltersPage } from './pages/filters';
@@ -98,6 +98,7 @@ export function Gallery() {
   const { t } = useLingui();
   const stageSize = getStageSize();
   const scale = Math.min(stageSize.width / STAGE_WIDTH, stageSize.height / STAGE_HEIGHT);
+  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [currentPageKey, setCurrentPageKey] = useState<string>('primitives');
   const pages: readonly GalleryPageDefinition[] = [
     {
@@ -233,15 +234,23 @@ export function Gallery() {
           <Select
             zIndex={2}
             y={96}
-            value={DEFAULT_LOCALE}
-            options={[{ value: 'zh', text: t`中文` }]}
+            value={locale}
+            options={[
+              { value: 'zh', text: '中文' },
+              { value: 'en', text: 'English' },
+              { value: 'ja', text: '日本語' },
+            ]}
             trigger={{ ...SELECT_TRIGGER, targetWidth: SIDEBAR_WIDTH }}
             list={{ ...SELECT_LIST, targetWidth: SIDEBAR_WIDTH }}
             option={{ ...SELECT_OPTION, targetWidth: SIDEBAR_WIDTH - 8 }}
             textStyle={BUTTON_TEXT_STYLE}
             textAlign="left"
             textOffsetX={18}
-            onValueChange={(locale) => activateLocale(locale as typeof DEFAULT_LOCALE)}
+            onValueChange={(value) => {
+              const nextLocale = value as Locale;
+              activateLocale(nextLocale);
+              setLocale(nextLocale);
+            }}
           />
 
           <sprite {...PANEL_SPRITE} targetWidth={SIDEBAR_WIDTH} targetHeight={NAV_PANEL_HEIGHT} y={NAV_PANEL_Y}>

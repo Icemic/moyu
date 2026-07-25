@@ -7,7 +7,7 @@
 在仓库根目录执行：
 
 - `yarn workspace @momoyu-ink/gallery dev` — rspack 开发服务器（端口 6023）
-- `yarn workspace @momoyu-ink/gallery i18n:extract` — 提取并更新中文消息目录
+- `yarn workspace @momoyu-ink/gallery i18n:extract` — 提取并更新中、英、日消息目录
 - `yarn workspace @momoyu-ink/gallery typecheck` — 类型检查
 - `yarn workspace @momoyu-ink/gallery build` — 构建
 - `yarn workspace @momoyu-ink/gallery generate:assets` — 重新生成全部 UI 贴图资产
@@ -16,7 +16,7 @@
 
 ## 国际化
 
-Gallery 使用 Lingui 6，主语言为中文。当前只维护 `zh` catalog，新增或修改界面文案后运行 `i18n:extract` 更新 `src/locales/zh/messages.po`。Rspack 在构建时通过 Lingui loader 编译 catalog，不需要单独执行 compile。
+Gallery 使用 Lingui 6，主语言为中文，同时维护 `zh`、`en` 和 `ja` catalog。新增或修改界面文案后运行 `i18n:extract` 更新 `src/locales/{locale}/messages.po`。Rspack 在构建时通过 Lingui loader 编译 catalog，不需要单独执行 compile。
 
 ## GitHub Pages
 
