@@ -1,0 +1,973 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-07-25 00:00+0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: zh\n"
+"Project-Id-Version: moyu-gallery\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/pages/layouts.tsx:249
+msgid "· B 变宽：B 宽度变为 260，C 相应后移。"
+msgstr "· B 变宽：B 宽度变为 260，C 相应后移。"
+
+#: src/pages/layouts.tsx:250
+msgid "· B 隐藏但占位：visible = false 不渲染，但布局位置保留。"
+msgstr "· B 隐藏但占位：visible = false 不渲染，但布局位置保留。"
+
+#: src/pages/layouts.tsx:248
+msgid "· 初始布局：A、B、C 顺序排列，B 宽 150。"
+msgstr "· 初始布局：A、B、C 顺序排列，B 宽 150。"
+
+#: src/pages/layouts.tsx:251
+msgid "· 删除 B 并重排：B 从树中移除，C 移动到 A 之前。"
+msgstr "· 删除 B 并重排：B 从树中移除，C 移动到 A 之前。"
+
+#: src/pages/layouts.tsx:26
+msgid "1. 自动 VBox"
+msgstr "1. 自动 VBox"
+
+#: src/pages/layouts.tsx:41
+msgid "2. 自动 HBox"
+msgstr "2. 自动 HBox"
+
+#: src/pages/layouts.tsx:57
+msgid "3. 嵌套：VBox → HBox → VBox"
+msgstr "3. 嵌套：VBox → HBox → VBox"
+
+#: src/pages/layouts.tsx:107
+msgid "4. 固定 VBox：520 × 560"
+msgstr "4. 固定 VBox：520 × 560"
+
+#: src/pages/layouts.tsx:117
+msgid "5. 固定 HBox：780 × 420"
+msgstr "5. 固定 HBox：780 × 420"
+
+#: src/pages/layouts.tsx:146
+msgid "6. 直接子项的 x/y 是视觉偏移"
+msgstr "6. 直接子项的 x/y 是视觉偏移"
+
+#: src/pages/layouts.tsx:165
+msgid "7. 变换与测量"
+msgstr "7. 变换与测量"
+
+#: src/pages/layouts.tsx:184
+msgid "8. onLayout 测量回读"
+msgstr "8. onLayout 测量回读"
+
+#: src/pages/layouts.tsx:219
+msgid "9. 动态尺寸 / 隐藏 / 删除 / 重排"
+msgstr "9. 动态尺寸 / 隐藏 / 删除 / 重排"
+
+#: src/pages/steam.tsx:297
+msgid "ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet"
+msgstr "ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet"
+
+#: src/gallery.tsx:155
+msgid "Achievement 与 Steamworks API 手动测试。"
+msgstr "Achievement 与 Steamworks API 手动测试。"
+
+#: src/pages/steam.tsx:217
+msgid "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
+msgstr "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
+
+#: src/pages/primitives.tsx:116
+msgid "Animation 帧动画"
+msgstr "Animation 帧动画"
+
+#: src/pages/steam.tsx:52
+msgid "API name 来自 App ID 480 的真实后台配置。"
+msgstr "API name 来自 App ID 480 的真实后台配置。"
+
+#: src/pages/primitives.tsx:116
+msgid "APNG 格式帧动画；tint 同样作用于动画帧。"
+msgstr "APNG 格式帧动画；tint 同样作用于动画帧。"
+
+#: src/pages/steam.tsx:350
+msgid "App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。"
+msgstr "App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。"
+
+#: src/pages/primitives.tsx:86
+msgid "area 裁剪源图区域；nineslice 保持边角不变形地拉伸。"
+msgstr "area 裁剪源图区域；nineslice 保持边角不变形地拉伸。"
+
+#: src/pages/primitives.tsx:94
+msgid "area：从中间截取"
+msgstr "area：从中间截取"
+
+#: src/pages/layouts.tsx:214
+msgid "B 变宽"
+msgstr "B 变宽"
+
+#: src/pages/layouts.tsx:214
+msgid "B 隐藏但占位"
+msgstr "B 隐藏但占位"
+
+#: src/pages/backdrops.tsx:109
+msgid "backdrop 之后绘制的内容保持清晰"
+msgstr "backdrop 之后绘制的内容保持清晰"
+
+#: src/pages/backdrops.tsx:56
+msgid "Backdrop 捕获其身后已绘制的画面并应用滤镜；在它之后绘制的内容不受影响。"
+msgstr "Backdrop 捕获其身后已绘制的画面并应用滤镜；在它之后绘制的内容不受影响。"
+
+#: src/gallery.tsx:130
+msgid "Backdrop 背景滤镜"
+msgstr "Backdrop 背景滤镜"
+
+#: src/pages/controls.tsx:29
+msgid "Button 按钮"
+msgstr "Button 按钮"
+
+#: src/gallery.tsx:113
+msgid "Button、Checkbox、Radio、Select、Slider 与 ScrollView。"
+msgstr "Button、Checkbox、Radio、Select、Slider 与 ScrollView。"
+
+#: src/pages/controls.tsx:74
+msgid "Checkbox 勾选框"
+msgstr "Checkbox 勾选框"
+
+#: src/pages/primitives.tsx:135
+msgid "Clip 裁剪"
+msgstr "Clip 裁剪"
+
+#: src/pages/primitives.tsx:50
+msgid "Container 变换"
+msgstr "Container 变换"
+
+#: src/pages/input.tsx:152
+msgid "disabled：点击后不获得焦点"
+msgstr "disabled：点击后不获得焦点"
+
+#: src/gallery.tsx:119
+msgid "Editable 节点、末尾输入、IME、焦点与受控状态。"
+msgstr "Editable 节点、末尾输入、IME、焦点与受控状态。"
+
+#: src/gallery.tsx:124
+msgid "Filter 滤镜"
+msgstr "Filter 滤镜"
+
+#: src/pages/layouts.tsx:201
+msgid "HBox onLayout：{measured}"
+msgstr "HBox onLayout：{measured}"
+
+#: src/gallery.tsx:118
+msgid "Input 输入框"
+msgstr "Input 输入框"
+
+#: src/pages/controls.tsx:128
+msgid "Radio 单选框"
+msgstr "Radio 单选框"
+
+#: src/pages/controls.tsx:128
+msgid "RadioGroup 统一管理同组互斥选择。"
+msgstr "RadioGroup 统一管理同组互斥选择。"
+
+#: src/pages/controls.tsx:192
+msgid "Raw WGSL 着色器"
+msgstr "Raw WGSL 着色器"
+
+#: src/gallery.tsx:149
+msgid "Raw WGSL、参数槽与时间控制。"
+msgstr "Raw WGSL、参数槽与时间控制。"
+
+#: src/pages/input.tsx:135
+msgid "readOnly：允许聚焦，不允许输入"
+msgstr "readOnly：允许聚焦，不允许输入"
+
+#: src/pages/controls.tsx:218
+msgid "ScrollView 滚动视图"
+msgstr "ScrollView 滚动视图"
+
+#: src/pages/controls.tsx:182
+msgid "Select 下拉选择"
+msgstr "Select 下拉选择"
+
+#: src/gallery.tsx:142
+msgid "Shader 转场"
+msgstr "Shader 转场"
+
+#: src/pages/controls.tsx:191
+msgid "Shader 过渡 Transition"
+msgstr "Shader 过渡 Transition"
+
+#: src/pages/controls.tsx:105
+msgid "Slider 滑块"
+msgstr "Slider 滑块"
+
+#: src/pages/layouts.tsx:122
+msgid "space-between：间隔相等且不小于 gap = 20。"
+msgstr "space-between：间隔相等且不小于 gap = 20。"
+
+#: src/gallery.tsx:136
+msgid "Spring 动画"
+msgstr "Spring 动画"
+
+#: src/pages/primitives.tsx:86
+msgid "Sprite 精灵"
+msgstr "Sprite 精灵"
+
+#: src/gallery.tsx:106
+msgid "Sprite、Text、Clip、Animation 与通用节点属性。"
+msgstr "Sprite、Text、Clip、Animation 与通用节点属性。"
+
+#: src/gallery.tsx:154
+msgid "Steam（仅桌面端）"
+msgstr "Steam（仅桌面端）"
+
+#: src/pages/primitives.tsx:10
+msgid "Text 文本样式"
+msgstr "Text 文本样式"
+
+#: src/pages/primitives.tsx:124
+msgid "tint 金色"
+msgstr "tint 金色"
+
+#: src/pages/spring-transitions.tsx:19
+msgid "useSpring 属性动画"
+msgstr "useSpring 属性动画"
+
+#: src/gallery.tsx:137
+msgid "useSpring 属性动画与 useTransition 进出场动画。"
+msgstr "useSpring 属性动画与 useTransition 进出场动画。"
+
+#: src/pages/spring-transitions.tsx:63
+msgid "useTransition 进出场"
+msgstr "useTransition 进出场"
+
+#: src/gallery.tsx:109
+msgid "VBox、HBox、测量、对齐与动态重排。"
+msgstr "VBox、HBox、测量、对齐与动态重排。"
+
+#: src/pages/primitives.tsx:53
+msgid "x / scale / rotation 作用于整个子树；点击色块切换两组目标值。"
+msgstr "x / scale / rotation 作用于整个子树；点击色块切换两组目标值。"
+
+#: src/pages/raw-shaders.tsx:185
+msgid "一道明亮的扫描带扫过输入画面。"
+msgstr "一道明亮的扫描带扫过输入画面。"
+
+#. placeholder {0}: dynamicLabels[(mode + 1) % dynamicLabels.length]
+#: src/pages/layouts.tsx:227
+msgid "下一状态：{0}"
+msgstr "下一状态：{0}"
+
+#: src/pages/controls.tsx:182
+msgid "下拉列表展开时会覆盖下方内容（zIndex）。"
+msgstr "下拉列表展开时会覆盖下方内容（zIndex）。"
+
+#: src/gallery.tsx:237
+msgid "中文"
+msgstr "中文"
+
+#: src/pages/primitives.tsx:99
+msgid "九宫格：圆角与描边不随拉伸变形，线条不模糊"
+msgstr "九宫格：圆角与描边不随拉伸变形，线条不模糊"
+
+#: src/pages/filters.tsx:39
+msgid "亮度 Brightness"
+msgstr "亮度 Brightness"
+
+#: src/pages/input.tsx:83
+msgid "使用 Microsoft 拼音输入时，候选窗应跟随缩放、旋转后的文字末尾，并保持在 caret 附近。"
+msgstr "使用 Microsoft 拼音输入时，候选窗应跟随缩放、旋转后的文字末尾，并保持在 caret 附近。"
+
+#: src/pages/raw-shaders.tsx:154
+msgid "停止"
+msgstr "停止"
+
+#: src/pages/controls.tsx:166
+msgid "全屏"
+msgstr "全屏"
+
+#: src/pages/layouts.tsx:69
+msgid "内 VBox A"
+msgstr "内 VBox A"
+
+#: src/pages/layouts.tsx:70
+msgid "内 VBox B"
+msgstr "内 VBox B"
+
+#: src/pages/controls.tsx:170
+msgid "内部维护当前值"
+msgstr "内部维护当前值"
+
+#: src/pages/controls.tsx:93
+msgid "内部维护状态"
+msgstr "内部维护状态"
+
+#: src/pages/steam.tsx:36
+msgid "最近一次调用"
+msgstr "最近一次调用"
+
+#: src/pages/shader-transitions.tsx:50
+msgid "准备中"
+msgstr "准备中"
+
+#: src/pages/input.tsx:148
+msgid "切换为只读"
+msgstr "切换为只读"
+
+#: src/pages/input.tsx:148
+msgid "切换为可编辑"
+msgstr "切换为可编辑"
+
+#. placeholder {0}: String(index + 1).padStart(2, '0')
+#: src/pages/controls.tsx:224
+msgid "列表项 {0}"
+msgstr "列表项 {0}"
+
+#: src/pages/layouts.tsx:214
+msgid "初始布局"
+msgstr "初始布局"
+
+#: src/pages/layouts.tsx:214
+msgid "删除 B 并重排"
+msgstr "删除 B 并重排"
+
+#: src/pages/backdrops.tsx:110
+msgid "前景内容"
+msgstr "前景内容"
+
+#: src/pages/layouts.tsx:272
+msgid "动态重排"
+msgstr "动态重排"
+
+#: src/pages/controls.tsx:185
+msgid "动画 / Shader 方案"
+msgstr "动画 / Shader 方案"
+
+#: src/pages/filters.tsx:37
+msgid "原始对照 Original"
+msgstr "原始对照 Original"
+
+#: src/pages/primitives.tsx:120
+msgid "原色"
+msgstr "原色"
+
+#: src/pages/raw-shaders.tsx:208
+msgid "参数槽 · 通道采样 · builtins.time"
+msgstr "参数槽 · 通道采样 · builtins.time"
+
+#: src/gallery.tsx:143
+msgid "双通道画面的 GPU 转场状态机。"
+msgstr "双通道画面的 GPU 转场状态机。"
+
+#: src/pages/filters.tsx:52
+msgid "反色 Invert"
+msgstr "反色 Invert"
+
+#: src/pages/input.tsx:99
+msgid "受控、只读与禁用"
+msgstr "受控、只读与禁用"
+
+#: src/pages/controls.tsx:74
+msgid "受控与非受控两种用法。"
+msgstr "受控与非受控两种用法。"
+
+#: src/pages/input.tsx:102
+msgid "受控值应跟随 onChange 回写；只读可聚焦但不能编辑；点击禁用输入会清除当前焦点。"
+msgstr "受控值应跟随 onChange 回写；只读可聚焦但不能编辑；点击禁用输入会清除当前焦点。"
+
+#: src/pages/input.tsx:23
+msgid "受控初始值"
+msgstr "受控初始值"
+
+#: src/pages/controls.tsx:107
+msgid "受控滑块"
+msgstr "受控滑块"
+
+#: src/pages/controls.tsx:76
+#: src/pages/controls.tsx:131
+msgid "受控组件"
+msgstr "受控组件"
+
+#: src/pages/input.tsx:106
+msgid "受控输入"
+msgstr "受控输入"
+
+#: src/pages/layouts.tsx:271
+msgid "变换与测量"
+msgstr "变换与测量"
+
+#: src/pages/input.tsx:80
+msgid "变换后的候选窗位置"
+msgstr "变换后的候选窗位置"
+
+#: src/pages/primitives.tsx:135
+msgid "只有落在 440×260 视口内的内容会被绘制。"
+msgstr "只有落在 440×260 视口内的内容会被绘制。"
+
+#: src/pages/input.tsx:137
+msgid "只读内容"
+msgstr "只读内容"
+
+#: src/pages/layouts.tsx:72
+msgid "右"
+msgstr "右"
+
+#: src/pages/controls.tsx:58
+msgid "右对齐"
+msgstr "右对齐"
+
+#: src/pages/raw-shaders.tsx:154
+msgid "启动"
+msgstr "启动"
+
+#: src/pages/backdrops.tsx:34
+msgid "启用背景滤镜"
+msgstr "启用背景滤镜"
+
+#: src/pages/input.tsx:166
+msgid "启用输入框"
+msgstr "启用输入框"
+
+#: src/pages/primitives.tsx:33
+msgid "固定宽度文本框：设定 boxWidth 后，这段文字会在到达宽度上限时自动换行，并可通过 lineHeight 控制行距。"
+msgstr "固定宽度文本框：设定 boxWidth 后，这段文字会在到达宽度上限时自动换行，并可通过 lineHeight 控制行距。"
+
+#: src/pages/layouts.tsx:34
+msgid "固有尺寸文本项"
+msgstr "固有尺寸文本项"
+
+#: src/pages/layouts.tsx:152
+msgid "基准 A"
+msgstr "基准 A"
+
+#: src/pages/layouts.tsx:156
+msgid "基准 B"
+msgstr "基准 B"
+
+#: src/pages/layouts.tsx:160
+msgid "基准 C"
+msgstr "基准 C"
+
+#: src/pages/layouts.tsx:269
+msgid "基础与嵌套"
+msgstr "基础与嵌套"
+
+#: src/gallery.tsx:105
+msgid "基础组件"
+msgstr "基础组件"
+
+#: src/pages/input.tsx:36
+msgid "基础输入与 IME"
+msgstr "基础输入与 IME"
+
+#: src/pages/primitives.tsx:28
+msgid "填充"
+msgstr "填充"
+
+#: src/gallery.tsx:131
+msgid "处理节点背后已经绘制的画面，之后绘制的内容保持清晰。"
+msgstr "处理节点背后已经绘制的画面，之后绘制的内容保持清晰。"
+
+#: src/pages/layouts.tsx:65
+msgid "外层 VBox"
+msgstr "外层 VBox"
+
+#: src/pages/primitives.tsx:27
+msgid "多彩"
+msgstr "多彩"
+
+#: src/pages/primitives.tsx:89
+msgid "完整原图 250x240"
+msgstr "完整原图 250x240"
+
+#: src/pages/filters.tsx:40
+msgid "对比度 Contrast"
+msgstr "对比度 Contrast"
+
+#: src/gallery.tsx:125
+msgid "对节点自身子树的离屏渲染结果应用滤镜链。"
+msgstr "对节点自身子树的离屏渲染结果应用滤镜链。"
+
+#: src/pages/layouts.tsx:270
+msgid "对齐交互"
+msgstr "对齐交互"
+
+#: src/gallery.tsx:112
+msgid "封装组件"
+msgstr "封装组件"
+
+#: src/pages/steam.tsx:38
+msgid "尚未调用"
+msgstr "尚未调用"
+
+#: src/pages/shader-transitions.tsx:49
+msgid "就绪"
+msgstr "就绪"
+
+#: src/pages/primitives.tsx:30
+msgid "展示"
+msgstr "展示"
+
+#: src/pages/layouts.tsx:67
+msgid "左"
+msgstr "左"
+
+#: src/pages/controls.tsx:50
+msgid "左对齐"
+msgstr "左对齐"
+
+#: src/pages/shader-transitions.tsx:52
+msgid "已完成"
+msgstr "已完成"
+
+#: src/pages/controls.tsx:34
+msgid "已点击 {pressCount} 次"
+msgstr "已点击 {pressCount} 次"
+
+#: src/gallery.tsx:109
+msgid "布局"
+msgstr "布局"
+
+#: src/pages/controls.tsx:31
+msgid "常态按钮"
+msgstr "常态按钮"
+
+#: src/pages/backdrops.tsx:31
+msgid "开关 Toggle"
+msgstr "开关 Toggle"
+
+#: src/pages/controls.tsx:190
+msgid "弹簧动画 Spring"
+msgstr "弹簧动画 Spring"
+
+#. placeholder {0}: strength.toFixed(2)
+#: src/pages/raw-shaders.tsx:148
+msgid "强度 {0}"
+msgstr "强度 {0}"
+
+#. placeholder {0}: dynamicLabels[mode]
+#: src/pages/layouts.tsx:231
+msgid "当前：{0}"
+msgstr "当前：{0}"
+
+#: src/pages/controls.tsx:84
+msgid "当前：已勾选"
+msgstr "当前：已勾选"
+
+#: src/pages/controls.tsx:84
+msgid "当前：未勾选"
+msgstr "当前：未勾选"
+
+#. placeholder {0}: sliderValue.toFixed(2)
+#: src/pages/controls.tsx:114
+msgid "当前值 {0}"
+msgstr "当前值 {0}"
+
+#: src/pages/controls.tsx:150
+msgid "当前值：{selected}"
+msgstr "当前值：{selected}"
+
+#. placeholder {0}: transformed ? 460 : 140
+#. placeholder {1}: transformed ? 1.3 : 1.0
+#. placeholder {2}: transformed ? 0.15 : 0
+#: src/pages/primitives.tsx:74
+msgid "当前目标：x={0} · scale={1} · rotation={2}"
+msgstr "当前目标：x={0} · scale={1} · rotation={2}"
+
+#: src/pages/controls.tsx:200
+msgid "当前选中：{selected}"
+msgstr "当前选中：{selected}"
+
+#: src/pages/input.tsx:39
+msgid "悬停和按住输入框应切换背景；聚焦后应显示 focused 背景。再验证焦点切换、末尾输入、Backspace 与中文输入法候选窗位置。"
+msgstr "悬停和按住输入框应切换背景；聚焦后应显示 focused 背景。再验证焦点切换、末尾输入、Backspace 与中文输入法候选窗位置。"
+
+#: src/pages/steam.tsx:371
+msgid "成功（void）"
+msgstr "成功（void）"
+
+#: src/pages/raw-shaders.tsx:139
+msgid "手动时间"
+msgstr "手动时间"
+
+#: src/pages/raw-shaders.tsx:206
+msgid "手动时间控制"
+msgstr "手动时间控制"
+
+#: src/pages/shader-transitions.tsx:109
+msgid "按钮只发送 prepare；perform 由 onPrepared 触发，onFinished 解锁下一次播放。"
+msgstr "按钮只发送 prepare；perform 由 onPrepared 触发，onFinished 解锁下一次播放。"
+
+#: src/pages/backdrops.tsx:29
+#: src/pages/raw-shaders.tsx:119
+#: src/pages/shader-transitions.tsx:73
+msgid "控制台"
+msgstr "控制台"
+
+#: src/pages/primitives.tsx:10
+msgid "描边、阴影、颜色与 boxWidth 自动换行。"
+msgstr "描边、阴影、颜色与 boxWidth 自动换行。"
+
+#: src/pages/primitives.tsx:14
+msgid "描边与阴影 Stroke & Shadow"
+msgstr "描边与阴影 Stroke & Shadow"
+
+#: src/pages/shader-transitions.tsx:51
+#: src/pages/shader-transitions.tsx:96
+msgid "播放中"
+msgstr "播放中"
+
+#: src/pages/shader-transitions.tsx:96
+msgid "播放转场"
+msgstr "播放转场"
+
+#: src/pages/layouts.tsx:50
+msgid "文字固有尺寸"
+msgstr "文字固有尺寸"
+
+#: src/pages/filters.tsx:37
+msgid "无滤镜，作为对照基准。"
+msgstr "无滤镜，作为对照基准。"
+
+#: src/pages/shader-transitions.tsx:93
+msgid "时长 {duration} ms"
+msgstr "时长 {duration} ms"
+
+#: src/pages/steam.tsx:36
+msgid "显示实际提交的 subCommand 与同步返回值或错误。"
+msgstr "显示实际提交的 subCommand 与同步返回值或错误。"
+
+#: src/pages/steam.tsx:199
+msgid "未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。"
+msgstr "未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。"
+
+#: src/pages/steam.tsx:343
+msgid "未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。"
+msgstr "未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。"
+
+#: src/gallery.tsx:231
+msgid "末语 Gallery"
+msgstr "末语 Gallery"
+
+#: src/pages/filters.tsx:38
+msgid "模糊 Blur"
+msgstr "模糊 Blur"
+
+#: src/pages/backdrops.tsx:88
+msgid "模糊与饱和度实时作用于捕获画面。"
+msgstr "模糊与饱和度实时作用于捕获画面。"
+
+#: src/pages/backdrops.tsx:45
+msgid "模糊半径 {blurRadius}"
+msgstr "模糊半径 {blurRadius}"
+
+#: src/pages/backdrops.tsx:38
+msgid "模糊半径 Blur"
+msgstr "模糊半径 Blur"
+
+#: src/pages/layouts.tsx:172
+msgid "正常"
+msgstr "正常"
+
+#: src/pages/spring-transitions.tsx:150
+msgid "淡入 FADE IN"
+msgstr "淡入 FADE IN"
+
+#: src/pages/spring-transitions.tsx:121
+msgid "淡入淡出辅助"
+msgstr "淡入淡出辅助"
+
+#: src/pages/spring-transitions.tsx:152
+msgid "淡出 FADE OUT"
+msgstr "淡出 FADE OUT"
+
+#: src/pages/layouts.tsx:107
+msgid "深色区域为容器的固定尺寸。"
+msgstr "深色区域为容器的固定尺寸。"
+
+#: src/pages/spring-transitions.tsx:71
+msgid "添加"
+msgstr "添加"
+
+#: src/pages/spring-transitions.tsx:66
+msgid "添加 / 移除 keyed 项目，from → enter → leave 自动补间。"
+msgstr "添加 / 移除 keyed 项目，from → enter → leave 自动补间。"
+
+#: src/pages/backdrops.tsx:92
+msgid "渲染管线"
+msgstr "渲染管线"
+
+#: src/pages/raw-shaders.tsx:192
+msgid "渲染结果"
+msgstr "渲染结果"
+
+#: src/pages/backdrops.tsx:29
+msgid "滑块实时调整右侧场景的滤镜参数。"
+msgstr "滑块实时调整右侧场景的滤镜参数。"
+
+#: src/pages/filters.tsx:15
+msgid "滤镜文字 Aa123"
+msgstr "滤镜文字 Aa123"
+
+#: src/pages/controls.tsx:218
+msgid "滚轮或拖拽滚动。"
+msgstr "滚轮或拖拽滚动。"
+
+#: src/pages/backdrops.tsx:88
+msgid "演示场景"
+msgstr "演示场景"
+
+#: src/pages/filters.tsx:43
+msgid "灰度 Grayscale"
+msgstr "灰度 Grayscale"
+
+#. placeholder {0}: moved ? 620 : 80
+#. placeholder {1}: moved ? 0.15 : -0.08
+#. placeholder {2}: moved ? 1.25 : 1
+#. placeholder {3}: moved ? 0.65 : 1
+#: src/pages/spring-transitions.tsx:40
+msgid "点击 SPRING 切换目标状态。\n"
+"当前目标：x={0} · rotation={1} · scale={2} · opacity={3}"
+msgstr "点击 SPRING 切换目标状态。\n"
+"当前目标：x={0} · rotation={1} · scale={2} · opacity={3}"
+
+#: src/pages/primitives.tsx:69
+msgid "点击切换变换"
+msgstr "点击切换变换"
+
+#: src/pages/steam.tsx:39
+msgid "点击按钮开始测试。"
+msgstr "点击按钮开始测试。"
+
+#: src/pages/layouts.tsx:104
+msgid "点击按钮循环切换；两块区域同步变化。"
+msgstr "点击按钮循环切换；两块区域同步变化。"
+
+#: src/pages/controls.tsx:29
+msgid "点击计数、禁用态与文本对齐方式。"
+msgstr "点击计数、禁用态与文本对齐方式。"
+
+#. placeholder {0}: statusLabels[status] ?? status
+#: src/pages/shader-transitions.tsx:101
+msgid "状态：{0}"
+msgstr "状态：{0}"
+
+#: src/pages/layouts.tsx:247
+msgid "状态说明"
+msgstr "状态说明"
+
+#: src/pages/layouts.tsx:202
+msgid "理论值：150 + 220 + 180 + 2 × 18 = 586"
+msgstr "理论值：150 + 220 + 180 + 2 × 18 = 586"
+
+#: src/pages/raw-shaders.tsx:184
+msgid "用移动的正弦波横向扭曲输入画面。"
+msgstr "用移动的正弦波横向扭曲输入画面。"
+
+#: src/pages/input.tsx:125
+msgid "由外部状态设置"
+msgstr "由外部状态设置"
+
+#: src/pages/input.tsx:154
+msgid "禁用内容"
+msgstr "禁用内容"
+
+#: src/pages/controls.tsx:38
+msgid "禁用按钮"
+msgstr "禁用按钮"
+
+#: src/pages/controls.tsx:43
+msgid "禁用状态"
+msgstr "禁用状态"
+
+#: src/pages/backdrops.tsx:34
+msgid "禁用背景滤镜"
+msgstr "禁用背景滤镜"
+
+#: src/pages/input.tsx:166
+msgid "禁用输入框"
+msgstr "禁用输入框"
+
+#: src/pages/spring-transitions.tsx:77
+msgid "移除"
+msgstr "移除"
+
+#: src/pages/input.tsx:123
+msgid "程序设置受控值"
+msgstr "程序设置受控值"
+
+#: src/pages/controls.tsx:158
+msgid "窗口"
+msgstr "窗口"
+
+#: src/pages/spring-transitions.tsx:131
+msgid "立即完成"
+msgstr "立即完成"
+
+#: src/pages/input.tsx:64
+msgid "第二个输入框"
+msgstr "第二个输入框"
+
+#: src/pages/input.tsx:62
+msgid "第二个输入框（用于焦点切换）"
+msgstr "第二个输入框（用于焦点切换）"
+
+#: src/pages/filters.tsx:16
+msgid "第二行 Second line"
+msgstr "第二行 Second line"
+
+#: src/pages/layouts.tsx:141
+msgid "等待测量"
+msgstr "等待测量"
+
+#: src/pages/input.tsx:27
+msgid "等待输入事件"
+msgstr "等待输入事件"
+
+#: src/pages/backdrops.tsx:93
+msgid "背景捕获区域"
+msgstr "背景捕获区域"
+
+#: src/pages/spring-transitions.tsx:154
+msgid "背景目标 BACKDROP"
+msgstr "背景目标 BACKDROP"
+
+#: src/pages/raw-shaders.tsx:140
+msgid "自动时间"
+msgstr "自动时间"
+
+#: src/gallery.tsx:148
+msgid "自定义 Shader"
+msgstr "自定义 Shader"
+
+#: src/pages/filters.tsx:42
+msgid "色相旋转 Hue Rotate"
+msgstr "色相旋转 Hue Rotate"
+
+#: src/pages/primitives.tsx:137
+msgid "被裁剪的内容"
+msgstr "被裁剪的内容"
+
+#: src/pages/filters.tsx:45
+msgid "褐调 Sepia"
+msgstr "褐调 Sepia"
+
+#: src/pages/input.tsx:45
+msgid "请输入内容"
+msgstr "请输入内容"
+
+#: src/pages/controls.tsx:105
+msgid "轨道宽度可随面板收窄。"
+msgstr "轨道宽度可随面板收窄。"
+
+#: src/pages/shader-transitions.tsx:106
+msgid "转场画面"
+msgstr "转场画面"
+
+#: src/pages/primitives.tsx:139
+msgid "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
+msgstr "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
+
+#: src/pages/steam.tsx:101
+msgid "进度通知不保存数值；真实进度通过 Stats 页的 NumWins 读写。"
+msgstr "进度通知不保存数值；真实进度通过 Stats 页的 NumWins 读写。"
+
+#: src/pages/controls.tsx:203
+msgid "选项取自动画与 Shader 渲染管线；展开的列表会浮在下方的状态文字之上。"
+msgstr "选项取自动画与 Shader 渲染管线；展开的列表会浮在下方的状态文字之上。"
+
+#: src/pages/shader-transitions.tsx:132
+msgid "通道 0 · 由 prepare 捕获"
+msgstr "通道 0 · 由 prepare 捕获"
+
+#: src/pages/shader-transitions.tsx:146
+msgid "通道 1 · 稳定显示"
+msgstr "通道 1 · 稳定显示"
+
+#: src/pages/spring-transitions.tsx:125
+msgid "重播"
+msgstr "重播"
+
+#: src/pages/raw-shaders.tsx:169
+msgid "重置"
+msgstr "重置"
+
+#: src/pages/controls.tsx:46
+msgid "锁定悬停与左右对齐"
+msgstr "锁定悬停与左右对齐"
+
+#. placeholder {0}: error instanceof Error ? error.message : String(error)
+#: src/pages/steam.tsx:373
+msgid "错误：{0}"
+msgstr "错误：{0}"
+
+#: src/pages/raw-shaders.tsx:182
+msgid "随时间偏移红蓝通道采样。"
+msgstr "随时间偏移红蓝通道采样。"
+
+#: src/pages/controls.tsx:115
+msgid "非受控滑块"
+msgstr "非受控滑块"
+
+#: src/pages/controls.tsx:86
+#: src/pages/controls.tsx:153
+msgid "非受控组件"
+msgstr "非受控组件"
+
+#: src/pages/input.tsx:42
+msgid "非受控输入（autoFocus）"
+msgstr "非受控输入（autoFocus）"
+
+#: src/pages/spring-transitions.tsx:88
+msgid "项目 {item}"
+msgstr "项目 {item}"
+
+#: src/pages/layouts.tsx:189
+msgid "预期：onLayout 报告的宽度 = 三个色块 + 两个间隔。"
+msgstr "预期：onLayout 报告的宽度 = 三个色块 + 两个间隔。"
+
+#: src/pages/layouts.tsx:149
+msgid "预期：x = 45 的项目向右覆盖部分间隔，但兄弟项仍按原占位排列；anchor 被布局忽略。"
+msgstr "预期：x = 45 的项目向右覆盖部分间隔，但兄弟项仍按原占位排列；anchor 被布局忽略。"
+
+#: src/pages/layouts.tsx:169
+msgid "预期：变换项按未变换尺寸占位；pivot 右对齐文字不扩大容器测量宽度。"
+msgstr "预期：变换项按未变换尺寸占位；pivot 右对齐文字不扩大容器测量宽度。"
+
+#: src/pages/layouts.tsx:45
+msgid "预期：垂直居中；paddingX/Y 覆盖 padding；所有直接子项参与测量。"
+msgstr "预期：垂直居中；paddingX/Y 覆盖 padding；所有直接子项参与测量。"
+
+#: src/pages/layouts.tsx:62
+msgid "预期：嵌套尺寸逐层传递；内层两项右对齐；兄弟间无重叠。"
+msgstr "预期：嵌套尺寸逐层传递；内层两项右对齐；兄弟间无重叠。"
+
+#: src/pages/layouts.tsx:29
+msgid "预期：左侧对齐；最宽项决定宽度；间距一致。"
+msgstr "预期：左侧对齐；最宽项决定宽度；间距一致。"
+
+#: src/pages/layouts.tsx:222
+msgid "预期：每次点击同帧完成重排；visible = false 仍占位；删除后兄弟项递补到最前。"
+msgstr "预期：每次点击同帧完成重排；visible = false 仍占位；删除后兄弟项递补到最前。"
+
+#: src/pages/primitives.tsx:29
+msgid "颜色"
+msgstr "颜色"
+
+#. placeholder {0}: saturation.toFixed(2)
+#: src/pages/backdrops.tsx:53
+msgid "饱和度 {0}"
+msgstr "饱和度 {0}"
+
+#: src/pages/backdrops.tsx:46
+#: src/pages/filters.tsx:41
+msgid "饱和度 Saturation"
+msgstr "饱和度 Saturation"
+
+#: src/pages/controls.tsx:117
+msgid "默认值 0.35，内部维护状态"
+msgstr "默认值 0.35，内部维护状态"
+
+#: src/pages/primitives.tsx:12
+msgid "默认文本样式 Default 30px"
+msgstr "默认文本样式 Default 30px"

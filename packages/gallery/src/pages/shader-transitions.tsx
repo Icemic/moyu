@@ -1,4 +1,5 @@
 import { Button, Select, Slider, type MoyuShaderAttributes, type Node } from '@momoyu-ink/kit';
+import { useLingui } from '@lingui/react/macro';
 import { useRef, useState } from 'react';
 import { Panel } from '../components/chrome';
 import {
@@ -35,15 +36,8 @@ const EFFECTS: Array<{ title: string; shader: ShaderSource }> = [
   },
 ];
 
-// Chinese labels for the internal state machine states.
-const STATUS_LABELS: Record<string, string> = {
-  stable: '就绪',
-  preparing: '准备中',
-  running: '播放中',
-  finished: '已完成',
-};
-
 export function ShaderTransitionsPage() {
+  const { t } = useLingui();
   const shaderRef = useRef<Node>(null);
   const [effectTitle, setEffectTitle] = useState(EFFECTS[0].title);
   const [durationValue, setDurationValue] = useState(0.5);
@@ -51,6 +45,12 @@ export function ShaderTransitionsPage() {
   const [status, setStatus] = useState('stable');
   const effect = EFFECTS.find((item) => item.title === effectTitle) ?? EFFECTS[0];
   const duration = Math.round(250 + durationValue * 1750);
+  const statusLabels: Record<string, string> = {
+    stable: t`就绪`,
+    preparing: t`准备中`,
+    running: t`播放中`,
+    finished: t`已完成`,
+  };
 
   const prepare = () => {
     if (running) {
@@ -70,7 +70,7 @@ export function ShaderTransitionsPage() {
   return (
     <container>
       <vbox gap={16}>
-        <Panel title="控制台" width={1504} height={140} zIndex={2}>
+        <Panel title={t`控制台`} width={1504} height={140} zIndex={2}>
           <hbox y={8} gap={24} alignItems="center">
             <Select
               value={effect.title}
@@ -90,23 +90,23 @@ export function ShaderTransitionsPage() {
               track={{ ...SLIDER_TRACK, targetWidth: 300 }}
               thumb={SLIDER_THUMB}
             />
-            <text {...TEXT.body} text={`时长 ${duration} ms`} fillColor={COLOR.accent} />
+            <text {...TEXT.body} text={t`时长 ${duration} ms`} fillColor={COLOR.accent} />
             <Button
               sprite={{ ...BUTTON_SPRITE, targetWidth: 240 }}
-              text={running ? '播放中' : '播放转场'}
+              text={running ? t`播放中` : t`播放转场`}
               textStyle={BUTTON_TEXT_STYLE}
               disabled={running}
               onPress={prepare}
             />
-            <text {...TEXT.body} text={`状态：${STATUS_LABELS[status] ?? status}`} fillColor={COLOR.accent} />
+            <text {...TEXT.body} text={t`状态：${statusLabels[status] ?? status}`} fillColor={COLOR.accent} />
           </hbox>
         </Panel>
 
         <Panel
-          title="转场画面"
+          title={t`转场画面`}
           width={1504}
           height={740}
-          note="按钮只发送 prepare；perform 由 onPrepared 触发，onFinished 解锁下一次播放。"
+          note={t`按钮只发送 prepare；perform 由 onPrepared 触发，onFinished 解锁下一次播放。`}
         >
           <shader
             ref={shaderRef}
@@ -129,7 +129,7 @@ export function ShaderTransitionsPage() {
             <shader-slot channel={0} static>
               <container>
                 <text text="FROM" fontSize={150} fillColor={ITEM_COLORS[0]} x={120} y={120} />
-                <text text="通道 0 · 由 prepare 捕获" fontSize={30} fillColor={COLOR.text} x={130} y={320} />
+                <text text={t`通道 0 · 由 prepare 捕获`} fontSize={30} fillColor={COLOR.text} x={130} y={320} />
                 <text
                   text="Moyu Shader Transition"
                   fontSize={42}
@@ -143,7 +143,7 @@ export function ShaderTransitionsPage() {
             <shader-slot channel={1} static>
               <container>
                 <text text="TO" fontSize={180} fillColor={ITEM_COLORS[2]} x={650} y={100} />
-                <text text="通道 1 · 稳定显示" fontSize={30} fillColor={COLOR.accent} x={610} y={330} />
+                <text text={t`通道 1 · 稳定显示`} fontSize={30} fillColor={COLOR.accent} x={610} y={330} />
                 <text text="GPU TRANSITION" fontSize={52} fillColor={ITEM_COLORS[3]} x={100} y={470} rotation={0.06} />
               </container>
             </shader-slot>

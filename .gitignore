@@ -25,6 +25,7 @@ dist/
 
 # nodejs
 node_modules
+**/.swc/
 
 
 # yarn

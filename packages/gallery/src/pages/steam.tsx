@@ -1,4 +1,5 @@
 import { Button, executePluginCommand, Select, type SteamCommand } from '@momoyu-ink/kit';
+import { useLingui } from '@lingui/react/macro';
 import { useState } from 'react';
 import { Panel, SectionTabs } from '../components/chrome';
 import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, SELECT_LIST, SELECT_OPTION, SELECT_TRIGGER, TEXT } from '../theme';
@@ -29,23 +30,26 @@ const SMALL_BUTTON = {
 };
 
 function ResultPanel({ command, result }: { command: string; result: string }) {
+  const { t } = useLingui();
+
   return (
-    <Panel title="最近一次调用" width={1460} height={200} note="显示实际提交的 subCommand 与同步返回值或错误。">
+    <Panel title={t`最近一次调用`} width={1460} height={200} note={t`显示实际提交的 subCommand 与同步返回值或错误。`}>
       <vbox gap={10}>
-        <text {...TEXT.body} text={command || '尚未调用'} />
-        <text {...TEXT.caption} text={result || '点击按钮开始测试。'} boxWidth={1400} lineHeight={28} />
+        <text {...TEXT.body} text={command || t`尚未调用`} />
+        <text {...TEXT.caption} text={result || t`点击按钮开始测试。`} boxWidth={1400} lineHeight={28} />
       </vbox>
     </Panel>
   );
 }
 
 function AchievementSection({ run }: { run: (command: SteamCommand) => void }) {
+  const { t } = useLingui();
   const [achievement, setAchievement] = useState<string>(ACHIEVEMENTS[0]);
   const [progress, setProgress] = useState(0);
 
   return (
     <vbox gap={24}>
-      <Panel title="Spacewar Achievement" width={1460} height={370} note="API name 来自 App ID 480 的真实后台配置。">
+      <Panel title="Spacewar Achievement" width={1460} height={370} note={t`API name 来自 App ID 480 的真实后台配置。`}>
         <vbox gap={18}>
           <Select
             value={achievement}
@@ -94,7 +98,7 @@ function AchievementSection({ run }: { run: (command: SteamCommand) => void }) {
               }}
             />
           </hbox>
-          <text {...TEXT.caption} text="进度通知不保存数值；真实进度通过 Stats 页的 NumWins 读写。" />
+          <text {...TEXT.caption} text={t`进度通知不保存数值；真实进度通过 Stats 页的 NumWins 读写。`} />
         </vbox>
       </Panel>
     </vbox>
@@ -102,6 +106,8 @@ function AchievementSection({ run }: { run: (command: SteamCommand) => void }) {
 }
 
 function AppsOverlaySection({ run }: { run: (command: SteamCommand) => void }) {
+  const { t } = useLingui();
+
   return (
     <vbox gap={24}>
       <Panel title="Apps · App ID 480" width={1460} height={200}>
@@ -190,7 +196,7 @@ function AppsOverlaySection({ run }: { run: (command: SteamCommand) => void }) {
           </hbox>
           <text
             {...TEXT.caption}
-            text="未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。"
+            text={t`未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。`}
           />
         </vbox>
       </Panel>
@@ -199,6 +205,7 @@ function AppsOverlaySection({ run }: { run: (command: SteamCommand) => void }) {
 }
 
 function StatsSection({ run }: { run: (command: SteamCommand) => void }) {
+  const { t } = useLingui();
   const [wins, setWins] = useState(0);
 
   return (
@@ -207,7 +214,7 @@ function StatsSection({ run }: { run: (command: SteamCommand) => void }) {
         title="UserStats · Spacewar"
         width={1460}
         height={360}
-        note="Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
+        note={t`Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。`}
       >
         <vbox gap={18}>
           <hbox gap={16}>
@@ -287,7 +294,7 @@ function StatsSection({ run }: { run: (command: SteamCommand) => void }) {
               onPress={() => run({ subCommand: 'statsSetFloatStat', name: 'FeetTraveled', value: 2640 })}
             />
           </hbox>
-          <text {...TEXT.caption} text="ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet" />
+          <text {...TEXT.caption} text={t`ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet`} />
         </vbox>
       </Panel>
     </vbox>
@@ -295,6 +302,8 @@ function StatsSection({ run }: { run: (command: SteamCommand) => void }) {
 }
 
 function OtherSection({ run }: { run: (command: SteamCommand) => void }) {
+  const { t } = useLingui();
+
   return (
     <vbox gap={24}>
       <Panel title="User / Workshop" width={1460} height={240}>
@@ -331,14 +340,14 @@ function OtherSection({ run }: { run: (command: SteamCommand) => void }) {
             textStyle={BUTTON_TEXT_STYLE}
             onPress={() => run({ subCommand: 'workshopGetSubscribedItems', includeDisabled: false })}
           />
-          <text {...TEXT.caption} text="未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。" />
+          <text {...TEXT.caption} text={t`未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。`} />
         </vbox>
       </Panel>
       <Panel
         title="Timeline / Float Stats"
         width={1460}
         height={200}
-        note="App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。"
+        note={t`App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。`}
       >
         <vbox gap={12}>
           <text {...TEXT.body} text="timelineSetStateDescription · timelineAddEvent · timelineClearStateDescription" />
@@ -350,6 +359,7 @@ function OtherSection({ run }: { run: (command: SteamCommand) => void }) {
 }
 
 export function SteamPage() {
+  const { t } = useLingui();
   const [tab, setTab] = useState<SteamTab>('achievement');
   const [lastCommand, setLastCommand] = useState('');
   const [result, setResult] = useState('');
@@ -358,9 +368,9 @@ export function SteamPage() {
     setLastCommand(command.subCommand);
     try {
       const value = await executePluginCommand('steam', command);
-      setResult(value === undefined ? '成功（void）' : JSON.stringify(value));
+      setResult(value === undefined ? t`成功（void）` : JSON.stringify(value));
     } catch (error) {
-      setResult(`错误：${error instanceof Error ? error.message : String(error)}`);
+      setResult(t`错误：${error instanceof Error ? error.message : String(error)}`);
     }
   };
 

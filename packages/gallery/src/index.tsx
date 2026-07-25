@@ -1,5 +1,7 @@
 import { addEventListener, createRoot, executePluginCommand } from '@momoyu-ink/kit';
+import { I18nProvider } from '@lingui/react';
 import { Gallery } from './gallery';
+import { activateLocale, DEFAULT_LOCALE, i18n } from './i18n';
 import { useEffect } from 'react';
 
 function Main() {
@@ -17,7 +19,12 @@ function Main() {
 addEventListener('ready', () => {
   try {
     console.log('Rendering Moyu Gallery...');
-    createRoot().render(<Main />);
+    activateLocale(DEFAULT_LOCALE);
+    createRoot().render(
+      <I18nProvider i18n={i18n}>
+        <Main />
+      </I18nProvider>,
+    );
   } catch (error) {
     console.error('Failed to render Moyu Gallery:', error);
   }

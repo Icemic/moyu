@@ -1,4 +1,5 @@
 import { Button, Select, Slider, type MoyuShaderAttributes, type Node } from '@momoyu-ink/kit';
+import { useLingui } from '@lingui/react/macro';
 import { useRef, useState } from 'react';
 import { Panel } from '../components/chrome';
 import {
@@ -45,10 +46,9 @@ fn read_param_f32(index: u32) -> f32 {
 }
 `;
 
-const PRESETS: Array<{ title: string; description: string; content: string }> = [
+const PRESETS: Array<{ title: string; content: string }> = [
   {
     title: 'Color shift',
-    description: '随时间偏移红蓝通道采样。',
     content: `${RAW_SHADER_HEADER}
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
@@ -64,7 +64,6 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
   },
   {
     title: 'Wave',
-    description: '用移动的正弦波横向扭曲输入画面。',
     content: `${RAW_SHADER_HEADER}
 
 @fragment
@@ -81,7 +80,6 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
   },
   {
     title: 'Scan',
-    description: '一道明亮的扫描带扫过输入画面。',
     content: `${RAW_SHADER_HEADER}
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
@@ -99,6 +97,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 ];
 
 export function RawShadersPage() {
+  const { t } = useLingui();
   const shaderRef = useRef<Node>(null);
   const [presetTitle, setPresetTitle] = useState(PRESETS[0].title);
   const [timeControl, setTimeControl] = useState<RawTimeControl>('manual');
@@ -117,7 +116,7 @@ export function RawShadersPage() {
   return (
     <container>
       <vbox gap={16}>
-        <Panel title="控制台" width={1504} height={200} zIndex={2}>
+        <Panel title={t`控制台`} width={1504} height={200} zIndex={2}>
           <vbox gap={16}>
             <hbox gap={16} alignItems="center" zIndex={2}>
               <Select
@@ -137,8 +136,8 @@ export function RawShadersPage() {
                   setTimeControl(value as RawTimeControl);
                 }}
                 options={[
-                  { text: '手动时间', value: 'manual' },
-                  { text: '自动时间', value: 'auto' },
+                  { text: t`手动时间`, value: 'manual' },
+                  { text: t`自动时间`, value: 'auto' },
                 ]}
                 trigger={{ ...SELECT_TRIGGER, targetWidth: 260 }}
                 list={{ ...SELECT_LIST, targetWidth: 260 }}
@@ -146,13 +145,13 @@ export function RawShadersPage() {
                 textStyle={BUTTON_TEXT_STYLE}
               />
               <Slider value={strength} onValueChange={setStrength} track={SLIDER_TRACK} thumb={SLIDER_THUMB} />
-              <text {...TEXT.body} text={`强度 ${strength.toFixed(2)}`} fillColor={COLOR.accent} />
+              <text {...TEXT.body} text={t`强度 ${strength.toFixed(2)}`} fillColor={COLOR.accent} />
             </hbox>
 
             <hbox gap={16} alignItems="center">
               <Button
                 sprite={{ ...BUTTON_SPRITE, targetWidth: 180 }}
-                text={playing ? '停止' : '启动'}
+                text={playing ? t`停止` : t`启动`}
                 textStyle={BUTTON_TEXT_STYLE}
                 disabled={timeControl === 'auto'}
                 opacity={timeControl === 'auto' ? 0.4 : 1}
@@ -167,7 +166,7 @@ export function RawShadersPage() {
               />
               <Button
                 sprite={{ ...BUTTON_SPRITE, targetWidth: 180 }}
-                text="重置"
+                text={t`重置`}
                 textStyle={BUTTON_TEXT_STYLE}
                 disabled={timeControl === 'auto'}
                 opacity={timeControl === 'auto' ? 0.4 : 1}
@@ -176,12 +175,21 @@ export function RawShadersPage() {
                   setPlaying(false);
                 }}
               />
-              <text {...TEXT.caption} text={preset.description} />
+              <text
+                {...TEXT.caption}
+                text={
+                  preset.title === 'Color shift'
+                    ? t`随时间偏移红蓝通道采样。`
+                    : preset.title === 'Wave'
+                      ? t`用移动的正弦波横向扭曲输入画面。`
+                      : t`一道明亮的扫描带扫过输入画面。`
+                }
+              />
             </hbox>
           </vbox>
         </Panel>
 
-        <Panel title="渲染结果" width={1504} height={680}>
+        <Panel title={t`渲染结果`} width={1504} height={680}>
           <shader
             ref={shaderRef}
             x={202}
@@ -195,9 +203,9 @@ export function RawShadersPage() {
             <shader-slot channel={0}>
               <container>
                 <text text="RAW WGSL" fontSize={130} fillColor={ITEM_COLORS[0]} x={180} y={100} />
-                <text text="手动时间控制" fontSize={50} fillColor={ITEM_COLORS[2]} x={480} y={300} rotation={-0.06} />
+                <text text={t`手动时间控制`} fontSize={50} fillColor={ITEM_COLORS[2]} x={480} y={300} rotation={-0.06} />
                 <text
-                  text="参数槽 · 通道采样 · builtins.time"
+                  text={t`参数槽 · 通道采样 · builtins.time`}
                   fontSize={30}
                   fillColor={ITEM_COLORS[1]}
                   x={120}

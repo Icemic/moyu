@@ -5,10 +5,13 @@ import {
   getStageSize,
   type MouseEvent,
   ScrollView,
+  Select,
   type TouchEvent,
   useScrollView,
 } from '@momoyu-ink/kit';
+import { useLingui } from '@lingui/react/macro';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { activateLocale, DEFAULT_LOCALE } from './i18n';
 import { BackdropsPage } from './pages/backdrops';
 import { ControlsPage } from './pages/controls';
 import { FiltersPage } from './pages/filters';
@@ -19,7 +22,16 @@ import { RawShadersPage } from './pages/raw-shaders';
 import { ShaderTransitionsPage } from './pages/shader-transitions';
 import { SpringTransitionsPage } from './pages/spring-transitions';
 import { SteamPage } from './pages/steam';
-import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, PANEL_SPRITE, PIXEL_SPRITE } from './theme';
+import {
+  BUTTON_SPRITE,
+  BUTTON_TEXT_STYLE,
+  COLOR,
+  PANEL_SPRITE,
+  PIXEL_SPRITE,
+  SELECT_LIST,
+  SELECT_OPTION,
+  SELECT_TRIGGER,
+} from './theme';
 
 const STAGE_WIDTH = 1920;
 const STAGE_HEIGHT = 1080;
@@ -35,8 +47,8 @@ const CONTENT_SCROLLBAR_BOUNDS: [number, number, number, number] = [0.1, 0.1, 0.
 
 const SIDEBAR_X = 44;
 const SIDEBAR_WIDTH = 292;
-const NAV_PANEL_Y = 96;
-const NAV_PANEL_HEIGHT = 880;
+const NAV_PANEL_Y = 164;
+const NAV_PANEL_HEIGHT = 812;
 const NAV_SCROLL_HEIGHT = NAV_PANEL_HEIGHT - 24;
 
 interface GalleryPageDefinition {
@@ -45,64 +57,6 @@ interface GalleryPageDefinition {
   description: string;
   component: ComponentType;
 }
-
-const PAGES: readonly GalleryPageDefinition[] = [
-  {
-    key: 'primitives',
-    title: '基础组件',
-    description: 'Sprite、Text、Clip、Animation 与通用节点属性。',
-    component: PrimitivesPage,
-  },
-  { key: 'layouts', title: '布局', description: 'VBox、HBox、测量、对齐与动态重排。', component: LayoutsPage },
-  {
-    key: 'controls',
-    title: '封装组件',
-    description: 'Button、Checkbox、Radio、Select、Slider 与 ScrollView。',
-    component: ControlsPage,
-  },
-  {
-    key: 'input',
-    title: 'Input 输入框',
-    description: 'Editable 节点、末尾输入、IME、焦点与受控状态。',
-    component: InputPage,
-  },
-  {
-    key: 'filters',
-    title: 'Filter 滤镜',
-    description: '对节点自身子树的离屏渲染结果应用滤镜链。',
-    component: FiltersPage,
-  },
-  {
-    key: 'backdrops',
-    title: 'Backdrop 背景滤镜',
-    description: '处理节点背后已经绘制的画面，之后绘制的内容保持清晰。',
-    component: BackdropsPage,
-  },
-  {
-    key: 'spring-transitions',
-    title: 'Spring 动画',
-    description: 'useSpring 属性动画与 useTransition 进出场动画。',
-    component: SpringTransitionsPage,
-  },
-  {
-    key: 'shader-transitions',
-    title: 'Shader 转场',
-    description: '双通道画面的 GPU 转场状态机。',
-    component: ShaderTransitionsPage,
-  },
-  {
-    key: 'raw-shaders',
-    title: '自定义 Shader',
-    description: 'Raw WGSL、参数槽与时间控制。',
-    component: RawShadersPage,
-  },
-  {
-    key: 'steam',
-    title: 'Steam（仅桌面端）',
-    description: 'Achievement 与 Steamworks API 手动测试。',
-    component: SteamPage,
-  },
-];
 
 function NavItem({
   index,
@@ -141,12 +95,70 @@ function NavItem({
 }
 
 export function Gallery() {
+  const { t } = useLingui();
   const stageSize = getStageSize();
   const scale = Math.min(stageSize.width / STAGE_WIDTH, stageSize.height / STAGE_HEIGHT);
   const [currentPageKey, setCurrentPageKey] = useState<string>('primitives');
+  const pages: readonly GalleryPageDefinition[] = [
+    {
+      key: 'primitives',
+      title: t`基础组件`,
+      description: t`Sprite、Text、Clip、Animation 与通用节点属性。`,
+      component: PrimitivesPage,
+    },
+    { key: 'layouts', title: t`布局`, description: t`VBox、HBox、测量、对齐与动态重排。`, component: LayoutsPage },
+    {
+      key: 'controls',
+      title: t`封装组件`,
+      description: t`Button、Checkbox、Radio、Select、Slider 与 ScrollView。`,
+      component: ControlsPage,
+    },
+    {
+      key: 'input',
+      title: t`Input 输入框`,
+      description: t`Editable 节点、末尾输入、IME、焦点与受控状态。`,
+      component: InputPage,
+    },
+    {
+      key: 'filters',
+      title: t`Filter 滤镜`,
+      description: t`对节点自身子树的离屏渲染结果应用滤镜链。`,
+      component: FiltersPage,
+    },
+    {
+      key: 'backdrops',
+      title: t`Backdrop 背景滤镜`,
+      description: t`处理节点背后已经绘制的画面，之后绘制的内容保持清晰。`,
+      component: BackdropsPage,
+    },
+    {
+      key: 'spring-transitions',
+      title: t`Spring 动画`,
+      description: t`useSpring 属性动画与 useTransition 进出场动画。`,
+      component: SpringTransitionsPage,
+    },
+    {
+      key: 'shader-transitions',
+      title: t`Shader 转场`,
+      description: t`双通道画面的 GPU 转场状态机。`,
+      component: ShaderTransitionsPage,
+    },
+    {
+      key: 'raw-shaders',
+      title: t`自定义 Shader`,
+      description: t`Raw WGSL、参数槽与时间控制。`,
+      component: RawShadersPage,
+    },
+    {
+      key: 'steam',
+      title: t`Steam（仅桌面端）`,
+      description: t`Achievement 与 Steamworks API 手动测试。`,
+      component: SteamPage,
+    },
+  ];
   const navigationScroll = useScrollView({ viewportHeight: NAV_SCROLL_HEIGHT });
   const contentScroll = useScrollView({ viewportHeight: CONTENT_HEIGHT });
-  const currentPage = PAGES.find((page) => page.key === currentPageKey) ?? PAGES[0];
+  const currentPage = pages.find((page) => page.key === currentPageKey) ?? pages[0];
   const CurrentPage = currentPage.component;
   const { contentHeight, maxScroll, scrollOffset, scrollTo, scrollToRatio } = contentScroll;
   const showContentScrollbar = maxScroll > 0;
@@ -214,9 +226,23 @@ export function Gallery() {
     <container label="Moyu Gallery" x={stageSize.width / 2} y={stageSize.height / 2} scale={scale}>
       <sprite src="images/bg.png" pivot={[0.5, 0.5]} />
       <container x={-STAGE_WIDTH / 2} y={-STAGE_HEIGHT / 2}>
-        {/* Sidebar: nav panel top aligns with the content area at y=136. */}
+        {/* Sidebar: locale selector sits above the scrollable navigation list. */}
         <container x={SIDEBAR_X} y={40}>
-          <text text="末语 Gallery" fontSize={46} fillColor={COLOR.pageTitle} />
+          <text text={t`末语 Gallery`} fontSize={46} fillColor={COLOR.pageTitle} />
+
+          <Select
+            zIndex={2}
+            y={96}
+            value={DEFAULT_LOCALE}
+            options={[{ value: 'zh', text: t`中文` }]}
+            trigger={{ ...SELECT_TRIGGER, targetWidth: SIDEBAR_WIDTH }}
+            list={{ ...SELECT_LIST, targetWidth: SIDEBAR_WIDTH }}
+            option={{ ...SELECT_OPTION, targetWidth: SIDEBAR_WIDTH - 8 }}
+            textStyle={BUTTON_TEXT_STYLE}
+            textAlign="left"
+            textOffsetX={18}
+            onValueChange={(locale) => activateLocale(locale as typeof DEFAULT_LOCALE)}
+          />
 
           <sprite {...PANEL_SPRITE} targetWidth={SIDEBAR_WIDTH} targetHeight={NAV_PANEL_HEIGHT} y={NAV_PANEL_Y}>
             <container x={12} y={12}>
@@ -226,7 +252,7 @@ export function Gallery() {
                 controller={navigationScroll}
                 contentProps={{ gap: 8 }}
               >
-                {PAGES.map((page, index) => (
+                {pages.map((page, index) => (
                   <NavItem
                     key={page.key}
                     index={index}

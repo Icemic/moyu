@@ -38,6 +38,9 @@ export default {
                   syntax: 'typescript',
                   tsx: true,
                 },
+                experimental: {
+                  plugins: [['@lingui/swc-plugin', {}]],
+                },
                 transform: {
                   react: {
                     runtime: 'automatic',
@@ -50,6 +53,17 @@ export default {
               env: {
                 targets: ['chrome >= 87', 'edge >= 88', 'firefox >= 78', 'safari >= 14'],
               },
+            },
+          },
+        ],
+      },
+      {
+        test: /\.po$/,
+        use: [
+          {
+            loader: '@lingui/loader',
+            options: {
+              failOnCompileError: true,
             },
           },
         ],

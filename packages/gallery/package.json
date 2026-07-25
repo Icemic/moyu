@@ -7,19 +7,25 @@
   "scripts": {
     "dev": "rspack dev",
     "generate:assets": "node scripts/generate-assets.mjs",
+    "i18n:extract": "lingui extract --clean",
     "typecheck": "tsc --noEmit",
     "build": "rspack build"
   },
   "author": "Icemic <bingfeng.web@gmail.com>",
   "license": "MPL-2.0",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.19"
   },
   "dependencies": {
+    "@lingui/core": "6.5.0",
+    "@lingui/react": "6.5.0",
     "@momoyu-ink/kit": "workspace:*",
     "react": "19.2.1"
   },
   "devDependencies": {
+    "@lingui/cli": "6.5.0",
+    "@lingui/loader": "6.5.0",
+    "@lingui/swc-plugin": "6.5.0",
     "@rspack/cli": "^1.7.11",
     "@rspack/core": "^1.7.11",
     "@rspack/plugin-react-refresh": "^1.6.2",
