@@ -113,8 +113,8 @@ crates/
 packages/
 ├── kit/           # @momoyu-ink/kit — React SDK，见 packages/kit/AGENTS.md
 ├── cli/           # @momoyu-ink/cli — 项目初始化、引擎下载/切换、调试运行、打包与 schema 生成命令行
-├── gallery/       # 基于 kit + rspack 的组件展示与手动测试应用，见 packages/gallery/AGENTS.md
-└── bunnymark/     # 基于 kit + rspack 的性能基准 demo（依赖 @momoyu-ink/kit）
+├── gallery/       # 基于 kit + Vite 的组件展示与手动测试应用，见 packages/gallery/AGENTS.md
+└── bunnymark/     # 基于 kit + Vite 的性能基准 demo（依赖 @momoyu-ink/kit）
 ```
 
 ### `@momoyu-ink/cli`

@@ -6,10 +6,10 @@
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
   "scripts": {
-    "dev": "rspack dev",
-    "prepack": "tsc --outDir ./dist",
-    "build": "tsc --outDir ./dist",
-    "watch": "tsc --outDir ./dist -w"
+    "dev": "vite",
+    "prepack": "yarn build",
+    "build": "vite build && tsc --emitDeclarationOnly --declarationDir ./dist --rootDir ./src",
+    "watch": "vite build --watch"
   },
   "author": "Icemic <bingfeng.web@gmail.com>",
   "license": "MIT",
@@ -20,9 +20,8 @@
     "@momoyu-ink/kit": "workspace:*"
   },
   "devDependencies": {
-    "@rspack/cli": "^1.7.11",
-    "@rspack/core": "^1.7.11",
-    "@types/node": ">=22",
-    "typescript": "^5.6.3"
+    "@types/node": ">=24",
+    "typescript": "^5.6.3",
+    "vite": "^8.0.16"
   }
 }
