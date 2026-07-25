@@ -1,6 +1,6 @@
 /**
  * WebSocket polyfill for QuickJS environment
- * Purpose: Make webpack-dev-server HMR work
+ * Provides the browser-compatible event API required by development server HMR
  */
 
 (function () {
@@ -22,17 +22,59 @@
 
     constructor(url, protocols) {
       this.url = url;
+      this.protocol = '';
       this.readyState = WebSocket.CONNECTING;
       this.binaryType = 'arraybuffer'; // Default
+      this.CONNECTING = WebSocket.CONNECTING;
+      this.OPEN = WebSocket.OPEN;
+      this.CLOSING = WebSocket.CLOSING;
+      this.CLOSED = WebSocket.CLOSED;
 
       this.onopen = null;
       this.onmessage = null;
       this.onerror = null;
       this.onclose = null;
+      this._listeners = new Map();
 
-      this._id = globalThis.__moyu_ws_connect(url);
+      const protocolList = Array.isArray(protocols) ? protocols : protocols ? [protocols] : [];
+      this._id = globalThis.__moyu_ws_connect(url, protocolList.join(', '));
       instances.set(this._id, new WeakRef(this));
       registry.register(this, this._id);
+    }
+
+    addEventListener(type, listener, options) {
+      if (typeof listener !== 'function') return;
+
+      const listeners = this._listeners.get(type) || [];
+      if (!listeners.some((entry) => entry.listener === listener)) {
+        listeners.push({ listener, once: options === true || options?.once === true });
+        this._listeners.set(type, listeners);
+      }
+    }
+
+    removeEventListener(type, listener) {
+      const listeners = this._listeners.get(type);
+      if (!listeners) return;
+
+      const remaining = listeners.filter((entry) => entry.listener !== listener);
+      if (remaining.length > 0) {
+        this._listeners.set(type, remaining);
+      } else {
+        this._listeners.delete(type);
+      }
+    }
+
+    _dispatch(type, event) {
+      const handler = this[`on${type}`];
+      if (typeof handler === 'function') handler.call(this, event);
+
+      const listeners = this._listeners.get(type);
+      if (!listeners) return;
+
+      for (const entry of [...listeners]) {
+        entry.listener.call(this, event);
+        if (entry.once) this.removeEventListener(type, entry.listener);
+      }
     }
 
     send(data) {
@@ -74,37 +116,30 @@
     switch (type) {
       case 'open':
         ws.readyState = WebSocket.OPEN;
-        if (typeof ws.onopen === 'function') {
-          ws.onopen({ type: 'open' });
-        }
+        ws._dispatch('open', { type: 'open', target: ws });
         break;
 
       case 'message':
-        if (typeof ws.onmessage === 'function') {
-          const data = args[0];
-          ws.onmessage({ type: 'message', data: data });
-        }
+        ws._dispatch('message', { type: 'message', data: args[0], target: ws });
         break;
 
       case 'error':
-        if (typeof ws.onerror === 'function') {
-          ws.onerror({ type: 'error' });
-        }
+        ws._dispatch('error', { type: 'error', target: ws });
         break;
 
-      case 'close':
+      case 'close': {
         ws.readyState = WebSocket.CLOSED;
         instances.delete(id);
-        if (typeof ws.onclose === 'function') {
-          const [code, reason] = args;
-          ws.onclose({
-            type: 'close',
-            wasClean: code === 1000,
-            code: code,
-            reason: reason,
-          });
-        }
+        const [code, reason] = args;
+        ws._dispatch('close', {
+          type: 'close',
+          wasClean: code === 1000,
+          code: code,
+          reason: reason,
+          target: ws,
+        });
         break;
+      }
     }
   };
 

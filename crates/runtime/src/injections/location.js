@@ -1,14 +1,24 @@
 /**
  * Location polyfill for QuickJS environment
- * Make webpack-dev-server HMR work without errors
+ * Provides the URL and location APIs required by development server HMR
  */
 
 (function () {
   // Parse URL from __moyu_base_url or use default
   const baseUrl = globalThis.__moyu_base_url || 'http://localhost:6020/';
 
-  // Simple URL parser
-  function parseUrl(url) {
+  function resolveUrl(url, base) {
+    if (/^[^:]+:\/\//.test(url)) return url;
+
+    const baseUrl = parseUrl(base || globalThis.__moyu_base_url || 'http://localhost:6020/');
+    if (url.startsWith('/')) return `${baseUrl.origin}${url}`;
+
+    const basePath = baseUrl.pathname.slice(0, baseUrl.pathname.lastIndexOf('/') + 1);
+    return `${baseUrl.origin}${basePath}${url}`;
+  }
+
+  function parseUrl(url, base) {
+    url = resolveUrl(String(url), base ? String(base) : undefined);
     // Match: protocol://host:port/pathname?search#hash
     const match = url.match(/^([^:]+):\/\/([^:/]+)(?::(\d+))?(\/[^?#]*)?(\?[^#]*)?(#.*)?$/);
 
@@ -22,11 +32,13 @@
         search: '',
         hash: '',
         href: url,
+        origin: 'http://localhost:6020',
       };
     }
 
     const [, protocol, hostname, port, pathname, search, hash] = match;
 
+    const origin = `${protocol}://${port ? `${hostname}:${port}` : hostname}`;
     return {
       protocol: protocol + ':',
       hostname: hostname,
@@ -36,8 +48,53 @@
       search: search || '',
       hash: hash || '',
       href: url,
+      origin,
     };
   }
+
+  class URLSearchParams {
+    constructor(search, onChange) {
+      this._entries = String(search || '')
+        .replace(/^\?/, '')
+        .split('&')
+        .filter(Boolean)
+        .map((part) => {
+          const separator = part.indexOf('=');
+          return separator < 0 ? [part, ''] : [part.slice(0, separator), part.slice(separator + 1)];
+        });
+      this._onChange = onChange;
+    }
+
+    delete(name) {
+      this._entries = this._entries.filter(([key]) => decodeURIComponent(key) !== name);
+      this._onChange?.(this.toString());
+    }
+
+    toString() {
+      return this._entries.map(([key, value]) => (value ? `${key}=${value}` : key)).join('&');
+    }
+  }
+
+  class URL {
+    constructor(url, base) {
+      this._set(parseUrl(url, base));
+    }
+
+    _set(parsed) {
+      Object.assign(this, parsed);
+      this.searchParams = new URLSearchParams(this.search, (search) => {
+        this.search = search ? `?${search}` : '';
+        this.href = `${this.origin}${this.pathname}${this.search}${this.hash}`;
+      });
+    }
+
+    toString() {
+      return this.href;
+    }
+  }
+
+  globalThis.URL = URL;
+  globalThis.URLSearchParams = URLSearchParams;
 
   let currentUrl = parseUrl(baseUrl);
 
@@ -101,7 +158,7 @@
     },
 
     get origin() {
-      return `${currentUrl.protocol}//${currentUrl.host}`;
+      return currentUrl.origin;
     },
 
     // Methods (no-op implementations)

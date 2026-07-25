@@ -51,6 +51,11 @@ pub(super) fn ws_connect(
     }
 
     let url: String = OwnedJsValue::own(context, &args[0]).try_into()?;
+    let protocols = if args.len() >= 2 {
+        String::try_from(OwnedJsValue::own(context, &args[1]))?
+    } else {
+        String::new()
+    };
     let vm_id = context as usize;
 
     let id = NEXT_WS_ID.fetch_add(1, Ordering::SeqCst);
@@ -74,7 +79,10 @@ pub(super) fn ws_connect(
             _ => format!("http://{}", uri.host().unwrap_or("")),
         };
 
-        let client_request = ClientRequestBuilder::new(uri).with_header("origin", origin);
+        let mut client_request = ClientRequestBuilder::new(uri).with_header("origin", origin);
+        if !protocols.is_empty() {
+            client_request = client_request.with_header("sec-websocket-protocol", protocols);
+        }
 
         match connect_async(client_request).await {
             Ok((ws_stream, _)) => {

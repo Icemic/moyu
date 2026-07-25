@@ -1,5 +1,5 @@
 /**
- * Minimal DOM polyfill for Webpack HMR
+ * Minimal DOM polyfill for development server HMR
  */
 
 (function () {
@@ -25,6 +25,7 @@
   }
 
   const document = {
+    visibilityState: 'visible',
     createElement(tagName) {
       if (tagName.toLowerCase() === 'script') {
         return new ScriptElement();
@@ -41,6 +42,14 @@
       }
       return [];
     },
+    querySelector() {
+      return null;
+    },
+    querySelectorAll() {
+      return [];
+    },
+    addEventListener() {},
+    removeEventListener() {},
     head: {
       appendChild(element) {
         if (element instanceof ScriptElement && element.src) {
@@ -66,6 +75,9 @@
             }
           })();
         }
+        return element;
+      },
+      removeChild(element) {
         return element;
       },
     },
