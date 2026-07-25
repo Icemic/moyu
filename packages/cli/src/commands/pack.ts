@@ -230,15 +230,12 @@ export default defineCommand({
 // ---------------------------------------------------------------------------
 
 async function buildProject(projectRoot: string): Promise<void> {
-  consola.start('Building project with rspack...');
+  consola.start('Building project...');
 
-  const rspackBin =
-    process.platform === 'win32'
-      ? join(projectRoot, 'node_modules', '.bin', 'rspack.cmd')
-      : join(projectRoot, 'node_modules', '.bin', 'rspack');
+  const npmBin = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(rspackBin, ['build'], {
+    const child = spawn(npmBin, ['run', 'build'], {
       cwd: projectRoot,
       stdio: 'inherit',
       shell: process.platform === 'win32',
@@ -246,7 +243,7 @@ async function buildProject(projectRoot: string): Promise<void> {
     child.on('error', reject);
     child.on('exit', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`rspack build exited with code ${code}`));
+      else reject(new Error(`Project build exited with code ${code}`));
     });
   });
 
