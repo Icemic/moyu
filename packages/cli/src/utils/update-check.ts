@@ -112,8 +112,16 @@ export async function checkForUpdates(): Promise<string | null> {
 
     if (!res.ok) return null;
 
-    const data = await res.json();
-    const latestVersion: string = data.version;
+    const data: unknown = await res.json();
+    if (
+      typeof data !== 'object' ||
+      data === null ||
+      !('version' in data) ||
+      typeof data.version !== 'string'
+    ) {
+      return null;
+    }
+    const latestVersion = data.version;
 
     // Update cache
     await writeCache({

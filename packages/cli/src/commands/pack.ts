@@ -395,9 +395,7 @@ async function regenerateUiSchema(projectRoot: string): Promise<void> {
 async function copyCommandsSchema(projectRoot: string, tmpPackDir: string): Promise<void> {
   const schemaPath = join(projectRoot, 'commands.schema.json');
   if (!existsSync(schemaPath)) {
-    consola.error(
-      'commands.schema.json not found. Run "moyu schema" (or "yarn generate:schema") to generate it first.',
-    );
+    consola.error('commands.schema.json not found. Run "moyu schema" to generate it first.');
     process.exit(1);
   }
   consola.info('Copying commands.schema.json...');

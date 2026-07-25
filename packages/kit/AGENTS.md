@@ -61,7 +61,7 @@ packages/kit/src/
 ├── zod-patch.ts             # Zod 兼容补丁
 ├── jsx-runtime.ts           # React 19 自动 JSX runtime
 ├── jsx-dev-runtime.ts       # dev 模式 JSX runtime
-└── bindings/                # 由 `yarn generate:bindings` 从 Rust 生成，勿手工改
+└── bindings/                # 由 `pnpm generate:bindings` 从 Rust 生成，勿手工改
     ├── NodeProps.ts / SpriteProps.ts / TextProps.ts / VideoProps.ts / ...
     ├── AudioCommand.ts / ScenarioCommand.ts / SystemCommand.ts / ...
     └── ...
@@ -69,7 +69,7 @@ packages/kit/src/
 
 **重要规则：**
 
-- `bindings/` 由 `yarn generate:bindings`（运行 `cargo test export_bindings --workspace`）自动生成，**禁止手工修改**。修改对应的 Rust 结构体后必须重新生成。
+- `bindings/` 由 `pnpm generate:bindings`（运行 `cargo test export_bindings --workspace`）自动生成，**禁止手工修改**。修改对应的 Rust 结构体后必须重新生成。
 - `lib.ts` 会同时重新导出 `./spring` 与 `@react-spring/core`，并通过 package exports 暴露 ESM / CJS 双入口；改动打包或导出配置时要同时检查 `tsup.config.ts` 与 `package.json`。
 
 ---
@@ -321,7 +321,7 @@ interface MoyuListenerAttributes {
 ### 新增内置组件（需 Rust + kit 配合）
 
 1. Rust 端：在 `crates/nodes` 添加节点类型（见根 AGENTS.md），用 `#[derive(TS)]` 标注 Props。
-2. 重新生成 bindings：`yarn generate:bindings`。
+2. 重新生成 bindings：`pnpm generate:bindings`。
 3. 在 `declaration.ts` 中添加 JSX 声明：
 
 ```typescript
@@ -353,7 +353,7 @@ declare namespace JSX {
 **绝对不要**直接编辑 `bindings/` 下的文件。流程：
 
 1. 修改 Rust 侧的 `#[derive(TS)]` 结构体。
-2. 在仓库根目录运行 `yarn generate:bindings`。
+2. 在仓库根目录运行 `pnpm generate:bindings`。
 3. 检查 diff，确认改动符合预期。
 
 ---
@@ -380,12 +380,12 @@ QuickJS 环境的 polyfill / 类型垫片：
 
 ```bash
 # 仓库根目录
-yarn build               # 构建所有 packages
-yarn generate:bindings   # 重新生成 bindings
+pnpm build               # 构建所有 packages
+pnpm generate:bindings   # 重新生成 bindings
 
 # packages/kit 目录
-yarn build               # 仅构建 kit（tsup）
-yarn dev                 # watch 模式
+pnpm build               # 仅构建 kit（tsup）
+pnpm dev                 # watch 模式
 ```
 
 `tsup` 配置输出双入口：ESM（`dist/lib.mjs`）和 CJS（`dist/lib.cjs`），同时提供 `jsx-runtime` / `jsx-dev-runtime` 子路径导出。
@@ -410,6 +410,6 @@ yarn dev                 # watch 模式
 3. **属性命名**：JS 端使用 camelCase，与 Rust 端 snake_case 自动转换。
 4. **类型安全**：充分利用 bindings 与 TS 类型系统。
 5. **性能**：避免在渲染循环/事件回调中进行大量分配或同步计算。
-6. **bindings 只读**：一切类型变更走 Rust + `yarn generate:bindings`。
+6. **bindings 只读**：一切类型变更走 Rust + `pnpm generate:bindings`。
 7. **HMR 与 scenario**：`useScenario` 依赖 session key、refcount 和串行生命周期队列实现 HMR 弹性；相同 key 的瞬时 remount 会复用 live session，只有 key 变化或最终卸载时才会真正 `terminateStory`。
 8. **CJS/ESM 分发**：改动打包配置前确认消费者（框架、SDK 用户）不会因运行时重复化（如 valtio）而失效。
