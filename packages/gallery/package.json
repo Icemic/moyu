@@ -5,11 +5,11 @@
   "description": "Interactive gallery for Moyu engine and Kit capabilities.",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "rspack dev",
+    "dev": "vite",
     "generate:assets": "node scripts/generate-assets.mjs",
     "i18n:extract": "lingui extract --clean",
     "typecheck": "tsc --noEmit",
-    "build": "rspack build"
+    "build": "vite build"
   },
   "author": "Icemic <bingfeng.web@gmail.com>",
   "license": "MPL-2.0",
@@ -23,15 +23,15 @@
     "react": "19.2.1"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
     "@lingui/cli": "6.5.0",
-    "@lingui/loader": "6.5.0",
-    "@lingui/swc-plugin": "6.5.0",
-    "@rspack/cli": "^1.7.11",
-    "@rspack/core": "^1.7.11",
-    "@rspack/plugin-react-refresh": "^1.6.2",
+    "@lingui/vite-plugin": "6.5.0",
+    "@rolldown/plugin-babel": "^0.2.3",
     "@types/node": ">=24",
     "@types/react": "^19.2.7",
-    "react-refresh": "^0.18.0",
-    "typescript": "^5.9.3"
+    "@vitejs/plugin-react": "^6.0.2",
+    "rolldown": "^1.0.0-rc.5",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.16"
   }
 }

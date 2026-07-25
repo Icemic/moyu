@@ -14,7 +14,7 @@ Moyu Gallery 是末语引擎节点与 `@momoyu-ink/kit` 组件的交互式展示
 - 对外展示 Sprite、Text、Filter、Backdrop、动画、Shader、布局和封装组件；
 - 为 Kit API 变更提供消费端类型检查与构建验证。
 
-Gallery 使用 React + TypeScript + Rspack，运行于 Moyu 自定义 React Reconciler。JSX 只能使用 Moyu intrinsic elements（如 `<container>`、`<sprite>`、`<text>`），不能使用 HTML 元素或 `react-dom`。
+Gallery 使用 React + TypeScript + Vite，运行于 Moyu 自定义 React Reconciler。JSX 只能使用 Moyu intrinsic elements（如 `<container>`、`<sprite>`、`<text>`），不能使用 HTML 元素或 `react-dom`。
 
 ---
 
@@ -38,7 +38,8 @@ packages/gallery/
 ├── docs/                        # Gallery 迭代与设计记录
 ├── README.md                    # 使用说明
 ├── index.json                   # Moyu 项目配置
-└── rspack.config.ts             # 构建与开发服务器配置
+├── index.js                     # Vite 开发入口，保持 index.json 的入口协议
+└── vite.config.ts               # 构建与开发服务器配置
 ```
 
 ---
@@ -80,7 +81,7 @@ yarn workspace @momoyu-ink/gallery build
 yarn workspace @momoyu-ink/gallery generate:assets
 ```
 
-- `dev`：启动 Rspack 开发服务器，默认端口 `6023`。持续运行的开发服务器由用户启动，agent 不要自行启动。
+- `dev`：启动 Vite 开发服务器，默认端口 `6023`。持续运行的开发服务器由用户启动，agent 不要自行启动。
 - `typecheck`：运行 TypeScript 类型检查。
 - `build`：运行生产构建，验证 Gallery 作为 Kit 消费端可以正确打包。
 - `generate:assets`：重新生成全部 UI 图片；运行后必须检查资产 diff，避免把无关生成变化混入当前任务。
