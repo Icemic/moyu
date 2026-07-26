@@ -4,15 +4,7 @@
  */
 
 (function () {
-  const instances = new Map(); // id -> WeakRef<WebSocket>
-  const registry = new FinalizationRegistry((id) => {
-    // When the JS object is GC'd, ensure the underlying connection is closed
-    try {
-      globalThis.__moyu_ws_close(id, 1001, 'Garbage Collected');
-    } catch (e) {
-      // Ignore errors during GC cleanup
-    }
-  });
+  const instances = new Map(); // id -> WebSocket
 
   class WebSocket {
     static CONNECTING = 0;
@@ -38,8 +30,7 @@
 
       const protocolList = Array.isArray(protocols) ? protocols : protocols ? [protocols] : [];
       this._id = globalThis.__moyu_ws_connect(url, protocolList.join(', '));
-      instances.set(this._id, new WeakRef(this));
-      registry.register(this, this._id);
+      instances.set(this._id, this);
     }
 
     addEventListener(type, listener, options) {
@@ -100,16 +91,12 @@
 
   // Global dispatcher called from Rust
   globalThis.__moyu_ws_dispatch = function (id, type, ...args) {
-    const ref = instances.get(id);
-    const ws = ref ? ref.deref() : null;
+    const ws = instances.get(id);
 
     if (!ws) {
-      // If the JS object is gone, we should probably close the connection
-      // if it's not already closed.
       if (type !== 'close') {
-        globalThis.__moyu_ws_close(id, 1001, "Object GC'd");
+        globalThis.__moyu_ws_close(id, 1001, 'Unknown WebSocket');
       }
-      instances.delete(id);
       return;
     }
 
