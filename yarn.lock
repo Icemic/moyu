@@ -837,6 +837,7 @@ __metadata:
     "@react-spring/core": "npm:^10.0.3"
     "@react-spring/rafz": "npm:^10.0.3"
     "@react-spring/shared": "npm:^10.0.3"
+    "@react-spring/types": "npm:^10.0.3"
     "@types/node": "npm:>=24.10.1"
     "@types/react": "npm:^19.2.7"
     "@types/react-reconciler": "npm:^0.33.0"
@@ -948,6 +949,13 @@ __metadata:
   peerDependencies:
     react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
   checksum: 10c0/d8b33b2390792924d0ff2b57b3098d1c6b688a788fc67e83b168928659aad7435dd2c399925a765ffa5080182634dde8f9f76c919f2c259a33af15319187f72f
+  languageName: node
+  linkType: hard
+
+"@react-spring/types@npm:^10.0.3":
+  version: 10.1.2
+  resolution: "@react-spring/types@npm:10.1.2"
+  checksum: 10c0/073f4ecd5e0cc18524ef36c8d28ef0fbd2582f8cbeb3e433680314d0df96a7a1279cbe7c13f2167132fe42f4e7bb68f50d24744b2b0d1e6c55c5eba8b6e643c2
   languageName: node
   linkType: hard
 
