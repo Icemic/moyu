@@ -224,7 +224,7 @@ core/src/
 3. 实现 `Node` trait（必需：`create_instance` + `node_type`；按需覆盖 `update_properties` / `renderer_type` / `as_focusable` / `as_command`）。
 4. 在 `crates/nodes/src/renderer/` 添加或扩展对应 renderer。
 5. 在 `crates/moyu/src/entry.rs` 的 `ApplicationInitEvent::Plugin` 分支中通过 `core.register_node_type::<T>(name)` 与 `graphics.register_renderer(name, ...)` 注册。
-6. 如需在 JS 层使用：给 Props 结构体加 `#[derive(TS)]` → 跑 `pnpm generate:bindings` → 在 `packages/kit` 中补 JSX 声明（见 kit 的 AGENTS.md）。
+6. 如需在 JS 层使用：给 Props 结构体加 `#[derive(TS)]` → 跑 `yarn generate:bindings` → 在 `packages/kit` 中补 JSX 声明（见 kit 的 AGENTS.md）。
 
 ```rust
 use moyu_macros::Node;
@@ -281,7 +281,7 @@ fn my_function(arg: String) -> Result<String> { /* ... */ }
 Rust 侧用 `ts-rs` 的 `#[derive(TS)]` 标注需要导出的结构体/枚举。生成命令（仓库根目录）：
 
 ```bash
-pnpm generate:bindings
+yarn generate:bindings
 ```
 
 该命令会清空 `packages/kit/src/bindings/`、运行 `cargo test export_bindings --workspace`，再用 `eslint --fix` 格式化。**修改了跨 JS/Rust 边界的类型后务必执行**。
@@ -343,13 +343,13 @@ cargo run --example simple -p moyu_runtime
 
 ### JavaScript
 
-根目录使用 **pnpm 10**（workspaces）：
+根目录使用 **yarn 4**（workspaces）：
 
 ```bash
-pnpm install            # 安装
-pnpm build              # 构建所有 packages
-pnpm dev                # 并行开发模式
-pnpm generate:bindings  # 重新生成 TypeScript bindings
+yarn                  # 安装
+yarn build            # 构建所有 packages
+yarn dev              # 并行开发模式
+yarn generate:bindings  # 重新生成 TypeScript bindings
 ```
 
 ---

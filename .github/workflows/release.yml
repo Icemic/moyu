@@ -185,13 +185,13 @@ jobs:
       - name: Install dependencies
         run: |
           corepack enable
-          pnpm install --frozen-lockfile
+          yarn install --immutable
 
       - name: Build Gallery
         run: |
-          pnpm --filter @momoyu-ink/kit build
-          pnpm --filter @momoyu-ink/gallery typecheck
-          pnpm --filter @momoyu-ink/gallery build
+          yarn workspace @momoyu-ink/kit build
+          yarn workspace @momoyu-ink/gallery typecheck
+          yarn workspace @momoyu-ink/gallery build
 
       - name: Download Web engine
         uses: actions/download-artifact@v7

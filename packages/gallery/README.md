@@ -6,11 +6,11 @@
 
 在仓库根目录执行：
 
-- `pnpm --filter @momoyu-ink/gallery dev` — Vite 开发服务器（端口 6023）
-- `pnpm --filter @momoyu-ink/gallery i18n:extract` — 提取并更新中、英、日消息目录
-- `pnpm --filter @momoyu-ink/gallery typecheck` — 类型检查
-- `pnpm --filter @momoyu-ink/gallery build` — 构建
-- `pnpm --filter @momoyu-ink/gallery generate:assets` — 重新生成全部 UI 贴图资产
+- `yarn workspace @momoyu-ink/gallery dev` — Vite 开发服务器（端口 6023）
+- `yarn workspace @momoyu-ink/gallery i18n:extract` — 提取并更新中、英、日消息目录
+- `yarn workspace @momoyu-ink/gallery typecheck` — 类型检查
+- `yarn workspace @momoyu-ink/gallery build` — 构建
+- `yarn workspace @momoyu-ink/gallery generate:assets` — 重新生成全部 UI 贴图资产
 
 应用只使用 Moyu intrinsic JSX 元素与 Kit 自定义渲染器，不包含 DOM 元素或 `react-dom`。
 

@@ -75,10 +75,10 @@ packages/gallery/
 在仓库根目录运行：
 
 ```bash
-pnpm --filter @momoyu-ink/gallery dev
-pnpm --filter @momoyu-ink/gallery typecheck
-pnpm --filter @momoyu-ink/gallery build
-pnpm --filter @momoyu-ink/gallery generate:assets
+yarn workspace @momoyu-ink/gallery dev
+yarn workspace @momoyu-ink/gallery typecheck
+yarn workspace @momoyu-ink/gallery build
+yarn workspace @momoyu-ink/gallery generate:assets
 ```
 
 - `dev`：启动 Vite 开发服务器，默认端口 `6023`。持续运行的开发服务器由用户启动，agent 不要自行启动。

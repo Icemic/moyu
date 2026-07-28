@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "dev": "vite",
-    "prepack": "pnpm run build",
+    "prepack": "yarn build",
     "build": "vite build && tsc --emitDeclarationOnly --declarationDir ./dist --rootDir ./src",
     "watch": "vite build --watch"
   },

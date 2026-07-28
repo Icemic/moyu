@@ -4,8 +4,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "pnpm --recursive --parallel --if-present run dev",
-    "build": "pnpm --recursive --if-present run build",
+    "dev": "yarn workspaces foreach -Aip run dev",
+    "build": "yarn workspaces foreach -At run build",
     "generate:bindings": "rimraf packages/kit/src/bindings && cargo test export_bindings --workspace && biome format --fix 'packages/kit/src/bindings/'"
   },
   "devDependencies": {
@@ -16,10 +16,8 @@
     "rimraf": "^6.1.2",
     "typescript": "^5.5.4"
   },
-  "pnpm": {
-    "overrides": {
-      "globals": "14.0.0"
-    }
+  "resolutions": {
+    "globals": "14.0.0"
   },
-  "packageManager": "pnpm@10.34.5"
+  "packageManager": "yarn@4.3.1"
 }

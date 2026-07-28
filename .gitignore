@@ -28,5 +28,10 @@ node_modules
 **/.swc/
 
 
+# yarn
+/.yarn/*
+!.yarn/releases
+!.yarn/plugins
+/.pnp.*
 
 /docs
