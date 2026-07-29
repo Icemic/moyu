@@ -2,6 +2,7 @@
 
 - **状态**：已接受
 - **日期**：2026-07-20
+- **最近更新**：2026-07-29
 - **作者**：末语项目组
 - **适用范围**：`moyu`、`@momoyu-ink/kit`
 - **相关实现**：`crates/core/src/nodes/node.rs`、`crates/core/src/nodes/container.rs`、`crates/nodes/src/nodes/linear_layout.rs`
@@ -33,6 +34,7 @@
 - intrinsic size、layout size、layout position 的职责；
 - 布局、视觉边界和渲染之间的生命周期；
 - 两种布局嵌套时的组合规则；
+- 节点退出父级布局后的测量、排列与变换语义；
 - 可见性、溢出、动态尺寸和特殊 wrapper 节点的行为。
 
 ## 非目标
@@ -42,9 +44,10 @@
 - `flexGrow`、`flexShrink`、`flexBasis`、wrap、order；
 - margin、`alignSelf`、stretch、`space-around`、`space-evenly`；
 - 百分比尺寸、min/max 约束、视口单位和父约束传播；
-- 单轴布局中的绝对定位子项或跳过布局属性；
-- 类似 CSS `display: none` 的布局排除能力；
+- CSS `position`、`top/right/bottom/left` 和包含块模型；
+- 类似 CSS `display: none` 的同时退出布局与渲染能力；
 - 自动裁剪溢出内容；
+- 跨物理父节点挂载、Portal 或全局浮层宿主；
 - Grid 或其他多轴约束布局；
 - JS 侧布局计算或公开查询 layout rect 的命令式 API。
 
@@ -70,6 +73,10 @@
 
 `VBox` 或 `HBox` 为直接子节点分配的未变换矩形左上角。布局位置与用户设置的 `x/y` 分开保存。
 
+### 布局排除（layout exclusion）
+
+节点退出物理父节点的自动尺寸与排列称为布局排除。该状态不改变物理父子关系，也不影响视觉边界聚合、绘制、裁剪、命中测试或事件冒泡。
+
 ### 视觉边界（content bounds）
 
 包含节点自身和子树视觉变换结果的轴对齐包围盒。它主要用于渲染可见性判断、子树视觉范围聚合和部分离屏效果，不作为自动布局占位尺寸。命中由 `Focusable` 在节点局部空间中判断，Clip 则使用自身布局矩形经过全局变换后的结果。
@@ -89,13 +96,14 @@
 
 ### 通用节点状态
 
-`NodeBase` 保存三类互不替代的数据：
+`NodeBase` 保存四类互不替代的数据：
 
 | 数据 | 生产者 | 主要用途 |
 | --- | --- | --- |
 | intrinsic size | 节点或 renderer prepare | 自然内容尺寸 |
 | layout size | 节点 measure | 父级测量、anchor、pivot、几何 |
 | layout position | `VBox` / `HBox` arrange | 单轴布局直接子项的位置 |
+| layout exclusion | JSX / 节点类型默认值 | 是否参与物理父节点的测量与排列 |
 
 用户设置的 `x/y` 始终保存在 `translate` 中。布局不得改写它。
 
@@ -126,7 +134,7 @@ flowchart LR
 
 进入节点时：
 
-1. 父布局节点为直接子节点写入 layout position；
+1. 父布局节点为参与布局的直接子节点写入 layout position，并清除其他子节点的旧 layout position；
 2. 节点根据父级、layout size、layout position 和用户变换计算 local/global transform；
 3. 当前节点执行 `arrange`，为下一层直接子节点分配位置。
 
@@ -208,7 +216,7 @@ $$
 - 不计入 anchor，避免父尺寸与子 anchor 互相依赖；
 - 不计入 scale、rotation、skew 后的视觉扩展；
 - 负坐标内容可以向左或向上溢出，但不会移动父节点局部原点；
-- 不参与父级测量的特殊 wrapper 节点会被跳过。
+- 只测量参与布局的直接子节点。
 
 该测量只定义 layout size。视觉溢出仍由 content bounds 表达。
 
@@ -217,6 +225,25 @@ $$
 根 `Container` 的 layout size 每帧固定为舞台逻辑尺寸。根节点不执行普通 Container 的内容包裹测量。它为顶层 anchor 和布局提供稳定尺寸基准。
 
 ## 单轴布局规范
+
+### 布局参与规则
+
+所有节点通过通用 `NodeProps` 支持：
+
+| 属性 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `excludeFromLayout` | `boolean` | `false` | 不参与物理父节点的自动尺寸与排列 |
+
+属性生效时：
+
+- 普通 `Container`、`Filter` 等自动测量父节点不把该节点计入 layout size；
+- `VBox/HBox` 不把该节点计入项目数、gap、`space-between`、自动尺寸或排列；
+- `VBox/HBox` 清除该节点可能残留的 layout position；
+- 节点恢复传统布局变换，使用自身 `x/y`、anchor 和 pivot，相对于当前物理父节点定位；
+- `VBox/HBox` 的 padding 不改变该节点的定位原点；
+- 节点仍参与 content bounds、绘制顺序、裁剪、命中测试和物理节点树事件冒泡。
+
+该属性只控制父节点如何处理当前节点，不改变当前节点对子节点的排列。动态恢复默认值后，节点在同帧布局遍历中重新参与测量与排列。
 
 ### 公开节点
 
@@ -244,7 +271,7 @@ Rust 和 `@momoyu-ink/kit` 公开两个节点：
 
 ### 自动尺寸
 
-设参与父级测量的直接子项数量为 $n$，尺寸为 $(w_i,h_i)$，实际横向和纵向 padding 为 $P_x$、$P_y$。
+设参与布局的直接子项数量为 $n$，尺寸为 $(w_i,h_i)$，实际横向和纵向 padding 为 $P_x$、$P_y$。
 
 VBox：
 
@@ -334,16 +361,11 @@ $$
 
 ### 子项参与规则
 
-默认情况下，所有直接子节点都参与测量、项目计数、gap 和排列，包括 `visible=false` 的节点。
+所有直接子节点默认参与测量、项目计数、gap 和排列，包括 `visible=false` 的节点。
 
 `Shader` 会根据非空、`space="normal"` 的 `ShaderSlot` 内容尺寸自动测量，也可以通过 `width` / `height` 显式指定任一或两个轴。因此 Shader 可以作为 `VBox` / `HBox` 的普通直接子项，参与自动尺寸、gap 和排列。
 
-`ShaderSlot` 是 Shader 的内部渲染通道节点。它会测量直接子内容并把结果提供给父 Shader，但自身 layout size 固定为零，并返回“不参与父级测量”。直接放入 `VBox` / `HBox` 时：
-
-- 不计入自动尺寸、项目数、gap 或 `space-between`；
-- 采用零占位；
-- 引擎记录警告；
-- 不应作为普通布局项使用。
+`ShaderSlot` 是 Shader 的内部渲染通道节点。它会测量直接子内容并把结果提供给父 Shader，但自身 layout size 固定为零，且默认退出父布局。Shader renderer 只收集 Shader 的直接 ShaderSlot 子节点，因此 ShaderSlot 不应作为 `VBox/HBox` 的直接子项使用。引擎不再通过线性布局识别或警告该无效结构。
 
 `space="shader"` 或空 ShaderSlot 不贡献 Shader 的自动内容尺寸。显式 `width` / `height` 只改变父 Shader 的布局尺寸，不改变 ShaderSlot 自身的零占位语义。
 
@@ -411,6 +433,8 @@ $$
 
 由于 Container 尺寸不再固定为零，历史代码中依赖父级尺寸、anchor 或 pivot 的节点可能出现位置变化。此类代码应明确组件边界，或按新的尺寸语义调整 anchor/pivot 用法，不恢复旧的零尺寸行为。
 
+`ShaderSlot` 原有“不参与父级测量”特例已统一为通用布局排除。被排除的 `VBox/HBox` 子节点不再被放到 padding 原点，而是清除 layout position 并按传统布局定位。
+
 ## 性能
 
 布局正确性优先于首版局部优化。当前每帧执行：
@@ -432,7 +456,7 @@ $$
 ## 错误处理
 
 - `width`、`height`、gap 和 padding 接收到非有限值或负数时，记录警告并使用 `0`；
-- `ShaderSlot` 直接出现在单轴布局中时，记录警告并按零占位处理；
+- `ShaderSlot` 必须作为 Shader 的直接子节点；错误挂载不会被 Shader renderer 收集，线性布局不额外记录警告；
 - 内容溢出不是错误，不记录警告。
 
 ## 测试与验收
@@ -445,11 +469,18 @@ $$
 4. **变换**：正负 `x/y`、不同 pivot、scale、rotation、skew、布局容器自身变换及父级切换。
 5. **系统回归**：content bounds、命中、Clip、Filter、Backdrop、Shader、可见性、`zIndex` 和渲染命令顺序。
 
+布局排除至少覆盖：
+
+- 普通 Container 忽略被排除子节点的 layout size；
+- `VBox/HBox` 忽略被排除子节点的尺寸、项目计数和 gap；
+- 退出布局时清除旧 layout position；
+- 动态重新加入布局后恢复测量与排列。
+
 Shader 与绘制顺序至少覆盖：
 
 - normal、非空 ShaderSlot 的内容变化能在同一帧更新 Shader layout size；
 - Shader 作为 VBox/HBox 直接子项正常参与自动尺寸和排列；
-- ShaderSlot 直接作为布局子项时保持零占位并记录警告；
+- ShaderSlot 默认排除父布局，正常作为 Shader 直接子节点提供内容尺寸；
 - `zIndex` 改变绘制与命中优先级，但不改变 VBox/HBox 的几何排列。
 
 最低自动验证包括：

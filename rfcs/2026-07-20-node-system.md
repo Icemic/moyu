@@ -232,7 +232,8 @@ factory 注册名用于 JS 创建节点，`node_type()` 用于节点自识别，
 - `measure()`：根据当前内容和子节点确定 layout size，默认使用 intrinsic size；
 - `arrange()`：为直接子节点分配 layout position，默认清除父布局控制；
 - `pre_update(parent)`：在通用 transform 更新前同步父驱动状态；
-- `participates_in_parent_measure()`：决定节点是否作为父级自动测量项目。
+
+节点是否参与物理父节点的测量与排列由 `NodeBase.exclude_from_layout` 统一表达，对外属性为 `excludeFromLayout`。该状态不作为可覆写的 Node hook；具体节点类型需要默认退出父布局时，在自身构造中设置该字段。
 
 复杂节点应通过这些 hook 接入统一生命周期，而不是绕过 Core 另建 JS 布局或独立树遍历。
 
