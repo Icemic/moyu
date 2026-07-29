@@ -87,7 +87,13 @@ export function Select({
         }}
       />
       {open && !disabled ? (
-        <sprite {...listSprite} targetHeight={listHeight} x={offsetX} y={(trigger.targetHeight ?? 0) + offsetY}>
+        <sprite
+          {...listSprite}
+          excludeFromLayout
+          targetHeight={listHeight}
+          x={offsetX}
+          y={(trigger.targetHeight ?? 0) + offsetY}
+        >
           <vbox x={paddingX} y={paddingY} gap={gap}>
             {options.map((item) => (
               <Button

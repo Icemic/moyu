@@ -181,9 +181,10 @@ function SelectPanel() {
   return (
     <Panel title={t`Select 下拉选择`} width={728} height={420} note={t`下拉列表展开时会覆盖下方内容（zIndex）。`}>
       <container>
-        <vbox zIndex={2} gap={16}>
+        <vbox gap={16}>
           <text {...GROUP_LABEL} text={t`动画 / Shader 方案`} />
           <Select
+            zIndex={2}
             value={selected}
             onValueChange={setSelected}
             options={[
@@ -196,15 +197,14 @@ function SelectPanel() {
             option={SELECT_OPTION}
             textStyle={BUTTON_TEXT_STYLE}
           />
+          <text {...TEXT.body} text={t`当前选中：${selected}`} />
+          <text
+            {...TEXT.caption}
+            text={t`选项取自动画与 Shader 渲染管线；展开的列表会浮在下方的状态文字之上。`}
+            boxWidth={640}
+            lineHeight={30}
+          />
         </vbox>
-        <text {...TEXT.body} text={t`当前选中：${selected}`} y={140} />
-        <text
-          {...TEXT.caption}
-          text={t`选项取自动画与 Shader 渲染管线；展开的列表会浮在下方的状态文字之上。`}
-          y={184}
-          boxWidth={640}
-          lineHeight={30}
-        />
       </container>
     </Panel>
   );
