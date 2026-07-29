@@ -1,5 +1,11 @@
 import { createHost } from '@react-spring/animated';
-import { Globals, colors, createStringInterpolator } from '@react-spring/shared';
+import {
+  Globals,
+  addFluidObserver as observeFluidValue,
+  colors,
+  createStringInterpolator,
+  removeFluidObserver as unobserveFluidValue,
+} from '@react-spring/shared';
 import type { Node as MoyuNode } from '../node';
 import type { WithAnimated } from './animated';
 import { primitives } from './primitives';
@@ -19,6 +25,8 @@ const host = createHost(primitives, {
 
 export const animated = host.animated as WithAnimated;
 export { animated as a };
+export const addFluidObserver = observeFluidValue;
+export const removeFluidObserver = unobserveFluidValue;
 
 export * from './animated';
 export * from '@react-spring/core';
