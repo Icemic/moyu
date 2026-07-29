@@ -76,7 +76,6 @@ struct LinearLayout {
     padding_y: Option<f32>,
     justify_content: JustifyContent,
     align_items: AlignItems,
-    warned_unsupported_child: bool,
 }
 
 impl LinearLayout {
@@ -140,12 +139,10 @@ impl LinearLayout {
         let mut main_size = 0.0_f32;
         let mut cross_size = 0.0_f32;
         let mut count = 0_usize;
-        let mut has_unsupported_child = false;
 
         for child in children {
             let child = child.read();
-            if !child.participates_in_parent_measure() {
-                has_unsupported_child = true;
+            if child.base().exclude_from_layout() {
                 continue;
             }
 
@@ -162,13 +159,6 @@ impl LinearLayout {
         if count > 1 {
             main_size += self.gap * (count - 1) as f32;
         }
-
-        if has_unsupported_child && !self.warned_unsupported_child {
-            warn!(
-                "ShaderSlot nodes cannot be direct VBox/HBox children; they use zero layout space"
-            );
-        }
-        self.warned_unsupported_child = has_unsupported_child;
 
         let auto_width;
         let auto_height;
@@ -201,7 +191,7 @@ impl LinearLayout {
         let mut content_main = 0.0_f32;
         for child in children {
             let child_read = child.read();
-            if !child_read.participates_in_parent_measure() {
+            if child_read.base().exclude_from_layout() {
                 continue;
             }
             let (width, height) = child_read.base().layout_size();
@@ -251,8 +241,8 @@ impl LinearLayout {
 
         for child in children {
             let mut child = child.write();
-            if !child.participates_in_parent_measure() {
-                child.base_mut().set_layout_position(padding_x, padding_y);
+            if child.base().exclude_from_layout() {
+                child.base_mut().clear_layout_position();
             }
         }
     }
@@ -407,4 +397,65 @@ impl Node for HBox {
 
 impl NodeEventSource for HBox {
     type Event = LayoutEvent;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use moyu_core::nodes::Container;
+
+    #[test]
+    fn vbox_excludes_children_from_measurement_and_arrangement() {
+        let mut vbox = VBox::default();
+        vbox.layout.gap = 10.0;
+        vbox.layout.padding = 5.0;
+
+        let first = Container::default().into_node_lock();
+        let excluded = Container::default().into_node_lock();
+        let second = Container::default().into_node_lock();
+
+        first.write().base_mut().set_layout_size(100.0, 20.0);
+        excluded.write().base_mut().set_layout_size(300.0, 200.0);
+        excluded.write().base_mut().set_exclude_from_layout(true);
+        excluded.write().base_mut().set_layout_position(80.0, 90.0);
+        second.write().base_mut().set_layout_size(80.0, 30.0);
+
+        vbox.base_mut().add_child(first.clone());
+        vbox.base_mut().add_child(excluded.clone());
+        vbox.base_mut().add_child(second.clone());
+
+        vbox.measure();
+        vbox.arrange();
+
+        assert_eq!(vbox.base().layout_size(), (110.0, 70.0));
+        assert_eq!(
+            *first.read().base().layout_position(),
+            moyu_core::base::Point::new(5.0, 5.0)
+        );
+        assert_eq!(
+            *second.read().base().layout_position(),
+            moyu_core::base::Point::new(5.0, 35.0)
+        );
+        assert!(!excluded.read().base().parent_controls_layout());
+    }
+
+    #[test]
+    fn vbox_reincludes_child_after_dynamic_toggle() {
+        let mut vbox = VBox::default();
+        let child = Container::default().into_node_lock();
+        child.write().base_mut().set_layout_size(100.0, 20.0);
+        child.write().base_mut().set_exclude_from_layout(true);
+        vbox.base_mut().add_child(child.clone());
+
+        vbox.measure();
+        vbox.arrange();
+        assert_eq!(vbox.base().layout_size(), (0.0, 0.0));
+        assert!(!child.read().base().parent_controls_layout());
+
+        child.write().base_mut().set_exclude_from_layout(false);
+        vbox.measure();
+        vbox.arrange();
+        assert_eq!(vbox.base().layout_size(), (100.0, 20.0));
+        assert!(child.read().base().parent_controls_layout());
+    }
 }

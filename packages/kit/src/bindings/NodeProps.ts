@@ -20,4 +20,5 @@ export type NodeProps = {
   interactive?: boolean;
   cursor?: MoyuCursor;
   zIndex?: number;
+  excludeFromLayout?: boolean;
 };

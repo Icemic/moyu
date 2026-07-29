@@ -59,11 +59,6 @@ pub trait Node: NodeBaseTrait + Debug + Send + Sync {
         }
     }
 
-    /// Whether this node contributes its layout rectangle to an auto-sized parent.
-    fn participates_in_parent_measure(&self) -> bool {
-        true
-    }
-
     /// Whether this node shadows part of its subtree lifecycle for the given kind.
     ///
     /// Shadowing means the parent node is intentionally taking over that aspect

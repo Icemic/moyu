@@ -6,7 +6,7 @@ pub fn measure_children_layout_size(base: &NodeBase) -> (f32, f32) {
 
     for child in base.children() {
         let child = child.read();
-        if !child.participates_in_parent_measure() {
+        if child.base().exclude_from_layout() {
             continue;
         }
 
@@ -18,4 +18,26 @@ pub fn measure_children_layout_size(base: &NodeBase) -> (f32, f32) {
     }
 
     (width, height)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::nodes::Container;
+    use crate::traits::{Node, NodeBaseTrait};
+
+    #[test]
+    fn excluded_children_do_not_contribute_to_parent_size() {
+        let mut parent = Container::default();
+        let managed = Container::default().into_node_lock();
+        let excluded = Container::default().into_node_lock();
+
+        managed.write().base_mut().set_layout_size(100.0, 40.0);
+        excluded.write().base_mut().set_layout_size(300.0, 200.0);
+        excluded.write().base_mut().set_exclude_from_layout(true);
+        parent.base_mut().add_child(managed);
+        parent.base_mut().add_child(excluded);
+
+        assert_eq!(measure_children_layout_size(parent.base()), (100.0, 40.0));
+    }
 }

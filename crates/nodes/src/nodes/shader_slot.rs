@@ -44,6 +44,9 @@ pub struct ShaderSlot {
 
 impl Default for ShaderSlot {
     fn default() -> Self {
+        let mut node_base = NodeBase::default();
+        node_base.set_exclude_from_layout(true);
+
         Self {
             channel: 0,
             empty: false,
@@ -57,15 +60,18 @@ impl Default for ShaderSlot {
             render_content_origin: (0.0, 0.0),
             render_children: true,
             content_layout_size: (0.0, 0.0),
-            node_base: NodeBase::default(),
+            node_base,
         }
     }
 }
 
 impl ShaderSlot {
     pub fn new(label: String) -> Self {
+        let mut node_base = NodeBase::new(label);
+        node_base.set_exclude_from_layout(true);
+
         Self {
-            node_base: NodeBase::new(label),
+            node_base,
             ..Default::default()
         }
     }
@@ -102,10 +108,6 @@ impl Node for ShaderSlot {
         self.base_mut().set_layout_size(0.0, 0.0);
     }
 
-    fn participates_in_parent_measure(&self) -> bool {
-        false
-    }
-
     fn update_properties(&mut self, props: &mut JSValue) {
         let props: ShaderSlotProps = from_js(props).unwrap();
         apply_patch!(props.channel => self.channel, 0);
@@ -137,6 +139,5 @@ mod tests {
 
         assert_eq!(slot.content_layout_size, (0.0, 0.0));
         assert_eq!(slot.base().layout_size(), (0.0, 0.0));
-        assert!(!slot.participates_in_parent_measure());
     }
 }

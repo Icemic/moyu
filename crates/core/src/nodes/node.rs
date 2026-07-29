@@ -38,6 +38,8 @@ pub struct NodeBase {
     layout_position: Point,
     /// Whether the parent controls this node's untransformed layout position.
     parent_controls_layout: bool,
+    /// Whether this node is excluded from its parent's measurement and arrangement.
+    exclude_from_layout: bool,
     /// scale relative to parent
     scale: Point,
     /// rotation relative to parent
@@ -94,6 +96,7 @@ impl NodeBase {
             translate: Point::default(),
             layout_position: Point::default(),
             parent_controls_layout: false,
+            exclude_from_layout: false,
             scale: Point::one(),
             rotation: 0.,
             skew: Point::default(),
@@ -210,6 +213,10 @@ impl NodeBase {
     #[inline]
     pub fn parent_controls_layout(&self) -> bool {
         self.parent_controls_layout
+    }
+    #[inline]
+    pub fn exclude_from_layout(&self) -> bool {
+        self.exclude_from_layout
     }
     #[inline]
     pub fn scale(&self) -> &Point {
@@ -332,6 +339,14 @@ impl NodeBase {
         }
         self.layout_position = Point::default();
         self.parent_controls_layout = false;
+        self._update_id += 1;
+    }
+    #[inline]
+    pub fn set_exclude_from_layout(&mut self, exclude_from_layout: bool) {
+        if self.exclude_from_layout == exclude_from_layout {
+            return;
+        }
+        self.exclude_from_layout = exclude_from_layout;
         self._update_id += 1;
     }
     #[inline]
@@ -465,6 +480,7 @@ impl NodeBase {
         apply_patch!(props.interactive => |v| self.set_interactive(v), true);
         apply_patch!(props.cursor => |v| self.set_cursor(v), MoyuCursor::default());
         apply_patch!(props.z_index => |v| self.set_z_index(v), 0);
+        apply_patch!(props.exclude_from_layout => |v| self.set_exclude_from_layout(v), false);
     }
 
     #[inline]
@@ -622,6 +638,7 @@ pub struct NodeProps {
     pub interactive: Patch<bool>,
     pub cursor: Patch<MoyuCursor>,
     pub z_index: Patch<i32>,
+    pub exclude_from_layout: Patch<bool>,
 }
 
 impl Drop for NodeBase {
