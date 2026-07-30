@@ -165,7 +165,6 @@ export const SLIDER_TRACK: SliderTrackProps = {
 
 export const SLIDER_THUMB: SliderThumbProps = {
   src: [`${IMAGES}slider_handle.png`, `${IMAGES}slider_handle_hover.png`, `${IMAGES}slider_handle_press.png`],
-  ...NINE_SLICE,
   tint: COLOR.controlTint,
   targetWidth: 28,
   targetHeight: 40,
