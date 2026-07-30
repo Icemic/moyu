@@ -15,7 +15,10 @@ import {
   TEXT,
 } from '../theme';
 
-type RawShaderSource = Extract<NonNullable<MoyuShaderAttributes['shader']>, { type: 'raw' }>;
+type ShaderSource = NonNullable<MoyuShaderAttributes['shader']>;
+type CustomShaderSource =
+  | Extract<ShaderSource, { type: 'raw' }>
+  | Extract<ShaderSource, { type: 'file' }>;
 type RawTimeControl = Exclude<NonNullable<MoyuShaderAttributes['timeControl']>, 'transition'>;
 
 const RAW_SHADER_HEADER = `
@@ -46,9 +49,10 @@ fn read_param_f32(index: u32) -> f32 {
 }
 `;
 
-const PRESETS: Array<{ title: string; content: string }> = [
+const PRESETS: Array<{ title: string; content: string; src: string }> = [
   {
     title: 'Color shift',
+    src: 'shaders/color-shift.wgsl',
     content: `${RAW_SHADER_HEADER}
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
@@ -64,6 +68,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
   },
   {
     title: 'Wave',
+    src: 'shaders/wave.wgsl',
     content: `${RAW_SHADER_HEADER}
 
 @fragment
@@ -80,6 +85,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
   },
   {
     title: 'Scan',
+    src: 'shaders/scan.wgsl',
     content: `${RAW_SHADER_HEADER}
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
@@ -99,19 +105,20 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 export function RawShadersPage() {
   const { t } = useLingui();
   const shaderRef = useRef<Node>(null);
+  const [sourceType, setSourceType] = useState<CustomShaderSource['type']>('raw');
   const [presetTitle, setPresetTitle] = useState(PRESETS[0].title);
   const [timeControl, setTimeControl] = useState<RawTimeControl>('manual');
   const [playing, setPlaying] = useState(false);
   const [strength, setStrength] = useState(0.55);
   const preset = PRESETS.find((item) => item.title === presetTitle) ?? PRESETS[0];
-  const shader: RawShaderSource = {
-    type: 'raw',
-    content: preset.content,
-    params: [
-      { name: 'strength', type: 'float', value: strength },
-      { name: 'speed', type: 'float', value: 1.4 },
-    ],
-  };
+  const params = [
+    { name: 'strength', type: 'float' as const, value: strength },
+    { name: 'speed', type: 'float' as const, value: 1.4 },
+  ];
+  const shader: CustomShaderSource =
+    sourceType === 'raw'
+      ? { type: 'raw', content: preset.content, params }
+      : { type: 'file', src: preset.src, params };
 
   return (
     <container>
@@ -119,6 +126,18 @@ export function RawShadersPage() {
         <Panel title={t`控制台`} width={1504} height={200} zIndex={2}>
           <vbox gap={16}>
             <hbox gap={16} alignItems="center" zIndex={2}>
+              <Select
+                value={sourceType}
+                onValueChange={(value) => setSourceType(value as CustomShaderSource['type'])}
+                options={[
+                  { text: 'Raw', value: 'raw' },
+                  { text: 'File', value: 'file' },
+                ]}
+                trigger={{ ...SELECT_TRIGGER, targetWidth: 180 }}
+                list={{ ...SELECT_LIST, targetWidth: 180 }}
+                option={{ ...SELECT_OPTION, targetWidth: 174 }}
+                textStyle={BUTTON_TEXT_STYLE}
+              />
               <Select
                 value={preset.title}
                 onValueChange={setPresetTitle}
@@ -202,7 +221,13 @@ export function RawShadersPage() {
           >
             <shader-slot channel={0}>
               <container>
-                <text text="RAW WGSL" fontSize={130} fillColor={ITEM_COLORS[0]} x={180} y={100} />
+                <text
+                  text={sourceType === 'raw' ? 'RAW WGSL' : 'FILE WGSL'}
+                  fontSize={130}
+                  fillColor={ITEM_COLORS[0]}
+                  x={150}
+                  y={100}
+                />
                 <text text={t`手动时间控制`} fontSize={50} fillColor={ITEM_COLORS[2]} x={480} y={300} rotation={-0.06} />
                 <text
                   text={t`参数槽 · 通道采样 · builtins.time`}
