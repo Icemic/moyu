@@ -83,6 +83,14 @@ impl Sprite {
             node_base: NodeBase::new(label),
         }
     }
+
+    pub(crate) fn update_intrinsic_size(&mut self) {
+        let size = match self.mode {
+            SpriteMode::Normal => (0.0, 0.0),
+            SpriteMode::Nineslice => (self.target_width as f32, self.target_height as f32),
+        };
+        self.base_mut().set_intrinsic_size(size.0, size.1);
+    }
 }
 
 impl Focusable for Sprite {}
@@ -126,34 +134,29 @@ impl Node for Sprite {
 
         apply_patch!(props.mode => |mode| {
             self.mode = mode;
-            // reset size when mode changed, those values will be recalculated in render
-            self.base_mut().set_intrinsic_size(0.0, 0.0);
+            self.update_intrinsic_size();
         }, SpriteMode::default());
 
         apply_patch!(props.area => |area| {
             self.area = area;
-            // clean base node size, and re-assign it in renderer
-            self.base_mut().set_intrinsic_size(0.0, 0.0);
+            self.update_intrinsic_size();
         }, [0., 0., 1., 1.]);
 
         apply_patch!(props.bounds => self.bounds, [0., 0., 0., 0.]);
 
         apply_patch!(props.nine_slice_mode => |nine_slice_mode| {
             self.nine_slice_mode = nine_slice_mode;
-            // clean base node size, and re-assign it in renderer
-            self.base_mut().set_intrinsic_size(0.0, 0.0);
+            self.update_intrinsic_size();
         }, NineSliceMode::default());
 
         apply_patch!(props.target_width => |target_width| {
             self.target_width = target_width as u32;
-            // clean base node size, and re-assign it in renderer
-            self.base_mut().set_intrinsic_size(0.0, 0.0);
+            self.update_intrinsic_size();
         }, 0);
 
         apply_patch!(props.target_height => |target_height| {
             self.target_height = target_height as u32;
-            // clean base node size, and re-assign it in renderer
-            self.base_mut().set_intrinsic_size(0.0, 0.0);
+            self.update_intrinsic_size();
         }, 0);
 
         // force update vertices

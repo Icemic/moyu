@@ -336,8 +336,7 @@ impl Renderer for SpriteRenderer {
 
             if TextureStatus::Ready == texture.status() {
                 node.texture_id.store(node.next_texture_id.swap(None));
-                // clean base node size, and re-assign it later
-                node.base_mut().set_intrinsic_size(0.0, 0.0);
+                node.update_intrinsic_size();
                 node.base_mut().mark_update_vertices();
             }
         }
