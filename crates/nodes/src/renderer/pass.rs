@@ -286,10 +286,17 @@ impl ShaderPass {
             ShaderNodeSource::Builtin { .. } => {
                 Cow::Borrowed(include_str!("shaders/shader_transition_builtin.wgsl"))
             }
-            ShaderNodeSource::Raw { content, .. } => Cow::Owned(format!(
+            ShaderNodeSource::Raw { content, .. }
+            | ShaderNodeSource::File {
+                content: Some(content),
+                ..
+            } => Cow::Owned(format!(
                 "{}\n\n{content}",
                 include_str!("shaders/shader_raw_helpers.wgsl")
             )),
+            ShaderNodeSource::File { content: None, .. } => {
+                return Err("shader file content is not loaded".to_owned());
+            }
         };
 
         #[cfg(native)]

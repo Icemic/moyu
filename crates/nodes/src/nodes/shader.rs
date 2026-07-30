@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 use anyhow::Result;
@@ -7,6 +8,7 @@ use moyu_core::traits::{Command, Node, NodeBaseTrait, NodeEventSource};
 use moyu_core::utils::convert::{JSValue, from_js};
 use moyu_core::utils::patch::Patch;
 use moyu_macros::Node;
+use moyu_resource::types::AssetId;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -171,6 +173,14 @@ pub enum ShaderSource {
         #[serde(default)]
         params: Option<Vec<ShaderParam>>,
     },
+    File {
+        src: String,
+        #[serde(default)]
+        params: Option<Vec<ShaderParam>>,
+        #[serde(skip)]
+        #[ts(skip)]
+        content: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -216,6 +226,7 @@ pub struct Shader {
     width: Option<f32>,
     height: Option<f32>,
     pub(crate) shader: ShaderSource,
+    pub(crate) shader_asset_id: Option<Arc<AssetId>>,
     pub(crate) time_control: ShaderTimeControl,
     pub(crate) display_channel: Option<u32>,
     pub(crate) retain: RetainMode,
@@ -282,6 +293,7 @@ impl Default for Shader {
             width: None,
             height: None,
             shader: ShaderSource::default(),
+            shader_asset_id: None,
             time_control: ShaderTimeControl::Auto,
             display_channel: None,
             retain: RetainMode::Static,
@@ -821,7 +833,7 @@ impl ShaderSource {
     pub(crate) fn builtin_effect_id(&self) -> i32 {
         match self {
             Self::Builtin { builtin } => builtin.name().effect_id(),
-            Self::Raw { .. } => -1,
+            Self::Raw { .. } | Self::File { .. } => -1,
         }
     }
 
@@ -830,7 +842,7 @@ impl ShaderSource {
             Self::Builtin { builtin } => Self::Builtin {
                 builtin: builtin.sanitize(node_id),
             },
-            Self::Raw { content, params } => Self::Raw { content, params },
+            other => other,
         }
     }
 
@@ -847,6 +859,12 @@ impl ShaderSource {
                     ..
                 },
             ) => current_content != next_content,
+            (
+                Self::File {
+                    src: current_src, ..
+                },
+                Self::File { src: next_src, .. },
+            ) => current_src != next_src,
             _ => true,
         }
     }
@@ -860,7 +878,7 @@ impl ShaderSource {
                 builtin.write_param_slots(&mut slots);
                 slots
             }
-            Self::Raw { params, .. } => {
+            Self::Raw { params, .. } | Self::File { params, .. } => {
                 let params = params.as_deref().unwrap_or(&[]);
                 let mut slots = [0; SHADER_PARAM_SLOT_COUNT];
 
@@ -1017,15 +1035,42 @@ impl Node for Shader {
 
         match props.shader {
             Patch::Set(shader) => {
-                let shader = shader.sanitize(*self.base().id());
+                let mut shader = shader.sanitize(*self.base().id());
+                let same_file_src = match (&self.shader, &mut shader) {
+                    (
+                        ShaderSource::File {
+                            src: current_src,
+                            content: current_content,
+                            ..
+                        },
+                        ShaderSource::File {
+                            src: next_src,
+                            content: next_content,
+                            ..
+                        },
+                    ) if current_src == next_src => {
+                        next_content.clone_from(current_content);
+                        true
+                    }
+                    _ => false,
+                };
                 let shader_dirty = self.shader.needs_pipeline_recompile(&shader);
                 let params_dirty = self.shader != shader;
+                let file_pending = matches!(shader, ShaderSource::File { .. }) && !same_file_src;
 
                 self.shader = shader;
+                if file_pending {
+                    self.shader_asset_id = None;
+                    self.base_mut().pend_prepare();
+                } else if !matches!(self.shader, ShaderSource::File { .. }) {
+                    self.shader_asset_id = None;
+                }
                 if shader_dirty {
                     self.shader_dirty = true;
-                    self.pipeline = None;
-                    self.bind_group = None;
+                    if !file_pending {
+                        self.pipeline = None;
+                        self.bind_group = None;
+                    }
                 }
                 if params_dirty {
                     self.params_dirty = true;
@@ -1041,6 +1086,7 @@ impl Node for Shader {
                 let params_dirty = self.shader != shader;
 
                 self.shader = shader;
+                self.shader_asset_id = None;
                 if shader_dirty {
                     self.shader_dirty = true;
                     self.pipeline = None;

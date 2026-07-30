@@ -13,4 +13,5 @@ export type ShaderSource =
       | { name: 'pixellate'; steps: number }
       | { name: 'mask'; softness: number; reverse: boolean }
     ))
-  | { type: 'raw'; content: string; params?: Array<ShaderParam> };
+  | { type: 'raw'; content: string; params?: Array<ShaderParam> }
+  | { type: 'file'; src: string; params?: Array<ShaderParam> };

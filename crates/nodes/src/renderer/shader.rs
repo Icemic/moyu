@@ -8,12 +8,13 @@ use moyu_core::traits::{
     Node, NodeBaseTrait, RenderCommandSender, Renderer, RendererUpdatePayload,
 };
 use moyu_core::utils::coordinates::calculate_layout_rect;
+use moyu_resource::types::{Asset, AssetKind, PlainStatus};
 use wgpu::*;
 
 use super::pass::{ShaderPass, ShaderPassBuiltins};
 use crate::nodes::{
-    RetainMode, Shader, ShaderSlot, ShaderSlotLayout, ShaderSlotSpace, ShaderTimeControl,
-    TransitionFromSource, TransitionPhase,
+    RetainMode, Shader, ShaderSlot, ShaderSlotLayout, ShaderSlotSpace, ShaderSource,
+    ShaderTimeControl, TransitionFromSource, TransitionPhase,
 };
 
 #[derive(Clone, Copy)]
@@ -1408,6 +1409,29 @@ impl Renderer for ShaderRenderer {
         self.pass.bind_group_layout()
     }
 
+    fn prepare(
+        &mut self,
+        node: &mut dyn Node,
+        _device: &Device,
+        _queue: &Queue,
+        payload: &RendererUpdatePayload,
+    ) {
+        let shader = node.as_any_mut().downcast_mut::<Shader>().unwrap();
+
+        if shader.shader_asset_id.is_some() {
+            return;
+        }
+
+        let src = match &shader.shader {
+            ShaderSource::File {
+                src, content: None, ..
+            } => src.clone(),
+            _ => return,
+        };
+
+        shader.shader_asset_id = Some(payload.resource_manager.load_asset(AssetKind::Plain, &src));
+    }
+
     fn update(
         &mut self,
         node: &mut dyn Node,
@@ -1417,6 +1441,49 @@ impl Renderer for ShaderRenderer {
         payload: &RendererUpdatePayload,
     ) {
         let shader = node.as_any_mut().downcast_mut::<Shader>().unwrap();
+
+        if matches!(shader.shader, ShaderSource::File { content: None, .. }) {
+            let Some(asset_id) = shader.shader_asset_id.as_ref() else {
+                return;
+            };
+            let asset = asset_id.asset_unchecked();
+            let Asset::Plain(plain) = asset.as_ref() else {
+                unreachable!("shader file asset kind is not plain");
+            };
+
+            match plain.status() {
+                PlainStatus::Reading => return,
+                PlainStatus::Error => {
+                    shader.mark_error(format!("failed to load shader source '{}'", asset_id.url()));
+                    return;
+                }
+                PlainStatus::Ready => {
+                    let Some(content) = plain.content() else {
+                        shader.mark_error(format!(
+                            "shader source '{}' is ready but has no content",
+                            asset_id.url()
+                        ));
+                        return;
+                    };
+
+                    let ShaderSource::File {
+                        content: shader_content,
+                        ..
+                    } = &mut shader.shader
+                    else {
+                        unreachable!();
+                    };
+                    *shader_content = Some((*content).clone());
+                    shader.shader_dirty = true;
+                    shader.params_dirty = true;
+                    shader.needs_retry = true;
+                    shader.error_state = false;
+                    shader.pipeline = None;
+                    shader.bind_group = None;
+                }
+            }
+        }
+
         let stage_rect = Rect::new(
             0.0,
             0.0,
