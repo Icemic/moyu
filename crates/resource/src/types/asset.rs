@@ -2,7 +2,7 @@ use std::sync::{Arc, Weak};
 
 use moyu_pal::url::Url;
 
-use crate::types::Texture;
+use crate::types::{Plain, Texture};
 
 #[derive(Debug, Clone)]
 pub struct AssetId {
@@ -60,10 +60,10 @@ pub enum AssetKind {
 #[derive(Debug)]
 pub enum Asset {
     Texture(Arc<Texture>),
-    Audio,         // TODO: add audio type
-    Video,         // TODO: add video type
-    Font,          // TODO: add font type
-    Plain(String), // TODO: add plain type
+    Audio, // TODO: add audio type
+    Video, // TODO: add video type
+    Font,  // TODO: add font type
+    Plain(Arc<Plain>),
 }
 
 pub(crate) fn create_asset_id(kind: AssetKind, url: Url) -> AssetId {

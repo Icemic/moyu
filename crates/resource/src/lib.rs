@@ -87,6 +87,14 @@ impl ResourceManager {
                 self.assets_map.insert(asset_id.clone(), asset);
                 asset_id
             }
+            AssetKind::Plain => {
+                let plain = load_plain(&url);
+                let asset = Arc::new(Asset::Plain(plain));
+                asset_id.attach_asset(&asset);
+                let asset_id = Arc::new(asset_id);
+                self.assets_map.insert(asset_id.clone(), asset);
+                asset_id
+            }
             _ => {
                 todo!()
             }
