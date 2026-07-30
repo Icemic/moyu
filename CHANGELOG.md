@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-07-30
+
+### Added
+
+1. Support WGSL shader as resource files and load it asynchronously.
+2. Shader node can now load shader source from a file path.
+
+### Fixed
+
+1. Keep sprite intrinsic size in sync for nine-slice mode.
+
 ## [0.17.1] - 2026-07-29
 
 ### Added
