@@ -1,7 +1,21 @@
-import { useState } from 'react';
+import { Select, Slider } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
+import { useState } from 'react';
 import { DemoChip, Panel } from '../components/chrome';
-import { COLOR, ITEM_COLORS, TEXT, chipSprite } from '../theme';
+import {
+  BUTTON_TEXT_STYLE,
+  COLOR,
+  ITEM_COLORS,
+  SELECT_LIST,
+  SELECT_OPTION,
+  SELECT_TRIGGER,
+  SLIDER_THUMB,
+  SLIDER_TRACK,
+  TEXT,
+  chipSprite,
+} from '../theme';
+
+type TextPrintMode = 'instant' | 'typewriter' | 'printer';
 
 function TextStylesPanel() {
   const { t } = useLingui();
@@ -75,6 +89,84 @@ function TransformPanel() {
         x={20}
         y={336}
       />
+    </Panel>
+  );
+}
+
+function TextPrintingPanel() {
+  const { t } = useLingui();
+  const [printMode, setPrintMode] = useState<TextPrintMode>('typewriter');
+  const [printSpeedValue, setPrintSpeedValue] = useState(19 / 59);
+  const [playbackKey, setPlaybackKey] = useState(0);
+  const printSpeed = Math.round(1 + printSpeedValue * 59);
+
+  const replay = () => {
+    setPlaybackKey((key) => key + 1);
+  };
+
+  return (
+    <Panel
+      title={t`Text 文本打印`}
+      width={1504}
+      height={330}
+      note={t`printMode 控制打印方式，printSpeed 控制逐字或逐行打印速度。`}
+    >
+      <hbox gap={40}>
+        <vbox gap={14}>
+          <text {...TEXT.caption} text={t`printMode`} />
+          <Select
+            zIndex={3}
+            value={printMode}
+            onValueChange={(value) => {
+              setPrintMode(value as TextPrintMode);
+              replay();
+            }}
+            options={[
+              { text: 'instant', value: 'instant' },
+              { text: 'typewriter', value: 'typewriter' },
+              { text: 'printer', value: 'printer' },
+            ]}
+            trigger={SELECT_TRIGGER}
+            list={SELECT_LIST}
+            option={SELECT_OPTION}
+            textStyle={BUTTON_TEXT_STYLE}
+          />
+          <text {...TEXT.caption} text={t`printSpeed：${printSpeed}`} />
+          <Slider
+            value={printSpeedValue}
+            onValueChange={setPrintSpeedValue}
+            onValueCommit={replay}
+            track={SLIDER_TRACK}
+            thumb={SLIDER_THUMB}
+          />
+        </vbox>
+        <sprite
+          {...chipSprite(COLOR.panelTint)}
+          targetWidth={1064}
+          targetHeight={200}
+          interactive
+          cursor="pointer"
+          onClick={(event) => {
+            event.stopPropagation();
+            replay();
+          }}
+        >
+          <text
+            key={`${printMode}-${playbackKey}`}
+            // This sample copy intentionally stays in original text and is excluded from i18n.
+            text={'我们所经历的每个平凡的日常，也许就是连续发生的奇迹。\n日々私たちが過ごしている日常は、実は、奇跡の連続なのかもしれない。'}
+            x={28}
+            y={24}
+            fontSize={28}
+            lineHeight={1.5}
+            boxWidth={1008}
+            boxHeight={200}
+            fillColor={COLOR.text}
+            printMode={printMode}
+            printSpeed={printSpeed}
+          />
+        </sprite>
+      </hbox>
     </Panel>
   );
 }
@@ -155,6 +247,7 @@ export function PrimitivesPage() {
           <TextStylesPanel />
           <TransformPanel />
         </hbox>
+        <TextPrintingPanel />
         <hbox gap={32}>
           <SpritePanel />
         </hbox>

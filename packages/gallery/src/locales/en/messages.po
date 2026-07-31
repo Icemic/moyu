@@ -77,7 +77,7 @@ msgstr "Manual tests for Achievements and the Steamworks API."
 msgid "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
 msgstr "Numeric progress shown on the Achievement page comes from a backend-bound Stat; call StoreStats after writing it."
 
-#: src/pages/primitives.tsx:116
+#: src/pages/primitives.tsx:208
 msgid "Animation 帧动画"
 msgstr "Animation frames"
 
@@ -85,7 +85,7 @@ msgstr "Animation frames"
 msgid "API name 来自 App ID 480 的真实后台配置。"
 msgstr "API names come from the actual backend configuration for App ID 480."
 
-#: src/pages/primitives.tsx:116
+#: src/pages/primitives.tsx:208
 msgid "APNG 格式帧动画；tint 同样作用于动画帧。"
 msgstr "APNG frame animation; tint also applies to animation frames."
 
@@ -93,11 +93,11 @@ msgstr "APNG frame animation; tint also applies to animation frames."
 msgid "App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。"
 msgstr "App 480 has no confirmed Timeline or float stat configuration, so no fake success parameters are used."
 
-#: src/pages/primitives.tsx:86
+#: src/pages/primitives.tsx:178
 msgid "area 裁剪源图区域；nineslice 保持边角不变形地拉伸。"
 msgstr "area crops the source image; nineslice stretches without distorting corners and edges."
 
-#: src/pages/primitives.tsx:94
+#: src/pages/primitives.tsx:186
 msgid "area：从中间截取"
 msgstr "area: crop from the center"
 
@@ -133,11 +133,11 @@ msgstr "Button, Checkbox, Radio, Select, Slider, and ScrollView."
 msgid "Checkbox 勾选框"
 msgstr "Checkbox"
 
-#: src/pages/primitives.tsx:135
+#: src/pages/primitives.tsx:227
 msgid "Clip 裁剪"
 msgstr "Clip"
 
-#: src/pages/primitives.tsx:50
+#: src/pages/primitives.tsx:64
 msgid "Container 变换"
 msgstr "Container transforms"
 
@@ -161,6 +161,18 @@ msgstr "HBox onLayout: {measured}"
 msgid "Input 输入框"
 msgstr "Input"
 
+#: src/pages/primitives.tsx:116
+msgid "printMode"
+msgstr "printMode"
+
+#: src/pages/primitives.tsx:112
+msgid "printMode 控制打印方式，printSpeed 控制逐字或逐行打印速度。"
+msgstr "printMode controls the printing style; printSpeed controls the character or line printing speed."
+
+#: src/pages/primitives.tsx:134
+msgid "printSpeed：{printSpeed}"
+msgstr "printSpeed: {printSpeed}"
+
 #: src/pages/controls.tsx:128
 msgid "Radio 单选框"
 msgstr "Radio"
@@ -169,7 +181,7 @@ msgstr "Radio"
 msgid "RadioGroup 统一管理同组互斥选择。"
 msgstr "RadioGroup manages mutually exclusive selections within a group."
 
-#: src/pages/controls.tsx:192
+#: src/pages/controls.tsx:193
 msgid "Raw WGSL 着色器"
 msgstr "Raw WGSL shader"
 
@@ -193,7 +205,7 @@ msgstr "Select"
 msgid "Shader 转场"
 msgstr "Shader transition"
 
-#: src/pages/controls.tsx:191
+#: src/pages/controls.tsx:192
 msgid "Shader 过渡 Transition"
 msgstr "Shader Transition"
 
@@ -209,7 +221,7 @@ msgstr "space-between: spacing is equal and no less than gap = 20."
 msgid "Spring 动画"
 msgstr "Spring animation"
 
-#: src/pages/primitives.tsx:86
+#: src/pages/primitives.tsx:178
 msgid "Sprite 精灵"
 msgstr "Sprite"
 
@@ -221,11 +233,15 @@ msgstr "Sprite, Text, Clip, Animation, and common node properties."
 msgid "Steam（仅桌面端）"
 msgstr "Steam (desktop only)"
 
-#: src/pages/primitives.tsx:10
+#: src/pages/primitives.tsx:109
+msgid "Text 文本打印"
+msgstr "Text printing"
+
+#: src/pages/primitives.tsx:24
 msgid "Text 文本样式"
 msgstr "Text styling"
 
-#: src/pages/primitives.tsx:124
+#: src/pages/primitives.tsx:216
 msgid "tint 金色"
 msgstr "gold tint"
 
@@ -245,11 +261,11 @@ msgstr "useTransition enter/exit"
 msgid "VBox、HBox、测量、对齐与动态重排。"
 msgstr "VBox, HBox, measurement, alignment, and dynamic reordering."
 
-#: src/pages/primitives.tsx:53
+#: src/pages/primitives.tsx:67
 msgid "x / scale / rotation 作用于整个子树；点击色块切换两组目标值。"
 msgstr "x / scale / rotation apply to the entire subtree; click the color block to switch between two target values."
 
-#: src/pages/raw-shaders.tsx:185
+#: src/pages/raw-shaders.tsx:204
 msgid "一道明亮的扫描带扫过输入画面。"
 msgstr "A bright scan band sweeps across the input image."
 
@@ -262,7 +278,7 @@ msgstr "Next state: {0}"
 msgid "下拉列表展开时会覆盖下方内容（zIndex）。"
 msgstr "When expanded, the dropdown list overlays content below it (zIndex)."
 
-#: src/pages/primitives.tsx:99
+#: src/pages/primitives.tsx:191
 msgid "九宫格：圆角与描边不随拉伸变形，线条不模糊"
 msgstr "Nine-slice: rounded corners and borders do not distort or blur when stretched"
 
@@ -274,7 +290,7 @@ msgstr "Brightness"
 msgid "使用 Microsoft 拼音输入时，候选窗应跟随缩放、旋转后的文字末尾，并保持在 caret 附近。"
 msgstr "When using Microsoft Pinyin, the candidate window should follow the end of scaled and rotated text, staying near the caret."
 
-#: src/pages/raw-shaders.tsx:154
+#: src/pages/raw-shaders.tsx:173
 msgid "停止"
 msgstr "Stop"
 
@@ -343,11 +359,11 @@ msgstr "Animation / Shader approach"
 msgid "原始对照 Original"
 msgstr "Original"
 
-#: src/pages/primitives.tsx:120
+#: src/pages/primitives.tsx:212
 msgid "原色"
 msgstr "Original color"
 
-#: src/pages/raw-shaders.tsx:208
+#: src/pages/raw-shaders.tsx:233
 msgid "参数槽 · 通道采样 · builtins.time"
 msgstr "Parameter slots · channel sampling · builtins.time"
 
@@ -396,7 +412,7 @@ msgstr "Transforms and measurement"
 msgid "变换后的候选窗位置"
 msgstr "Candidate window position after transforms"
 
-#: src/pages/primitives.tsx:135
+#: src/pages/primitives.tsx:227
 msgid "只有落在 440×260 视口内的内容会被绘制。"
 msgstr "Only content within the 440×260 viewport is drawn."
 
@@ -412,7 +428,7 @@ msgstr "Right"
 msgid "右对齐"
 msgstr "Align right"
 
-#: src/pages/raw-shaders.tsx:154
+#: src/pages/raw-shaders.tsx:173
 msgid "启动"
 msgstr "Start"
 
@@ -424,7 +440,7 @@ msgstr "Enable backdrop filter"
 msgid "启用输入框"
 msgstr "Enable input"
 
-#: src/pages/primitives.tsx:33
+#: src/pages/primitives.tsx:47
 msgid "固定宽度文本框：设定 boxWidth 后，这段文字会在到达宽度上限时自动换行，并可通过 lineHeight 控制行距。"
 msgstr "Fixed-width text box: after setting boxWidth, this text wraps automatically at the width limit, and lineHeight controls line spacing."
 
@@ -456,7 +472,7 @@ msgstr "Primitives"
 msgid "基础输入与 IME"
 msgstr "Basic input and IME"
 
-#: src/pages/primitives.tsx:28
+#: src/pages/primitives.tsx:42
 msgid "填充"
 msgstr "Fill"
 
@@ -468,11 +484,11 @@ msgstr "Processes content already drawn behind the node; content drawn after it 
 msgid "外层 VBox"
 msgstr "Outer VBox"
 
-#: src/pages/primitives.tsx:27
+#: src/pages/primitives.tsx:41
 msgid "多彩"
 msgstr "Colorful"
 
-#: src/pages/primitives.tsx:89
+#: src/pages/primitives.tsx:181
 msgid "完整原图 250x240"
 msgstr "Full source image 250x240"
 
@@ -500,7 +516,7 @@ msgstr "Not called yet"
 msgid "就绪"
 msgstr "Ready"
 
-#: src/pages/primitives.tsx:30
+#: src/pages/primitives.tsx:44
 msgid "展示"
 msgstr "Display"
 
@@ -532,12 +548,12 @@ msgstr "Default button"
 msgid "开关 Toggle"
 msgstr "Toggle"
 
-#: src/pages/controls.tsx:190
+#: src/pages/controls.tsx:191
 msgid "弹簧动画 Spring"
 msgstr "Spring animation"
 
 #. placeholder {0}: strength.toFixed(2)
-#: src/pages/raw-shaders.tsx:148
+#: src/pages/raw-shaders.tsx:167
 msgid "强度 {0}"
 msgstr "Strength {0}"
 
@@ -566,7 +582,7 @@ msgstr "Current value: {selected}"
 #. placeholder {0}: transformed ? 460 : 140
 #. placeholder {1}: transformed ? 1.3 : 1.0
 #. placeholder {2}: transformed ? 0.15 : 0
-#: src/pages/primitives.tsx:74
+#: src/pages/primitives.tsx:88
 msgid "当前目标：x={0} · scale={1} · rotation={2}"
 msgstr "Current target: x={0} · scale={1} · rotation={2}"
 
@@ -582,11 +598,11 @@ msgstr "Hovering over or pressing the input should change its background; when f
 msgid "成功（void）"
 msgstr "Success (void)"
 
-#: src/pages/raw-shaders.tsx:139
+#: src/pages/raw-shaders.tsx:158
 msgid "手动时间"
 msgstr "Manual time"
 
-#: src/pages/raw-shaders.tsx:206
+#: src/pages/raw-shaders.tsx:231
 msgid "手动时间控制"
 msgstr "Manual time control"
 
@@ -595,16 +611,16 @@ msgid "按钮只发送 prepare；perform 由 onPrepared 触发，onFinished 解�
 msgstr "The button only sends prepare; onPrepared triggers perform, and onFinished enables the next playback."
 
 #: src/pages/backdrops.tsx:29
-#: src/pages/raw-shaders.tsx:119
+#: src/pages/raw-shaders.tsx:126
 #: src/pages/shader-transitions.tsx:73
 msgid "控制台"
 msgstr "Controls"
 
-#: src/pages/primitives.tsx:10
+#: src/pages/primitives.tsx:24
 msgid "描边、阴影、颜色与 boxWidth 自动换行。"
 msgstr "Stroke, shadow, color, and automatic wrapping with boxWidth."
 
-#: src/pages/primitives.tsx:14
+#: src/pages/primitives.tsx:28
 msgid "描边与阴影 Stroke & Shadow"
 msgstr "Stroke & Shadow"
 
@@ -693,7 +709,7 @@ msgstr "Add or remove keyed items; from → enter → leave is tweened automatic
 msgid "渲染管线"
 msgstr "Render pipeline"
 
-#: src/pages/raw-shaders.tsx:192
+#: src/pages/raw-shaders.tsx:211
 msgid "渲染结果"
 msgstr "Rendered result"
 
@@ -727,7 +743,7 @@ msgid "点击 SPRING 切换目标状态。\n"
 msgstr "Click SPRING to toggle the target state.\n"
 "Current target: x={0} · rotation={1} · scale={2} · opacity={3}"
 
-#: src/pages/primitives.tsx:69
+#: src/pages/primitives.tsx:83
 msgid "点击切换变换"
 msgstr "Click to toggle transforms"
 
@@ -756,7 +772,7 @@ msgstr "State details"
 msgid "理论值：150 + 220 + 180 + 2 × 18 = 586"
 msgstr "Expected value: 150 + 220 + 180 + 2 × 18 = 586"
 
-#: src/pages/raw-shaders.tsx:184
+#: src/pages/raw-shaders.tsx:203
 msgid "用移动的正弦波横向扭曲输入画面。"
 msgstr "Distorts the input image horizontally with a moving sine wave."
 
@@ -828,7 +844,7 @@ msgstr "Backdrop capture area"
 msgid "背景目标 BACKDROP"
 msgstr "BACKDROP target"
 
-#: src/pages/raw-shaders.tsx:140
+#: src/pages/raw-shaders.tsx:159
 msgid "自动时间"
 msgstr "Automatic time"
 
@@ -840,7 +856,7 @@ msgstr "Custom Shader"
 msgid "色相旋转 Hue Rotate"
 msgstr "Hue Rotate"
 
-#: src/pages/primitives.tsx:137
+#: src/pages/primitives.tsx:229
 msgid "被裁剪的内容"
 msgstr "Clipped content"
 
@@ -860,7 +876,7 @@ msgstr "The track can shrink with the panel."
 msgid "转场画面"
 msgstr "Transition image"
 
-#: src/pages/primitives.tsx:139
+#: src/pages/primitives.tsx:231
 msgid "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
 msgstr "This text extends beyond the right and bottom edges of the clipping area; the overflow is not shown."
 
@@ -884,7 +900,7 @@ msgstr "Channel 1 · displayed continuously"
 msgid "重播"
 msgstr "Replay"
 
-#: src/pages/raw-shaders.tsx:169
+#: src/pages/raw-shaders.tsx:188
 msgid "重置"
 msgstr "Reset"
 
@@ -897,7 +913,7 @@ msgstr "Locked hover and left/right alignment"
 msgid "错误：{0}"
 msgstr "Error: {0}"
 
-#: src/pages/raw-shaders.tsx:182
+#: src/pages/raw-shaders.tsx:201
 msgid "随时间偏移红蓝通道采样。"
 msgstr "Offsets red and blue channel sampling over time."
 
@@ -946,7 +962,7 @@ msgstr "Expected: left-aligned; the widest item determines the width; spacing is
 msgid "预期：每次点击同帧完成重排；visible = false 仍占位；删除后兄弟项递补到最前。"
 msgstr "Expected: each click completes reordering in the same frame; visible = false still occupies space; after removal, siblings move forward."
 
-#: src/pages/primitives.tsx:29
+#: src/pages/primitives.tsx:43
 msgid "颜色"
 msgstr "Color"
 
@@ -964,6 +980,6 @@ msgstr "Saturation"
 msgid "默认值 0.35，内部维护状态"
 msgstr "Default value: 0.35; state is managed internally"
 
-#: src/pages/primitives.tsx:12
+#: src/pages/primitives.tsx:26
 msgid "默认文本样式 Default 30px"
 msgstr "Default text style · 30px"
