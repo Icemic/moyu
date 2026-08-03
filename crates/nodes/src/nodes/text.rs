@@ -141,8 +141,10 @@ pub struct TextProps {
     #[ts(type = "'horizontal' | 'vertical'", optional)]
     pub direction: Patch<LayoutDirection>,
     /// the width of box.
+    #[ts(type = "number", optional)]
     pub box_width: Patch<f64>,
     /// the height of box.
+    #[ts(type = "number", optional)]
     pub box_height: Patch<f64>,
     /// the size of the glyph grid which each character be fit to, usually equals to `font_size`.
     pub glyph_grid_size: Patch<f64>,
@@ -219,8 +221,16 @@ impl Node for Text {
         apply_patch!(props.print_speed => self.print_speed, 2.0);
         apply_patch!(props.parse_markup => self.parse_markup, true);
         apply_patch!(props.direction => self.layout_style.direction, LayoutDirection::default());
-        apply_patch!(props.box_width => self.layout_style.box_width, LayoutStyle::default().box_width);
-        apply_patch!(props.box_height => self.layout_style.box_height, LayoutStyle::default().box_height);
+        match props.box_width {
+            Patch::Set(width) => self.layout_style.box_width = Some(width),
+            Patch::Reset => self.layout_style.box_width = None,
+            Patch::Missing => {}
+        }
+        match props.box_height {
+            Patch::Set(height) => self.layout_style.box_height = Some(height),
+            Patch::Reset => self.layout_style.box_height = None,
+            Patch::Missing => {}
+        }
         apply_patch!(props.glyph_grid_size => self.layout_style.glyph_grid_size, LayoutStyle::default().glyph_grid_size);
         apply_patch!(props.font_size => self.text_style.font_size, TextStyle::default().font_size);
         apply_patch!(props.fill_color => self.text_style.fill_color, TextStyle::default().fill_color);

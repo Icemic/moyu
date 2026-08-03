@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+1. Upgrade `huozi` to 0.18. Introduce punctuation compression and hanging support.
+
+### Fixed
+
+1. Text node returns wrong size when text content overflows the box.
+
 ## [0.17.2] - 2026-07-30
 
 ### Added
