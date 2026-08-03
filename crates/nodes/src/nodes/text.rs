@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use wgpu::Buffer;
 
-use moyu_core::apply_patch;
+use moyu_core::{apply_patch, apply_patch_optional};
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Command, NodeEventSource};
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
@@ -212,25 +212,13 @@ impl Node for Text {
             Patch::Missing => {}
         }
 
-        match props.print_mode {
-            Patch::Set(print_mode) => self.print_mode = print_mode,
-            Patch::Reset => self.print_mode = TextPrintMode::default(),
-            Patch::Missing => {}
-        }
-
+        apply_patch!(props.print_mode => self.print_mode, TextPrintMode::default());
         apply_patch!(props.print_speed => self.print_speed, 2.0);
         apply_patch!(props.parse_markup => self.parse_markup, true);
         apply_patch!(props.direction => self.layout_style.direction, LayoutDirection::default());
-        match props.box_width {
-            Patch::Set(width) => self.layout_style.box_width = Some(width),
-            Patch::Reset => self.layout_style.box_width = None,
-            Patch::Missing => {}
-        }
-        match props.box_height {
-            Patch::Set(height) => self.layout_style.box_height = Some(height),
-            Patch::Reset => self.layout_style.box_height = None,
-            Patch::Missing => {}
-        }
+        apply_patch_optional!(props.box_width => self.layout_style.box_width, None);
+        apply_patch_optional!(props.box_height => self.layout_style.box_height, None);
+
         apply_patch!(props.glyph_grid_size => self.layout_style.glyph_grid_size, LayoutStyle::default().glyph_grid_size);
         apply_patch!(props.font_size => self.text_style.font_size, TextStyle::default().font_size);
         apply_patch!(props.fill_color => self.text_style.fill_color, TextStyle::default().fill_color);

@@ -57,6 +57,19 @@ macro_rules! apply_patch {
     };
 }
 
+/// Macro for applying patches with various patterns
+#[macro_export]
+macro_rules! apply_patch_optional {
+    // Direct assignment: apply_patch!(patch => target, default)
+    ($patch:expr => $target:expr, $default:expr) => {
+        match $patch {
+            $crate::utils::patch::Patch::Set(v) => $target = Some(v),
+            $crate::utils::patch::Patch::Reset => $target = $default,
+            $crate::utils::patch::Patch::Missing => {}
+        }
+    };
+}
+
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for Patch<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

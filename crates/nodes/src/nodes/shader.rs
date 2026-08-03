@@ -3,6 +3,7 @@ use std::sync::atomic::AtomicBool;
 
 use anyhow::Result;
 use csscolorparser::Color;
+use moyu_core::apply_patch;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Command, Node, NodeBaseTrait, NodeEventSource};
 use moyu_core::utils::convert::{JSValue, from_js};
@@ -1109,15 +1110,7 @@ impl Node for Shader {
             Patch::Missing => {}
         }
 
-        match props.display_channel {
-            Patch::Set(display_channel) => {
-                self.display_channel = display_channel;
-            }
-            Patch::Reset => {
-                self.display_channel = None;
-            }
-            Patch::Missing => {}
-        }
+        apply_patch!(props.display_channel => self.display_channel, None);
 
         self.base_mut().pend_update();
     }
