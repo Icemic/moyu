@@ -3,6 +3,7 @@ use winit::dpi::PhysicalSize;
 
 /// Size struct for surface, it handles all size related stuff
 #[derive(Debug, PartialEq, Copy, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SurfaceSize {
     /// logical width
     width: f64,
