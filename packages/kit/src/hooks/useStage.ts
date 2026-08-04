@@ -13,8 +13,8 @@ import { executePluginCommand } from '../moyu';
 export interface GameControl {
   /** Timed wait — blocks auto-advance. Engine fires scenariowaitingcancelled on timeout or skip. */
   setWaiting(time: number, skippable: boolean): void;
-  /** Indefinite hold — blocks auto-advance until user action. */
-  hold(): void;
+  /** Hold indefinitely, or until a Promise-like object settles. */
+  hold(until?: PromiseLike<void>, skippable?: boolean): void;
   /** Manually advance (rarely needed, e.g. `!` tailing). */
   nextLine(): void;
   /** Mark this dispatch cycle as unskippable. If skipping, hold() will stop skip instead of advancing. */
@@ -82,6 +82,13 @@ interface FastForwardRuntime {
   startedAt: number;
   onAbort?: (error: Error) => void;
   warp: boolean;
+}
+
+interface ActiveWaitRecord {
+  id: number;
+  until: PromiseLike<void>;
+  skippable: boolean;
+  settled: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -236,6 +243,10 @@ export function createStage() {
    * Returns true if a callback consumed the event.
    */
   function tryInterrupt(): boolean {
+    if (tryFinishActiveWait()) {
+      return true;
+    }
+
     for (const cb of interruptCallbacks) {
       try {
         if (cb()) return true;
@@ -304,6 +315,8 @@ export function createStage() {
   let _autoTicketSeq = 0;
   const _pendingAutoTickets = new Map<number, AutoTicketRecord>();
   let _fastForwardRuntime: FastForwardRuntime | null = null;
+  let _activeWait: ActiveWaitRecord | null = null;
+  let _activeWaitSeq = 0;
   let _managedAdvanceInFlight = false;
   let _managedAdvancePending = false;
 
@@ -418,12 +431,63 @@ export function createStage() {
   }
 
   function requestNextLine() {
+    if (_activeWait !== null) {
+      return;
+    }
+
     if (isManagedAdvanceActive()) {
       scheduleManagedAdvance();
       return;
     }
 
     void Promise.resolve(nextLine()).catch(handleManagedAdvanceError);
+  }
+
+  function invalidateActiveWait() {
+    if (_activeWait === null) {
+      return;
+    }
+
+    _activeWait.settled = true;
+    _activeWait = null;
+  }
+
+  function settleActiveWait(wait: ActiveWaitRecord, error?: unknown) {
+    if (_activeWait !== wait || wait.settled) {
+      return;
+    }
+
+    wait.settled = true;
+    _activeWait = null;
+
+    if (error !== undefined) {
+      console.error(`[Stage] Promise hold ${wait.id} rejected:`, error);
+    }
+
+    requestNextLine();
+  }
+
+  function tryFinishActiveWait(): boolean {
+    const wait = _activeWait;
+    if (wait === null || !wait.skippable || wait.settled) {
+      return false;
+    }
+
+    const finish = (wait.until as PromiseLike<void> & { finish?: unknown }).finish;
+    if (typeof finish === 'function') {
+      try {
+        finish.call(wait.until);
+      } catch (error) {
+        console.error(`[Stage] Failed to finish Promise hold ${wait.id}:`, error);
+      }
+    } else {
+      console.warn(
+        `[Stage] Skipping Promise hold ${wait.id} without finish(); the underlying operation may continue.`,
+      );
+    }
+
+    settleActiveWait(wait);
+    return true;
   }
 
   function clearAutoResumeTimer() {
@@ -666,7 +730,11 @@ export function createStage() {
     if (isAnyBlockerActive()) return;
     skipState.active = true;
     invokeSkipCallbacks(); // finish current animations
-    tryInterrupt(); // finish current printing
+    const activeWait = _activeWait;
+    tryInterrupt(); // finish the current Promise hold or printing
+    if (activeWait !== null && activeWait !== _activeWait) {
+      return;
+    }
     scheduleSkipNextLine(); // kick off the chain
   }
 
@@ -690,6 +758,7 @@ export function createStage() {
     if (fastForwardState.active) return;
     if (isAnyAutoBlockerActive()) return;
     autoState.active = true;
+    if (_activeWait !== null) return;
     tryInterrupt(); // finish current printing
     scheduleAutoNextLine(); // kick off the chain
   }
@@ -733,6 +802,7 @@ export function createStage() {
   }
 
   function resetRuntimeState() {
+    invalidateActiveWait();
     skipState.active = false;
     autoState.active = false;
     fastForwardState.active = false;
@@ -787,13 +857,32 @@ export function createStage() {
           setWaiting(time, skippable);
         }
       },
-      hold() {
+      hold(until, skippable = false) {
         handled = true;
         if (warpActive) {
           return;
         }
         if (fastForwardState.active) {
           requestNextLine();
+          return;
+        }
+        if (until !== undefined) {
+          invalidateActiveWait();
+          const wait: ActiveWaitRecord = {
+            id: ++_activeWaitSeq,
+            until,
+            skippable,
+            settled: false,
+          };
+          _activeWait = wait;
+          void Promise.resolve(until).then(
+            () => settleActiveWait(wait),
+            (error) => settleActiveWait(wait, error),
+          );
+
+          if (skipState.active) {
+            tryFinishActiveWait();
+          }
           return;
         }
         if (skipState.active && !unskippableFlag) {
@@ -866,6 +955,7 @@ export function createStage() {
 
   /** Dispatch a scenariocommandline event. */
   function dispatchCommand(e: ResolvedCommandLine) {
+    invalidateActiveWait();
     for (const cb of beforeHandleCommandCallbacks) {
       try {
         cb(e);
@@ -901,6 +991,7 @@ export function createStage() {
 
   /** Dispatch a scenariotext event. */
   function dispatchTextLine(e: TextLine) {
+    invalidateActiveWait();
     const { control, wasHandled } = buildControl();
     for (const handler of textLineHandlers) {
       handler(e, control);
@@ -940,6 +1031,7 @@ export function createStage() {
       }),
     ];
     return () => {
+      resetRuntimeState();
       for (const cleanup of cleanups) cleanup();
     };
   }
