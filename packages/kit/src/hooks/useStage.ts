@@ -1053,6 +1053,7 @@ export function createStage() {
     startAuto,
     stopAuto,
     isAutoing,
+    setDefaultAutoTailMs,
     startFastForward,
     stopFastForward,
     isFastForwarding,
