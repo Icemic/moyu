@@ -193,7 +193,7 @@ Stage 是剧情驱动 UI 的核心抽象：命令调度、流程控制、skip / 
 
 | 方法 | 作用 |
 |------|------|
-| `control.hold()` | 暂停直到用户操作；在 auto 模式下会打开 `hold` barrier |
+| `control.hold(until?, skippable?)` | 无参数时保持无限暂停；传入 Promise-like 时等待其 settle，`skippable` 为 true 时允许 interrupt / skip 提前完成 |
 | `control.setWaiting(ms, skippable)` | 定时等待；在 auto 模式下会打开 `wait` barrier |
 | `control.nextLine()` | 立即推进 |
 | `control.unskippable()` | 将本次 dispatch 标记为不可跳过 |
@@ -202,7 +202,8 @@ Stage 是剧情驱动 UI 的核心抽象：命令调度、流程控制、skip / 
 **实现要点：**
 
 - Stage 当前只封装 `scenariocommandline` 和 `scenariotext` 两类事件；`ResolvedSystemCallLine` 虽然从 `events.ts` 导出，但若要处理 system call，需要自己显式监听对应事件。
-- auto 模式下，`hold()` / `setWaiting()` 不会直接把控制权交给普通等待逻辑，而是打开一个 barrier。只有当 barrier 的 ticket 全部 `done()` / `cancel()`，并且各自 `tailMs` 都结算完成后，Stage 才会恢复 `nextLine()`。
+- auto 模式下，无参数 `hold()` / `setWaiting()` 不会直接把控制权交给普通等待逻辑，而是打开一个 barrier。只有当 barrier 的 ticket 全部 `done()` / `cancel()`，并且各自 `tailMs` 都结算完成后，Stage 才会恢复 `nextLine()`。
+- `hold(until, skippable)` 使用 Stage 当前 dispatch 的唯一 active wait，不进入 auto barrier。Promise resolve 或 reject 后请求一次推进；reject 会记录错误。`skippable` 默认为 false；为 true 时，interrupt / skip 会先调用等待对象可选的 `finish()`，再解除等待。Promise、interrupt、skip、reset 和新 dispatch 竞争同一个一次性完成状态。
 - `useAutoTicket()` 允许 actor 参与 auto barrier 协调。若 ticket 在 barrier 打开前的短暂采集窗口内创建，Stage 会先把它放入 pending 集合，再在下一个 barrier 打开时收编，解决语音等副作用早于文本 barrier 注册的问题。
 - skip / auto blocker 用于表达“当前流程禁止模式继续”的业务条件，适合选项菜单、模态交互等必须等待用户操作的场景。
 
