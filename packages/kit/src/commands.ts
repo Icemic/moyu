@@ -6,6 +6,7 @@ import type { ShaderCommand } from './bindings/ShaderCommand';
 import type { SteamCommand } from './bindings/SteamCommand';
 import type { SystemCommand } from './bindings/SystemCommand';
 import type { TextCommand } from './bindings/TextCommand';
+import type { VideoCommand } from './bindings/VideoCommand';
 import type { MakeNullOptional } from './utils';
 
 type _Command =
@@ -16,7 +17,8 @@ type _Command =
   | ScenarioCommand
   | ShaderCommand
   | SteamCommand
-  | SystemCommand;
+  | SystemCommand
+  | VideoCommand;
 
 export type Command = MakeNullOptional<_Command>;
 
@@ -31,6 +33,7 @@ export * from './bindings/GamepadCommand';
 export * from './bindings/ScenarioCommand';
 export * from './bindings/SystemCommand';
 export * from './bindings/TextCommand';
+export * from './bindings/VideoCommand';
 export * from './bindings/RetainMode';
 export * from './bindings/AudioSettings';
 export * from './bindings/EffectParams';
