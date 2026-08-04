@@ -1,5 +1,5 @@
 /**
- * Minimal DOM polyfill for development server HMR
+ * Minimal DOM polyfill for native client libraries and development server HMR
  */
 
 (function () {
@@ -26,6 +26,9 @@
 
   const document = {
     visibilityState: 'visible',
+    documentElement: {
+      style: {},
+    },
     createElement(tagName) {
       if (tagName.toLowerCase() === 'script') {
         return new ScriptElement();
@@ -95,6 +98,18 @@
       },
     },
   };
+
+  if (typeof globalThis.navigator === 'undefined') {
+    globalThis.navigator = {
+      userAgent: 'Moyu Native',
+    };
+  }
+
+  if (typeof globalThis.getComputedStyle === 'undefined') {
+    globalThis.getComputedStyle = () => ({
+      getPropertyValue: () => '',
+    });
+  }
 
   globalThis.document = document;
   if (typeof window !== 'undefined') {
