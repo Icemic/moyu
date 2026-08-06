@@ -1057,6 +1057,7 @@ export function createStage() {
     startFastForward,
     stopFastForward,
     isFastForwarding,
+    getSeekingType,
     resetRuntimeState,
     bindEvents,
   };
