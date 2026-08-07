@@ -49,6 +49,7 @@ interface FrameworkConfig {
   email?: string;
   version?: string;
   assets?: string | string[];
+  constructible?: boolean;
 }
 
 interface FrameworkMeta {
@@ -58,6 +59,7 @@ interface FrameworkMeta {
   author: string;
   email?: string;
   version: string;
+  constructible?: boolean;
 }
 
 export default defineCommand({
@@ -528,6 +530,11 @@ function loadFrameworkMeta(config: FrameworkConfig): FrameworkMeta {
   }
 
   const email = config.email?.trim();
+  if (config.constructible !== undefined && typeof config.constructible !== 'boolean') {
+    consola.error('Field "constructible" in framework.json must be a boolean when provided.');
+    process.exit(1);
+  }
+
   return {
     name,
     title,
@@ -535,6 +542,7 @@ function loadFrameworkMeta(config: FrameworkConfig): FrameworkMeta {
     author,
     ...(email ? { email } : {}),
     version,
+    ...(config.constructible !== undefined ? { constructible: config.constructible } : {}),
   };
 }
 
