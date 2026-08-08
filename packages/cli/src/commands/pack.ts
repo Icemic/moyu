@@ -190,7 +190,11 @@ export default defineCommand({
       await copyUiSchema(projectRoot, tmpPackDir);
       await copyIndexHtml(projectRoot, tmpPackDir);
       await copyIndexPreviewHtml(projectRoot, tmpPackDir);
-      await writeFrameworkMeta(tmpPackDir, frameworkConfig!);
+      const frameworkMeta = loadFrameworkMeta(frameworkConfig!);
+      if (frameworkMeta.constructible) {
+        await copyConstructFiles(projectRoot, tmpPackDir);
+      }
+      await writeFrameworkMeta(tmpPackDir, frameworkMeta);
     }
 
     // 4. Copy platform-specific files
@@ -475,12 +479,24 @@ async function copyToOutput(tmpPackDir: string, outputDir: string): Promise<void
   await cp(tmpPackDir, gamePath, { recursive: true });
 }
 
-async function writeFrameworkMeta(tmpPackDir: string, config: FrameworkConfig): Promise<void> {
-  const frameworkMeta = loadFrameworkMeta(config);
+async function writeFrameworkMeta(tmpPackDir: string, frameworkMeta: FrameworkMeta): Promise<void> {
   const metaPath = join(tmpPackDir, 'meta.json');
 
   consola.info('Writing framework meta.json...');
   await writeFile(metaPath, JSON.stringify(frameworkMeta, null, 2) + '\n');
+}
+
+async function copyConstructFiles(projectRoot: string, tmpPackDir: string): Promise<void> {
+  for (const filename of ['builtins.json', 'events.json']) {
+    const sourcePath = join(projectRoot, filename);
+    const destinationPath = join(tmpPackDir, filename);
+    if (!existsSync(sourcePath) || !(await stat(sourcePath)).isFile()) {
+      consola.error(`Construct file not found: ${filename}`);
+      process.exit(1);
+    }
+    consola.info(`Copying Construct file: ${filename}`);
+    await cp(sourcePath, destinationPath);
+  }
 }
 
 async function loadFrameworkConfig(projectRoot: string): Promise<FrameworkConfig> {
