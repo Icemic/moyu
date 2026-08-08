@@ -3729,16 +3729,15 @@ checksum = "8ee5873ec9cce0195efcb7a4e9507a04cd49aec9c83d0389df45b1ef7ba2e649"
 
 [[package]]
 name = "sixu"
-version = "0.14.1"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca86c0082f64521dfbf5522b5f67592a102de95f2383f8d03deabb1f0282e5a3"
+checksum = "5068e4add515f02827e1dc9b8e048398d6cdbc71dd8b815bc931215135fe3dd8"
 dependencies = [
  "anyhow",
  "arc-swap",
  "log",
  "nom 8.0.0",
  "nom-language",
- "pollster",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
