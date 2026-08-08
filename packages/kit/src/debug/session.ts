@@ -531,6 +531,7 @@ const debugSessionController: DebugSessionController = {
           }
 
           await appStateAdapter.switchPage(routeName, params);
+          await syncCurrentExecutionCursor();
           return;
         }
 
