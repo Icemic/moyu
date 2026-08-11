@@ -13,4 +13,5 @@ export type SystemCommand =
   | { subCommand: 'takeSnapshot'; width?: number; height?: number; keepAspectRatio?: boolean }
   | { subCommand: 'readFile'; path: string; format?: ReadFormat }
   | { subCommand: 'getParams' }
+  | { subCommand: 'openUrl'; url: string }
   | { subCommand: 'quit' };

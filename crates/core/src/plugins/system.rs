@@ -78,6 +78,11 @@ pub enum SystemCommand {
         format: Option<ReadFormat>,
     },
     GetParams,
+    /// Open a URL in the default browser. Only `http:` and `https:` protocols are supported,
+    /// other protocols will be rejected for security reason.
+    OpenUrl {
+        url: String,
+    },
     Quit,
 }
 
@@ -213,6 +218,17 @@ impl Command for SystemPlugin {
             }
             SystemCommand::GetParams => {
                 return Ok(Some(to_js(&get_engine_config().params)?));
+            }
+            SystemCommand::OpenUrl { url } => {
+                let parsed_url =
+                    Url::parse(&url).map_err(|_| anyhow!("Invalid URL format: {}.", url))?;
+                if !["http", "https"].contains(&parsed_url.scheme()) {
+                    return Err(anyhow!(
+                        "Unsupported URL scheme: {}. Only 'http:' and 'https:' are supported.",
+                        parsed_url.scheme()
+                    ));
+                }
+                webbrowser::open(&url)?;
             }
             SystemCommand::Quit => {
                 self.core.quit();

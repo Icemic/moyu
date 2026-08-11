@@ -13,6 +13,7 @@ js_runtime = ["moyu_runtime"]
 
 [dependencies]
 cursor-icon = {version = "1", features = ["serde"]}
+webbrowser = {version = "1.2.4", features = ["hardened"]}
 
 anyhow = {workspace = true}
 arc-swap = {workspace = true}
