@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+1. Support opening URLs in the default browser
+
 ### Changed
 
 1. Upgrade `huozi` to 0.18. Introduce punctuation compression and hanging support.
+2. Upgrade `quickjs-rusty`.
+3. Upgrade `sixu`.
 
 ### Fixed
 
