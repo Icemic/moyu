@@ -129,6 +129,7 @@ pub async fn create_wgpu_surface(
             power_preference: wgpu::PowerPreference::HighPerformance,
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .await
         .expect("No suitable GPU adapters found on the system.");
@@ -211,6 +212,7 @@ pub async fn create_wgpu_surface(
     let config = wgpu::SurfaceConfiguration {
         usage,
         format,
+        color_space: wgpu::SurfaceColorSpace::Auto,
         // width or height should not be 0 or it will cause crash
         width: size.width,
         height: size.height,

@@ -100,7 +100,7 @@ impl VideoRenderer {
             vertex: VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[QuadVertex::desc()],
+                buffers: &[Some(QuadVertex::desc())],
                 compilation_options: PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {

@@ -193,7 +193,10 @@ impl SpriteRenderer {
             vertex: VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[SpriteVertex::desc(), SpriteInstance::desc()],
+                buffers: &[
+                    Some(SpriteVertex::desc()),
+                    Some(SpriteInstance::desc()),
+                ],
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
             },
             fragment: Some(FragmentState {

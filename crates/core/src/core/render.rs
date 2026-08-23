@@ -306,7 +306,14 @@ impl Graphics {
 
             // Check if mapping completed
             if let Ok(Ok(())) = rx.try_recv() {
-                let data = buffer_slice.get_mapped_range();
+                let data = match buffer_slice.get_mapped_range() {
+                    Ok(data) => data,
+                    Err(err) => {
+                        log::error!("Failed to get mapped snapshot buffer range: {}", err);
+                        buffer.unmap();
+                        return None;
+                    }
+                };
                 let rgba_data = data.to_vec();
                 drop(data);
                 buffer.unmap();
@@ -859,7 +866,7 @@ impl Graphics {
                     staging_belt.recall();
 
                     state.clear_frame_resources();
-                    output.take().unwrap().present();
+                    queue.present(output.take().unwrap());
 
                     self.texture_pool.borrow_mut().cleanup(timestamp);
 
