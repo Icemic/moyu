@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-08-24
+
+### Changed
+
+1. Upgrade wgpu to 30.0 and fix breaking changes in the API.
+2. Upgrade huozi to 0.19.
+3. Upgrade other dependencies to latest versions.
+
+### Fixed
+
+1. Fix potential panic about snapshot buffer mapping.
+
 ## [0.17.3] - 2026-08-11
 
 ### Added

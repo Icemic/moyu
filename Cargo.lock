@@ -2095,7 +2095,7 @@ dependencies = [
 
 [[package]]
 name = "moyu"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "cfg_aliases",
  "embed-resource",
@@ -2121,7 +2121,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_audio"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2137,7 +2137,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_core"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2167,7 +2167,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_gamepad"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "cfg_aliases",
@@ -2183,7 +2183,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_macros"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -2193,7 +2193,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_nodes"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2219,7 +2219,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_ops"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "cfg_aliases",
@@ -2236,7 +2236,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_pal"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "android-activity",
  "android_logger",
@@ -2277,7 +2277,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_resource"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2291,7 +2291,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_runtime"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "ehttp",
@@ -2307,7 +2307,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_scenario"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -2325,7 +2325,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_steam"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "cfg_aliases",
@@ -2338,7 +2338,7 @@ dependencies = [
 
 [[package]]
 name = "moyu_video"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -3458,7 +3458,7 @@ checksum = "fae8ee26b0371a29a77d2b2d6b3ae13aa81def6f9bf1b1b92a32d279a5e709b7"
 
 [[package]]
 name = "run-wasm"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "devserver_lib",
  "pico-args",
