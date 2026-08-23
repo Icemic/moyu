@@ -304,29 +304,38 @@ impl Graphics {
                 rx.unwrap()
             };
 
-            // Check if mapping completed
-            if let Ok(Ok(())) = rx.try_recv() {
-                let data = match buffer_slice.get_mapped_range() {
-                    Ok(data) => data,
-                    Err(err) => {
-                        log::error!("Failed to get mapped snapshot buffer range: {}", err);
-                        buffer.unmap();
-                        return None;
-                    }
-                };
-                let rgba_data = data.to_vec();
-                drop(data);
-                buffer.unmap();
-                return Some((
-                    rgba_data,
-                    width,
-                    height,
-                    bytes_per_row,
-                    self.config.lock().format,
-                ));
-            } else {
-                // Put the buffer back if mapping didn't complete
-                *snapshot_buffer = Some((buffer, width, height, bytes_per_row, Some(rx)));
+            match rx.try_recv() {
+                Ok(Ok(())) => {
+                    let data = match buffer_slice.get_mapped_range() {
+                        Ok(data) => data,
+                        Err(err) => {
+                            log::error!("Failed to get mapped snapshot buffer range: {}", err);
+                            buffer.unmap();
+                            return None;
+                        }
+                    };
+                    let rgba_data = data.to_vec();
+                    drop(data);
+                    buffer.unmap();
+                    return Some((
+                        rgba_data,
+                        width,
+                        height,
+                        bytes_per_row,
+                        self.config.lock().format,
+                    ));
+                }
+                Ok(Err(err)) => {
+                    log::error!("Failed to map snapshot buffer: {}", err);
+                    buffer.unmap();
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => {
+                    *snapshot_buffer = Some((buffer, width, height, bytes_per_row, Some(rx)));
+                }
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    log::error!("Snapshot buffer mapping callback was dropped");
+                    buffer.unmap();
+                }
             }
         }
         None
@@ -806,6 +815,8 @@ impl Graphics {
 
                     staging_belt.finish();
 
+                    let mut pending_snapshot = None;
+
                     // Handle screenshot request
                     if self.snapshot_requested.swap(false, Ordering::Relaxed) {
                         let config = self.config.lock();
@@ -850,9 +861,7 @@ impl Graphics {
                             },
                         );
 
-                        // Store the buffer for later retrieval
-                        let mut snapshot_buffer_guard = self.snapshot_buffer.lock();
-                        *snapshot_buffer_guard =
+                        pending_snapshot =
                             Some((snapshot_buffer, width, height, padded_bytes_per_row, None));
                     }
 
@@ -863,6 +872,11 @@ impl Graphics {
                         std::iter::once(belt_encoder.take().unwrap().finish())
                             .chain(std::iter::once(encoder.take().unwrap().finish())),
                     );
+
+                    if let Some(snapshot) = pending_snapshot {
+                        self.snapshot_buffer.lock().replace(snapshot);
+                    }
+
                     staging_belt.recall();
 
                     state.clear_frame_resources();
