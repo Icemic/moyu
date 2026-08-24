@@ -376,32 +376,41 @@ export function createStackNavigator<
  */
 export function createStaticNavigation(navigator: Navigator<any, any>): FC {
   return () => {
-    // navigator._state is a Valtio proxy, useSnapshot makes it reactive
-    const navState = useSnapshot(navigator._state as any) as NavigationState;
-    const { pages, overlays } = navigator._descriptors;
-
-    // Get current page component
-    const pageDescriptor = pages[navState.currentPage];
-    const Page = pageDescriptor?.component || (() => null);
-
     return (
       <>
-        <PageParamsContext.Provider value={navState.pageParams[navState.currentPage]}>
-          <Page />
-        </PageParamsContext.Provider>
-
-        {navState.overlayStack.map((overlay) => {
-          const overlayDescriptor = overlays[overlay.type];
-          const OverlayComponent = overlayDescriptor?.component || (() => null);
-          return (
-            <OverlayParamsContext.Provider key={overlay.id} value={navState.overlayParams[overlay.id]}>
-              <OverlayComponent />
-            </OverlayParamsContext.Provider>
-          );
-        })}
+        <CurrentPage navigator={navigator} />
+        <OverlayStack navigator={navigator} />
       </>
     );
   };
+}
+
+function CurrentPage({ navigator }: { navigator: Navigator<any, any> }) {
+  const navState = useSnapshot(navigator._state as any) as NavigationState;
+  const { currentPage, pageParams } = navState;
+  const pageDescriptor = navigator._descriptors.pages[currentPage];
+  const Page = pageDescriptor?.component || (() => null);
+
+  return (
+    <PageParamsContext.Provider value={pageParams[currentPage]}>
+      <Page />
+    </PageParamsContext.Provider>
+  );
+}
+
+function OverlayStack({ navigator }: { navigator: Navigator<any, any> }) {
+  const navState = useSnapshot(navigator._state as any) as NavigationState;
+  const { overlays } = navigator._descriptors;
+
+  return navState.overlayStack.map((overlay) => {
+    const overlayDescriptor = overlays[overlay.type];
+    const OverlayComponent = overlayDescriptor?.component || (() => null);
+    return (
+      <OverlayParamsContext.Provider key={overlay.id} value={navState.overlayParams[overlay.id]}>
+        <OverlayComponent />
+      </OverlayParamsContext.Provider>
+    );
+  });
 }
 
 // ============================================================================
