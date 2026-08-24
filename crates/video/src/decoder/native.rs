@@ -171,26 +171,32 @@ fn find_library_path() -> Option<std::ffi::OsString> {
         }
     }
 
-    // Look next to the executable
-    let exe = std::env::current_exe().ok()?;
-    let dir = exe.parent()?;
+    #[cfg(target_os = "android")]
+    return Some("libmoyu_video.so".into());
 
-    #[cfg(target_os = "windows")]
-    let name = "moyu_video.dll";
-    #[cfg(target_os = "macos")]
-    let name = "libmoyu_video.dylib";
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    let name = "libmoyu_video.so";
+    #[cfg(not(target_os = "android"))]
+    {
+        // Look next to the executable
+        let exe = std::env::current_exe().ok()?;
+        let dir = exe.parent()?;
 
-    let path = dir.join(name);
-    if path.exists() {
-        Some(path.into_os_string())
-    } else {
-        log::info!(
-            "Video decoder library not found at {:?}, video playback will be unavailable",
-            path
-        );
-        None
+        #[cfg(target_os = "windows")]
+        let name = "moyu_video.dll";
+        #[cfg(target_os = "macos")]
+        let name = "libmoyu_video.dylib";
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        let name = "libmoyu_video.so";
+
+        let path = dir.join(name);
+        if path.exists() {
+            Some(path.into_os_string())
+        } else {
+            log::info!(
+                "Video decoder library not found at {:?}, video playback will be unavailable",
+                path
+            );
+            None
+        }
     }
 }
 
