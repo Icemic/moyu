@@ -48,6 +48,7 @@ export * from './bindings/DlcProgress';
 export * from './bindings/OverlayDialog';
 export * from './bindings/OverlayNotificationPosition';
 export * from './bindings/OverlayStoreFlag';
+export * from './bindings/PlatformInfo';
 export * from './bindings/SteamCommand';
 export * from './bindings/TimelinePossibleClip';
 export * from './bindings/WindowState';

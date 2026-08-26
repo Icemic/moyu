@@ -20,6 +20,43 @@ pub struct SystemPlugin {
     snapshot: Arc<ArcSwapOption<Snapshot>>,
 }
 
+#[derive(Debug, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, rename_all = "camelCase")]
+pub struct PlatformInfo {
+    pub is_linux: bool,
+    #[serde(rename = "isMacOS")]
+    #[ts(rename = "isMacOS")]
+    pub is_macos: bool,
+    pub is_android: bool,
+    #[serde(rename = "isIOS")]
+    #[ts(rename = "isIOS")]
+    pub is_ios: bool,
+    pub is_wasm: bool,
+    pub is_native: bool,
+    pub is_desktop: bool,
+    pub is_mobile: bool,
+    pub is_web: bool,
+}
+
+impl PlatformInfo {
+    pub const fn current() -> Self {
+        Self {
+            is_linux: cfg!(linux),
+            is_macos: cfg!(macos),
+            is_android: cfg!(android),
+            is_ios: cfg!(ios),
+            is_wasm: cfg!(wasm),
+            is_native: cfg!(native),
+            is_desktop: cfg!(desktop),
+            is_mobile: cfg!(mobile),
+            is_web: cfg!(web),
+        }
+    }
+}
+
+const PLATFORM_INFO: PlatformInfo = PlatformInfo::current();
+
 impl SystemPlugin {
     pub fn new(core: Arc<Core>) -> Self {
         Self {
@@ -66,6 +103,7 @@ pub enum SystemCommand {
     GetWindowInnerPosition,
     GetWindowInnerSize,
     GetStageSize,
+    GetPlatform,
     TakeSnapshot {
         width: Option<u32>,
         height: Option<u32>,
@@ -132,6 +170,9 @@ impl Command for SystemPlugin {
             SystemCommand::GetStageSize => {
                 let size = self.core.stage_size();
                 return Ok(Some(to_js(&size)?));
+            }
+            SystemCommand::GetPlatform => {
+                return Ok(Some(to_js(&PLATFORM_INFO)?));
             }
             SystemCommand::TakeSnapshot {
                 width,

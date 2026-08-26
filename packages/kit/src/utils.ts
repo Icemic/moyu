@@ -1,4 +1,5 @@
 import { executePluginCommand } from './moyu';
+import type { PlatformInfo } from './bindings/PlatformInfo';
 import type { BubbleEvent } from './events/base';
 import type { MoyuEventHandler } from './declaration';
 
@@ -11,6 +12,12 @@ export function getStageSize(): { width: number; height: number; scaleFactor: nu
     scaleFactor: number;
   };
   return stageSize;
+}
+
+export function getPlatform(): PlatformInfo {
+  return executePluginCommand('system', {
+    subCommand: 'getPlatform',
+  }) as PlatformInfo;
 }
 
 export type MakeNullOptional<T> = T extends unknown

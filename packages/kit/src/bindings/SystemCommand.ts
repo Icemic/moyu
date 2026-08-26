@@ -10,6 +10,7 @@ export type SystemCommand =
   | { subCommand: 'getWindowInnerPosition' }
   | { subCommand: 'getWindowInnerSize' }
   | { subCommand: 'getStageSize' }
+  | { subCommand: 'getPlatform' }
   | { subCommand: 'takeSnapshot'; width?: number; height?: number; keepAspectRatio?: boolean }
   | { subCommand: 'readFile'; path: string; format?: ReadFormat }
   | { subCommand: 'getParams' }
