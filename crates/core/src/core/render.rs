@@ -819,10 +819,15 @@ impl Graphics {
 
                     // Handle screenshot request
                     if self.snapshot_requested.swap(false, Ordering::Relaxed) {
-                        let config = self.config.lock();
-                        let width = config.width;
-                        let height = config.height;
-                        drop(config);
+                        let stage_rect =
+                            Rect::new(0.0, 0.0, stage_logical_size.0, stage_logical_size.1);
+                        let (origin_x, origin_y, width, height) =
+                            calculate_surface_physical_coordinates(
+                                &stage_rect,
+                                stage_logical_size,
+                                surface_logical_size,
+                                scale_factor,
+                            );
 
                         // Calculate aligned bytes_per_row to satisfy COPY_BYTES_PER_ROW_ALIGNMENT (256)
                         let padded_bytes_per_row = (width * 4 + COPY_BYTES_PER_ROW_ALIGNMENT - 1)
@@ -843,7 +848,11 @@ impl Graphics {
                             wgpu::TexelCopyTextureInfo {
                                 texture: &output.as_ref().unwrap().texture,
                                 mip_level: 0,
-                                origin: wgpu::Origin3d::ZERO,
+                                origin: wgpu::Origin3d {
+                                    x: origin_x,
+                                    y: origin_y,
+                                    z: 0,
+                                },
                                 aspect: wgpu::TextureAspect::All,
                             },
                             wgpu::TexelCopyBufferInfo {
