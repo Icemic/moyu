@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 1. Add `getPlatform` command to System plugin for distinguishing the current platform.
 
+### Fixed
+
+1. Resize snapshots to exact dimensions.
+2. Capture snapshots from the stage region.
+3. Adds Android-specific fallback from Vulkan to GLES when surface creation fails.
+
 ## [0.18.0] - 2026-08-24
 
 ### Changed
