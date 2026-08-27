@@ -17,6 +17,7 @@ import { ANDROID_FORMATS, ANDROID_PLATFORM, isAndroidFormat, packAndroid } from 
 import { formatBytes, loadMeta } from '../utils/engine.js';
 import { generateJsonSchema } from '../utils/generate-json-schema.js';
 import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
+import { ensureVideoDecoderLibrary, supportsVideoDecoder } from '../utils/video-decoder.js';
 
 // Disable web workers – not available in Node.js
 configure({ useWebWorkers: false });
@@ -108,6 +109,7 @@ export default defineCommand({
     let target: string | undefined;
     let isWeb = false;
     let isAndroid = false;
+    let includeVideoDecoder = false;
 
     if (!frameworkMode) {
       const metaPath = metaFile(projectRoot);
@@ -151,6 +153,15 @@ export default defineCommand({
         );
         process.exit(1);
       }
+
+      if (supportsVideoDecoder(target)) {
+        const selected = await consola.prompt('Include video playback plugin?', {
+          type: 'confirm',
+          initial: false,
+          cancel: 'symbol',
+        });
+        includeVideoDecoder = selected === true;
+      }
     }
 
     if (frameworkMode) {
@@ -161,6 +172,7 @@ export default defineCommand({
     }
     consola.info(`Compress: ${compress}`);
     if (isAndroid) consola.info(`Android format: ${args['android-format']}`);
+    if (includeVideoDecoder) consola.info('Video playback plugin: included');
     consola.info(`Output: ${outputDir}`);
 
     // 1. Build the project
@@ -199,6 +211,9 @@ export default defineCommand({
 
     // 4. Copy platform-specific files
     if (!frameworkMode) {
+      const videoDecoderLibrary = includeVideoDecoder
+        ? await ensureVideoDecoderLibrary(projectRoot, target!)
+        : undefined;
       if (isAndroid) {
         await packAndroid({
           projectRoot,
@@ -206,11 +221,13 @@ export default defineCommand({
           runtimePackageDir: tmpPackDir,
           outputDir,
           format: args['android-format'],
+          videoDecoderLibrary,
         });
       } else if (isWeb) {
         await copyWebEngine(projectRoot, targetPath!, tmpPackDir);
       } else {
         await copyNativeEngine(target!, targetPath!, tmpPackDir);
+        if (videoDecoderLibrary) await cp(videoDecoderLibrary, join(tmpPackDir, basename(videoDecoderLibrary)));
       }
     }
 

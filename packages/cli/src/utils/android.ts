@@ -41,6 +41,7 @@ interface PackAndroidOptions {
   runtimePackageDir: string;
   outputDir: string;
   format: string | undefined;
+  videoDecoderLibrary?: string;
 }
 
 interface AndroidSigning {
@@ -91,6 +92,7 @@ export async function packAndroid(options: PackAndroidOptions): Promise<void> {
     templateDir,
     workdir,
     config,
+    options.videoDecoderLibrary,
   );
 
   if (options.format === 'android-project') {
@@ -264,6 +266,7 @@ async function syncAndroidProject(
   templateDir: string,
   workdir: string,
   config: AndroidConfig,
+  videoDecoderLibrary?: string,
 ): Promise<void> {
   const appDir = join(workdir, 'app');
   const mainDir = join(appDir, 'src', 'main');
@@ -278,6 +281,13 @@ async function syncAndroidProject(
   const jniLibsDir = join(mainDir, 'jniLibs', 'arm64-v8a');
   await mkdir(jniLibsDir, { recursive: true });
   await cp(engineLibrary, join(jniLibsDir, 'libmoyu.so'));
+  await rm(join(jniLibsDir, 'libmoyu_video.so'), { force: true });
+  if (videoDecoderLibrary) {
+    if (!existsSync(videoDecoderLibrary)) {
+      throw new Error(`Android video decoder library not found: ${videoDecoderLibrary}`);
+    }
+    await cp(videoDecoderLibrary, join(jniLibsDir, 'libmoyu_video.so'));
+  }
 
   await rm(resDir, { recursive: true, force: true });
   await cp(join(templateDir, 'app', 'src', 'main', 'res'), resDir, { recursive: true });
