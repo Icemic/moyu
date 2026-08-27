@@ -1,3 +1,4 @@
+use anyhow::{Result, anyhow};
 use log::{info, warn};
 use moyu_pal::config::{RenderingBackend, get_engine_config};
 use std::sync::Arc;
@@ -106,9 +107,18 @@ pub async fn create_wgpu_surface(
     Queue,
     SurfaceConfiguration,
 ) {
-    // The instance is a handle to our GPU
-    // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
     let backends = match get_engine_config().backend {
+        #[cfg(android)]
+        RenderingBackend::Auto => {
+            match create_wgpu_surface_with_backends(window, size, wgpu::Backends::VULKAN).await {
+                Ok(surface) => return surface,
+                Err(err) => {
+                    warn!("Vulkan is unavailable on this device, falling back to GLES: {err}");
+                    wgpu::Backends::GL
+                }
+            }
+        }
+        #[cfg(not(android))]
         RenderingBackend::Auto => wgpu::Backends::all(),
         RenderingBackend::Vulkan => wgpu::Backends::VULKAN,
         RenderingBackend::Metal => wgpu::Backends::METAL,
@@ -117,13 +127,29 @@ pub async fn create_wgpu_surface(
         RenderingBackend::GLES => wgpu::Backends::GL,
     };
 
+    create_wgpu_surface_with_backends(window, size, backends)
+        .await
+        .unwrap_or_else(|err| panic!("Failed to initialize graphics: {err}"))
+}
+
+async fn create_wgpu_surface_with_backends(
+    window: &Arc<Window>,
+    size: &PhysicalSize<u32>,
+    backends: wgpu::Backends,
+) -> Result<(
+    Instance,
+    Surface<'static>,
+    Device,
+    Queue,
+    SurfaceConfiguration,
+)> {
     let mut instance_descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
     instance_descriptor.backends = backends;
     instance_descriptor.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::Fxc;
     let instance = wgpu::Instance::new(instance_descriptor);
     let surface = instance
         .create_surface(window.clone())
-        .expect("Failed to create surface.");
+        .map_err(|err| anyhow!("failed to create surface: {err}"))?;
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
@@ -132,17 +158,37 @@ pub async fn create_wgpu_surface(
             apply_limit_buckets: false,
         })
         .await
-        .expect("No suitable GPU adapters found on the system.");
+        .map_err(|err| anyhow!("no suitable GPU adapter found: {err}"))?;
 
     let adapter_info = adapter.get_info();
     info!("Using {} ({:?})", adapter_info.name, adapter_info.backend);
 
+    let adapter_limits = adapter.limits();
+
+    // Some drivers report bogus limits. Android emulators, for instance, pass the host's Vulkan
+    // extension list through but never fill in the `VkPhysicalDeviceProperties2` pNext chain, so
+    // the buffer limits stay at 0. Reject such adapters here so the caller can fall back, instead
+    // of failing later on the first buffer allocation.
+    let mut unmet_limit = None;
+    wgpu::Limits::downlevel_webgl2_defaults().check_limits_with_fail_fn(
+        &adapter_limits,
+        true,
+        |name, required, reported| {
+            unmet_limit = Some(format!("{name}: needs {required}, reported {reported}"));
+        },
+    );
+    if let Some(unmet_limit) = unmet_limit {
+        return Err(anyhow!(
+            "adapter does not meet the engine's minimum limits ({unmet_limit})"
+        ));
+    }
+
     let required_limits = if adapter_info.backend == wgpu::Backend::Gl {
         // downgrade to webgl2 limits for web
-        wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits())
+        wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter_limits)
     } else {
         // use the adapter's limits directly for native and webgpu
-        adapter.limits()
+        adapter_limits
     };
 
     // graphic card with specific backend
@@ -156,7 +202,7 @@ pub async fn create_wgpu_surface(
             trace: wgpu::Trace::Off,
         })
         .await
-        .expect("Unable to find a suitable GPU adapter.");
+        .map_err(|err| anyhow!("unable to create device: {err}"))?;
 
     let caps = surface.get_capabilities(&adapter);
 
@@ -224,7 +270,7 @@ pub async fn create_wgpu_surface(
     };
     surface.configure(&device, &config);
 
-    (instance, surface, device, queue, config)
+    Ok((instance, surface, device, queue, config))
 }
 
 #[inline(always)]
