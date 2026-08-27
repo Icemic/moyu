@@ -204,7 +204,7 @@ impl Snapshot {
         let image = self.to_image()?;
 
         // Perform scaling
-        let image = image.resize(
+        let image = image.resize_exact(
             target_width,
             target_height,
             image::imageops::FilterType::Lanczos3,
