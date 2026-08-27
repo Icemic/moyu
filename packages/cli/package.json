@@ -1,6 +1,6 @@
 {
   "name": "@momoyu-ink/cli",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "CLI toolchain for the Moyu Visual Novel Engine",
   "type": "module",
   "license": "MPL-2.0",
