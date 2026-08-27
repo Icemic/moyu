@@ -56,16 +56,18 @@ export default defineCommand({
     const channel = versions.channels[selectedChannel];
 
     // 3. Select version
-    const versionNames = Object.keys(channel.versions);
-    if (versionNames.length === 0) {
+    const versionEntries = Object.entries(channel.versions).sort(
+      ([, a], [, b]) => b.published_at.localeCompare(a.published_at),
+    );
+    if (versionEntries.length === 0) {
       throw new Error(`No versions available in channel "${selectedChannel}".`);
     }
 
     const selectedVersion = await consola.prompt('Select version:', {
       type: 'select',
       cancel: 'symbol',
-      options: versionNames.map((name) => ({
-        label: name,
+      options: versionEntries.map(([name, entry]) => ({
+        label: `${name} (${entry.published_at.slice(0, 10)})`,
         value: name,
         hint: name === channel.latest ? 'latest' : undefined,
       })),
