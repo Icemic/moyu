@@ -28,6 +28,11 @@ rustflags = ["-C", "target-feature=+simd128", "--cfg", "web_sys_unstable_apis"]
 [profile.dev]
 debug = 1
 
+[profile.release]
+strip = true
+codegen-units = 1
+panic = "abort"
+
 [build]
 # rustc-wrapper = "/usr/local/bin/sccache"
 
