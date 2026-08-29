@@ -47,7 +47,12 @@ wasm-bindgen-futures = "0.4"
 web-sys = "0.3"
 web-time = "1.1"
 wgpu = {version = "30.0", features = ["fragile-send-sync-non-atomic-wasm", "webgl"]}
-winit = "0.30"
+winit = {version = "0.30", default-features = false, features = [
+  "wayland",
+  "wayland-dlopen",
+  "x11",
+  "rwh_06",
+]}
 zip = {version = "8.5.1", default-features = false, features = ["zstd"]}
 
 kira = {version = "0.12", git = "https://github.com/Icemic/kira", branch = "stopped_callback"}
