@@ -15,6 +15,7 @@ members = [
   "crates/scenario",
   "crates/gamepad",
   "crates/steam",
+  "crates/image",
 ]
 resolver = "2"
 
@@ -62,6 +63,7 @@ steamworks = {git = "https://github.com/DeepSpaceMill/steamworks-rs", branch = "
 moyu_audio = {path = "crates/audio"}
 moyu_core = {path = "crates/core"}
 moyu_gamepad = {path = "crates/gamepad"}
+moyu_image = {path = "crates/image"}
 moyu_macros = {path = "crates/macros"}
 moyu_nodes = {path = "crates/nodes"}
 moyu_ops = {path = "crates/ops"}

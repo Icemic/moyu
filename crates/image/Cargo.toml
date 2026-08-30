@@ -1,0 +1,17 @@
+[package]
+authors = ["Icemic <bingfeng.web@gmail.com>"]
+description = "Image decoding and pixel processing for Moyu engine."
+edition = "2024"
+license = "MPL-2.0"
+name = "moyu_image"
+repository = "https://github.com/DeepSpaceMill/moyu"
+version.workspace = true
+
+[dependencies]
+fast_image_resize = "6.1"
+image-webp = "0.2"
+png = "0.18"
+thiserror = "2.0"
+zune-bmp = {version = "0.5", features = ["std"]}
+zune-core = "0.5"
+zune-jpeg = "0.5"
