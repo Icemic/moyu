@@ -1,5 +1,5 @@
-use image::GenericImageView;
 use log::debug;
+use moyu_image::decode;
 use moyu_pal::url::Url;
 use moyu_pal::{fs, task};
 use std::sync::Arc;
@@ -7,7 +7,6 @@ use wgpu::{Device, Queue};
 
 use crate::mipmap::MipmapGenerator;
 use crate::types::{Texture, TextureStatus};
-use crate::utils::premultiply_alpha;
 
 pub(crate) fn load_texture(
     device: &Device,
@@ -61,15 +60,11 @@ pub(crate) fn load_image_to_texture(
     label: Option<&str>,
     mipmap_generator: Option<&MipmapGenerator>,
 ) -> anyhow::Result<()> {
-    let img = image::load_from_memory(&bytes)?;
+    let mut image = decode(bytes)?;
+    let dimensions = (image.width(), image.height());
 
-    let dimensions = img.dimensions();
-
-    // TODO: map various color type to wgpu::TextureFormat
-    let mut rgba = img.into_rgba8();
-
-    // perform premultiply alpha
-    premultiply_alpha(&mut rgba);
+    image.premultiply_alpha_in_place();
+    let rgba = image.into_data();
 
     texture.set_status(TextureStatus::Uploading);
 

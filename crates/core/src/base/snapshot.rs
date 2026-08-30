@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-// re-export to use in other modules
-pub use image::ImageFormat;
-
 /// Represents the format of the snapshot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -63,43 +60,28 @@ impl Snapshot {
         }
     }
 
-    /// Convert raw snapshot data (with potential padding and BGRA format) to a DynamicImage.
-    /// This handles both stride padding removal and BGRA->RGBA conversion.
-    fn to_image(&self) -> std::io::Result<image::DynamicImage> {
-        let bytes_per_pixel = self.bytes_per_pixel();
-        let data_width = self.stride / bytes_per_pixel;
-
-        // Create image from raw data with stride width
-        let mut image = match image::RgbaImage::from_raw(data_width, self.height, self.data.clone())
-        {
-            Some(img) => image::DynamicImage::ImageRgba8(img),
-            None => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Failed to create image from raw data",
-                ));
-            }
+    /// Convert raw snapshot data with potential padding and BGRA format to RGBA8.
+    fn to_rgba8(&self) -> std::io::Result<moyu_image::Rgba8Image> {
+        let image = match self.format {
+            SnapshotFormat::Rgba8 => moyu_image::Rgba8Image::from_rgba8(
+                self.width,
+                self.height,
+                self.stride,
+                self.data.clone(),
+            ),
+            SnapshotFormat::Bgra8 => moyu_image::Rgba8Image::from_bgra8(
+                self.width,
+                self.height,
+                self.stride,
+                self.data.clone(),
+            ),
+            SnapshotFormat::Rgba16f => unreachable!("RGBA16F is rejected before conversion"),
         };
 
-        // Strip padding by cropping to actual width if needed
-        if data_width > self.width {
-            image = image.crop_imm(0, 0, self.width, self.height);
-        }
-
-        // Handle BGRA to RGBA conversion if needed
-        if matches!(self.format, SnapshotFormat::Bgra8) {
-            if let image::DynamicImage::ImageRgba8(ref mut img) = image {
-                for pixel in img.pixels_mut() {
-                    let [b, g, r, a] = pixel.0;
-                    pixel.0 = [r, g, b, a]; // BGRA -> RGBA
-                }
-            }
-        }
-
-        Ok(image)
+        image.map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))
     }
 
-    pub fn save_to_buffer(&self, format: ImageFormat) -> std::io::Result<Vec<u8>> {
+    pub fn save_to_buffer(&self) -> std::io::Result<Vec<u8>> {
         // RGBA16F format is not supported for saving as image
         if matches!(self.format, SnapshotFormat::Rgba16f) {
             return Err(std::io::Error::new(
@@ -115,45 +97,28 @@ impl Snapshot {
             ));
         }
 
-        // Use the shared conversion logic
-        let image = self.to_image()?;
-
-        // Encode as byte array in the specified format
-        let mut buffer = std::io::Cursor::new(Vec::new());
-        if let Err(e) = image.write_to(&mut buffer, format) {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, e));
-        }
-
-        Ok(buffer.into_inner())
+        let image = self.to_rgba8()?;
+        moyu_image::encode_webp(&image)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::Other, error))
     }
 
     pub fn save_to_file(&self, path: &str) -> std::io::Result<()> {
-        // Infer format from file extension
-        let format = if let Some(extension) = std::path::Path::new(path).extension() {
-            match extension.to_str().unwrap_or("").to_lowercase().as_str() {
-                "png" => image::ImageFormat::Png,
-                "jpg" | "jpeg" => image::ImageFormat::Jpeg,
-                "bmp" => image::ImageFormat::Bmp,
-                "tiff" | "tif" => image::ImageFormat::Tiff,
-                "webp" => image::ImageFormat::WebP,
-                _ => image::ImageFormat::Png, // Default to PNG
-            }
-        } else {
-            image::ImageFormat::Png // Default to PNG
-        };
+        let extension = std::path::Path::new(path)
+            .extension()
+            .and_then(|extension| extension.to_str());
+        if !extension.is_some_and(|extension| extension.eq_ignore_ascii_case("webp")) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Snapshot files must use the .webp extension",
+            ));
+        }
 
-        // Use save_to_buffer to get encoded data
-        let buffer = self.save_to_buffer(format)?;
+        let buffer = self.save_to_buffer()?;
 
         // Write to file
         std::fs::write(path, buffer)?;
 
-        log::info!(
-            "Snapshot saved to {:?} (format: {}, image format: {:?})",
-            path,
-            self.format,
-            format
-        );
+        log::info!("Snapshot saved to {:?} (format: {})", path, self.format);
         Ok(())
     }
 
@@ -164,7 +129,7 @@ impl Snapshot {
     /// - `height`: New height  
     /// - `keep_aspect`: Whether to maintain aspect ratio. If true, will scale proportionally to fit within the specified dimensions, one side may be smaller than specified
     pub fn resize(&mut self, width: u32, height: u32, keep_aspect: bool) -> std::io::Result<()> {
-        // RGBA16F format is not supported for resize operation because image crate doesn't support it directly
+        // RGBA16F is outside moyu_image's RGBA8 processing model.
         if matches!(self.format, SnapshotFormat::Rgba16f) {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Unsupported,
@@ -200,19 +165,11 @@ impl Snapshot {
             (width, height)
         };
 
-        // Use the shared conversion logic to get a clean image
-        let image = self.to_image()?;
-
-        // Perform scaling
-        let image = image.resize_exact(
-            target_width,
-            target_height,
-            image::imageops::FilterType::Lanczos3,
-        );
-        let image = image.to_rgba8();
-
-        // Update data
-        let data = image.into_raw();
+        let image = self.to_rgba8()?;
+        let image = image
+            .resize(target_width, target_height)
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::Other, error))?;
+        let data = image.into_data();
 
         self.width = target_width;
         self.height = target_height;

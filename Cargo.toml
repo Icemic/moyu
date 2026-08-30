@@ -33,7 +33,6 @@ csscolorparser = {version = "0.8", features = ["serde"]}
 dashmap = "6.1.0"
 glam = {version = "0.33", features = ["bytemuck"]}
 huozi = "0.19"
-image = {version = "0.25", default-features = false, features = ["bmp", "jpeg", "png", "webp"]}
 libloading = "0.9"
 log = "0.4"
 quickjs-rusty = {version = "0.14", features = ["truncate-float-to-int"]}

@@ -4,13 +4,11 @@ name = "moyu_resource"
 version.workspace = true
 
 [dependencies]
-rayon = "1.10"
-
 anyhow = {workspace = true}
 arc-swap = {workspace = true}
 dashmap = {workspace = true}
-image = {workspace = true}
 log = {workspace = true}
 wgpu = {workspace = true}
 
+moyu_image = {workspace = true}
 moyu_pal = {workspace = true}

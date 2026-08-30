@@ -1631,12 +1631,8 @@ checksum = "85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
- "image-webp",
  "moxcms",
  "num-traits",
- "png",
- "zune-core",
- "zune-jpeg",
 ]
 
 [[package]]
@@ -2153,8 +2149,8 @@ dependencies = [
  "cursor-icon",
  "dashmap",
  "glam",
- "image",
  "log",
+ "moyu_image",
  "moyu_macros",
  "moyu_pal",
  "moyu_resource",
@@ -2194,6 +2190,7 @@ dependencies = [
  "fast_image_resize",
  "image-webp",
  "png",
+ "rayon",
  "thiserror 2.0.20",
  "zune-bmp",
  "zune-core",
@@ -2221,14 +2218,13 @@ dependencies = [
  "csscolorparser",
  "glam",
  "huozi",
- "image",
  "log",
  "moyu_core",
+ "moyu_image",
  "moyu_macros",
  "moyu_pal",
  "moyu_resource",
  "moyu_video",
- "reiterator",
  "serde",
  "ts-rs",
  "unicode-segmentation",
@@ -2301,10 +2297,9 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "dashmap",
- "image",
  "log",
+ "moyu_image",
  "moyu_pal",
- "rayon",
  "wgpu",
 ]
 
@@ -3442,12 +3437,6 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
-
-[[package]]
-name = "reiterator"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "028b23ade895f2751497651053218787cb377043c8555175f97ea433253e4605"
 
 [[package]]
 name = "renderdoc-sys"

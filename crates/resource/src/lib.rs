@@ -1,7 +1,6 @@
 mod loaders;
 mod mipmap;
 pub mod types;
-pub mod utils;
 
 use dashmap::DashMap;
 use mipmap::MipmapGenerator;

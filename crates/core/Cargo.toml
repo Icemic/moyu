@@ -21,7 +21,6 @@ bytemuck = {workspace = true}
 csscolorparser = {workspace = true}
 dashmap = {workspace = true}
 glam = {workspace = true}
-image = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
 serde_json = {workspace = true}
@@ -30,6 +29,7 @@ wgpu = {workspace = true}
 winit = {workspace = true, features = ["serde"]}
 
 moyu_macros = {workspace = true}
+moyu_image = {workspace = true}
 moyu_pal = {workspace = true}
 moyu_resource = {workspace = true}
 

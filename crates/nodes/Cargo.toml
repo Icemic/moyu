@@ -12,7 +12,6 @@ default = []
 text = ["dep:huozi"]
 
 [dependencies]
-reiterator = "0.3.0"
 unicode-segmentation = "1.12"
 weak-table = "0.3.2"
 
@@ -20,13 +19,13 @@ anyhow = {workspace = true}
 arc-swap = {workspace = true}
 bytemuck = {workspace = true}
 glam = {workspace = true}
-image = {workspace = true}
 log = {workspace = true}
 serde = {workspace = true}
 ts-rs = {workspace = true}
 wgpu = {workspace = true}
 
 moyu_core = {workspace = true}
+moyu_image = {workspace = true}
 moyu_macros = {workspace = true}
 moyu_pal = {workspace = true}
 moyu_resource = {workspace = true}

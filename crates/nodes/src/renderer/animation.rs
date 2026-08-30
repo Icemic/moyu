@@ -1,19 +1,14 @@
-use std::io::Cursor;
 use std::sync::Arc;
 
-use image::codecs::png::PngDecoder;
-use image::codecs::webp::WebPDecoder;
-use image::{AnimationDecoder, EncodableLayout, ImageDecoder};
 use moyu_core::base::*;
 use moyu_core::core::render_command::RenderCommand;
 use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use moyu_core::traits::{RenderCommandSender, Renderer};
+use moyu_image::{AnimationDecoder, AnimationFormat as ImageAnimationFormat};
 use moyu_pal::dir::assets_dir;
-use moyu_resource::utils::premultiply_alpha;
-use reiterator::Reiterate;
 use wgpu::{util::DeviceExt, *};
 
-use crate::nodes::{Animation, AnimationFormat, FrameIterator};
+use crate::nodes::{Animation, AnimationFormat};
 use crate::utils::{QUAD_INDICES, QUAD_INDICES_COUNT, QuadVertex, calculate_quad_vertices};
 
 pub struct AnimationRenderer {
@@ -47,7 +42,6 @@ impl AnimationRenderer {
             label: Some("texture_bind_group_layout"),
         });
 
-        // shader
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Animation Shader"),
             source: ShaderSource::Wgsl(include_str!("./shaders/simple.wgsl").into()),
@@ -183,59 +177,22 @@ impl Renderer for AnimationRenderer {
             node.src = Some(next_src);
         }
 
-        // if there is next_data, decode it and create texture and frames,
+        // if there is next_data, decode it and create texture and decoder,
         // then reset next_data to None
         if let Some(next_data) = node.next_data.swap(None) {
             let format = node.format;
-            // FIXME: avoid data copy
-            let next_data = (&*next_data).to_owned();
-
-            // decode animation frames
-            let (frames, size) = match format {
-                AnimationFormat::APNG => match PngDecoder::new(Cursor::new(next_data)) {
-                    Ok(img) => {
-                        let size = img.dimensions();
-
-                        if !img.is_apng().unwrap_or(false) {
-                            log::error!("The provided PNG is not an APNG");
-                            (None, size)
-                        } else {
-                            match img.apng() {
-                                Ok(img) => {
-                                    let frames = img.into_frames().reiterate();
-                                    (Some(frames), size)
-                                }
-                                Err(e) => {
-                                    log::error!("Failed to decode APNG: {}", e);
-                                    (None, size)
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("Failed to decode PNG: {}", e);
-                        (None, (0, 0))
-                    }
-                },
-                AnimationFormat::WEBP => match WebPDecoder::new(Cursor::new(next_data)) {
-                    Ok(img) => {
-                        let size = img.dimensions();
-
-                        if !img.has_animation() {
-                            log::error!("The provided WEBP is not an animated WEBP");
-                            (None, size)
-                        } else {
-                            let frames = img.into_frames().reiterate();
-
-                            (Some(frames), size)
-                        }
-                    }
-                    Err(e) => {
-                        log::error!("Failed to decode WEBP: {}", e);
-                        (None, (0, 0))
-                    }
-                },
+            let format = match format {
+                AnimationFormat::APNG => ImageAnimationFormat::Apng,
+                AnimationFormat::WEBP => ImageAnimationFormat::WebP,
             };
+            let decoder = match AnimationDecoder::new((*next_data).clone(), format) {
+                Ok(decoder) => decoder,
+                Err(error) => {
+                    log::error!("Failed to decode animation: {}", error);
+                    return;
+                }
+            };
+            let size = (decoder.width(), decoder.height());
 
             // create new texture view
             let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -270,8 +227,9 @@ impl Renderer for AnimationRenderer {
                 label: None,
             });
 
-            node.frames = frames.map(FrameIterator);
+            node.decoder = Some(decoder);
             node.next_frame = None;
+            node.upload_buffer.clear();
             node.view = Some(view);
             node.bind_group = Some(bind_group);
             node.base_mut().mark_update_vertices();
@@ -335,84 +293,63 @@ impl Renderer for AnimationRenderer {
                 }
             }
 
-            if let Some(frames) = node.frames.as_mut() {
+            if let Some(decoder) = node.decoder.as_mut() {
                 let mut next_frame = node.next_frame.take();
-                let mut current_frame: Option<(f64, image::ImageBuffer<image::Rgba<u8>, Vec<u8>>)> =
-                    None;
-
+                let mut show_current_frame = false;
                 let mut reset_count = 0;
 
                 loop {
-                    if let Some((_, mut buffer)) = current_frame.take() {
-                        let width = buffer.width();
-                        let height = buffer.height();
-
-                        premultiply_alpha(&mut buffer);
-
+                    if show_current_frame {
+                        if let Err(error) =
+                            decoder.write_premultiplied_frame(&mut node.upload_buffer)
+                        {
+                            log::warn!("Failed to prepare animation frame: {}", error);
+                            break;
+                        }
                         queue.write_texture(
                             view.texture().as_image_copy(),
-                            buffer.as_bytes(),
+                            &node.upload_buffer,
                             wgpu::TexelCopyBufferLayout {
                                 offset: 0,
-                                bytes_per_row: Some(4 * width),
-                                rows_per_image: Some(height),
+                                bytes_per_row: Some(4 * decoder.width()),
+                                rows_per_image: Some(decoder.height()),
                             },
                             size,
                         );
-
                         break;
                     }
 
-                    // get next frame if not exists
                     if next_frame.is_none() {
-                        next_frame = frames.next().and_then(|f| {
-                            let Ok(f) = f.value else {
-                                log::warn!("Failed to get next frame in animation.");
-                                return None;
-                            };
-
-                            let delay = f.delay().numer_denom_ms();
-                            let delay = (delay.0 as f64) / (delay.1 as f64) / 1000.0;
-
-                            Some((payload.timestamp + delay, f.buffer().to_owned()))
-                        });
-                    }
-
-                    // still none, means iterator ended, reset to beginning and continue
-                    if next_frame.is_none() {
-                        if reset_count > 0 {
-                            // already reset once, avoid infinite loop
-                            log::warn!("Animation frames iterator ended unexpectedly.");
-                            break;
+                        match decoder.advance() {
+                            Ok(Some(delay)) => {
+                                next_frame = Some(payload.timestamp + delay.as_secs_f64());
+                            }
+                            Ok(None) if reset_count == 0 => {
+                                reset_count += 1;
+                                if let Err(error) = decoder.restart() {
+                                    log::warn!("Failed to restart animation: {}", error);
+                                    break;
+                                }
+                                continue;
+                            }
+                            Ok(None) => {
+                                log::warn!("Animation decoder ended unexpectedly.");
+                                break;
+                            }
+                            Err(error) => {
+                                log::warn!("Failed to decode animation frame: {}", error);
+                                break;
+                            }
                         }
-                        reset_count += 1;
-                        frames.restart();
-                        continue;
                     }
 
-                    // next_frame must have been set here
-
-                    let next_frame = next_frame.take().unwrap();
-
-                    if payload.timestamp >= next_frame.0 {
-                        // time to show this frame
-                        current_frame = Some(next_frame);
-
-                        // Since next_frame is consumed, we go to next iteration to get another frame,
-                        // it will finally fall to the `else` branch below.
-                        // By doing this, we can skip frames if the timestamp is too far ahead.
-                        continue;
+                    let next_frame = next_frame.take().expect("animation frame is scheduled");
+                    if payload.timestamp >= next_frame {
+                        show_current_frame = true;
                     } else {
-                        // not yet time, put it back to next_frame and break
                         node.next_frame = Some(next_frame);
-
-                        if current_frame.is_none() {
-                            // no frame to show yet, break
-                            break;
-                        }
+                        break;
                     }
-
-                    // current_frame must have been set here
                 }
             }
         }

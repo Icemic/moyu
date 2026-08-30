@@ -15,7 +15,6 @@ use std::time::Duration;
 use anyhow::Result;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use moyu_core::base::ImageFormat;
 use moyu_core::core::get_core;
 use moyu_core::plugins::SystemPlugin;
 use moyu_core::traits::PluginBaseTrait;
@@ -717,7 +716,7 @@ impl ScenarioPlugin {
 
             if let Some(snapshot) = system_ref.snapshot().load().clone() {
                 drop(system);
-                let image_data = snapshot.save_to_buffer(ImageFormat::WebP)?;
+                let image_data = snapshot.save_to_buffer()?;
                 zip.start_file("snapshot.webp", options)?;
                 zip.write_all(&image_data)?;
             } else {
