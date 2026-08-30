@@ -420,8 +420,7 @@ impl Renderer for TextRenderer {
                     self.last_texture_version
                         .store(image_version, Ordering::Relaxed);
 
-                    let sdf_bitmap = huozi.texture_image();
-                    let dimensions = sdf_bitmap.dimensions();
+                    let sdf_bitmap = huozi.texture_pixels();
                     queue.write_texture(
                         wgpu::TexelCopyTextureInfo {
                             aspect: wgpu::TextureAspect::All,
@@ -429,15 +428,15 @@ impl Renderer for TextRenderer {
                             mip_level: 0,
                             origin: wgpu::Origin3d::ZERO,
                         },
-                        sdf_bitmap,
+                        sdf_bitmap.pixels(),
                         wgpu::TexelCopyBufferLayout {
                             offset: 0,
                             bytes_per_row: Some(4 * sdf_bitmap.width()),
                             rows_per_image: Some(sdf_bitmap.height()),
                         },
                         wgpu::Extent3d {
-                            width: dimensions.0,
-                            height: dimensions.1,
+                            width: sdf_bitmap.width(),
+                            height: sdf_bitmap.height(),
                             depth_or_array_layers: 1,
                         },
                     );
