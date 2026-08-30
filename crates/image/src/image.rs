@@ -151,6 +151,30 @@ mod tests {
     }
 
     #[test]
+    fn premultiply_handles_large_strided_images_without_touching_padding() {
+        let width = 100;
+        let height = 100;
+        let stride = 404;
+        let mut data = vec![9; stride * height];
+        for row in data.chunks_exact_mut(stride) {
+            for pixel in row[..width * 4].chunks_exact_mut(4) {
+                pixel.copy_from_slice(&[200, 100, 50, 128]);
+            }
+        }
+        let mut image = Rgba8Image::from_rgba8(width as u32, height as u32, stride as u32, data)
+            .unwrap();
+
+        image.premultiply_alpha_in_place();
+
+        for row in image.data().chunks_exact(stride) {
+            assert!(row[..width * 4]
+                .chunks_exact(4)
+                .all(|pixel| pixel == [100, 50, 25, 128]));
+            assert_eq!(&row[width * 4..], [9, 9, 9, 9]);
+        }
+    }
+
+    #[test]
     fn resize_returns_compact_rgba8() {
         let image =
             Rgba8Image::from_rgba8(2, 1, 8, vec![10, 20, 30, 255, 40, 50, 60, 255]).unwrap();

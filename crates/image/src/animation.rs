@@ -15,6 +15,16 @@ pub struct AnimationDecoder {
     inner: AnimationDecoderInner,
 }
 
+impl std::fmt::Debug for AnimationDecoder {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("AnimationDecoder")
+            .field("width", &self.width())
+            .field("height", &self.height())
+            .finish_non_exhaustive()
+    }
+}
+
 enum AnimationDecoderInner {
     Apng(ApngDecoder),
     WebP(WebPAnimationDecoder),
