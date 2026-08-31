@@ -18,6 +18,7 @@ pub enum AnimationFormat {
     #[default]
     APNG,
     WEBP,
+    JXL,
 }
 
 #[derive(Debug, Node)]

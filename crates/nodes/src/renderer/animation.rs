@@ -184,6 +184,7 @@ impl Renderer for AnimationRenderer {
             let format = match format {
                 AnimationFormat::APNG => ImageAnimationFormat::Apng,
                 AnimationFormat::WEBP => ImageAnimationFormat::WebP,
+                AnimationFormat::JXL => ImageAnimationFormat::Jxl,
             };
             let decoder = match AnimationDecoder::new((*next_data).clone(), format) {
                 Ok(decoder) => decoder,
