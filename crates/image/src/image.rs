@@ -161,15 +161,17 @@ mod tests {
                 pixel.copy_from_slice(&[200, 100, 50, 128]);
             }
         }
-        let mut image = Rgba8Image::from_rgba8(width as u32, height as u32, stride as u32, data)
-            .unwrap();
+        let mut image =
+            Rgba8Image::from_rgba8(width as u32, height as u32, stride as u32, data).unwrap();
 
         image.premultiply_alpha_in_place();
 
         for row in image.data().chunks_exact(stride) {
-            assert!(row[..width * 4]
-                .chunks_exact(4)
-                .all(|pixel| pixel == [100, 50, 25, 128]));
+            assert!(
+                row[..width * 4]
+                    .chunks_exact(4)
+                    .all(|pixel| pixel == [100, 50, 25, 128])
+            );
             assert_eq!(&row[width * 4..], [9, 9, 9, 9]);
         }
     }

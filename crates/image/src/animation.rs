@@ -1,7 +1,7 @@
 use std::io::Cursor;
 use std::time::Duration;
 
-use crate::codecs::rgba8_len;
+use crate::codecs::{JxlAnimationDecoder, rgba8_len};
 use crate::error::{ImageError, Result};
 use crate::ops;
 
@@ -9,6 +9,7 @@ use crate::ops;
 pub enum AnimationFormat {
     Apng,
     WebP,
+    Jxl,
 }
 
 pub struct AnimationDecoder {
@@ -28,6 +29,7 @@ impl std::fmt::Debug for AnimationDecoder {
 enum AnimationDecoderInner {
     Apng(ApngDecoder),
     WebP(WebPAnimationDecoder),
+    Jxl(JxlAnimationDecoder),
 }
 
 impl AnimationDecoder {
@@ -35,6 +37,7 @@ impl AnimationDecoder {
         let inner = match format {
             AnimationFormat::Apng => AnimationDecoderInner::Apng(ApngDecoder::new(data)?),
             AnimationFormat::WebP => AnimationDecoderInner::WebP(WebPAnimationDecoder::new(data)?),
+            AnimationFormat::Jxl => AnimationDecoderInner::Jxl(JxlAnimationDecoder::new(data)?),
         };
         Ok(Self { inner })
     }
@@ -43,6 +46,7 @@ impl AnimationDecoder {
         match &self.inner {
             AnimationDecoderInner::Apng(decoder) => decoder.width,
             AnimationDecoderInner::WebP(decoder) => decoder.width,
+            AnimationDecoderInner::Jxl(decoder) => decoder.width,
         }
     }
 
@@ -50,6 +54,7 @@ impl AnimationDecoder {
         match &self.inner {
             AnimationDecoderInner::Apng(decoder) => decoder.height,
             AnimationDecoderInner::WebP(decoder) => decoder.height,
+            AnimationDecoderInner::Jxl(decoder) => decoder.height,
         }
     }
 
@@ -57,6 +62,7 @@ impl AnimationDecoder {
         match &mut self.inner {
             AnimationDecoderInner::Apng(decoder) => decoder.advance(),
             AnimationDecoderInner::WebP(decoder) => decoder.advance(),
+            AnimationDecoderInner::Jxl(decoder) => decoder.advance(),
         }
     }
 
@@ -68,6 +74,9 @@ impl AnimationDecoder {
             AnimationDecoderInner::WebP(decoder) => {
                 ops::copy_premultiplied_rgba8(&decoder.canvas, output)
             }
+            AnimationDecoderInner::Jxl(decoder) => {
+                ops::copy_premultiplied_rgba8(&decoder.canvas, output)
+            }
         }
         Ok(())
     }
@@ -76,6 +85,7 @@ impl AnimationDecoder {
         match &mut self.inner {
             AnimationDecoderInner::Apng(decoder) => decoder.restart(),
             AnimationDecoderInner::WebP(decoder) => decoder.restart(),
+            AnimationDecoderInner::Jxl(decoder) => decoder.restart(),
         }
     }
 }

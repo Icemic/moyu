@@ -1,18 +1,22 @@
 mod bmp;
 mod jpeg;
+mod jxl;
 mod png;
 mod webp;
 
 use crate::Rgba8Image;
 use crate::error::{ImageError, Result};
 
-const MAX_DECODE_BYTES: usize = 512 * 1024 * 1024;
+pub(crate) use jxl::JxlAnimationDecoder;
+
+pub(crate) const MAX_DECODE_BYTES: usize = 512 * 1024 * 1024;
 
 pub(crate) fn decode(data: &[u8]) -> Result<Rgba8Image> {
     match detect_format(data) {
         Some(Format::Png) => png::decode(data),
         Some(Format::WebP) => webp::decode(data),
         Some(Format::Jpeg) => jpeg::decode(data),
+        Some(Format::Jxl) => jxl::decode(data),
         Some(Format::Bmp) => bmp::decode(data),
         None => Err(ImageError::new("unsupported image format")),
     }
@@ -43,6 +47,7 @@ enum Format {
     Png,
     WebP,
     Jpeg,
+    Jxl,
     Bmp,
 }
 
@@ -53,6 +58,8 @@ fn detect_format(data: &[u8]) -> Option<Format> {
         Some(Format::WebP)
     } else if data.starts_with(&[0xff, 0xd8, 0xff]) {
         Some(Format::Jpeg)
+    } else if jxl::is_jxl(data) {
+        Some(Format::Jxl)
     } else if data.starts_with(b"BM") {
         Some(Format::Bmp)
     } else {
