@@ -3,6 +3,7 @@ mod codecs;
 mod error;
 mod image;
 mod ops;
+mod utils;
 
 pub use animation::{AnimationDecoder, AnimationFormat};
 pub use error::ImageError;

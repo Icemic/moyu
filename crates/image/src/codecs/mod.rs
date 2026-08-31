@@ -8,6 +8,8 @@ use crate::Rgba8Image;
 use crate::error::{ImageError, Result};
 
 pub(crate) use jxl::JxlAnimationDecoder;
+pub(crate) use png::ApngDecoder;
+pub(crate) use webp::WebPAnimationDecoder;
 
 pub(crate) const MAX_DECODE_BYTES: usize = 512 * 1024 * 1024;
 
