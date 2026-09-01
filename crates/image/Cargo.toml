@@ -8,7 +8,9 @@ repository = "https://github.com/DeepSpaceMill/moyu"
 version.workspace = true
 
 [dependencies]
-fast_image_resize = {version = "6.1", features = ["only_u8x4"]}
+fast_image_resize = {git = "https://github.com/Icemic/fast_image_resize", branch = "optimized_for_binary_size", features = [
+  "only_u8x4",
+]}
 image-webp = "0.2"
 jxl = "0.6"
 png = "0.18"

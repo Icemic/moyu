@@ -1,5 +1,8 @@
 use std::borrow::Cow;
 
+use fast_image_resize::pixels::U8x4;
+use fast_image_resize::{ImageView, ImageViewMut};
+
 use crate::error::{ImageError, Result};
 use crate::ops;
 
@@ -9,6 +12,36 @@ pub struct Rgba8Image {
     height: u32,
     stride: u32,
     data: Vec<u8>,
+}
+
+unsafe impl ImageView for Rgba8Image {
+    type Pixel = U8x4;
+
+    fn width(&self) -> u32 {
+        self.width
+    }
+
+    fn height(&self) -> u32 {
+        self.height
+    }
+
+    fn iter_rows(&self, start_row: u32) -> impl Iterator<Item = &[Self::Pixel]> {
+        let row_bytes = self.width as usize * 4;
+        let stride = self.stride as usize;
+        self.data[start_row as usize * stride..stride * self.height as usize]
+            .chunks_exact(stride)
+            .map(move |row| unsafe { row[..row_bytes].align_to::<U8x4>().1 })
+    }
+}
+
+unsafe impl ImageViewMut for Rgba8Image {
+    fn iter_rows_mut(&mut self, start_row: u32) -> impl Iterator<Item = &mut [Self::Pixel]> {
+        let row_bytes = self.width as usize * 4;
+        let stride = self.stride as usize;
+        self.data[start_row as usize * stride..stride * self.height as usize]
+            .chunks_exact_mut(stride)
+            .map(move |row| unsafe { row[..row_bytes].align_to_mut::<U8x4>().1 })
+    }
 }
 
 impl Rgba8Image {
@@ -102,7 +135,7 @@ impl Rgba8Image {
     }
 
     pub fn premultiply_alpha_in_place(&mut self) {
-        ops::premultiply_alpha(&mut self.data, self.width, self.height, self.stride);
+        fast_image_resize::premultiply_alpha_inplace_u8x4(self);
     }
 
     pub fn resize(&self, width: u32, height: u32) -> Result<Self> {
