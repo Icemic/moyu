@@ -19,7 +19,6 @@ export default class BunnyMark {
       const id = moyu.createInstance('sprite', '', {
         src: texture,
         pivot: [0.5, 1.0],
-        anchor: [0.5, 1.0],
       });
 
       const bunny = new Bunny(id, this.bounds);

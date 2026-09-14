@@ -16,7 +16,7 @@ const bunnies = [
   'bunny/rabbitv3.png',
 ];
 
-// bunny size is 25x32 with anchor [0.5, 1.0]
+// Bunny coordinates use the bottom center of its 25x32 sprite.
 const bunnyMark = new BunnyMark(bunnies, {
   left: 12,
   right: 1280 - 12,
