@@ -1965,9 +1965,9 @@ dependencies = [
 
 [[package]]
 name = "libquickjs-ng-sys"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "868cb21bc05a07b59c56fc46a5d2714d22ca460c65048ca68c905b52d73b2d92"
+checksum = "7ff602f27b4336428a16f9f7d373d7436139afedf31ec9be02829d639f02a954"
 dependencies = [
  "bindgen",
  "cc",
@@ -3856,7 +3856,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steamworks"
 version = "0.13.1"
-source = "git+https://github.com/DeepSpaceMill/steamworks-rs?branch=main#d5304a521e328de9dfb9e8c2360641b132084ea8"
+source = "git+https://github.com/DeepSpaceMill/steamworks-rs?branch=main#cb1ae9cbc1fa3c5bf3e85d61a92817cc785e0987"
 dependencies = [
  "bitflags 2.13.1",
  "pastey",
@@ -3867,7 +3867,7 @@ dependencies = [
 [[package]]
 name = "steamworks-sys"
 version = "0.13.0"
-source = "git+https://github.com/DeepSpaceMill/steamworks-rs?branch=main#d5304a521e328de9dfb9e8c2360641b132084ea8"
+source = "git+https://github.com/DeepSpaceMill/steamworks-rs?branch=main#cb1ae9cbc1fa3c5bf3e85d61a92817cc785e0987"
 dependencies = [
  "bindgen",
  "libloading 0.8.9",

@@ -19,6 +19,14 @@ rustflags = []
 linker = "rust-lld.exe"
 rustflags = ["-Clink-arg=/STACK:8388608"]
 
+[target.x86_64-pc-windows-gnu]
+linker = "clang"
+rustflags = ["-Clink-arg=-fuse-ld=lld", "-Clink-arg=-Wl,--stack,8388608"]
+
+[target.x86_64-pc-windows-gnullvm]
+linker = "clang"
+rustflags = ["-Clink-arg=-fuse-ld=lld", "-Clink-arg=-Wl,--stack,8388608"]
+
 [target.wasm32-unknown-unknown]
 linker = "rust-lld"
 rustflags = ["-C", "target-feature=+simd128", "--cfg", "web_sys_unstable_apis"]
