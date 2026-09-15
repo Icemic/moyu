@@ -7,15 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-15
+
 ### Added
 
 1. Add `getPlatform` command to System plugin for distinguishing the current platform.
+2. Add JPEG XL image decoding support for static and animated images.
+3. Add Windows GNU and GNU/LLVM target support.
+
+### Changed
+
+1. Replace the engine's image processing implementation with the `moyu_image` pipeline.
+2. Update `huozi` texture pixel handling and upgrade `huozi` to 0.20.
 
 ### Fixed
 
 1. Resize snapshots to exact dimensions.
 2. Capture snapshots from the stage region.
 3. Adds Android-specific fallback from Vulkan to GLES when surface creation fails.
+4. Load the native video decoder library correctly on Android.
+
+### Performance
+
+1. Optimize image resizing and alpha premultiplication.
 
 ## [0.18.0] - 2026-08-24
 
