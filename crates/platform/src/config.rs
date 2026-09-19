@@ -43,13 +43,33 @@ pub struct SteamConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum FontFile {
+    Path(String),
+    Sources(Vec<FontSourceConfig>),
+}
+
+impl Default for FontFile {
+    fn default() -> Self {
+        Self::Path("fonts/default.otf".to_string())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum FontSourceConfig {
+    Path(String),
+    Source { path: String, alias: Option<String> },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct MoyuConfig {
     pub entry: Option<String>,
     pub entry_filename: String,
     pub app_name: String,
     pub autorun: AutorunMode,
-    pub font_file: String,
+    pub font_file: FontFile,
     pub window_title: String,
     pub window_state: WindowState,
     pub window_resizable: bool,
@@ -80,7 +100,7 @@ impl Default for MoyuConfig {
             entry_filename: "index.js".to_string(),
             app_name: "moyu".to_string(),
             autorun: AutorunMode::All,
-            font_file: "fonts/default.otf".to_string(),
+            font_file: FontFile::default(),
             window_title: "moyu".to_string(),
             window_state: WindowState::Idle,
             window_resizable: false,

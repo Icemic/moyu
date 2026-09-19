@@ -3,19 +3,19 @@ use std::borrow::Cow;
 use anyhow::Result;
 use csscolorparser::Color;
 use huozi::glyph_vertices::GlyphVertices;
-use huozi::layout::{LayoutDirection, LayoutStyle, SegmentGlyphSpan};
+use huozi::layout::{LayoutStyle, SegmentGlyphSpan};
 use huozi::parser::{Segment, SegmentId, ShadowStyle, StrokeStyle, TextStyle};
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use wgpu::Buffer;
 
-use moyu_core::{apply_patch, apply_patch_optional};
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Command, NodeEventSource};
 use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js, to_js};
 use moyu_core::utils::patch::Patch;
+use moyu_core::{apply_patch, apply_patch_optional};
 
 use crate::events::TextEvent;
 
@@ -136,19 +136,12 @@ pub struct TextProps {
     pub parse_markup: Patch<bool>,
 
     /* layout styles */
-    /// the writing direction of the text in the box,
-    /// only `Horizontal` (right-to-left) or `Vertical` (top-to-bottom) is valid.
-    #[ts(type = "'horizontal' | 'vertical'", optional)]
-    pub direction: Patch<LayoutDirection>,
     /// the width of box.
     #[ts(type = "number", optional)]
     pub box_width: Patch<f64>,
     /// the height of box.
     #[ts(type = "number", optional)]
     pub box_height: Patch<f64>,
-    /// the size of the glyph grid which each character be fit to, usually equals to `font_size`.
-    pub glyph_grid_size: Patch<f64>,
-
     /* text styles */
     pub font_size: Patch<f64>,
     #[ts(type = "string", optional)]
@@ -215,15 +208,13 @@ impl Node for Text {
         apply_patch!(props.print_mode => self.print_mode, TextPrintMode::default());
         apply_patch!(props.print_speed => self.print_speed, 2.0);
         apply_patch!(props.parse_markup => self.parse_markup, true);
-        apply_patch!(props.direction => self.layout_style.direction, LayoutDirection::default());
         apply_patch_optional!(props.box_width => self.layout_style.box_width, None);
         apply_patch_optional!(props.box_height => self.layout_style.box_height, None);
 
-        apply_patch!(props.glyph_grid_size => self.layout_style.glyph_grid_size, LayoutStyle::default().glyph_grid_size);
         apply_patch!(props.font_size => self.text_style.font_size, TextStyle::default().font_size);
         apply_patch!(props.fill_color => self.text_style.fill_color, TextStyle::default().fill_color);
-        apply_patch!(props.line_height => self.text_style.line_height, TextStyle::default().line_height);
-        apply_patch!(props.indent => self.text_style.indent, TextStyle::default().indent);
+        apply_patch!(props.line_height => self.layout_style.line_height, LayoutStyle::default().line_height);
+        apply_patch!(props.indent => self.layout_style.indent, LayoutStyle::default().indent);
 
         // stroke and shadow style must be updated after switch turn on, otherwise it will be default value.
 

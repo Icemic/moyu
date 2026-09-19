@@ -2,11 +2,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use glam::vec3a;
-use huozi::Huozi;
 use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
+use huozi::{FontSource, Huozi};
 use log::{error, info};
-use moyu_pal::config::get_engine_config;
+use moyu_pal::config::{FontFile, FontSourceConfig, get_engine_config};
 use moyu_pal::dir::assets_dir;
 use moyu_pal::sync::Mutex;
 use wgpu::Texture;
@@ -181,31 +181,46 @@ impl TextRenderer {
     }
 
     pub fn init_huozi_from_data(&self, font_data: Vec<u8>) {
-        let _huozi = Huozi::new(font_data);
-        self.huozi.lock().replace(_huozi);
+        match Huozi::new(vec![FontSource::new(font_data)]) {
+            Ok(huozi) => {
+                self.huozi.lock().replace(huozi);
+            }
+            Err(err) => error!("Failed to initialize text renderer: {err}"),
+        }
     }
 
     pub fn init_huozi_from_env(&self) {
         let huozi = self.huozi.clone();
         moyu_pal::task::spawn(async move {
-            let font_file = &get_engine_config().font_file;
-            let asset_full_path = assets_dir().join(font_file).unwrap();
-
-            info!("Loading font file: {}", asset_full_path);
-
-            let font_data = match moyu_pal::fs::read(&asset_full_path).await {
-                Ok(data) => data,
-                Err(e) => {
-                    error!(
-                        "Failed to read font file: {}, text rendering may not work.",
-                        e
-                    );
-                    return;
-                }
+            let font_files = match &get_engine_config().font_file {
+                FontFile::Path(path) => vec![FontSourceConfig::Path(path.clone())],
+                FontFile::Sources(sources) => sources.clone(),
             };
+            let mut font_sources = Vec::with_capacity(font_files.len());
 
-            let _huozi = Huozi::new(font_data);
-            huozi.lock().replace(_huozi);
+            for font_file in font_files {
+                let (path, alias) = match font_file {
+                    FontSourceConfig::Path(path) => (path, None),
+                    FontSourceConfig::Source { path, alias } => (path, alias),
+                };
+                let asset_full_path = assets_dir().join(&path).unwrap();
+                info!("Loading font file: {}", asset_full_path);
+
+                match moyu_pal::fs::read(&asset_full_path).await {
+                    Ok(data) => match alias {
+                        Some(alias) => font_sources.push(FontSource::with_alias(data, alias)),
+                        None => font_sources.push(FontSource::new(data)),
+                    },
+                    Err(err) => error!("Failed to read font file {}: {err}", asset_full_path),
+                }
+            }
+
+            match Huozi::new(font_sources) {
+                Ok(huozi_instance) => {
+                    huozi.lock().replace(huozi_instance);
+                }
+                Err(err) => error!("Failed to initialize text renderer: {err}"),
+            }
         });
     }
 
@@ -226,47 +241,50 @@ impl TextRenderer {
         let tint = node.base().tint();
         let opacity = node.base().global_opacity();
 
-        // assumes that each glyph has the same number of vertices in fill, stroke, and shadow
-        let total_count_til_last_in_vertices = glyphs.iter().fold(0, |acc, g| acc + g.fill.len());
-
-        // assumes that each glyph has the same number of vertices in fill, stroke, and shadow
-        let fade_from_index_in_vertices = fade_from_index.map(|v| {
-            node.glyph_vertices[..v]
-                .iter()
-                .fold(0, |acc, g| acc + g.fill.len())
-        });
-
         let mut vertices: Vec<Vertex> = Vec::with_capacity(glyphs.len() * 4 * 3);
         let mut indices: Vec<u16> = Vec::with_capacity(glyphs.len() * 6);
 
         let mut index_offset = 0;
 
-        if node.text_style.shadow.is_some() {
-            for glyph in glyphs.iter() {
-                vertices.extend(&glyph.shadow);
-                indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-
-                index_offset += glyph.shadow.len() as u16;
+        for (glyph_index, glyph) in glyphs.iter().enumerate() {
+            if let Some(mut shadow) = glyph.shadow {
+                if fade_from_index.is_some_and(|index| glyph_index >= index) {
+                    for vertex in &mut shadow {
+                        vertex.color[3] *= fade_progress;
+                    }
+                }
+                vertices.extend(shadow);
+                indices.extend(glyph.indices.iter().map(|index| index + index_offset));
+                index_offset += shadow.len() as u16;
             }
         }
 
-        if node.text_style.stroke.is_some() {
-            for glyph in glyphs.iter() {
-                vertices.extend(&glyph.stroke);
-                indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-
-                index_offset += glyph.stroke.len() as u16;
+        for (glyph_index, glyph) in glyphs.iter().enumerate() {
+            if let Some(mut stroke) = glyph.stroke {
+                if fade_from_index.is_some_and(|index| glyph_index >= index) {
+                    for vertex in &mut stroke {
+                        vertex.color[3] *= fade_progress;
+                    }
+                }
+                vertices.extend(stroke);
+                indices.extend(glyph.indices.iter().map(|index| index + index_offset));
+                index_offset += stroke.len() as u16;
             }
         }
 
-        for glyph in glyphs.iter() {
-            vertices.extend(&glyph.fill);
-            indices.extend(glyph.indices.iter().map(|i| i + index_offset));
-
-            index_offset += glyph.fill.len() as u16;
+        for (glyph_index, glyph) in glyphs.iter().enumerate() {
+            let mut fill = glyph.fill;
+            if fade_from_index.is_some_and(|index| glyph_index >= index) {
+                for vertex in &mut fill {
+                    vertex.color[3] *= fade_progress;
+                }
+            }
+            vertices.extend(fill);
+            indices.extend(glyph.indices.iter().map(|index| index + index_offset));
+            index_offset += fill.len() as u16;
         }
 
-        for (i, vertex) in vertices.iter_mut().enumerate() {
+        for vertex in &mut vertices {
             // FIXME: convertion between Vec2 and [f32; 2] may cause additional cost
             // y axis is inverted, so we need to invert it back, apply transform and invert it again
             let p = transform.transform_point3a(vec3a(vertex.position[0], vertex.position[1], 1.0));
@@ -279,13 +297,7 @@ impl TextRenderer {
             let color_r = vertex.color[0] * tint.r * tint_a;
             let color_g = vertex.color[1] * tint.g * tint_a;
             let color_b = vertex.color[2] * tint.b * tint_a;
-            let mut color_a = vertex.color[3] * tint_a;
-
-            if let Some(fade_from_index_in_vertices) = fade_from_index_in_vertices {
-                if i % total_count_til_last_in_vertices >= fade_from_index_in_vertices {
-                    color_a *= fade_progress;
-                }
-            }
+            let color_a = vertex.color[3] * tint_a;
 
             vertex.color = [color_r, color_g, color_b, color_a];
         }
@@ -652,20 +664,8 @@ fn get_cursor_position(node: &Text, next_index: usize) -> (f32, f32) {
         return (0., 0.);
     }
 
-    if let Some(glyph) = &node.glyph_vertices.get(last_index as usize) {
-        if node.layout_style.direction == huozi::layout::LayoutDirection::Horizontal {
-            // the last graph is top-right corner, this may be changed by huozi in the future
-            return (
-                (glyph.x + glyph.width) as f32 * glyph.scale_ratio as f32,
-                glyph.y as f32 * glyph.scale_ratio as f32,
-            );
-        } else {
-            // bottom-left corner
-            return (
-                glyph.x as f32 * glyph.scale_ratio as f32,
-                (glyph.y + glyph.height) as f32 * glyph.scale_ratio as f32,
-            );
-        }
+    if let Some(glyph) = node.glyph_vertices.get(last_index as usize) {
+        return ((glyph.x + glyph.width) as f32, glyph.y as f32);
     }
 
     (0., 0.)

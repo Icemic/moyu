@@ -52,7 +52,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let gamma = fill_gamma + in.gamma;
 
-    let outer = smoothstep(in.buffer - gamma, in.buffer + gamma, dist);
+    let outer = smoothstep(in.buffer - gamma, in.buffer + gamma, dist) * smoothstep(0.0, 0.001, dist);
     let inner = smoothstep(in.fill_buffer - fill_gamma, in.fill_buffer + fill_gamma, dist);
     return vec4(in.color.rgb, (outer - inner) * in.color.a);
 }
