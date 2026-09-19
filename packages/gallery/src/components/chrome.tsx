@@ -100,7 +100,6 @@ export function SectionTabs<T extends string>({
             textStyle={{
               ...BUTTON_TEXT_STYLE,
               fontSize: 20,
-              glyphGridSize: 20,
               fillColor: active ? COLOR.accent : COLOR.navText,
             }}
             onPress={() => onChange(option.value)}

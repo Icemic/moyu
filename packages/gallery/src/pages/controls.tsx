@@ -48,7 +48,7 @@ function ButtonPanel() {
           <Button
             sprite={{ ...BUTTON_SPRITE, targetWidth: 272, targetHeight: 56 }}
             text={t`左对齐`}
-            textStyle={{ ...BUTTON_TEXT_STYLE, fontSize: 20, glyphGridSize: 20 }}
+            textStyle={{ ...BUTTON_TEXT_STYLE, fontSize: 20 }}
             lockOn="hover"
             textAlign="left"
             textOffsetX={14}
@@ -56,7 +56,7 @@ function ButtonPanel() {
           <Button
             sprite={{ ...BUTTON_SPRITE, targetWidth: 272, targetHeight: 56 }}
             text={t`右对齐`}
-            textStyle={{ ...BUTTON_TEXT_STYLE, fontSize: 20, glyphGridSize: 20 }}
+            textStyle={{ ...BUTTON_TEXT_STYLE, fontSize: 20 }}
             textAlign="right"
             textOffsetX={258}
           />

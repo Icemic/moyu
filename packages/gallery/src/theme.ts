@@ -100,7 +100,6 @@ export const BUTTON_SPRITE: ControlSpriteProps = {
 
 export const BUTTON_TEXT_STYLE: ControlTextStyle = {
   fontSize: 22,
-  glyphGridSize: 22,
   fillColor: '#ffffff',
 };
 

@@ -6,7 +6,6 @@ import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, INPUT_BACKGROUND, INPUT_CARET,
 
 const INPUT_TEXT_STYLE = {
   fontSize: 28,
-  glyphGridSize: 28,
   fillColor: COLOR.text,
 } as const;
 

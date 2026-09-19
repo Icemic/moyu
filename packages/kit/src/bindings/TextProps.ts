@@ -12,11 +12,6 @@ export type TextProps = {
   printSpeed?: number;
   parseMarkup?: boolean;
   /**
-   * the writing direction of the text in the box,
-   * only `Horizontal` (right-to-left) or `Vertical` (top-to-bottom) is valid.
-   */
-  direction?: 'horizontal' | 'vertical';
-  /**
    * the width of box.
    */
   boxWidth?: number;
@@ -24,10 +19,6 @@ export type TextProps = {
    * the height of box.
    */
   boxHeight?: number;
-  /**
-   * the size of the glyph grid which each character be fit to, usually equals to `font_size`.
-   */
-  glyphGridSize?: number;
   fontSize?: number;
   fillColor?: string;
   lineHeight?: number;

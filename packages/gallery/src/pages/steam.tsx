@@ -58,7 +58,7 @@ function AchievementSection({ run }: { run: (command: SteamCommand) => void }) {
             trigger={{ ...SELECT_TRIGGER, targetWidth: 520 }}
             list={{ ...SELECT_LIST, targetWidth: 520 }}
             option={{ ...SELECT_OPTION, targetWidth: 512 }}
-            textStyle={{ ...BUTTON_TEXT_STYLE, fontSize: 18, glyphGridSize: 18 }}
+            textStyle={{ ...BUTTON_TEXT_STYLE, fontSize: 18 }}
           />
           <hbox gap={16}>
             <Button
