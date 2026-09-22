@@ -19,10 +19,11 @@ type TextPrintMode = 'instant' | 'typewriter' | 'printer';
 
 function TextStylesPanel() {
   const { t } = useLingui();
+  const [interactionState, setInteractionState] = useState('idle');
 
   return (
-    <Panel title={t`Text 文本样式`} width={736} height={380} note={t`描边、阴影、颜色与 boxWidth 自动换行。`}>
-      <vbox gap={22}>
+    <Panel title={t`Text 文本样式`} width={736} height={500} note={t`完善的排版、富文本渲染，可交互区。`}>
+      <vbox gap={18}>
         <text text={t`默认文本样式 Default 30px`} fontSize={30} fillColor={COLOR.text} />
         <text
           text={t`描边与阴影 Stroke & Shadow`}
@@ -33,8 +34,8 @@ function TextStylesPanel() {
           strokeWidth={3}
           shadow
           shadowColor="#000000aa"
-          shadowOffsetX={4}
-          shadowOffsetY={5}
+          shadowOffsetX={2}
+          shadowOffsetY={3}
           shadowBlur={4}
         />
         <hbox gap={18}>
@@ -46,9 +47,32 @@ function TextStylesPanel() {
         <text
           text={t`固定宽度文本框：设定 boxWidth 后，这段文字会在到达宽度上限时自动换行，并可通过 lineHeight 控制行距。`}
           fontSize={22}
-          lineHeight={34}
           fillColor={COLOR.caption}
           boxWidth={660}
+        />
+        <text
+          text={
+            t`试试移入或点击` +
+            `<link id="gallery-interaction" target="https://momoyu.ink"><color=${interactionState === 'enter' ? '#007bff' : interactionState === 'down' ? '#28a745' : '#6c757d'}>` +
+            t`这段交互文本` +
+            `</color></link>` +
+            t`以查看交互状态变化。`
+          }
+          fontSize={26}
+          fillColor={COLOR.accent}
+          boxWidth={660}
+          interactive
+          onInteraction={({ id: _, kind }) => {
+            if (kind === 'enter') {
+              setInteractionState('enter');
+            } else if (kind === 'leave') {
+              setInteractionState('idle');
+            } else if (kind === 'down') {
+              setInteractionState('down');
+            } else if (kind === 'up') {
+              setInteractionState('idle');
+            }
+          }}
         />
       </vbox>
     </Panel>
@@ -154,7 +178,9 @@ function TextPrintingPanel() {
           <text
             key={`${printMode}-${playbackKey}`}
             // This sample copy intentionally stays in original text and is excluded from i18n.
-            text={'我们所经历的每个平凡的日常，也许就是连续发生的奇迹。\n日々私たちが過ごしている日常は、実は、奇跡の連続なのかもしれない。'}
+            text={
+              '我们所经历的每个平凡的日常，也许就是连续发生的奇迹。\n日々私たちが過ごしている日常は、実は、奇跡の連続なのかもしれない。'
+            }
             x={28}
             y={24}
             fontSize={28}
@@ -175,7 +201,12 @@ function SpritePanel() {
   const { t } = useLingui();
 
   return (
-    <Panel title={t`Sprite 精灵`} width={1504} height={430} note={t`area 裁剪源图区域；nineslice 保持边角不变形地拉伸。`}>
+    <Panel
+      title={t`Sprite 精灵`}
+      width={1504}
+      height={430}
+      note={t`area 裁剪源图区域；nineslice 保持边角不变形地拉伸。`}
+    >
       <hbox gap={32}>
         <vbox gap={16} alignItems="center">
           <text {...TEXT.caption} text={t`完整原图 250x240`} />

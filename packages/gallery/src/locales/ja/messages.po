@@ -77,7 +77,7 @@ msgstr "Achievement と Steamworks API の手動テスト。"
 msgid "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
 msgstr "Achievement ページに表示される数値進捗は、バックエンドで紐付けられた Stat から取得されます。書き込み後は StoreStats が必要です。"
 
-#: src/pages/primitives.tsx:208
+#: src/pages/primitives.tsx:239
 msgid "Animation 帧动画"
 msgstr "Animation フレームアニメーション"
 
@@ -85,7 +85,7 @@ msgstr "Animation フレームアニメーション"
 msgid "API name 来自 App ID 480 的真实后台配置。"
 msgstr "API name は App ID 480 の実際のバックエンド設定を使用しています。"
 
-#: src/pages/primitives.tsx:208
+#: src/pages/primitives.tsx:239
 msgid "APNG 格式帧动画；tint 同样作用于动画帧。"
 msgstr "APNG 形式のフレームアニメーションです。tint はアニメーションフレームにも適用されます。"
 
@@ -93,11 +93,11 @@ msgstr "APNG 形式のフレームアニメーションです。tint はアニ�
 msgid "App 480 没有可确认的 Timeline 与 float stat 配置，因此不伪造成功参数。"
 msgstr "App 480 には確認可能な Timeline と float stat の設定がないため、成功するような偽のパラメーターは使用しません。"
 
-#: src/pages/primitives.tsx:178
+#: src/pages/primitives.tsx:208
 msgid "area 裁剪源图区域；nineslice 保持边角不变形地拉伸。"
 msgstr "area は元画像の領域を切り抜きます。nineslice は角を変形させずに引き伸ばします。"
 
-#: src/pages/primitives.tsx:186
+#: src/pages/primitives.tsx:217
 msgid "area：从中间截取"
 msgstr "area：中央部分を切り抜き"
 
@@ -133,15 +133,15 @@ msgstr "Button、Checkbox、Radio、Select、Slider、ScrollView。"
 msgid "Checkbox 勾选框"
 msgstr "Checkbox チェックボックス"
 
-#: src/pages/primitives.tsx:227
+#: src/pages/primitives.tsx:258
 msgid "Clip 裁剪"
 msgstr "Clip クリッピング"
 
-#: src/pages/primitives.tsx:64
+#: src/pages/primitives.tsx:88
 msgid "Container 变换"
 msgstr "Container 変形"
 
-#: src/pages/input.tsx:152
+#: src/pages/input.tsx:151
 msgid "disabled：点击后不获得焦点"
 msgstr "disabled：クリックしてもフォーカスされません"
 
@@ -161,15 +161,15 @@ msgstr "HBox onLayout：{measured}"
 msgid "Input 输入框"
 msgstr "Input 入力欄"
 
-#: src/pages/primitives.tsx:116
+#: src/pages/primitives.tsx:140
 msgid "printMode"
 msgstr "printMode"
 
-#: src/pages/primitives.tsx:112
+#: src/pages/primitives.tsx:136
 msgid "printMode 控制打印方式，printSpeed 控制逐字或逐行打印速度。"
 msgstr "printMode で表示方式を、printSpeed で文字単位または行単位の表示速度を設定します。"
 
-#: src/pages/primitives.tsx:134
+#: src/pages/primitives.tsx:158
 msgid "printSpeed：{printSpeed}"
 msgstr "printSpeed：{printSpeed}"
 
@@ -189,7 +189,7 @@ msgstr "Raw WGSL シェーダー"
 msgid "Raw WGSL、参数槽与时间控制。"
 msgstr "Raw WGSL、パラメータースロット、時間制御。"
 
-#: src/pages/input.tsx:135
+#: src/pages/input.tsx:134
 msgid "readOnly：允许聚焦，不允许输入"
 msgstr "readOnly：フォーカス可能ですが、入力はできません"
 
@@ -221,7 +221,7 @@ msgstr "space-between：間隔は均等で、gap = 20 以上になります。"
 msgid "Spring 动画"
 msgstr "Spring アニメーション"
 
-#: src/pages/primitives.tsx:178
+#: src/pages/primitives.tsx:205
 msgid "Sprite 精灵"
 msgstr "Sprite スプライト"
 
@@ -233,15 +233,15 @@ msgstr "Sprite、Text、Clip、Animation、および共通ノードプロパテ�
 msgid "Steam（仅桌面端）"
 msgstr "Steam（デスクトップ版のみ）"
 
-#: src/pages/primitives.tsx:109
+#: src/pages/primitives.tsx:133
 msgid "Text 文本打印"
 msgstr "Text テキスト表示"
 
-#: src/pages/primitives.tsx:24
+#: src/pages/primitives.tsx:25
 msgid "Text 文本样式"
 msgstr "Text テキストスタイル"
 
-#: src/pages/primitives.tsx:216
+#: src/pages/primitives.tsx:247
 msgid "tint 金色"
 msgstr "tint ゴールド"
 
@@ -261,7 +261,7 @@ msgstr "useTransition 出入りアニメーション"
 msgid "VBox、HBox、测量、对齐与动态重排。"
 msgstr "VBox、HBox、計測、配置、動的な並べ替え。"
 
-#: src/pages/primitives.tsx:67
+#: src/pages/primitives.tsx:91
 msgid "x / scale / rotation 作用于整个子树；点击色块切换两组目标值。"
 msgstr "x / scale / rotation はサブツリー全体に適用されます。カラーブロックをクリックすると、2 組の目標値が切り替わります。"
 
@@ -278,7 +278,7 @@ msgstr "次の状態：{0}"
 msgid "下拉列表展开时会覆盖下方内容（zIndex）。"
 msgstr "ドロップダウンリストを開くと、下の内容に重なって表示されます（zIndex）。"
 
-#: src/pages/primitives.tsx:191
+#: src/pages/primitives.tsx:222
 msgid "九宫格：圆角与描边不随拉伸变形，线条不模糊"
 msgstr "9 スライス：引き伸ばしても角丸と枠線は変形せず、線もぼやけません"
 
@@ -286,7 +286,11 @@ msgstr "9 スライス：引き伸ばしても角丸と枠線は変形せず、�
 msgid "亮度 Brightness"
 msgstr "明るさ Brightness"
 
-#: src/pages/input.tsx:83
+#: src/pages/primitives.tsx:59
+msgid "以查看交互状态变化。"
+msgstr "して、インタラクション状態の変化を確認できます。"
+
+#: src/pages/input.tsx:82
 msgid "使用 Microsoft 拼音输入时，候选窗应跟随缩放、旋转后的文字末尾，并保持在 caret 附近。"
 msgstr "Microsoft Pinyin で入力すると、候補ウィンドウは拡大・回転後のテキスト末尾に追従し、caret の近くに表示される必要があります。"
 
@@ -322,11 +326,11 @@ msgstr "直近の呼び出し"
 msgid "准备中"
 msgstr "準備中"
 
-#: src/pages/input.tsx:148
+#: src/pages/input.tsx:147
 msgid "切换为只读"
 msgstr "読み取り専用に切り替え"
 
-#: src/pages/input.tsx:148
+#: src/pages/input.tsx:147
 msgid "切换为可编辑"
 msgstr "編集可能に切り替え"
 
@@ -359,7 +363,7 @@ msgstr "アニメーション / Shader 方式"
 msgid "原始对照 Original"
 msgstr "元画像 Original"
 
-#: src/pages/primitives.tsx:212
+#: src/pages/primitives.tsx:243
 msgid "原色"
 msgstr "元の色"
 
@@ -375,7 +379,7 @@ msgstr "2 チャンネル画面の GPU トランジションステートマシ�
 msgid "反色 Invert"
 msgstr "色反転 Invert"
 
-#: src/pages/input.tsx:99
+#: src/pages/input.tsx:98
 msgid "受控、只读与禁用"
 msgstr "制御、読み取り専用、無効化"
 
@@ -383,11 +387,11 @@ msgstr "制御、読み取り専用、無効化"
 msgid "受控与非受控两种用法。"
 msgstr "制御コンポーネントと非制御コンポーネントの 2 通りの使い方。"
 
-#: src/pages/input.tsx:102
+#: src/pages/input.tsx:101
 msgid "受控值应跟随 onChange 回写；只读可聚焦但不能编辑；点击禁用输入会清除当前焦点。"
 msgstr "制御値は onChange に応じて書き戻します。読み取り専用ではフォーカスできますが編集はできません。無効な入力欄をクリックすると現在のフォーカスが解除されます。"
 
-#: src/pages/input.tsx:23
+#: src/pages/input.tsx:22
 msgid "受控初始值"
 msgstr "制御された初期値"
 
@@ -400,7 +404,7 @@ msgstr "制御スライダー"
 msgid "受控组件"
 msgstr "制御コンポーネント"
 
-#: src/pages/input.tsx:106
+#: src/pages/input.tsx:105
 msgid "受控输入"
 msgstr "制御入力"
 
@@ -408,15 +412,15 @@ msgstr "制御入力"
 msgid "变换与测量"
 msgstr "変形と計測"
 
-#: src/pages/input.tsx:80
+#: src/pages/input.tsx:79
 msgid "变换后的候选窗位置"
 msgstr "変形後の候補ウィンドウ位置"
 
-#: src/pages/primitives.tsx:227
+#: src/pages/primitives.tsx:258
 msgid "只有落在 440×260 视口内的内容会被绘制。"
 msgstr "440×260 のビューポート内にある内容だけが描画されます。"
 
-#: src/pages/input.tsx:137
+#: src/pages/input.tsx:136
 msgid "只读内容"
 msgstr "読み取り専用の内容"
 
@@ -436,11 +440,11 @@ msgstr "開始"
 msgid "启用背景滤镜"
 msgstr "背景フィルターを有効化"
 
-#: src/pages/input.tsx:166
+#: src/pages/input.tsx:165
 msgid "启用输入框"
 msgstr "入力欄を有効化"
 
-#: src/pages/primitives.tsx:47
+#: src/pages/primitives.tsx:48
 msgid "固定宽度文本框：设定 boxWidth 后，这段文字会在到达宽度上限时自动换行，并可通过 lineHeight 控制行距。"
 msgstr "固定幅テキストボックス：boxWidth を設定すると、このテキストは幅の上限に達した時点で自動的に折り返され、lineHeight で行間を調整できます。"
 
@@ -468,11 +472,11 @@ msgstr "基本とネスト"
 msgid "基础组件"
 msgstr "基本コンポーネント"
 
-#: src/pages/input.tsx:36
+#: src/pages/input.tsx:35
 msgid "基础输入与 IME"
 msgstr "基本入力と IME"
 
-#: src/pages/primitives.tsx:42
+#: src/pages/primitives.tsx:43
 msgid "填充"
 msgstr "塗りつぶし"
 
@@ -484,11 +488,15 @@ msgstr "ノードの背後に描画済みの画面を処理し、その後に描
 msgid "外层 VBox"
 msgstr "外側 VBox"
 
-#: src/pages/primitives.tsx:41
+#: src/pages/primitives.tsx:42
 msgid "多彩"
 msgstr "カラフル"
 
-#: src/pages/primitives.tsx:181
+#: src/pages/primitives.tsx:25
+msgid "完善的排版、富文本渲染，可交互区。"
+msgstr "洗練された組版、リッチテキストの描画、操作可能な領域。"
+
+#: src/pages/primitives.tsx:212
 msgid "完整原图 250x240"
 msgstr "元画像全体 250x240"
 
@@ -516,7 +524,7 @@ msgstr "未呼び出し"
 msgid "就绪"
 msgstr "準備完了"
 
-#: src/pages/primitives.tsx:44
+#: src/pages/primitives.tsx:45
 msgid "展示"
 msgstr "表示"
 
@@ -582,7 +590,7 @@ msgstr "現在値：{selected}"
 #. placeholder {0}: transformed ? 460 : 140
 #. placeholder {1}: transformed ? 1.3 : 1.0
 #. placeholder {2}: transformed ? 0.15 : 0
-#: src/pages/primitives.tsx:88
+#: src/pages/primitives.tsx:112
 msgid "当前目标：x={0} · scale={1} · rotation={2}"
 msgstr "現在の目標：x={0} · scale={1} · rotation={2}"
 
@@ -590,7 +598,7 @@ msgstr "現在の目標：x={0} · scale={1} · rotation={2}"
 msgid "当前选中：{selected}"
 msgstr "現在の選択：{selected}"
 
-#: src/pages/input.tsx:39
+#: src/pages/input.tsx:38
 msgid "悬停和按住输入框应切换背景；聚焦后应显示 focused 背景。再验证焦点切换、末尾输入、Backspace 与中文输入法候选窗位置。"
 msgstr "入力欄にホバーしたときや押している間は背景が切り替わり、フォーカス後は focused 背景が表示される必要があります。さらに、フォーカスの切り替え、末尾への入力、Backspace、中国語 IME の候補ウィンドウ位置を確認します。"
 
@@ -616,11 +624,7 @@ msgstr "ボタンは prepare だけを送信します。perform は onPrepared �
 msgid "控制台"
 msgstr "コントロール"
 
-#: src/pages/primitives.tsx:24
-msgid "描边、阴影、颜色与 boxWidth 自动换行。"
-msgstr "枠線、影、色、boxWidth による自動折り返し。"
-
-#: src/pages/primitives.tsx:28
+#: src/pages/primitives.tsx:29
 msgid "描边与阴影 Stroke & Shadow"
 msgstr "枠線と影 Stroke & Shadow"
 
@@ -743,7 +747,7 @@ msgid "点击 SPRING 切换目标状态。\n"
 msgstr "SPRING をクリックして目標状態を切り替えます。\n"
 "現在の目標：x={0} · rotation={1} · scale={2} · opacity={3}"
 
-#: src/pages/primitives.tsx:83
+#: src/pages/primitives.tsx:107
 msgid "点击切换变换"
 msgstr "クリックして変形を切り替え"
 
@@ -776,11 +780,11 @@ msgstr "理論値：150 + 220 + 180 + 2 × 18 = 586"
 msgid "用移动的正弦波横向扭曲输入画面。"
 msgstr "移動する正弦波で入力画面を水平方向に歪ませます。"
 
-#: src/pages/input.tsx:125
+#: src/pages/input.tsx:124
 msgid "由外部状态设置"
 msgstr "外部状態から設定"
 
-#: src/pages/input.tsx:154
+#: src/pages/input.tsx:153
 msgid "禁用内容"
 msgstr "無効な内容"
 
@@ -796,7 +800,7 @@ msgstr "無効状態"
 msgid "禁用背景滤镜"
 msgstr "背景フィルターを無効化"
 
-#: src/pages/input.tsx:166
+#: src/pages/input.tsx:165
 msgid "禁用输入框"
 msgstr "入力欄を無効化"
 
@@ -804,7 +808,7 @@ msgstr "入力欄を無効化"
 msgid "移除"
 msgstr "削除"
 
-#: src/pages/input.tsx:123
+#: src/pages/input.tsx:122
 msgid "程序设置受控值"
 msgstr "プログラムから制御値を設定"
 
@@ -816,11 +820,11 @@ msgstr "ウィンドウ"
 msgid "立即完成"
 msgstr "即時完了"
 
-#: src/pages/input.tsx:64
+#: src/pages/input.tsx:63
 msgid "第二个输入框"
 msgstr "2 番目の入力欄"
 
-#: src/pages/input.tsx:62
+#: src/pages/input.tsx:61
 msgid "第二个输入框（用于焦点切换）"
 msgstr "2 番目の入力欄（フォーカス切り替え用）"
 
@@ -832,7 +836,7 @@ msgstr "2 行目 Second line"
 msgid "等待测量"
 msgstr "計測待ち"
 
-#: src/pages/input.tsx:27
+#: src/pages/input.tsx:26
 msgid "等待输入事件"
 msgstr "入力イベント待ち"
 
@@ -856,7 +860,7 @@ msgstr "カスタム Shader"
 msgid "色相旋转 Hue Rotate"
 msgstr "色相回転 Hue Rotate"
 
-#: src/pages/primitives.tsx:229
+#: src/pages/primitives.tsx:260
 msgid "被裁剪的内容"
 msgstr "クリッピングされる内容"
 
@@ -864,7 +868,11 @@ msgstr "クリッピングされる内容"
 msgid "褐调 Sepia"
 msgstr "セピア Sepia"
 
-#: src/pages/input.tsx:45
+#: src/pages/primitives.tsx:55
+msgid "试试移入或点击"
+msgstr "次のテキストにホバーまたはクリック"
+
+#: src/pages/input.tsx:44
 msgid "请输入内容"
 msgstr "内容を入力してください"
 
@@ -876,7 +884,11 @@ msgstr "トラック幅はパネルに合わせて縮められます。"
 msgid "转场画面"
 msgstr "トランジション画面"
 
-#: src/pages/primitives.tsx:231
+#: src/pages/primitives.tsx:57
+msgid "这段交互文本"
+msgstr "このインタラクティブテキスト"
+
+#: src/pages/primitives.tsx:262
 msgid "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
 msgstr "このテキストはクリッピング領域の右端と下端を超えており、はみ出した部分は表示されません。"
 
@@ -926,7 +938,7 @@ msgstr "非制御スライダー"
 msgid "非受控组件"
 msgstr "非制御コンポーネント"
 
-#: src/pages/input.tsx:42
+#: src/pages/input.tsx:41
 msgid "非受控输入（autoFocus）"
 msgstr "非制御入力（autoFocus）"
 
@@ -962,7 +974,7 @@ msgstr "期待値：左揃え。最も幅の広い項目が全体の幅を決め
 msgid "预期：每次点击同帧完成重排；visible = false 仍占位；删除后兄弟项递补到最前。"
 msgstr "期待値：クリックするたびに同一フレーム内で並べ替えが完了します。visible = false でも領域は確保され、削除後は兄弟項目が先頭側へ詰められます。"
 
-#: src/pages/primitives.tsx:43
+#: src/pages/primitives.tsx:44
 msgid "颜色"
 msgstr "色"
 
@@ -980,6 +992,6 @@ msgstr "彩度 Saturation"
 msgid "默认值 0.35，内部维护状态"
 msgstr "デフォルト値 0.35、状態を内部で管理"
 
-#: src/pages/primitives.tsx:26
+#: src/pages/primitives.tsx:27
 msgid "默认文本样式 Default 30px"
 msgstr "デフォルトのテキストスタイル Default 30px"
