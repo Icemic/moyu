@@ -17,6 +17,7 @@ import type { FilterProps } from './bindings/FilterProps';
 import type { BackdropProps } from './bindings/BackdropProps';
 import type { SpriteProps } from './bindings/SpriteProps';
 import type { TextProps } from './bindings/TextProps';
+import type { TextInteractionEvent } from './bindings/TextInteractionEvent';
 import type { TextLayoutEvent } from './bindings/TextLayoutEvent';
 import type { ShaderProps } from './bindings/ShaderProps';
 import type { ShaderSlotProps } from './bindings/ShaderSlotProps';
@@ -93,6 +94,7 @@ export type MoyuTextAttributes = TextProps &
     onFinish?: () => void;
     onProgress?: (progress: number) => void;
     onTextLayout?: (event: TextLayoutEvent) => void;
+    onInteraction?: (event: TextInteractionEvent) => void;
   };
 
 // eslint-disable-next-line @typescript-eslint/no-namespace

@@ -1,4 +1,18 @@
 use crate::base::SurfaceSize;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum PointerEventKind {
+    Over,
+    Enter,
+    Leave,
+    Down,
+    Up,
+    Click,
+}
 
 use super::Node;
 
@@ -21,6 +35,9 @@ pub trait Focusable: Node {
     fn contains_children(&self, _: f32, _: f32, _: &FocusablePayload) -> bool {
         true
     }
+
+    /// Receives a pointer event targeted at this node in local coordinates.
+    fn pointer_event(&self, _: f32, _: f32, _: PointerEventKind) {}
 }
 
 #[derive(Debug)]

@@ -410,20 +410,21 @@ impl Renderer for TextRenderer {
         };
 
         match layout_result {
-            Ok((glyphs, ranges, total_width, total_height)) => {
-                node.total_width = total_width;
-                node.total_height = total_height;
-                node.glyph_vertices = glyphs;
-                node.glyph_ranges = ranges;
+            Ok(layout) => {
+                node.total_width = layout.width;
+                node.total_height = layout.height;
+                node.glyph_vertices = layout.glyphs;
+                node.glyph_ranges = layout.segment_glyph_spans;
+                node.interactions = layout.interactions;
                 node.base_mut()
-                    .set_intrinsic_size(total_width as f32, total_height as f32);
+                    .set_intrinsic_size(layout.width as f32, layout.height as f32);
                 node.base_mut().mark_update_vertices();
 
                 let end_cursor_position = get_cursor_position(node, node.glyph_vertices.len());
                 node.send_event(TextEvent::Layout(TextLayoutEvent {
                     text: node.text.clone(),
-                    width: total_width,
-                    height: total_height,
+                    width: layout.width,
+                    height: layout.height,
                     end_cursor_position,
                 }));
 

@@ -9,7 +9,8 @@ use crate::events::{
     MouseEvent, MouseEventKind, TouchEvent, TouchEventKind, WheelEvent, WheelEventDeltaMode,
     WheelEventKind,
 };
-use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerState};
+use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerLocation, PointerState};
+use crate::traits::PointerEventKind;
 use crate::utils::dispatch_event::dispatch_event;
 use crate::utils::hit_test::{get_local_logical_position, hit_test};
 
@@ -86,6 +87,11 @@ impl Core {
                         bubble_target_ids: last_hover_node.parent_ids.clone(),
                         location: pointer_state.location,
                     });
+                    dispatch_pointer_event(
+                        last_hover_node,
+                        pointer_state.location,
+                        PointerEventKind::Leave,
+                    );
                 }
                 true
             }
@@ -108,6 +114,11 @@ impl Core {
                                 bubble_target_ids,
                                 location,
                             });
+                            dispatch_pointer_event(
+                                last_hover_node,
+                                location,
+                                PointerEventKind::Down,
+                            );
 
                             pointer_state.down_id = Some(target_id);
                         }
@@ -118,6 +129,7 @@ impl Core {
                                 bubble_target_ids: bubble_target_ids.clone(),
                                 location,
                             });
+                            dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
 
                             let down_id = pointer_state.down_id.take();
 
@@ -130,6 +142,11 @@ impl Core {
                                             bubble_target_ids,
                                             location,
                                         });
+                                        dispatch_pointer_event(
+                                            last_hover_node,
+                                            location,
+                                            PointerEventKind::Click,
+                                        );
                                     }
                                     winit::event::MouseButton::Right => {
                                         dispatch_event(MouseEvent {
@@ -171,7 +188,7 @@ impl Core {
                 self.handle_pointer_move(window, &touch.location, identifier);
                 self.handle_pointer_hover(identifier, touch.phase == TouchPhase::Started);
 
-                get_pointer_state!(self, pointer_state, identifier, true);
+                get_pointer_state_mut!(self, pointer_state, identifier, true);
 
                 if last_location == pointer_state.location && touch.phase == TouchPhase::Moved {
                     // ignore duplicated touch move event
@@ -195,6 +212,12 @@ impl Core {
                                 location,
                                 identifier: touch.id as u32,
                             });
+                            dispatch_pointer_event(
+                                last_hover_node,
+                                location,
+                                PointerEventKind::Down,
+                            );
+                            pointer_state.down_id = Some(target_id);
                         }
                         TouchPhase::Moved => {
                             dispatch_event(TouchEvent {
@@ -204,6 +227,11 @@ impl Core {
                                 location,
                                 identifier: touch.id as u32,
                             });
+                            dispatch_pointer_event(
+                                last_hover_node,
+                                location,
+                                PointerEventKind::Over,
+                            );
                         }
                         TouchPhase::Ended => {
                             dispatch_event(TouchEvent {
@@ -213,6 +241,8 @@ impl Core {
                                 location,
                                 identifier: touch.id as u32,
                             });
+                            dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
+                            pointer_state.down_id.take();
                         }
                         TouchPhase::Cancelled => {
                             dispatch_event(TouchEvent {
@@ -222,6 +252,12 @@ impl Core {
                                 location,
                                 identifier: touch.id as u32,
                             });
+                            dispatch_pointer_event(
+                                last_hover_node,
+                                location,
+                                PointerEventKind::Leave,
+                            );
+                            pointer_state.down_id = None;
                         }
                     }
                 }
@@ -354,6 +390,7 @@ impl Core {
                         bubble_target_ids: node.parent_ids.clone(),
                         location: pointer_state.location,
                     });
+                    dispatch_pointer_event(&node, pointer_state.location, PointerEventKind::Over);
 
                     if let Some(last_hover_node) = last_hover_node {
                         if last_hover_node == &node {
@@ -385,6 +422,7 @@ impl Core {
                             bubble_target_ids: last_hover_node.parent_ids.clone(),
                             location,
                         });
+                        dispatch_pointer_event(last_hover_node, location, PointerEventKind::Leave);
                     }
 
                     // there is always a mouse enter event if current node is different from last focused node (may be None)
@@ -394,6 +432,7 @@ impl Core {
                         bubble_target_ids: node.parent_ids.clone(),
                         location: pointer_state.location,
                     });
+                    dispatch_pointer_event(&node, pointer_state.location, PointerEventKind::Enter);
                 }
 
                 self.set_cursor(node.node.read().base().cursor().clone());
@@ -431,6 +470,11 @@ impl Core {
                     bubble_target_ids: last_hover_node.parent_ids.clone(),
                     location: pointer_state.location,
                 });
+                dispatch_pointer_event(
+                    last_hover_node,
+                    pointer_state.location,
+                    PointerEventKind::Leave,
+                );
 
                 self.set_cursor(MoyuCursor::Visible(CursorIcon::Default));
             }
@@ -444,5 +488,16 @@ impl Core {
             pointer_state.device_type = device_type;
             pointer_state
         });
+    }
+}
+
+fn dispatch_pointer_event(
+    target: &crate::utils::hit_test::HitTestTarget,
+    location: PointerLocation,
+    kind: PointerEventKind,
+) {
+    let node = target.node.read();
+    if let Some(focusable) = node.as_focusable() {
+        focusable.pointer_event(location.offset_x, location.offset_y, kind);
     }
 }

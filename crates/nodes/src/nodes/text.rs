@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use anyhow::Result;
 use csscolorparser::Color;
 use huozi::glyph_vertices::GlyphVertices;
-use huozi::layout::{LayoutStyle, SegmentGlyphSpan};
+use huozi::layout::{Interaction, LayoutStyle, SegmentGlyphSpan};
 use huozi::parser::{Segment, SegmentId, ShadowStyle, StrokeStyle, TextStyle};
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
@@ -12,12 +12,13 @@ use wgpu::Buffer;
 
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Command, NodeEventSource};
-use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
+use moyu_core::traits::{Focusable, Node, NodeBaseTrait, PointerEventKind};
 use moyu_core::utils::convert::{JSValue, from_js, to_js};
 use moyu_core::utils::patch::Patch;
 use moyu_core::{apply_patch, apply_patch_optional};
+use moyu_pal::sync::Mutex;
 
-use crate::events::TextEvent;
+use crate::events::{TextEvent, TextInteractionEvent};
 
 #[derive(Debug, Default, Node)]
 pub struct Text {
@@ -41,6 +42,10 @@ pub struct Text {
     pub glyph_vertices: Vec<GlyphVertices>,
     /// glyph ranges of segments after layout
     pub glyph_ranges: Vec<SegmentGlyphSpan>,
+    /// interaction regions after layout
+    pub interactions: Vec<Interaction>,
+    /// interaction currently under the pointer
+    hovered_interaction_id: Mutex<Option<String>>,
     /// acutal width after layout
     pub total_width: u32,
     /// acutal height after layout
@@ -89,6 +94,8 @@ impl Text {
             segments: vec![],
             glyph_vertices: vec![],
             glyph_ranges: vec![],
+            interactions: vec![],
+            hovered_interaction_id: Mutex::new(None),
             vertex_buffer: None,
             index_buffer: None,
             num_indices: 0,
@@ -119,7 +126,76 @@ impl Text {
     }
 }
 
-impl Focusable for Text {}
+impl Focusable for Text {
+    fn pointer_event(&self, x: f32, y: f32, kind: PointerEventKind) {
+        let interaction_id = self.interactions.iter().find_map(|interaction| {
+            interaction.areas.iter().any(|area| {
+                let rect = &area.rect;
+                x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+            })
+            .then(|| interaction.id.clone())
+        });
+
+        if kind == PointerEventKind::Over {
+            let mut hovered_interaction_id = self.hovered_interaction_id.lock();
+            if *hovered_interaction_id == interaction_id {
+                if let Some(id) = interaction_id {
+                    drop(hovered_interaction_id);
+                    self.send_event(TextEvent::Interaction(TextInteractionEvent { id, kind }));
+                }
+                return;
+            }
+
+            if let Some(id) = hovered_interaction_id.take() {
+                self.send_event(TextEvent::Interaction(TextInteractionEvent {
+                    id,
+                    kind: PointerEventKind::Leave,
+                }));
+            }
+            if let Some(id) = interaction_id {
+                *hovered_interaction_id = Some(id.clone());
+                self.send_event(TextEvent::Interaction(TextInteractionEvent {
+                    id: id.clone(),
+                    kind: PointerEventKind::Enter,
+                }));
+                self.send_event(TextEvent::Interaction(TextInteractionEvent { id, kind }));
+            }
+            return;
+        }
+
+        if kind == PointerEventKind::Leave {
+            if let Some(id) = self.hovered_interaction_id.lock().take() {
+                self.send_event(TextEvent::Interaction(TextInteractionEvent { id, kind }));
+            }
+            return;
+        }
+
+        if kind == PointerEventKind::Enter {
+            let mut hovered_interaction_id = self.hovered_interaction_id.lock();
+            if *hovered_interaction_id == interaction_id {
+                return;
+            }
+            if let Some(id) = hovered_interaction_id.take() {
+                self.send_event(TextEvent::Interaction(TextInteractionEvent {
+                    id,
+                    kind: PointerEventKind::Leave,
+                }));
+            }
+            if let Some(id) = interaction_id {
+                *hovered_interaction_id = Some(id.clone());
+                self.send_event(TextEvent::Interaction(TextInteractionEvent { id, kind }));
+            }
+            return;
+        }
+
+        if let Some(id) = interaction_id {
+            self.send_event(TextEvent::Interaction(TextInteractionEvent {
+                id,
+                kind,
+            }));
+        }
+    }
+}
 
 /**
  * To be compatible with react-spring inside JS runtime, we have to flatten the struct.

@@ -1,4 +1,4 @@
-use moyu_core::traits::Event;
+use moyu_core::traits::{Event, PointerEventKind};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -13,6 +13,14 @@ pub struct TextLayoutEvent {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct TextInteractionEvent {
+    pub id: String,
+    pub kind: PointerEventKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(untagged)]
 // #[ts(export, optional_fields)]
 pub enum TextEvent {
@@ -20,6 +28,7 @@ pub enum TextEvent {
     Progress(f64),
     Finish,
     Layout(TextLayoutEvent),
+    Interaction(TextInteractionEvent),
 }
 
 impl Event for TextEvent {
@@ -29,6 +38,7 @@ impl Event for TextEvent {
             TextEvent::Progress(_) => "progress",
             TextEvent::Finish => "finish",
             TextEvent::Layout(_) => "textLayout",
+            TextEvent::Interaction(_) => "interaction",
         }
     }
 }
