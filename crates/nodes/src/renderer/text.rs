@@ -6,7 +6,7 @@ use huozi::constant::TEXTURE_SIZE;
 use huozi::layout::Vertex;
 use huozi::{FontSource, Huozi};
 use log::{error, info};
-use moyu_pal::config::{FontFile, FontSourceConfig, get_engine_config};
+use moyu_pal::config::{FontFile, FontSourceConfig, FontSourceKind, get_engine_config};
 use moyu_pal::dir::assets_dir;
 use moyu_pal::sync::Mutex;
 use wgpu::Texture;
@@ -199,18 +199,30 @@ impl TextRenderer {
             let mut font_sources = Vec::with_capacity(font_files.len());
 
             for font_file in font_files {
-                let (path, alias) = match font_file {
-                    FontSourceConfig::Path(path) => (path, None),
-                    FontSourceConfig::Source { path, alias } => (path, alias),
+                let (path, alias, kind) = match font_file {
+                    FontSourceConfig::Path(path) => (path, None, None),
+                    FontSourceConfig::Source { path, alias, kind } => (path, alias, kind),
                 };
                 let asset_full_path = assets_dir().join(&path).unwrap();
                 info!("Loading font file: {}", asset_full_path);
 
                 match moyu_pal::fs::read(&asset_full_path).await {
-                    Ok(data) => match alias {
-                        Some(alias) => font_sources.push(FontSource::with_alias(data, alias)),
-                        None => font_sources.push(FontSource::new(data)),
-                    },
+                    Ok(data) => {
+                        let source = match alias {
+                            Some(alias) => FontSource::with_alias(data, alias),
+                            None => FontSource::new(data),
+                        };
+                        let source = match kind {
+                            Some(FontSourceKind::Cjk) => {
+                                source.with_kind(huozi::FontSourceKind::Cjk)
+                            }
+                            Some(FontSourceKind::Latin) => {
+                                source.with_kind(huozi::FontSourceKind::Latin)
+                            }
+                            None => source,
+                        };
+                        font_sources.push(source);
+                    }
                     Err(err) => error!("Failed to read font file {}: {err}", asset_full_path),
                 }
             }

@@ -59,7 +59,18 @@ impl Default for FontFile {
 #[serde(untagged)]
 pub enum FontSourceConfig {
     Path(String),
-    Source { path: String, alias: Option<String> },
+    Source {
+        path: String,
+        alias: Option<String>,
+        kind: Option<FontSourceKind>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FontSourceKind {
+    Cjk,
+    Latin,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
