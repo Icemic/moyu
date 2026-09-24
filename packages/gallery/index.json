@@ -4,7 +4,7 @@
   "stageSize": "1920x1080",
   "windowTitle": "Moyu Gallery",
   "entryFilename": "index.js",
-  "fontFile": "fonts/SourceHanSansSC-Regular.otf",
+  "fontFile": "fonts/SourceHanSansCN-VF.otf",
   "showFPS": true,
   "skipSplash": true,
   "steam": {
