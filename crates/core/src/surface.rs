@@ -34,8 +34,13 @@ pub fn create_window(event_loop: &ActiveEventLoop, #[cfg(web)] element_id: &str)
         .with_resizable(env.window_resizable)
         .with_visible(false)
         .with_active(true)
-        .with_title(&env.window_title)
-        .with_min_inner_size(PhysicalSize::new(400, 300));
+        .with_title(&env.window_title);
+
+    // On the web the page owns the canvas size, so there is no minimum size to enforce there.
+    #[cfg(native)]
+    {
+        builder = builder.with_min_inner_size(PhysicalSize::new(400, 300));
+    }
 
     match env.window_state {
         moyu_pal::config::WindowState::Maximized => {
@@ -63,35 +68,29 @@ pub fn create_window(event_loop: &ActiveEventLoop, #[cfg(web)] element_id: &str)
     #[cfg(web)]
     {
         use winit::platform::web::WindowExtWebSys;
-        web_sys::window()
+
+        let host = web_sys::window()
             .and_then(|win| win.document())
             .and_then(|document| document.get_element_by_id(element_id))
-            .and_then(|el| {
-                let scale_factor = window.scale_factor();
+            .unwrap_or_else(|| {
+                panic!("couldn't find the element to mount the canvas: {element_id}")
+            });
 
-                let size = env.initial_surface_size;
+        let canvas = window
+            .canvas()
+            .expect("Failed to get canvas from winit window.");
 
-                let canvas_width = (size.width() as f64 * scale_factor) as u32;
-                let canvas_height = (size.height() as f64 * scale_factor) as u32;
+        // The mount element plays the role of the window on the web: it owns the size and the
+        // canvas fills it. winit observes the resulting canvas box and reports it as a resize,
+        // so the surface follows without the engine measuring anything itself.
+        // `display: block` keeps the canvas from adding a baseline gap to its parent.
+        let style = canvas.style();
+        let _ = style.set_property("display", "block");
+        let _ = style.set_property("width", "100%");
+        let _ = style.set_property("height", "100%");
 
-                let canvas = window
-                    .canvas()
-                    .expect("Failed to get canvas from winit window.");
-
-                canvas.set_width(canvas_width);
-                canvas.set_height(canvas_height);
-                canvas
-                    .style()
-                    .set_property("width", &format!("{}px", size.width()))
-                    .ok();
-                canvas
-                    .style()
-                    .set_property("height", &format!("{}px", size.height()))
-                    .ok();
-
-                el.append_child(&web_sys::Element::from(canvas)).ok()
-            })
-            .expect(format!("couldn't append canvas to {}", element_id).as_str());
+        host.append_child(&web_sys::Element::from(canvas))
+            .expect("couldn't append canvas to the mount element");
     }
 
     Arc::new(window)

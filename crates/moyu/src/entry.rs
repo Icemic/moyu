@@ -324,7 +324,9 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 #[cfg(desktop)]
                 core.move_to_center();
 
-                #[cfg(native)]
+                // A native window already has its configured size here, while a web canvas
+                // follows the box the page gives it, which is only known once layout has run.
+                // Size changes after this point arrive as resize events.
                 core.sync_surface_size_with_window(false);
 
                 core.window().set_visible(true);

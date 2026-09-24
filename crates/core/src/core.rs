@@ -21,7 +21,7 @@ use moyu_pal::time::Instant;
 use render::Graphics;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-#[cfg(not(mobile))]
+#[cfg(desktop)]
 use winit::dpi::{LogicalSize, Size};
 use winit::keyboard::ModifiersState;
 use winit::window::{Fullscreen, Window};
@@ -257,7 +257,16 @@ impl Core {
             self.sync_surface_size_with_window(false);
         }
 
-        #[cfg(not(mobile))]
+        #[cfg(web)]
+        {
+            // The page owns the size of the element the canvas is mounted in, and the canvas
+            // fills it, so there is no requested size to honour. The observed canvas box
+            // drives the surface instead. Ignoring the request keeps scripts that resize the
+            // window from failing on the web.
+            let _ = (logical_width, logical_height, factor);
+        }
+
+        #[cfg(desktop)]
         {
             let window = &self.window;
             let factor = factor.unwrap_or(window.scale_factor());
@@ -267,60 +276,14 @@ impl Core {
             let window_maximized = window.is_maximized();
 
             if logical_width > 0. && logical_height > 0. {
-                // see [Self::set_correct_canvas_size_for_web] for explanation about web platform
-                let surface_size = if cfg!(web) {
-                    SurfaceSize::new(logical_width * factor, logical_height * factor, factor)
-                } else {
-                    SurfaceSize::new(logical_width, logical_height, factor)
-                };
-
+                let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
                 self.resize_stage(surface_size);
 
-                let window_size = if cfg!(web) {
-                    Size::Logical(LogicalSize::new(
-                        logical_width * factor,
-                        logical_height * factor,
-                    ))
-                } else {
-                    Size::Logical(LogicalSize::new(logical_width, logical_height))
-                };
-
+                let window_size = Size::Logical(LogicalSize::new(logical_width, logical_height));
                 let _ = window.request_inner_size(window_size);
 
                 window.set_minimized(window_minimized.unwrap_or(false));
                 window.set_maximized(window_maximized);
-
-                // see [Self::set_correct_canvas_size_for_web] for explanation about web platform
-                #[cfg(web)]
-                {
-                    use wasm_bindgen::JsCast;
-                    use winit::platform::web::WindowExtWebSys;
-
-                    if let Some(canvas) = window.canvas() {
-                        canvas
-                            .style()
-                            .set_property("transform", &format!("scale({})", 1.0 / factor))
-                            .unwrap();
-                        canvas
-                            .style()
-                            .set_property("transform-origin", "top left")
-                            .unwrap();
-
-                        if let Some(parent) = canvas.parent_element() {
-                            if let Ok(parent) = parent.dyn_into::<web_sys::HtmlElement>() {
-                                parent
-                                    .style()
-                                    .set_property("width", &format!("{}px", logical_width))
-                                    .unwrap();
-                                parent
-                                    .style()
-                                    .set_property("height", &format!("{}px", logical_height))
-                                    .unwrap();
-                                parent.style().set_property("overflow", "hidden").unwrap();
-                            }
-                        }
-                    }
-                }
 
                 // reset fullscreen status
                 if window_fullscreen.is_some() {
