@@ -146,7 +146,16 @@ pub async fn setup() {
             })
     };
 
-    #[cfg(mobile)]
+    // On Android the host application can pass the entry through the launch intent,
+    // which is how a dynamically generated entry (for example a local preview
+    // server) is loaded without repackaging the APK.
+    #[cfg(android)]
+    let mut entry = crate::platform::intent_entry().unwrap_or_else(|| {
+        log::info!("no entry provided through the launch intent, defaulting to ./index.json");
+        "./index.json".to_string()
+    });
+
+    #[cfg(ios)]
     let mut entry = "./index.json".to_string();
 
     #[cfg(web)]
