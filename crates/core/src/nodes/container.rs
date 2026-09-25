@@ -31,7 +31,7 @@ impl Node for Container {
 
     #[inline]
     fn node_type(&self) -> &'static str {
-        "node"
+        "container"
     }
 
     fn as_focusable(&self) -> Option<&dyn Focusable> {
