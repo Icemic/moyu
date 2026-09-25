@@ -2146,6 +2146,7 @@ version = "0.19.0"
 dependencies = [
  "cfg_aliases",
  "embed-resource",
+ "futures-util",
  "log",
  "mimalloc",
  "moyu_audio",
@@ -2160,9 +2161,13 @@ dependencies = [
  "moyu_scenario",
  "moyu_steam",
  "moyu_video",
+ "serde",
+ "serde_json",
  "tokio",
+ "tokio-tungstenite",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
  "winit",
 ]
 

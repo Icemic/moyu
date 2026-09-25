@@ -3,6 +3,7 @@
     windows_subsystem = "windows"
 )]
 
+mod debug;
 mod entry;
 #[cfg(native)]
 mod mimalloc;
