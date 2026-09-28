@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 1. Update `huozi` to 0.21 and fix breaking changes in the API. Now `huozi` is backed by `tiqian`.
 
+### Fixed
+
+1. Sample textures in uniform control flow in the builtin transition shader, which Chrome and Edge rejected.
+
 ## [0.19.0] - 2026-09-15
 
 ### Added

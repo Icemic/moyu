@@ -67,11 +67,10 @@ fn uv_in_bounds(uv: vec2<f32>) -> bool {
 }
 
 fn sample_texture(texture: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
-    if !uv_in_bounds(uv) {
-        return vec4<f32>(0.0, 0.0, 0.0, 0.0);
-    }
-
-    return textureSample(texture, texture_sampler, uv * hidden_uniform.max_uv);
+    // Must sample unconditionally: textureSample() requires uniform control flow,
+    // so out-of-bounds coordinates are masked after sampling instead of branching around it.
+    let color = textureSample(texture, texture_sampler, uv * hidden_uniform.max_uv);
+    return select(vec4<f32>(0.0, 0.0, 0.0, 0.0), color, uv_in_bounds(uv));
 }
 
 fn read_directional_progress(direction: u32, uv: vec2<f32>) -> f32 {
