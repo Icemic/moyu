@@ -3,17 +3,29 @@
  *
  * Launches the downloaded engine in native mode (child process) or
  * web mode (local HTTP dev server with layered static file serving).
+ *
+ * The web server also proxies to the bundler dev server (port 6020) for files that
+ * only exist in the bundler's memory, so one port can serve the whole game.
  */
 
 import { spawn } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { connect as connectTcp } from 'node:net';
 import { extname, join, normalize, resolve } from 'node:path';
+import type { Duplex } from 'node:stream';
 import { defineCommand } from 'citty';
 import consola from 'consola';
 import { detectPlatform, loadMeta } from '../utils/engine.js';
 import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
+
+/**
+ * Port of the rspack dev server that framework projects run with "yarn dev".
+ * Proxied to by the web server below and used as the entry for native runs.
+ */
+const DEV_SERVER_PORT = 6020;
 
 export default defineCommand({
   meta: {
@@ -87,7 +99,7 @@ function runNative(projectRoot: string, nativePath: string): void {
   consola.info(`Starting native engine: ${enginePath}`);
   consola.info(`Working directory: ${projectRoot}`);
 
-  const child = spawn(enginePath, ['--entry', 'http://localhost:6020/index.json'], {
+  const child = spawn(enginePath, ['--entry', `http://localhost:${DEV_SERVER_PORT}/index.json`], {
     cwd: projectRoot,
     stdio: 'inherit',
   });
@@ -195,8 +207,8 @@ async function runWeb(projectRoot: string, webPath: string, port: number): Promi
     const filePath = resolveFilePath(urlPath, webPath, projectRoot);
 
     if (!filePath) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('404 Not Found');
+      // Bundler output (chunks, HMR manifests) is not on disk; ask the dev server.
+      proxyToDevServer(req, res);
       return;
     }
 
@@ -222,6 +234,17 @@ async function runWeb(projectRoot: string, webPath: string, port: number): Promi
       res.writeHead(500, { 'Content-Type': 'text/plain' });
       res.end('500 Internal Server Error');
     }
+  });
+
+  // The HMR client connects to the port the page was served from, so upgrades
+  // have to be forwarded to the dev server as well.
+  server.on('upgrade', (req, socket, head) => {
+    const pathname = (req.url ?? '').split('?')[0];
+    if (pathname !== '/ws') {
+      socket.destroy();
+      return;
+    }
+    proxyUpgrade(req, socket, head);
   });
 
   // Try to bind to the requested port; auto-increment on EADDRINUSE
@@ -262,4 +285,72 @@ async function runWeb(projectRoot: string, webPath: string, port: number): Promi
 
   // Keep the process alive
   await new Promise(() => {});
+}
+
+// ---------------------------------------------------------------------------
+// Dev server proxying
+// ---------------------------------------------------------------------------
+
+/** Set after the first unreachable-dev-server warning to avoid repeating it. */
+let devServerWarned = false;
+
+/**
+ * Forward a request to the rspack dev server. Only reached when the layered file
+ * lookup misses, which covers files that live in the bundler's memory only
+ * (bundle chunks, HMR manifests).
+ */
+function proxyToDevServer(req: IncomingMessage, res: ServerResponse): void {
+  const proxyReq = httpRequest(
+    {
+      host: '127.0.0.1',
+      port: DEV_SERVER_PORT,
+      method: req.method,
+      path: req.url,
+      headers: { ...req.headers, host: `127.0.0.1:${DEV_SERVER_PORT}` },
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
+      proxyRes.pipe(res);
+    },
+  );
+
+  proxyReq.on('error', () => {
+    if (!devServerWarned) {
+      devServerWarned = true;
+      consola.warn(
+        `Dev server not reachable on port ${DEV_SERVER_PORT}; bundler output will fail to load.`,
+      );
+    }
+
+    if (!res.headersSent) {
+      res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+    }
+    res.end(`502 Bad Gateway: no dev server on port ${DEV_SERVER_PORT}. Start it and reload.`);
+  });
+
+  req.pipe(proxyReq);
+}
+
+/**
+ * Forward a WebSocket upgrade (HMR) to the rspack dev server. Node has no
+ * built-in upgrade proxy, so the request line is rewritten by hand and both
+ * directions are piped.
+ */
+function proxyUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
+  const target = connectTcp({ host: '127.0.0.1', port: DEV_SERVER_PORT }, () => {
+    const headerLines = Object.entries({ ...req.headers, host: `127.0.0.1:${DEV_SERVER_PORT}` })
+      .map(([name, value]) => `${name}: ${Array.isArray(value) ? value.join(', ') : value}`)
+      .join('\r\n');
+
+    target.write(`${req.method ?? 'GET'} ${req.url ?? '/'} HTTP/1.1\r\n${headerLines}\r\n\r\n`);
+    if (head.length > 0) {
+      target.write(head);
+    }
+
+    socket.pipe(target);
+    target.pipe(socket);
+  });
+
+  target.on('error', () => socket.destroy());
+  socket.on('error', () => target.destroy());
 }
