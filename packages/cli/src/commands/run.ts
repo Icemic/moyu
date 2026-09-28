@@ -15,11 +15,7 @@ import { defineCommand } from 'citty';
 import consola from 'consola';
 import { detectPlatform, loadMeta } from '../utils/engine.js';
 import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
-import {
-  DEV_SERVER_PORT,
-  requireWebEngineAssets,
-  startStaticFileServer,
-} from '../utils/static-server.js';
+import { DEV_SERVER_PORT, requireWebEngineAssets, startStaticFileServer } from '../utils/static-server.js';
 
 export default defineCommand({
   meta: {
@@ -146,4 +142,3 @@ async function runWeb(projectRoot: string, webPath: string, port: number): Promi
   // Keep the process alive
   await new Promise(() => {});
 }
-

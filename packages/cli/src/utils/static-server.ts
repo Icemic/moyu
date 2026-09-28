@@ -12,8 +12,8 @@
 
 import { existsSync, statSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
-import { createServer, request as httpRequest } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { connect as connectTcp } from 'node:net';
 import { extname, join, normalize, resolve } from 'node:path';
 import type { Duplex } from 'node:stream';
@@ -65,16 +65,11 @@ export interface StaticFileServer {
 /**
  * Resolve the engine's web assets, exiting when they are missing or empty.
  */
-export async function requireWebEngineAssets(
-  projectRoot: string,
-  version: string,
-): Promise<string> {
+export async function requireWebEngineAssets(projectRoot: string, version: string): Promise<string> {
   const webPath = platformDir(projectRoot, version, 'web-universal');
 
   if (!existsSync(webPath)) {
-    consola.error(
-      'Web engine assets not found. Run "moyu download" to download web-universal platform.',
-    );
+    consola.error('Web engine assets not found. Run "moyu download" to download web-universal platform.');
     process.exit(1);
   }
 
@@ -152,11 +147,7 @@ export async function startStaticFileServer(options: {
 }
 
 /** Bind to `port`, incrementing on EADDRINUSE. Resolves with the port in use. */
-function listen(
-  server: ReturnType<typeof createServer>,
-  port: number,
-  attempts = 10,
-): Promise<number> {
+function listen(server: ReturnType<typeof createServer>, port: number, attempts = 10): Promise<number> {
   return new Promise((resolvePort, reject) => {
     let currentPort = port;
 
@@ -237,9 +228,7 @@ function proxyToDevServer(req: IncomingMessage, res: ServerResponse): void {
   proxyReq.on('error', () => {
     if (!devServerWarned) {
       devServerWarned = true;
-      consola.warn(
-        `Dev server not reachable on port ${DEV_SERVER_PORT}; bundler output will fail to load.`,
-      );
+      consola.warn(`Dev server not reachable on port ${DEV_SERVER_PORT}; bundler output will fail to load.`);
     }
 
     if (!res.headersSent) {

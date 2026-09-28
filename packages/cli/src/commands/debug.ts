@@ -17,11 +17,7 @@ import consola from 'consola';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { detectPlatform, loadMeta } from '../utils/engine.js';
 import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
-import {
-  DEV_SERVER_PORT,
-  requireWebEngineAssets,
-  startStaticFileServer,
-} from '../utils/static-server.js';
+import { DEV_SERVER_PORT, requireWebEngineAssets, startStaticFileServer } from '../utils/static-server.js';
 
 /** Entry used for native debugging; the project's own dev server serves it. */
 const DEFAULT_NATIVE_ENTRY = `http://localhost:${DEV_SERVER_PORT}/index.json`;
@@ -99,9 +95,7 @@ export default defineCommand({
             timeoutMs: Number(args['eval-timeout']),
           });
 
-          consola.log(
-            result.value === undefined ? result.repr : JSON.stringify(result.value, null, 2),
-          );
+          consola.log(result.value === undefined ? result.repr : JSON.stringify(result.value, null, 2));
 
           if (result.truncated === true) {
             consola.warn('Result exceeded the size limit and is only shown in short form.');
@@ -311,13 +305,7 @@ async function runSession(options: SessionOptions, task: (host: DebugHost) => Pr
   consola.info(`Debug endpoint listening on port ${host.port}`);
 
   const engine = options.web
-    ? await launchWebEngine(
-        projectRoot,
-        meta.active.version,
-        endpoint,
-        sessionId,
-        Number(options.port),
-      )
+    ? await launchWebEngine(projectRoot, meta.active.version, endpoint, sessionId, Number(options.port))
     : launchNativeEngine(projectRoot, meta.active.version, endpoint, sessionId, options.entry);
 
   let exitCode = 0;
@@ -372,10 +360,7 @@ async function startHost(sessionId: string): Promise<DebugHost> {
   await once(server, 'listening');
 
   const port = (server.address() as AddressInfo).port;
-  const pending = new Map<
-    number,
-    { resolve(message: DebugMessage): void; reject(error: Error): void }
-  >();
+  const pending = new Map<number, { resolve(message: DebugMessage): void; reject(error: Error): void }>();
   const observers: ((message: DebugMessage) => void)[] = [];
 
   let nextRequestId = 1;
@@ -411,9 +396,7 @@ async function startHost(sessionId: string): Promise<DebugHost> {
       if (!message) return;
 
       if (message.type === 'engine:hello') {
-        consola.info(
-          `Engine connected: ${message.platform} ${message.engineVersion} (entry ${message.entry})`,
-        );
+        consola.info(`Engine connected: ${message.platform} ${message.engineVersion} (entry ${message.entry})`);
         engineConnected();
 
         if (message.ready === true) {

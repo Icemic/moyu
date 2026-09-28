@@ -460,7 +460,7 @@ async function runGradleBuild(
   const gradlew = join(workdir, process.platform === 'win32' ? './gradlew.bat' : 'gradlew');
   if (!existsSync(gradlew)) throw new Error(`Gradle wrapper not found: ${gradlew}`);
   if (process.platform !== 'win32') await chmod(gradlew, 0o755);
-  
+
   let executable = gradlew;
   if (process.platform === 'win32') {
     // On Windows, spawn the batch file through cmd.exe to ensure it runs with the correct working directory.
