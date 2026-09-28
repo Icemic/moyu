@@ -7,6 +7,7 @@
 use moyu_pal::logger::buffer::LogEntry;
 use serde::{Deserialize, Serialize};
 
+use super::nodes::{NodeDetails, NodeSummary};
 use super::state::EngineStateSnapshot;
 
 /// Sent once right after the connection is established.
@@ -120,6 +121,46 @@ pub struct LogPush<'a> {
     pub kind: &'static str,
     pub session_id: &'a str,
     pub entry: LogEntry,
+}
+
+/// `engine:tree` request payload.
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TreeRequest {
+    /// Defaults to the root node.
+    pub node_id: Option<u32>,
+    /// Levels of children to include; defaults to one, so that a response stays small
+    /// and the client reads deeper levels by asking for a child's id.
+    pub depth: Option<u32>,
+}
+
+/// `engine:props` request payload.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropsRequest {
+    pub node_id: u32,
+}
+
+/// Answer to `engine:tree`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TreeDone<'a> {
+    #[serde(rename = "type")]
+    pub kind: &'static str,
+    pub session_id: &'a str,
+    pub request_id: u64,
+    pub node: NodeSummary,
+}
+
+/// Answer to `engine:props`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropsDone<'a> {
+    #[serde(rename = "type")]
+    pub kind: &'static str,
+    pub session_id: &'a str,
+    pub request_id: u64,
+    pub node: NodeDetails,
 }
 
 /// Answer to a request that could not be fulfilled.

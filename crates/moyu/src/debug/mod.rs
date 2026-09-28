@@ -7,7 +7,9 @@
 //!
 //! See `rfcs/2026-09-25-runtime-debug-bridge.md`.
 
+mod nodes;
 mod protocol;
+mod props;
 mod state;
 
 #[cfg(native)]
@@ -23,8 +25,8 @@ use moyu_pal::config::get_engine_config;
 use moyu_pal::logger::buffer::{self, LogEntry, LogLevel};
 use moyu_pal::time::{Instant, SystemTime, UNIX_EPOCH};
 use protocol::{
-    EvalDone, EvalOutcome, EvalRequest, Hello, LogPush, LogsDone, LogsRequest, ReadyPush,
-    RequestError, StateDone,
+    EvalDone, EvalOutcome, EvalRequest, Hello, LogPush, LogsDone, LogsRequest, PropsDone,
+    PropsRequest, ReadyPush, RequestError, StateDone, TreeDone, TreeRequest,
 };
 use serde::Serialize;
 
@@ -37,6 +39,10 @@ use web::eval as platform_eval;
 const DEFAULT_EVAL_TIMEOUT: Duration = Duration::from_secs(5);
 /// Longest JSON text one evaluation result may produce.
 const EVAL_RESULT_LIMIT: usize = 256 * 1024;
+/// Id of the root node, which the tree starts from.
+const ROOT_NODE_ID: u32 = 0;
+/// Levels of children one tree request includes unless it asks for another number.
+const DEFAULT_TREE_DEPTH: u32 = 1;
 
 /// Everything the bridge needs to talk to its host.
 #[derive(Clone)]
@@ -97,6 +103,10 @@ pub(crate) fn start() {
     // Record from the start, so that a client sees what happened during startup too.
     buffer::enable();
 
+    // Property objects are only observable at the JS boundary, and nodes created by the
+    // project script are exactly the ones a client asks about, so recording starts here.
+    props::start();
+
     let session = DebugSession {
         session_id: resolve_session_id(&url),
         url,
@@ -152,7 +162,7 @@ pub(crate) fn hello(session: &DebugSession) -> String {
         platform: state::platform_name(),
         engine_version: env!("CARGO_PKG_VERSION"),
         entry: get_engine_config().entry.clone().unwrap_or_default(),
-        capabilities: vec!["state", "eval", "logs"],
+        capabilities: vec!["state", "eval", "logs", "tree", "props"],
         ready: is_ready(),
     })
 }
@@ -167,6 +177,8 @@ pub(crate) async fn handle_request(text: &str, session: &DebugSession) -> Option
         "engine:state" => Some(state_answer(&kind, request_id, session)),
         "engine:eval" => Some(eval_answer(&kind, request_id, session, request).await),
         "engine:logs" => Some(logs_answer(&kind, request_id, session, request)),
+        "engine:tree" => Some(tree_answer(&kind, request_id, session, request)),
+        "engine:props" => Some(props_answer(&kind, request_id, session, request)),
         other => Some(error(
             other,
             request_id,
@@ -197,6 +209,84 @@ fn state_answer(kind: &str, request_id: Option<u64>, session: &DebugSession) -> 
             "Engine core is not ready yet".to_string(),
         ),
     }
+}
+
+/// Read one level of the node tree, or the root node when no id is given.
+fn tree_answer(
+    kind: &str,
+    request_id: Option<u64>,
+    session: &DebugSession,
+    request: serde_json::Value,
+) -> String {
+    let Some(request_id) = request_id else {
+        return invalid_request(kind, session);
+    };
+
+    let request = serde_json::from_value::<TreeRequest>(request).unwrap_or_default();
+    let node_id = request.node_id.unwrap_or(ROOT_NODE_ID);
+
+    let Some(node) = nodes::find(node_id) else {
+        return missing_node(kind, request_id, session, node_id);
+    };
+
+    props::prune(|node_id| nodes::find(node_id).is_some());
+
+    serialize(&TreeDone {
+        kind: "engine:tree:done",
+        session_id: &session.session_id,
+        request_id,
+        node: nodes::tree(&**node.read(), request.depth.unwrap_or(DEFAULT_TREE_DEPTH)),
+    })
+}
+
+/// Read one node's properties and derived state.
+fn props_answer(
+    kind: &str,
+    request_id: Option<u64>,
+    session: &DebugSession,
+    request: serde_json::Value,
+) -> String {
+    let Some(request_id) = request_id else {
+        return invalid_request(kind, session);
+    };
+
+    let Ok(request) = serde_json::from_value::<PropsRequest>(request) else {
+        return error(
+            kind,
+            Some(request_id),
+            session,
+            "invalid_request",
+            "Request needs a nodeId".to_string(),
+        );
+    };
+
+    let Some(node) = nodes::find(request.node_id) else {
+        return missing_node(kind, request_id, session, request.node_id);
+    };
+
+    props::prune(|node_id| nodes::find(node_id).is_some());
+
+    serialize(&PropsDone {
+        kind: "engine:props:done",
+        session_id: &session.session_id,
+        request_id,
+        node: nodes::details(&**node.read(), props::get(request.node_id)),
+    })
+}
+
+fn missing_node(
+    kind: &str,
+    request_id: u64,
+    session: &DebugSession,
+    node_id: u32,
+) -> String {
+    error(
+        kind,
+        Some(request_id),
+        session,
+        "not_found",
+        format!("No node with id {node_id}"),
+    )
 }
 
 /// Evaluate a snippet in the runtime's JavaScript context.

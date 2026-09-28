@@ -27,6 +27,8 @@ import {
 const DEFAULT_NATIVE_ENTRY = `http://localhost:${DEV_SERVER_PORT}/index.json`;
 const DEFAULT_WEB_PORT = 6320;
 const DEFAULT_TIMEOUT_MS = 60_000;
+/** Levels of children `tree` prints unless asked for another number. */
+const DEFAULT_TREE_DEPTH = 8;
 
 /** Options shared by every subcommand: how to reach or start the engine. */
 const sessionArgs = {
@@ -191,12 +193,84 @@ export default defineCommand({
           await waitForInterrupt();
         }),
     }),
+    tree: defineCommand({
+      meta: {
+        name: 'tree',
+        description: 'Print the node tree',
+      },
+      args: {
+        ...sessionArgs,
+        node: {
+          type: 'positional',
+          description: 'Node id to start from (defaults to the root)',
+          required: false,
+        },
+        depth: {
+          type: 'string',
+          description: 'Levels of children to print',
+          default: String(DEFAULT_TREE_DEPTH),
+        },
+      },
+      run: ({ args }) =>
+        runSession(args, async (host) => {
+          await host.waitForReady(Number(args.timeout));
+
+          const result = await host.request('engine:tree', {
+            nodeId: args.node === undefined ? undefined : Number(args.node),
+            depth: Number(args.depth),
+          });
+
+          printNode(result.node, 0);
+        }),
+    }),
+    props: defineCommand({
+      meta: {
+        name: 'props',
+        description: 'Print one node properties and derived state',
+      },
+      args: {
+        ...sessionArgs,
+        node: {
+          type: 'positional',
+          description: 'Node id to read',
+          required: true,
+        },
+      },
+      run: ({ args }) =>
+        runSession(args, async (host) => {
+          await host.waitForReady(Number(args.timeout));
+
+          const result = await host.request('engine:props', { nodeId: Number(args.node) });
+          consola.log(JSON.stringify(result.node, null, 2));
+        }),
+    }),
   },
 });
 
 // ---------------------------------------------------------------------------
-// Session
+// Output
 // ---------------------------------------------------------------------------
+
+/** One node of a tree response. */
+interface NodeSummary {
+  id: number;
+  type: string;
+  label: string;
+  visible: boolean;
+  children: NodeSummary[];
+}
+
+/** Print a node and its children as an indented list. */
+function printNode(node: NodeSummary, indent: number) {
+  const label = node.label === '' ? '' : ` ${JSON.stringify(node.label)}`;
+  const hidden = node.visible ? '' : ' (hidden)';
+
+  consola.log(`${'  '.repeat(indent)}#${node.id} ${node.type}${label}${hidden}`);
+
+  for (const child of node.children) {
+    printNode(child, indent + 1);
+  }
+}
 
 type DebugMessage = { type?: string; requestId?: number; [key: string]: any };
 
