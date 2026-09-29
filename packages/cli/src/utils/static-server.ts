@@ -17,7 +17,7 @@ import { createServer, request as httpRequest } from 'node:http';
 import { connect as connectTcp } from 'node:net';
 import { extname, join, normalize, resolve } from 'node:path';
 import type { Duplex } from 'node:stream';
-import consola from 'consola';
+import { log } from './log.js';
 import { platformDir } from './project.js';
 
 /**
@@ -63,20 +63,18 @@ export interface StaticFileServer {
 }
 
 /**
- * Resolve the engine's web assets, exiting when they are missing or empty.
+ * Resolve the engine's web assets.
  */
 export async function requireWebEngineAssets(projectRoot: string, version: string): Promise<string> {
   const webPath = platformDir(projectRoot, version, 'web-universal');
 
   if (!existsSync(webPath)) {
-    consola.error('Web engine assets not found. Run "moyu download" to download web-universal platform.');
-    process.exit(1);
+    throw new Error('Web engine assets not found. Run "moyu download" to download web-universal platform.');
   }
 
   const entries = await readdir(webPath);
   if (entries.length === 0) {
-    consola.error('Web engine directory is empty. Run "moyu download" to re-download.');
-    process.exit(1);
+    throw new Error('Web engine directory is empty. Run "moyu download" to re-download.');
   }
 
   return webPath;
@@ -159,7 +157,7 @@ function listen(server: ReturnType<typeof createServer>, port: number, attempts 
         }
 
         currentPort++;
-        consola.warn(`Port ${currentPort - 1} in use, trying ${currentPort}...`);
+        log.warn(`Port ${currentPort - 1} in use, trying ${currentPort}...`);
         attempt();
       });
 
@@ -228,7 +226,7 @@ function proxyToDevServer(req: IncomingMessage, res: ServerResponse): void {
   proxyReq.on('error', () => {
     if (!devServerWarned) {
       devServerWarned = true;
-      consola.warn(`Dev server not reachable on port ${DEV_SERVER_PORT}; bundler output will fail to load.`);
+      log.warn(`Dev server not reachable on port ${DEV_SERVER_PORT}; bundler output will fail to load.`);
     }
 
     if (!res.headersSent) {

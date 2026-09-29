@@ -1,28 +1,27 @@
 /**
- * Debug bridge host.
+ * Debug subcommands.
  *
- * Starts a WebSocket server that engines connect to, launches an engine with the
- * debug endpoint injected, and runs one of the debug requests against it. The
- * protocol is described in `rfcs/2026-09-25-runtime-debug-bridge.md`.
+ * Each subcommand starts a session (see `utils/debug-session.ts`), asks the engine one
+ * question, and prints the answer. Results go to stdout so they can be piped; progress
+ * and errors go to stderr.
  */
 
-import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { once } from 'node:events';
-import { existsSync } from 'node:fs';
-import type { AddressInfo } from 'node:net';
-import { join } from 'node:path';
+import { writeFile } from 'node:fs/promises';
 import { defineCommand } from 'citty';
-import consola from 'consola';
-import { WebSocketServer, type WebSocket } from 'ws';
-import { detectPlatform, loadMeta } from '../utils/engine.js';
-import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
-import { DEV_SERVER_PORT, requireWebEngineAssets, startStaticFileServer } from '../utils/static-server.js';
+import {
+  DEFAULT_CONNECT_TIMEOUT_MS,
+  DEFAULT_READY_TIMEOUT_MS,
+  type DebugHost,
+  type DebugMessage,
+  type SessionOptions,
+  startDebugSession,
+} from '../utils/debug-session.js';
+import { log } from '../utils/log.js';
 
-/** Entry used for native debugging; the project's own dev server serves it. */
-const DEFAULT_NATIVE_ENTRY = `http://localhost:${DEV_SERVER_PORT}/index.json`;
+/** Port for the web engine server when the caller does not pick one. */
 const DEFAULT_WEB_PORT = 6320;
-const DEFAULT_TIMEOUT_MS = 60_000;
+/** Port that attach mode listens on, unless the caller picks another one. */
+const DEFAULT_ATTACH_PORT = 6321;
 /** Levels of children `tree` prints unless asked for another number. */
 const DEFAULT_TREE_DEPTH = 8;
 
@@ -42,10 +41,19 @@ const sessionArgs = {
     type: 'string',
     description: 'Entry file passed to a native engine',
   },
+  attach: {
+    type: 'boolean',
+    description: 'Attach to an engine started by hand instead of starting one',
+  },
+  listen: {
+    type: 'string',
+    description: 'Port to listen on in attach mode',
+    default: String(DEFAULT_ATTACH_PORT),
+  },
   timeout: {
     type: 'string',
     description: 'Milliseconds to wait for the engine to connect',
-    default: String(DEFAULT_TIMEOUT_MS),
+    default: String(DEFAULT_CONNECT_TIMEOUT_MS),
   },
 } as const;
 
@@ -63,8 +71,8 @@ export default defineCommand({
       args: sessionArgs,
       run: ({ args }) =>
         runSession(args, async (host) => {
-          await host.waitForReady(Number(args.timeout));
-          consola.log(JSON.stringify(await host.request('engine:state'), null, 2));
+          await host.waitForReady(readyTimeout(args.timeout));
+          printJson(await host.request('engine:state'));
         }),
     }),
     eval: defineCommand({
@@ -88,17 +96,17 @@ export default defineCommand({
       run: ({ args }) =>
         runSession(args, async (host) => {
           // Evaluating before the project script has run would report nothing useful.
-          await host.waitForReady(Number(args.timeout));
+          await host.waitForReady(readyTimeout(args.timeout));
 
           const result = await host.request('engine:eval', {
             code: args.code,
             timeoutMs: Number(args['eval-timeout']),
           });
 
-          consola.log(result.value === undefined ? result.repr : JSON.stringify(result.value, null, 2));
+          write(result.value === undefined ? String(result.repr) : JSON.stringify(result.value, null, 2));
 
           if (result.truncated === true) {
-            consola.warn('Result exceeded the size limit and is only shown in short form.');
+            log.warn('Result exceeded the size limit and is only shown in short form.');
           }
         }),
     }),
@@ -135,6 +143,15 @@ export default defineCommand({
           let watching = false;
           let lastSeq = 0;
 
+          const printNewEntry = (entry: LogEntry) => {
+            // Entries at or below the cursor are either already printed or part of the
+            // snapshot; a jump means the engine dropped pushes for a slow client.
+            if (entry.seq <= lastSeq) return;
+
+            lastSeq = entry.seq;
+            printLogEntry(entry);
+          };
+
           host.onMessage((message) => {
             if (message.type !== 'engine:log') return;
 
@@ -152,15 +169,6 @@ export default defineCommand({
             subscribe: Boolean(args.follow),
           });
 
-          const printNewEntry = (entry: LogEntry) => {
-            // Entries at or below the cursor are either already printed or part of the
-            // snapshot; a jump means the engine dropped pushes for a slow client.
-            if (entry.seq <= lastSeq) return;
-
-            lastSeq = entry.seq;
-            printLogEntry(entry);
-          };
-
           for (const entry of result.entries) {
             printLogEntry(entry);
             lastSeq = Math.max(lastSeq, entry.seq);
@@ -177,11 +185,12 @@ export default defineCommand({
           }
 
           pending.length = 0;
+
           if (result.dropped > 0) {
-            consola.warn(`${result.dropped} earlier entries were dropped.`);
+            log.warn(`${result.dropped} earlier entries were dropped.`);
           }
 
-          consola.info('Following. Press Ctrl+C to stop.');
+          log.info('Following. Press Ctrl+C to stop.');
 
           // The session stays open for as long as the user watches the logs.
           await waitForInterrupt();
@@ -207,7 +216,7 @@ export default defineCommand({
       },
       run: ({ args }) =>
         runSession(args, async (host) => {
-          await host.waitForReady(Number(args.timeout));
+          await host.waitForReady(readyTimeout(args.timeout));
 
           const result = await host.request('engine:tree', {
             nodeId: args.node === undefined ? undefined : Number(args.node),
@@ -232,14 +241,103 @@ export default defineCommand({
       },
       run: ({ args }) =>
         runSession(args, async (host) => {
-          await host.waitForReady(Number(args.timeout));
+          await host.waitForReady(readyTimeout(args.timeout));
 
           const result = await host.request('engine:props', { nodeId: Number(args.node) });
-          consola.log(JSON.stringify(result.node, null, 2));
+          printJson(result.node);
+        }),
+    }),
+    screenshot: defineCommand({
+      meta: {
+        name: 'screenshot',
+        description: 'Capture the stage and write it to a file',
+      },
+      args: {
+        ...sessionArgs,
+        file: {
+          type: 'positional',
+          description: 'File to write',
+          required: true,
+        },
+        'max-width': {
+          type: 'string',
+          description: 'Largest width to return; needs --max-height as well',
+        },
+        'max-height': {
+          type: 'string',
+          description: 'Largest height to return; needs --max-width as well',
+        },
+      },
+      run: ({ args }) =>
+        runSession(args, async (host) => {
+          await host.waitForReady(readyTimeout(args.timeout));
+
+          const result = await host.request('engine:screenshot', {
+            maxWidth: args['max-width'] === undefined ? undefined : Number(args['max-width']),
+            maxHeight: args['max-height'] === undefined ? undefined : Number(args['max-height']),
+          });
+
+          await writeFile(args.file, Buffer.from(result.data, 'base64'));
+          log.info(`Wrote ${result.width}x${result.height} ${result.format} to ${args.file}`);
         }),
     }),
   },
 });
+
+// ---------------------------------------------------------------------------
+// Session
+// ---------------------------------------------------------------------------
+
+type SessionArgs = {
+  web?: boolean;
+  port: string;
+  entry?: string;
+  attach?: boolean;
+  listen: string;
+  timeout: string;
+};
+
+/**
+ * Start a session, run `task` against the connected engine, then shut everything down.
+ * A task that needs the session to stay open simply does not return until it is done.
+ */
+async function runSession(args: SessionArgs, task: (host: DebugHost) => Promise<void>) {
+  const options: SessionOptions = args.attach
+    ? { attachPort: Number(args.listen) }
+    : { web: args.web, port: Number(args.port), entry: args.entry };
+
+  let session: Awaited<ReturnType<typeof startDebugSession>> | null = null;
+  let exitCode = 0;
+
+  try {
+    session = await startDebugSession(options);
+    await session.host.waitForEngine(Number(args.timeout));
+    await task(session.host);
+  } catch (error) {
+    log.error(error instanceof Error ? error.message : String(error));
+    exitCode = 1;
+  } finally {
+    session?.stop();
+  }
+
+  process.exit(exitCode);
+}
+
+/**
+ * The engine starts up on its own schedule, so waiting for it gets its own budget
+ * rather than sharing the connect timeout.
+ */
+function readyTimeout(connectTimeout: string): number {
+  return Math.max(Number(connectTimeout), DEFAULT_READY_TIMEOUT_MS);
+}
+
+/** Resolve when the user interrupts the process. */
+function waitForInterrupt(): Promise<void> {
+  return new Promise((resolve) => {
+    process.once('SIGINT', () => resolve());
+    process.once('SIGTERM', () => resolve());
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Output
@@ -254,20 +352,6 @@ interface NodeSummary {
   children: NodeSummary[];
 }
 
-/** Print a node and its children as an indented list. */
-function printNode(node: NodeSummary, indent: number) {
-  const label = node.label === '' ? '' : ` ${JSON.stringify(node.label)}`;
-  const hidden = node.visible ? '' : ' (hidden)';
-
-  consola.log(`${'  '.repeat(indent)}#${node.id} ${node.type}${label}${hidden}`);
-
-  for (const child of node.children) {
-    printNode(child, indent + 1);
-  }
-}
-
-type DebugMessage = { type?: string; requestId?: number; [key: string]: any };
-
 /** One entry of the engine's log buffer, as sent by `engine:logs` and `engine:log`. */
 interface LogEntry {
   seq: number;
@@ -277,302 +361,27 @@ interface LogEntry {
   timestampMs: number;
 }
 
-interface SessionOptions {
-  web?: boolean;
-  port: string;
-  entry?: string;
-  timeout: string;
+function write(line: string) {
+  process.stdout.write(`${line}\n`);
 }
 
-/**
- * Start the host and an engine, run `task` against the connected engine, then shut
- * everything down. A task that needs the session to stay open simply does not return
- * until it is done watching.
- */
-async function runSession(options: SessionOptions, task: (host: DebugHost) => Promise<void>) {
-  const projectRoot = requireProjectRoot();
-  const meta = await loadMeta(metaFile(projectRoot));
-
-  if (!meta?.active) {
-    consola.error('No active engine version. Run "moyu download" first.');
-    process.exit(1);
-  }
-
-  const sessionId = randomUUID();
-  const host = await startHost(sessionId);
-  const endpoint = `ws://127.0.0.1:${host.port}/debug/ws?sessionId=${sessionId}&role=engine`;
-
-  consola.info(`Debug endpoint listening on port ${host.port}`);
-
-  const engine = options.web
-    ? await launchWebEngine(projectRoot, meta.active.version, endpoint, sessionId, Number(options.port))
-    : launchNativeEngine(projectRoot, meta.active.version, endpoint, sessionId, options.entry);
-
-  let exitCode = 0;
-
-  try {
-    await host.waitForEngine(Number(options.timeout));
-    await task(host);
-  } catch (error) {
-    consola.error(error instanceof Error ? error.message : String(error));
-    exitCode = 1;
-  } finally {
-    engine.stop();
-    host.close();
-  }
-
-  process.exit(exitCode);
+function printJson(value: unknown) {
+  write(JSON.stringify(value, null, 2));
 }
 
-/** Resolve when the user interrupts the process. */
-function waitForInterrupt(): Promise<void> {
-  return new Promise((resolve) => {
-    process.once('SIGINT', () => resolve());
-    process.once('SIGTERM', () => resolve());
-  });
+/** Print a node and its children as an indented list. */
+function printNode(node: NodeSummary, indent: number) {
+  const label = node.label === '' ? '' : ` ${JSON.stringify(node.label)}`;
+  const hidden = node.visible ? '' : ' (hidden)';
+
+  write(`${'  '.repeat(indent)}#${node.id} ${node.type}${label}${hidden}`);
+
+  for (const child of node.children) {
+    printNode(child, indent + 1);
+  }
 }
 
 function printLogEntry(entry: DebugMessage) {
   const stamp = new Date(entry.timestampMs).toISOString().slice(11, 23);
-  consola.log(`${stamp} ${String(entry.level).toUpperCase()} ${entry.target}: ${entry.message}`);
-}
-
-// ---------------------------------------------------------------------------
-// Debug host
-// ---------------------------------------------------------------------------
-
-interface DebugHost {
-  /** Port the endpoint listens on; the OS picks a free one. */
-  port: number;
-  /** Wait until an engine connects. */
-  waitForEngine(timeoutMs: number): Promise<void>;
-  /** Wait until the engine has finished starting up. */
-  waitForReady(timeoutMs: number): Promise<void>;
-  /** Send a request and wait for its `:done` or `:error` answer. */
-  request(type: string, payload?: Record<string, unknown>): Promise<DebugMessage>;
-  /** Observe every message the engine sends, including pushes. */
-  onMessage(handler: (message: DebugMessage) => void): void;
-  close(): void;
-}
-
-async function startHost(sessionId: string): Promise<DebugHost> {
-  const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
-  await once(server, 'listening');
-
-  const port = (server.address() as AddressInfo).port;
-  const pending = new Map<number, { resolve(message: DebugMessage): void; reject(error: Error): void }>();
-  const observers: ((message: DebugMessage) => void)[] = [];
-
-  let nextRequestId = 1;
-  let socket: WebSocket | null = null;
-  let engineConnected = () => {};
-  let engineFailed = (_error: Error) => {};
-
-  const connected = new Promise<void>((resolve, reject) => {
-    engineConnected = resolve;
-    engineFailed = reject;
-  });
-
-  // The engine reports whether it finished starting up in `engine:hello`, and pushes
-  // `engine:ready` when that happens after the connection was already open.
-  let engineReady = false;
-  let readyWaiters: (() => void)[] = [];
-
-  const markReady = () => {
-    engineReady = true;
-
-    for (const waiter of readyWaiters) {
-      waiter();
-    }
-
-    readyWaiters = [];
-  };
-
-  server.on('connection', (connection) => {
-    socket = connection;
-
-    connection.on('message', (data) => {
-      const message = parseMessage(String(data));
-      if (!message) return;
-
-      if (message.type === 'engine:hello') {
-        consola.info(`Engine connected: ${message.platform} ${message.engineVersion} (entry ${message.entry})`);
-        engineConnected();
-
-        if (message.ready === true) {
-          markReady();
-        }
-        return;
-      }
-
-      if (message.type === 'engine:ready') {
-        markReady();
-        return;
-      }
-      for (const observer of observers) {
-        observer(message);
-      }
-
-      const requestId = message.requestId;
-      if (typeof requestId !== 'number') return;
-
-      const handler = pending.get(requestId);
-      if (!handler) return;
-
-      pending.delete(requestId);
-
-      if (typeof message.type === 'string' && message.type.endsWith(':error')) {
-        const details = message.stack ? `\n${String(message.stack)}` : '';
-        handler.reject(new Error(`${String(message.message)}${details}`));
-      } else {
-        handler.resolve(message);
-      }
-    });
-
-    connection.on('close', () => {
-      socket = null;
-
-      for (const handler of pending.values()) {
-        handler.reject(new Error('Engine disconnected before answering.'));
-      }
-      pending.clear();
-    });
-  });
-
-  server.on('error', (error: Error) => engineFailed(error));
-
-  return {
-    port,
-    waitForEngine: (timeoutMs) =>
-      withTimeout(
-        connected,
-        timeoutMs,
-        `No engine connected within ${timeoutMs}ms.\n` +
-          'Check that the engine is running, and that its version supports the debug bridge.',
-      ),
-    waitForReady: (timeoutMs) => {
-      if (engineReady) {
-        return Promise.resolve();
-      }
-
-      return withTimeout(
-        new Promise<void>((resolve) => readyWaiters.push(resolve)),
-        timeoutMs,
-        `The engine did not finish starting up within ${timeoutMs}ms.`,
-      );
-    },
-    request: (type, payload) =>
-      new Promise((resolve, reject) => {
-        if (!socket) {
-          reject(new Error('No engine is connected.'));
-          return;
-        }
-
-        const requestId = nextRequestId++;
-        pending.set(requestId, { resolve, reject });
-
-        socket.send(JSON.stringify({ type, requestId, sessionId, ...payload }));
-      }),
-    onMessage: (handler) => {
-      observers.push(handler);
-    },
-    close: () => server.close(),
-  };
-}
-
-function parseMessage(text: string): DebugMessage | null {
-  try {
-    const message: unknown = JSON.parse(text);
-    return typeof message === 'object' && message !== null ? (message as DebugMessage) : null;
-  } catch {
-    consola.warn(`Ignoring malformed message: ${text}`);
-    return null;
-  }
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error instanceof Error ? error : new Error(String(error)));
-      },
-    );
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Engine launch
-// ---------------------------------------------------------------------------
-
-interface LaunchedEngine {
-  stop(): void;
-}
-
-function launchNativeEngine(
-  projectRoot: string,
-  version: string,
-  endpoint: string,
-  sessionId: string,
-  entry: string | undefined,
-): LaunchedEngine {
-  const exeName = process.platform === 'win32' ? 'moyu.exe' : 'moyu';
-  const enginePath = join(platformDir(projectRoot, version, detectPlatform()), exeName);
-
-  if (!existsSync(enginePath)) {
-    consola.error(
-      `Engine binary not found at ${enginePath}\n` +
-        'The engine files may be corrupted. Run "moyu download" to re-download.',
-    );
-    process.exit(1);
-  }
-
-  const params = JSON.stringify({ engineDebugWsUrl: endpoint, engineDebugSessionId: sessionId });
-
-  consola.info(`Starting native engine: ${enginePath}`);
-
-  const child = spawn(enginePath, ['--entry', entry ?? DEFAULT_NATIVE_ENTRY, '--params', params], {
-    cwd: projectRoot,
-    stdio: 'inherit',
-  });
-
-  child.on('error', (err) => {
-    consola.error(`Failed to start engine: ${err.message}`);
-    process.exit(1);
-  });
-
-  return {
-    stop: () => child.kill(),
-  };
-}
-
-async function launchWebEngine(
-  projectRoot: string,
-  version: string,
-  endpoint: string,
-  sessionId: string,
-  port: number,
-): Promise<LaunchedEngine> {
-  const webPath = await requireWebEngineAssets(projectRoot, version);
-  const server = await startStaticFileServer({ projectRoot, webPath, port });
-
-  // The engine reads the debug endpoint from the page query; the entry page itself
-  // resolves its own entry, so no entry override is needed here.
-  const query = new URLSearchParams({
-    engineDebugWsUrl: endpoint,
-    engineDebugSessionId: sessionId,
-  });
-
-  consola.success(`Web engine server running at ${server.url}`);
-  consola.info(`Open this page to start the engine:\n  ${server.url}/?${query}\n`);
-
-  return {
-    stop: () => server.close(),
-  };
+  write(`${stamp} ${String(entry.level).toUpperCase()} ${entry.target}: ${entry.message}`);
 }
