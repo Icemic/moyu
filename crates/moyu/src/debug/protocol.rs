@@ -141,6 +141,18 @@ pub struct PropsRequest {
     pub node_id: u32,
 }
 
+/// `engine:screenshot` request payload.
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScreenshotRequest {
+    /// Largest width to return; requires `maxHeight` to take effect.
+    pub max_width: Option<u32>,
+    /// Largest height to return; requires `maxWidth` to take effect.
+    pub max_height: Option<u32>,
+    /// Defaults to true, so a scaled capture keeps the stage proportions.
+    pub keep_aspect_ratio: Option<bool>,
+}
+
 /// Answer to `engine:tree`.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -161,6 +173,22 @@ pub struct PropsDone<'a> {
     pub session_id: &'a str,
     pub request_id: u64,
     pub node: NodeDetails,
+}
+
+/// Answer to `engine:screenshot`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScreenshotDone<'a> {
+    #[serde(rename = "type")]
+    pub kind: &'static str,
+    pub session_id: &'a str,
+    pub request_id: u64,
+    /// Image format of `data`; the engine encodes screenshots as WebP.
+    pub format: &'static str,
+    pub width: u32,
+    pub height: u32,
+    /// The image file, base64 encoded.
+    pub data: String,
 }
 
 /// Answer to a request that could not be fulfilled.

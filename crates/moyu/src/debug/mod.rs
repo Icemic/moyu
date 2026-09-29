@@ -10,6 +10,7 @@
 mod nodes;
 mod protocol;
 mod props;
+mod screenshot;
 mod state;
 
 #[cfg(native)]
@@ -21,12 +22,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD as BASE64;
 use moyu_pal::config::get_engine_config;
 use moyu_pal::logger::buffer::{self, LogEntry, LogLevel};
 use moyu_pal::time::{Instant, SystemTime, UNIX_EPOCH};
 use protocol::{
     EvalDone, EvalOutcome, EvalRequest, Hello, LogPush, LogsDone, LogsRequest, PropsDone,
-    PropsRequest, ReadyPush, RequestError, StateDone, TreeDone, TreeRequest,
+    PropsRequest, ReadyPush, RequestError, ScreenshotDone, ScreenshotRequest, StateDone, TreeDone,
+    TreeRequest,
 };
 use serde::Serialize;
 
@@ -162,7 +166,7 @@ pub(crate) fn hello(session: &DebugSession) -> String {
         platform: state::platform_name(),
         engine_version: env!("CARGO_PKG_VERSION"),
         entry: get_engine_config().entry.clone().unwrap_or_default(),
-        capabilities: vec!["state", "eval", "logs", "tree", "props"],
+        capabilities: vec!["state", "eval", "logs", "tree", "props", "screenshot"],
         ready: is_ready(),
     })
 }
@@ -179,6 +183,9 @@ pub(crate) async fn handle_request(text: &str, session: &DebugSession) -> Option
         "engine:logs" => Some(logs_answer(&kind, request_id, session, request)),
         "engine:tree" => Some(tree_answer(&kind, request_id, session, request)),
         "engine:props" => Some(props_answer(&kind, request_id, session, request)),
+        "engine:screenshot" => {
+            Some(screenshot_answer(&kind, request_id, session, request).await)
+        }
         other => Some(error(
             other,
             request_id,
@@ -209,6 +216,42 @@ fn state_answer(kind: &str, request_id: Option<u64>, session: &DebugSession) -> 
             "Engine core is not ready yet".to_string(),
         ),
     }
+}
+
+/// Capture the stage as an image.
+async fn screenshot_answer(
+    kind: &str,
+    request_id: Option<u64>,
+    session: &DebugSession,
+    request: serde_json::Value,
+) -> String {
+    let Some(request_id) = request_id else {
+        return invalid_request(kind, session);
+    };
+
+    let request = serde_json::from_value::<ScreenshotRequest>(request).unwrap_or_default();
+
+    let capture = match screenshot::capture(
+        session,
+        request.max_width,
+        request.max_height,
+        request.keep_aspect_ratio.unwrap_or(true),
+    )
+    .await
+    {
+        Ok(capture) => capture,
+        Err(reason) => return error(kind, Some(request_id), session, "internal", reason),
+    };
+
+    serialize(&ScreenshotDone {
+        kind: "engine:screenshot:done",
+        session_id: &session.session_id,
+        request_id,
+        format: "webp",
+        width: capture.width,
+        height: capture.height,
+        data: BASE64.encode(&capture.data),
+    })
 }
 
 /// Read one level of the node tree, or the root node when no id is given.
