@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-29
+
 ### Changed
 
 1. Update `huozi` to 0.21 and fix breaking changes in the API. Now `huozi` is backed by `tiqian`.
+2. Support complex text layouting and decorations.
+3. Introduce debug bridge and implement MCP server.
 
 ### Fixed
 
 1. Sample textures in uniform control flow in the builtin transition shader, which Chrome and Edge rejected.
+2. Correct container node type.
 
 ## [0.19.0] - 2026-09-15
 
