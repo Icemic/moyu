@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use anyhow::Result;
 use csscolorparser::Color;
-use huozi::glyph_vertices::GlyphVertices;
+use huozi::glyph_vertices::UnitVertices;
 use huozi::layout::{Interaction, LayoutStyle, SegmentGlyphSpan};
 use huozi::parser::{Segment, SegmentId, ShadowStyle, StrokeStyle, TextStyle};
 use moyu_macros::Node;
@@ -38,8 +38,8 @@ pub struct Text {
     pub parse_markup: bool,
 
     pub segments: Vec<Segment<'static>>,
-    /// glyph vertices after layout
-    pub glyph_vertices: Vec<GlyphVertices>,
+    /// drawable elements after layout, in glyph display order
+    pub glyph_vertices: Vec<UnitVertices>,
     /// glyph ranges of segments after layout
     pub glyph_ranges: Vec<SegmentGlyphSpan>,
     /// interaction regions after layout

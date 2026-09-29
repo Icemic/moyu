@@ -1476,9 +1476,9 @@ checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
 name = "huozi"
-version = "0.22.1"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d906c14dc4fa2b5eed2cb27a7ebb5a1c968e8c1976d10c78a66828f35a595bac"
+checksum = "c56f0d9d9b51d8727452ae001d118b0e223c908ba18a5d04a3dae23fee7337a6"
 dependencies = [
  "ab_glyph_rasterizer",
  "anyhow",
@@ -4178,9 +4178,9 @@ dependencies = [
 
 [[package]]
 name = "tiqian"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c55eebe99bbddce4e8276378f32573667a4ccd70b4cd441249d9f2b53bea3b1e"
+checksum = "988733e530c94efd4598c783d1ca7436d75ebeff204c7afe9cb8b5239576d533"
 dependencies = [
  "hashbrown 0.17.1",
  "icu_properties",

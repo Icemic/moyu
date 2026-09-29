@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use glam::vec3a;
 use huozi::constant::TEXTURE_SIZE;
+use huozi::glyph_vertices::{TextRole, TextVertices, UnitVertices};
 use huozi::layout::Vertex;
 use huozi::{FontSource, Huozi};
 use log::{error, info};
@@ -256,44 +257,15 @@ impl TextRenderer {
         let mut vertices: Vec<Vertex> = Vec::with_capacity(glyphs.len() * 4 * 3);
         let mut indices: Vec<u16> = Vec::with_capacity(glyphs.len() * 6);
 
-        let mut index_offset = 0;
-
-        for (glyph_index, glyph) in glyphs.iter().enumerate() {
-            if let Some(mut shadow) = glyph.shadow {
-                if fade_from_index.is_some_and(|index| glyph_index >= index) {
-                    for vertex in &mut shadow {
-                        vertex.color[3] *= fade_progress;
-                    }
-                }
-                vertices.extend(shadow);
-                indices.extend(glyph.indices.iter().map(|index| index + index_offset));
-                index_offset += shadow.len() as u16;
+        // Submit layer by layer so that backgrounds stay below text and decorations
+        // stay above it; each layer keeps the per-element (typewriter) order.
+        for layer in DRAW_LAYERS {
+            for (element_index, element) in glyphs.iter().enumerate() {
+                let fade = fade_from_index
+                    .is_some_and(|index| element_index >= index)
+                    .then_some(fade_progress);
+                push_layer(&mut vertices, &mut indices, element, layer, fade);
             }
-        }
-
-        for (glyph_index, glyph) in glyphs.iter().enumerate() {
-            if let Some(mut stroke) = glyph.stroke {
-                if fade_from_index.is_some_and(|index| glyph_index >= index) {
-                    for vertex in &mut stroke {
-                        vertex.color[3] *= fade_progress;
-                    }
-                }
-                vertices.extend(stroke);
-                indices.extend(glyph.indices.iter().map(|index| index + index_offset));
-                index_offset += stroke.len() as u16;
-            }
-        }
-
-        for (glyph_index, glyph) in glyphs.iter().enumerate() {
-            let mut fill = glyph.fill;
-            if fade_from_index.is_some_and(|index| glyph_index >= index) {
-                for vertex in &mut fill {
-                    vertex.color[3] *= fade_progress;
-                }
-            }
-            vertices.extend(fill);
-            indices.extend(glyph.indices.iter().map(|index| index + index_offset));
-            index_offset += fill.len() as u16;
         }
 
         for vertex in &mut vertices {
@@ -561,10 +533,14 @@ impl Renderer for TextRenderer {
                         let row_start = node
                             .glyph_vertices
                             .get(glyph_start)
-                            .map(|g| g.row)
+                            .map(element_row)
                             .unwrap_or(0);
                         // max row + 1
-                        let row_end = node.glyph_vertices.last().map(|g| g.row + 1).unwrap_or(0);
+                        let row_end = node
+                            .glyph_vertices
+                            .last()
+                            .map(|element| element_row(element) + 1)
+                            .unwrap_or(0);
                         let total = row_end - row_start;
 
                         total_progress = progress / total as f64;
@@ -591,12 +567,13 @@ impl Renderer for TextRenderer {
                             index = node
                                 .glyph_vertices
                                 .iter()
-                                .position(|g| g.row as f64 - row_start as f64 >= progress)
+                                .position(|element| {
+                                    element_row(element) as f64 - row_start as f64 >= progress
+                                })
                                 .unwrap_or(node.glyph_vertices.len());
-                            fade_from_index = node
-                                .glyph_vertices
-                                .iter()
-                                .position(|g| (g.row + 1 - row_start) as f64 >= progress);
+                            fade_from_index = node.glyph_vertices.iter().position(|element| {
+                                (element_row(element) + 1 - row_start) as f64 >= progress
+                            });
                             progress %= 1.0;
                         }
 
@@ -670,16 +647,136 @@ impl Renderer for TextRenderer {
 }
 
 fn get_cursor_position(node: &Text, next_index: usize) -> (f32, f32) {
-    // next_index is the end value of an open interval, but we need the end value of a closed interval,
-    // so -1.
-    let last_index = next_index as i32 - 1;
-    if last_index < 0 {
-        return (0., 0.);
-    }
+    // `next_index` is the exclusive end of the visible element range. Only text
+    // elements carry a caret, so walk backwards to the last visible text element.
+    let visible = &node.glyph_vertices[..next_index.min(node.glyph_vertices.len())];
+    visible
+        .iter()
+        .rev()
+        .find_map(|element| match element {
+            UnitVertices::Text(TextVertices {
+                x,
+                y,
+                width,
+                role: TextRole::Body,
+                ..
+            }) => Some(((x + width) as f32, *y as f32)),
+            _ => None,
+        })
+        .unwrap_or((0., 0.))
+}
 
-    if let Some(glyph) = node.glyph_vertices.get(last_index as usize) {
-        return ((glyph.x + glyph.width) as f32, glyph.y as f32);
+/// The visual row of a drawable element; used by printer-mode progress tracking.
+fn element_row(element: &UnitVertices) -> u32 {
+    match element {
+        UnitVertices::Text(text) => text.row,
+        UnitVertices::Background(background) => background.row,
+        UnitVertices::Line(line) => line.row,
+        UnitVertices::Decoration(decoration) => decoration.row,
+        UnitVertices::InlineObject(object) => object.row,
     }
+}
 
-    (0., 0.)
+/// Draw layers of a text node, in submission order.
+///
+/// The order decides how translucent overlaps, strokes and shadows compose:
+/// backgrounds are below the text, decorations above it; text and shapes both
+/// draw from shadow to stroke to fill.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DrawLayer {
+    BackgroundShadow,
+    BackgroundStroke,
+    BackgroundFill,
+    TextShadow,
+    TextStroke,
+    TextFill,
+    Decoration,
+}
+
+const DRAW_LAYERS: [DrawLayer; 7] = [
+    DrawLayer::BackgroundShadow,
+    DrawLayer::BackgroundStroke,
+    DrawLayer::BackgroundFill,
+    DrawLayer::TextShadow,
+    DrawLayer::TextStroke,
+    DrawLayer::TextFill,
+    DrawLayer::Decoration,
+];
+
+/// Appends one element's vertices for a given layer; elements without that layer
+/// contribute nothing.
+fn push_layer(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u16>,
+    element: &UnitVertices,
+    layer: DrawLayer,
+    fade: Option<f32>,
+) {
+    match (element, layer) {
+        (UnitVertices::Background(background), DrawLayer::BackgroundShadow) => {
+            push_quads(vertices, indices, &background.vertices.shadow, fade);
+        }
+        (UnitVertices::Background(background), DrawLayer::BackgroundStroke) => {
+            push_quads(vertices, indices, &background.vertices.stroke, fade);
+        }
+        (UnitVertices::Background(background), DrawLayer::BackgroundFill) => {
+            push_quads(vertices, indices, &background.vertices.fill, fade);
+        }
+        (UnitVertices::Text(text), DrawLayer::TextShadow) => {
+            if let Some(shadow) = &text.shadow {
+                push_quads(vertices, indices, shadow, fade);
+            }
+        }
+        (UnitVertices::Text(text), DrawLayer::TextStroke) => {
+            if let Some(stroke) = &text.stroke {
+                push_quads(vertices, indices, stroke, fade);
+            }
+        }
+        (UnitVertices::Text(text), DrawLayer::TextFill) => {
+            push_quads(vertices, indices, &text.fill, fade);
+        }
+        // Lines and decorations share one layer; each element draws its own
+        // shadow, stroke and fill in sequence.
+        (UnitVertices::Line(line), DrawLayer::Decoration) => {
+            push_quads(vertices, indices, &line.vertices.shadow, fade);
+            push_quads(vertices, indices, &line.vertices.stroke, fade);
+            push_quads(vertices, indices, &line.vertices.fill, fade);
+        }
+        (UnitVertices::Decoration(decoration), DrawLayer::Decoration) => {
+            push_quads(vertices, indices, &decoration.vertices.shadow, fade);
+            push_quads(vertices, indices, &decoration.vertices.stroke, fade);
+            push_quads(vertices, indices, &decoration.vertices.fill, fade);
+        }
+        // Inline objects are drawn by the caller from its own resources; huozi
+        // only reports their layout rect, so there is nothing to upload here.
+        _ => {}
+    }
+}
+
+/// Appends a run of quads; every 4 consecutive vertices form one, expanded
+/// counter-clockwise as `[0, 1, 2, 0, 2, 3]`.
+fn push_quads(
+    vertices: &mut Vec<Vertex>,
+    indices: &mut Vec<u16>,
+    quads: &[Vertex],
+    fade: Option<f32>,
+) {
+    let base = vertices.len() as u16;
+    vertices.extend_from_slice(quads);
+    if let Some(progress) = fade {
+        for vertex in &mut vertices[base as usize..] {
+            vertex.color[3] *= progress;
+        }
+    }
+    for quad in 0..(quads.len() / 4) as u16 {
+        let offset = base + quad * 4;
+        indices.extend([
+            offset,
+            offset + 1,
+            offset + 2,
+            offset,
+            offset + 2,
+            offset + 3,
+        ]);
+    }
 }
