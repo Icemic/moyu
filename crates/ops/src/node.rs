@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::OnceLock;
 
 use anyhow::Result;
 use log::{debug, warn};
@@ -11,29 +12,25 @@ use moyu_core::utils::convert::JSValue;
 use moyu_core::utils::convert::{from_js, to_js};
 #[cfg(native)]
 use moyu_macros::moyu_bindgen;
-use moyu_pal::sync::{Mutex, RwLock};
+use moyu_pal::sync::RwLock;
 #[cfg(native)]
 use moyu_runtime::quickjs_rusty::{JSContext, RawJSValue};
 
 /// Receives every property object a node is given, before it is applied.
-pub type PropsObserver = Arc<dyn Fn(u32, &JSValue) + Send + Sync>;
-
-static PROPS_OBSERVER: Mutex<Option<PropsObserver>> = Mutex::new(None);
-
-/// Register a receiver for property objects, such as the debug bridge.
 ///
 /// Nodes keep typed fields rather than the objects they were handed, so anyone who
-/// needs the original object has to take a copy while it is passing through.
-pub fn set_props_observer(observer: Option<PropsObserver>) {
-    *PROPS_OBSERVER.lock() = observer;
+/// needs the original object has to take a copy while it is passing through. Only the
+/// first hook takes effect, since it lives as long as the engine does.
+static PROPS_HOOK: OnceLock<fn(u32, &JSValue)> = OnceLock::new();
+
+/// Install a receiver for property objects, such as the debug bridge.
+pub fn set_props_hook(hook: fn(u32, &JSValue)) {
+    let _ = PROPS_HOOK.set(hook);
 }
 
-fn notify_props_observer(node_id: u32, props: &JSValue) {
-    let observer = PROPS_OBSERVER.lock();
-    let observer = observer.as_ref();
-
-    if let Some(observer) = observer {
-        observer(node_id, props);
+fn notify_props_hook(node_id: u32, props: &JSValue) {
+    if let Some(hook) = PROPS_HOOK.get() {
+        hook(node_id, props);
     }
 }
 
@@ -74,7 +71,7 @@ pub fn create_instance(
 
     node.base_mut().update_properties(&mut props);
     node.update_properties(&mut props);
-    notify_props_observer(node_id, &props);
+    notify_props_hook(node_id, &props);
 
     Ok(node_id)
 }
@@ -227,7 +224,7 @@ pub fn update_props(node_id: u32, mut props: JSValue) -> Result<(), std::string:
 
     // set props
     node.update_properties(&mut props);
-    notify_props_observer(node_id, &props);
+    notify_props_hook(node_id, &props);
 
     Ok(())
 }

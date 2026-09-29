@@ -1,4 +1,3 @@
-mod debug;
 mod entry;
 #[cfg(native)]
 mod mimalloc;
@@ -12,7 +11,7 @@ use winit::platform::android::activity::AndroidApp;
 #[unsafe(no_mangle)]
 #[tokio::main]
 async fn android_main(app: AndroidApp) {
-    moyu_pal::logger::setup();
+    moyu_pal::logger::setup(moyu_debugger::create_logger);
     let _android_app_handle = moyu_pal::platform::setup_android(&app);
     moyu_pal::config::setup().await;
 
@@ -23,7 +22,7 @@ async fn android_main(app: AndroidApp) {
 #[cfg(web)]
 #[cfg_attr(web, wasm_bindgen::prelude::wasm_bindgen)]
 pub async fn moyu_init(element_id: &str, config: Option<wasm_bindgen::JsValue>) {
-    moyu_pal::logger::setup();
+    moyu_pal::logger::setup(moyu_debugger::create_logger);
 
     if let Some(config) = config
         && config.is_object()

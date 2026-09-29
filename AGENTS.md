@@ -93,6 +93,7 @@ cfg_aliases::cfg_aliases! {
 ```
 crates/
 ├── moyu/          # 主入口 crate，整合所有模块，提供可执行入口（main/entry）
+├── debugger/      # 运行时调试桥（协议、状态快照、节点视图、日志缓冲、Logger 包装、截图）
 ├── core/          # 核心引擎：渲染循环、事件系统、节点树、插件系统
 ├── nodes/         # 内置节点类型：Sprite、Text、Animation、Clip、Filter、Backdrop、Video
 ├── runtime/       # QuickJS VM 封装与管理、模块加载、console、全局注入

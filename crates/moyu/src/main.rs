@@ -3,7 +3,6 @@
     windows_subsystem = "windows"
 )]
 
-mod debug;
 mod entry;
 #[cfg(native)]
 mod mimalloc;
@@ -12,7 +11,7 @@ mod splash;
 #[cfg(desktop)]
 #[tokio::main]
 async fn main() {
-    moyu_pal::logger::setup();
+    moyu_pal::logger::setup(moyu_debugger::create_logger);
     moyu_pal::config::setup().await;
 
     let steam_plugin = if let Some(steam) = &moyu_pal::config::get_engine_config().steam {

@@ -3,8 +3,8 @@
 - **状态**：已接受
 - **日期**：2026-09-25
 - **作者**：末语项目组
-- **适用范围**：`moyu`、`moyu_core`、`moyu_ops`、`moyu_pal`、`moyu_runtime`、`packages/cli`
-- **相关实现**：`crates/moyu/src/debug/`（引擎侧调试桥）、`crates/platform/src/logger/`（日志缓冲）、`crates/core/src/core/render.rs`（截图回读）、`crates/ops/src/node.rs`（属性转发点）、`packages/cli/src/utils/debug-session.ts`、`packages/cli/src/commands/debug.ts`、`packages/cli/src/commands/mcp.ts`、`packages/cli/src/mcp/`
+- **适用范围**：`moyu`、`moyu_debugger`、`moyu_core`、`moyu_ops`、`moyu_pal`、`moyu_runtime`、`packages/cli`
+- **相关实现**：`crates/debugger/`（引擎侧调试桥：协议、状态快照、节点视图、属性记录、日志缓冲、Logger 包装、截图与两个传输）、`crates/platform/src/logger.rs`（平台日志后端与安装）、`crates/core/src/core/render.rs`（截图回读）、`crates/ops/src/node.rs`（属性转发点）、`packages/cli/src/utils/debug-session.ts`、`packages/cli/src/commands/debug.ts`、`packages/cli/src/commands/mcp.ts`、`packages/cli/src/mcp/`
 - **相关 RFC**：[宿主平台抽象](./2026-09-06-host-platform-abstraction.md)、[Moyu JSON Schema 扩展约定](./2026-07-28-json-schema-exchange-protocol.md)
 
 ## 摘要
@@ -366,7 +366,7 @@ interface EngineLogPushMessage {
 }
 ```
 
-实现方式：在 `moyu_pal::logger` 的既有初始化处，用一个自定义 `log::Log` 实现包住现有 backend，在调试桥启用时把记录写入固定容量的环形缓冲（2000 条，超出丢弃最旧并累加 `dropped`）。未启用时不缓冲，也不为日志做额外格式化。
+实现方式：平台日志的初始化保持原样（在 `moyu_pal::logger` 里选后端、设级别、安装），只是安装前会把后端穿过一个包装函数交给调试桥的 `create_logger`。包装在不改变原有行为的前提下转发每条记录并写入环形缓冲（固定 2000 条，超出丢弃最旧并累加 `dropped`）；包装虽然常驻，但只有调试桥启动后才真的保留记录，所以未启用时的代价仅是一次原子读，也不为日志做额外格式化。
 
 引擎不写日志文件。持久化由宿主负责：native 的引擎 stdout 本就在宿主手上，web 的浏览器 console 也能通过 `engine:log` 订阅拿到，宿主如需落盘（例如客户端的 `--log-file`）自行处理。
 
@@ -454,7 +454,7 @@ interface EnginePropsResult {
 }
 ```
 
-`props` 取自调试桥自己维护的旁表：属性对象只在 JS 边界上短期存在（节点最终只保存解析后的字段），所以 `moyu_ops` 提供一个转发点（`set_props_observer`），把每个节点收到的属性对象交给注册的接收方，而**存储与全部逻辑都在调试桥内**（`crates/moyu/src/debug/props.rs`），键为节点 id。
+`props` 取自调试桥自己维护的旁表：属性对象只在 JS 边界上短期存在（节点最终只保存解析后的字段），所以 `moyu_ops` 提供一个转发点（`set_props_hook`），把每个节点收到的属性对象交给注册的接收方，而**存储与全部逻辑都在调试桥内**（`crates/debugger/src/props.rs`），键为节点 id。
 
 两点取舍：
 
@@ -508,7 +508,7 @@ interface EngineScreenshotResult {
 ### web
 
 - 运行时是页面，调试连接就是页面里的 `WebSocket`；`engine:eval` 直接在页面上下文执行。
-- `moyu_core` / `moyu_ops` 的调试桥代码需要能在 wasm 目标下编译：网络与求值走 wasm 侧路径，不依赖 `moyu_runtime`。
+- 调试桥（`moyu_debugger`）与其在 `moyu_core` / `moyu_ops` / `moyu_pal` 上的挂点都要能在 wasm 目标下编译：网络与求值走 wasm 侧路径，不依赖 `moyu_runtime`。
 
 ## 开关与安全边界
 
@@ -563,7 +563,7 @@ MCP 的价值在于：工具参数是结构化 JSON（避免命令行转义问�
 
 ### M0：连接骨架（0.5～1 天）
 
-- 引擎侧：`crates/moyu/src/debug/` 模块（协议、状态快照、native 与 web 两个传输）。
+- 引擎侧：`crates/debugger/` 新 crate（协议、状态快照、native 与 web 两个传输）。
 - 宿主侧：`moyu debug state`，启动调试端点与引擎，收到 hello 后请求 `engine:state` 并打印 JSON。
 - 验收：native 与 web 两种模式下都能连上并打印引擎状态。
 
@@ -577,7 +577,7 @@ MCP 的价值在于：工具参数是结构化 JSON（避免命令行转义问�
 - `engine:logs`（环形缓冲 + 订阅推送）。
 - 命令行 `moyu debug eval|logs|state` 完整可用。
 
-实施结果：已完成。引擎侧新增 `moyu_pal::logger` 的环形缓冲与后端包装层 `Recorder`；native 的求值经 `on_vm_thread` 投递到 VM 线程，日志推送与请求响应共用同一条出站通道，断线时清空订阅。命令行新增 `eval` 与 `logs`（含 `--level` / `--limit` / `--since` / `--follow`），`state` 额外报告日志缓冲状况。
+实施结果：已完成。环形缓冲与平台日志的包装层都归调试桥（后归独立 crate，见 D17），`moyu_pal` 仍是唯一构建与安装日志后端的地方；native 的求值经 `on_vm_thread` 投递到 VM 线程，日志推送与请求响应共用同一条出站通道，断线时清空订阅。命令行新增 `eval` 与 `logs`（含 `--level` / `--limit` / `--since` / `--follow`），`state` 额外报告日志缓冲状况。
 
 实现中的三处协议细化：
 
@@ -592,7 +592,7 @@ MCP 的价值在于：工具参数是结构化 JSON（避免命令行转义问�
 - `engine:props`（属性记录 + `derived`）。
 - 验收：能在运行中的游戏里查看任意节点的类型、层级与最近设置的属性。
 
-实施结果：已完成。引擎侧新增 `crates/moyu/src/debug/nodes.rs`（树与属性的序列化视图）与 `props.rs`（属性旁表）；`moyu_ops::node` 增加一个属性转发点（`set_props_observer`），引擎自身的数据结构不做任何改动；命令行新增 `tree`（缩进列表，`--depth` 默认 8）与 `props`（JSON）。两者都从节点映射直接读取，不需要渲染线程。
+实施结果：已完成。引擎侧新增节点视图与属性旁表（现为 `crates/debugger/src/nodes.rs` 与 `props.rs`）；`moyu_ops::node` 增加一个属性转发点（`set_props_hook`），引擎自身的数据结构不做任何改动；命令行新增 `tree`（缩进列表，`--depth` 默认 8）与 `props`（JSON）。两者都从节点映射直接读取，不需要渲染线程。
 
 ### M3：截图、MCP 与附加模式（2～3 天）
 
@@ -617,13 +617,14 @@ MCP 的价值在于：工具参数是结构化 JSON（避免命令行转义问�
 | D7 | 本文只定义观察类能力（state / eval / logs / tree / props / screenshot）；控制类消息（重载、重绘、暂停单步、输入注入）不在本文范围，必要时另开 RFC。 | 2026-09-25 |
 | D8 | 客户端既能自己启动引擎（M0 起），也能附加到手动启动的实例（固定默认端口，后置到 M3）；后者是调试打包成品的唯一途径。 | 2026-09-25 |
 | D9 | native 除 `params.engineDebugWsUrl` 外，额外读环境变量 `MOYU_ENGINE_DEBUG_WS` 作为后备（`params` 优先），供框架脚本与打包成品手动启动时使用。 | 2026-09-25 |
-| D10 | 调试桥实现为 `crates/moyu/src/debug/` 独立模块，在 Core 创建后启动，不注册为 Core 插件。 | 2026-09-25 |
+| D10 | 调试桥在 Core 创建后启动，不注册为 Core 插件。模块位置见 D17。 | 2026-09-25 |
 | D11 | `engine:state` 只报告便宜可得的值（entry、platform、版本、surface 尺寸与缩放比、节点总数、已运行时长），不做逐帧插桩。 | 2026-09-25 |
 | D12 | 求值直接交给运行时自己的求值入口，不包装、不改写片段；结果的显示形式与 JSON 形式由引擎侧转换。 | 2026-09-25 |
 | D13 | 引擎启动完成推送一次 `engine:ready`（同时在 `engine:hello` 与 `engine:state` 中带上 `ready`）；只有一个就绪状态，不按能力分类。 | 2026-09-25 |
 | D14 | 日志采用「环形缓冲 + 游标拉取」为事实来源、推送作为跟随加速；推送允许重复与丢弃，客户端一律用 `seq` 收敛。响应走不丢消息的路径，推送队列有上限。 | 2026-09-25 |
 | D15 | MCP 实现为现有 `moyu` 包的 `mcp` 子命令，协议层单独成模块；不拆新包，也不引入官方 SDK。理由是 MCP 工具需要的能力与命令行完全相同，仅有入口差异。 | 2026-09-28 |
 | D16 | 命令结果写 stdout，进度与诊断写 stderr。命令行因此可管道，MCP 的 stdout 自然只含协议帧；引擎子进程的 stdout 转发到 stderr。 | 2026-09-28 |
+| D17 | 调试桥收拢为独立 crate `moyu_debugger`（`crates/debugger/`），`moyu` 只调用它的 `create_logger` / `start` / `mark_ready`。日志缓冲与平台日志的包装层随之迁移；`moyu_pal` 仍负责选后端与安装日志，只是安装前把后端穿过调用方传入的包装函数，`moyu_ops` 只保留一个属性钩子。两边都不反向依赖调试桥，依赖方向不发生反转。 | 2026-09-29 |
 
 本文待决策问题已全部确认，未决问题为空。
 

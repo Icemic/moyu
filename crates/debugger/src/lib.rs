@@ -2,16 +2,24 @@
 //!
 //! When the host injects a debug endpoint at startup, the engine opens an outbound
 //! WebSocket connection to it and answers `engine:*` requests over that connection.
-//! The bridge is a plain module rather than a Core plugin: it is driven by network
+//! The bridge is its own crate rather than a Core plugin: it is driven by network
 //! events instead of frames, and nothing at all is started when no endpoint is given.
+//!
+//! The engine only calls [`create_logger`], [`start`] and [`mark_ready`]; everything
+//! else in here is an implementation detail. State that only the bridge cares about is
+//! kept in this crate, so the rest of the engine at most offers a hook to register into.
 //!
 //! See `rfcs/2026-09-25-runtime-debug-bridge.md`.
 
+mod logger;
+mod logs;
 mod nodes;
-mod protocol;
 mod props;
+mod protocol;
 mod screenshot;
 mod state;
+
+pub use logger::create_logger;
 
 #[cfg(native)]
 mod native;
@@ -25,8 +33,9 @@ use std::time::Duration;
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD as BASE64;
 use moyu_pal::config::get_engine_config;
-use moyu_pal::logger::buffer::{self, LogEntry, LogLevel};
 use moyu_pal::time::{Instant, SystemTime, UNIX_EPOCH};
+
+use crate::logs::{LogEntry, LogLevel};
 use protocol::{
     EvalDone, EvalOutcome, EvalRequest, Hello, LogPush, LogsDone, LogsRequest, PropsDone,
     PropsRequest, ReadyPush, RequestError, ScreenshotDone, ScreenshotRequest, StateDone, TreeDone,
@@ -63,7 +72,7 @@ pub(crate) struct DebugSession {
 ///
 /// A page cannot interrupt a running snippet, so only native reports every case here.
 #[cfg_attr(web, allow(dead_code))]
-pub(super) enum EvalFailure {
+pub(crate) enum EvalFailure {
     /// The JavaScript context cannot run the snippet at all.
     Unavailable(String),
     /// The runtime did not run the snippet in time.
@@ -99,13 +108,13 @@ static READY: AtomicBool = AtomicBool::new(false);
 
 /// Start the debug bridge when the host injected an endpoint. Called once the engine
 /// core exists, so that requests can be answered as soon as the connection is up.
-pub(crate) fn start() {
+pub fn start() {
     let Some(url) = resolve_url() else {
         return;
     };
 
     // Record from the start, so that a client sees what happened during startup too.
-    buffer::enable();
+    logs::enable();
 
     // Property objects are only observable at the JS boundary, and nodes created by the
     // project script are exactly the ones a client asks about, so recording starts here.
@@ -128,7 +137,7 @@ pub(crate) fn start() {
 
 /// Report that the engine has finished starting up. Called once, after the project
 /// script has run and the first frame has been asked for.
-pub(crate) fn mark_ready() {
+pub fn mark_ready() {
     if READY.swap(true, Ordering::Relaxed) {
         return;
     }
@@ -150,7 +159,7 @@ pub(crate) fn is_ready() -> bool {
 /// Drop the connection-bound state; called by the transports once a connection ends.
 pub(crate) fn on_disconnect() {
     set_outgoing(None);
-    buffer::set_listener(None);
+    logs::set_listener(None);
 }
 
 /// Register how outgoing messages reach the host, or clear it.
@@ -450,11 +459,11 @@ fn logs_answer(
 
     match request.subscribe {
         Some(true) => subscribe_logs(&session.session_id, level),
-        Some(false) => buffer::set_listener(None),
+        Some(false) => logs::set_listener(None),
         None => {}
     }
 
-    let snapshot = buffer::snapshot(request.since_seq, level, request.limit);
+    let snapshot = logs::snapshot(request.since_seq, level, request.limit);
 
     serialize(&LogsDone {
         kind: "engine:logs:done",
@@ -471,7 +480,7 @@ fn logs_answer(
 fn subscribe_logs(session_id: &str, level: Option<LogLevel>) {
     let session_id = session_id.to_string();
 
-    buffer::set_listener(Some(Arc::new(move |entry: LogEntry| {
+    logs::set_listener(Some(Arc::new(move |entry: LogEntry| {
         if level.is_some_and(|level| entry.level > level) {
             return;
         }

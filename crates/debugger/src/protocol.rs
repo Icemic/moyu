@@ -4,11 +4,11 @@
 //! request name with a `:done` or `:error` suffix; push messages carry no `requestId`.
 //! See `rfcs/2026-09-25-runtime-debug-bridge.md` for the full protocol.
 
-use moyu_pal::logger::buffer::LogEntry;
 use serde::{Deserialize, Serialize};
 
 use super::nodes::{NodeDetails, NodeSummary};
 use super::state::EngineStateSnapshot;
+use crate::logs::LogEntry;
 
 /// Sent once right after the connection is established.
 #[derive(Serialize)]

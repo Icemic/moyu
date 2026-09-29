@@ -3,10 +3,10 @@
 use moyu_core::base::SurfaceSize;
 use moyu_core::core::try_get_core;
 use moyu_pal::config::get_engine_config;
-use moyu_pal::logger::buffer::LogStats;
 use serde::Serialize;
 
 use super::DebugSession;
+use crate::logs::{self, LogStats};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,7 +36,7 @@ impl EngineStateSnapshot {
             node_count: core.node_map().len(),
             uptime_ms: session.started_at.elapsed().as_millis() as u64,
             ready: super::is_ready(),
-            logs: moyu_pal::logger::buffer::stats(),
+            logs: logs::stats(),
         })
     }
 }

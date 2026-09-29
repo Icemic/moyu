@@ -2144,14 +2144,13 @@ dependencies = [
 name = "moyu"
 version = "0.19.0"
 dependencies = [
- "base64 0.23.1",
  "cfg_aliases",
  "embed-resource",
- "futures-util",
  "log",
  "mimalloc",
  "moyu_audio",
  "moyu_core",
+ "moyu_debugger",
  "moyu_gamepad",
  "moyu_macros",
  "moyu_nodes",
@@ -2162,13 +2161,9 @@ dependencies = [
  "moyu_scenario",
  "moyu_steam",
  "moyu_video",
- "serde",
- "serde_json",
  "tokio",
- "tokio-tungstenite",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "web-sys",
  "winit",
 ]
 
@@ -2216,6 +2211,27 @@ dependencies = [
  "webbrowser",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "moyu_debugger"
+version = "0.19.0"
+dependencies = [
+ "base64 0.23.1",
+ "cfg_aliases",
+ "futures-util",
+ "log",
+ "moyu_core",
+ "moyu_ops",
+ "moyu_pal",
+ "moyu_runtime",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

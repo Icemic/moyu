@@ -1,16 +1,16 @@
-//! In-memory log buffer for the runtime debug bridge.
+//! In-memory log buffer.
 //!
-//! Recording only starts once [`enable`] is called, so an engine that is not being
-//! debugged pays nothing beyond one atomic load per log record.
+//! The recorder wrapping the platform logger hands every record it accepts to
+//! [`record`], and recording only starts once [`enable`] is called, so an engine that
+//! is not being debugged pays nothing for this buffer beyond one atomic load per record.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use log::{Level, Record};
+use moyu_pal::time::{SystemTime, UNIX_EPOCH};
 use serde::Serialize;
-
-use crate::time::{SystemTime, UNIX_EPOCH};
 
 /// Entries kept before the oldest ones are dropped.
 const CAPACITY: usize = 2000;
@@ -18,7 +18,7 @@ const CAPACITY: usize = 2000;
 /// Severity of a recorded entry, serialized as a lowercase name.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum LogLevel {
+pub(crate) enum LogLevel {
     Error,
     Warn,
     Info,
@@ -38,7 +38,7 @@ impl LogLevel {
     }
 
     /// Parse the lowercase name used on the wire, as in `engine:logs` requests.
-    pub fn parse(name: &str) -> Option<Self> {
+    pub(crate) fn parse(name: &str) -> Option<Self> {
         match name {
             "error" => Some(Self::Error),
             "warn" => Some(Self::Warn),
@@ -53,7 +53,7 @@ impl LogLevel {
 /// One recorded log record.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LogEntry {
+pub(crate) struct LogEntry {
     pub seq: u64,
     pub level: LogLevel,
     pub target: String,
@@ -62,7 +62,7 @@ pub struct LogEntry {
 }
 
 /// Entries returned by [`snapshot`], together with the cursor for the next call.
-pub struct Snapshot {
+pub(crate) struct Snapshot {
     pub entries: Vec<LogEntry>,
     pub next_seq: u64,
     pub dropped: u64,
@@ -71,13 +71,13 @@ pub struct Snapshot {
 /// Size and loss counters of the buffer.
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LogStats {
+pub(crate) struct LogStats {
     pub buffered: usize,
     pub dropped: u64,
 }
 
 /// Called for every entry recorded while a listener is registered.
-pub type Listener = Arc<dyn Fn(LogEntry) + Send + Sync>;
+pub(crate) type Listener = Arc<dyn Fn(LogEntry) + Send + Sync>;
 
 struct State {
     entries: VecDeque<LogEntry>,
@@ -85,27 +85,24 @@ struct State {
     dropped: u64,
 }
 
-static ENABLED: AtomicBool = AtomicBool::new(false);
-static STATE: Mutex<Option<State>> = Mutex::new(None);
+static STATE: Mutex<State> = Mutex::new(State {
+    entries: VecDeque::new(),
+    next_seq: 0,
+    dropped: 0,
+});
 static LISTENER: Mutex<Option<Listener>> = Mutex::new(None);
+/// Whether the bridge keeps records. Off until it starts, so that an engine nobody is
+/// debugging never buffers.
+static ENABLED: AtomicBool = AtomicBool::new(false);
 
-/// Start recording log records. Calling it again restarts with an empty buffer.
-pub fn enable() {
+/// Start keeping records. Called by the bridge once a client may connect.
+pub(crate) fn enable() {
     ENABLED.store(true, Ordering::Relaxed);
-    *STATE.lock().unwrap() = Some(State {
-        entries: VecDeque::new(),
-        next_seq: 0,
-        dropped: 0,
-    });
-}
-
-pub fn is_enabled() -> bool {
-    ENABLED.load(Ordering::Relaxed)
 }
 
 /// Register the listener that receives entries as they are recorded. Pass `None`
 /// when the client stops caring about them.
-pub fn set_listener(listener: Option<Listener>) {
+pub(crate) fn set_listener(listener: Option<Listener>) {
     *LISTENER.lock().unwrap() = listener;
 }
 
@@ -113,15 +110,12 @@ pub fn set_listener(listener: Option<Listener>) {
 /// and count. `next_seq` is the cursor to pass as `since_seq` on the next call: when
 /// `limit` cut the result short it points at the last returned entry, so the rest can
 /// be fetched next; otherwise it points at the newest recorded entry.
-pub fn snapshot(since_seq: Option<u64>, level: Option<LogLevel>, limit: Option<usize>) -> Snapshot {
-    let mut guard = STATE.lock().unwrap();
-    let Some(state) = guard.as_mut() else {
-        return Snapshot {
-            entries: Vec::new(),
-            next_seq: 0,
-            dropped: 0,
-        };
-    };
+pub(crate) fn snapshot(
+    since_seq: Option<u64>,
+    level: Option<LogLevel>,
+    limit: Option<usize>,
+) -> Snapshot {
+    let state = STATE.lock().unwrap();
 
     let entries: Vec<LogEntry> = state
         .entries
@@ -145,32 +139,24 @@ pub fn snapshot(since_seq: Option<u64>, level: Option<LogLevel>, limit: Option<u
 }
 
 /// Size and loss counters of the buffer.
-pub fn stats() -> LogStats {
-    let guard = STATE.lock().unwrap();
+pub(crate) fn stats() -> LogStats {
+    let state = STATE.lock().unwrap();
 
-    match guard.as_ref() {
-        Some(state) => LogStats {
-            buffered: state.entries.len(),
-            dropped: state.dropped,
-        },
-        None => LogStats {
-            buffered: 0,
-            dropped: 0,
-        },
+    LogStats {
+        buffered: state.entries.len(),
+        dropped: state.dropped,
     }
 }
 
-/// Record one log record. Does nothing while the buffer is disabled.
+/// Record one log record. Called by the recorder installed through
+/// [`super::create_logger`]; does nothing until [`enable`].
 pub(crate) fn record(record: &Record) {
     if !ENABLED.load(Ordering::Relaxed) {
         return;
     }
 
     let (entry, listener) = {
-        let mut guard = STATE.lock().unwrap();
-        let Some(state) = guard.as_mut() else {
-            return;
-        };
+        let mut state = STATE.lock().unwrap();
 
         state.next_seq += 1;
 

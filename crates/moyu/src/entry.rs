@@ -341,7 +341,7 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 // The project script has run and the first frame has been asked for, so
                 // the runtime is ready for inspection. The splash screen is cosmetic and
                 // does not hold this back.
-                crate::debug::mark_ready();
+                moyu_debugger::mark_ready();
 
                 // show splash screen
                 if !get_engine_config().skip_splash {
@@ -399,7 +399,7 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
         self._core_handle.lock().replace(_core_handle);
 
         // The debug bridge answers requests about the core, so it starts once the core exists.
-        crate::debug::start();
+        moyu_debugger::start();
 
         self.event_proxy
             .send_event(ApplicationInitEvent::Graphic)

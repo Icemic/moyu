@@ -5,10 +5,9 @@
 //! a copy there and keys it by node id, which keeps the engine free of debug-only state.
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use moyu_core::utils::convert::{JSValue, from_js};
-use moyu_ops::node::{PropsObserver, set_props_observer};
 use serde_json::Value;
 
 static PROPS: Mutex<Option<HashMap<u32, Value>>> = Mutex::new(None);
@@ -17,8 +16,7 @@ static PROPS: Mutex<Option<HashMap<u32, Value>>> = Mutex::new(None);
 pub(super) fn start() {
     *PROPS.lock().unwrap() = Some(HashMap::new());
 
-    let observer: PropsObserver = Arc::new(|node_id, props| record(node_id, props));
-    set_props_observer(Some(observer));
+    moyu_ops::node::set_props_hook(record);
 }
 
 /// What JS has asked of a node so far, if anything was recorded.
@@ -38,6 +36,7 @@ pub(super) fn prune(exists: impl Fn(u32) -> bool) {
     }
 }
 
+/// Collect one property object into the side table. Installed as the ops hook.
 fn record(node_id: u32, props: &JSValue) {
     let Ok(incoming) = from_js::<Value>(props) else {
         return;
