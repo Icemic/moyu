@@ -27,6 +27,8 @@ const main = defineCommand({
     update: () => import('./commands/update.js').then((m) => m.default),
     switch: () => import('./commands/switch.js').then((m) => m.default),
     run: () => import('./commands/run.js').then((m) => m.default),
+    debug: () => import('./commands/debug.js').then((m) => m.default),
+    mcp: () => import('./commands/mcp.js').then((m) => m.default),
     pack: () => import('./commands/pack.js').then((m) => m.default),
     schema: () => import('./commands/schema.js').then((m) => m.default),
     'ui-schema': () => import('./commands/ui-schema.js').then((m) => m.default),

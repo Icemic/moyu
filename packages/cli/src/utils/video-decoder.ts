@@ -6,8 +6,7 @@ import { Uint8ArrayReader, Uint8ArrayWriter, ZipReader } from '@zip.js/zip.js';
 import consola from 'consola';
 
 const VIDEO_DECODER_VERSION = 'v0.4.0';
-const VIDEO_DECODER_RELEASE_URL =
-  'https://github.com/Icemic/video-decoder/releases/download/v0.4.0';
+const VIDEO_DECODER_RELEASE_URL = 'https://github.com/Icemic/video-decoder/releases/download/v0.4.0';
 
 interface VideoDecoderAsset {
   archive: string;
@@ -69,9 +68,7 @@ export async function ensureVideoDecoderLibrary(projectRoot: string, target: str
   const archive = new Uint8Array(await response.arrayBuffer());
   const actualSha256 = createHash('sha256').update(archive).digest('hex');
   if (actualSha256 !== asset.sha256) {
-    throw new Error(
-      `Video decoder SHA-256 mismatch.\nExpected: ${asset.sha256}\nActual:   ${actualSha256}`,
-    );
+    throw new Error(`Video decoder SHA-256 mismatch.\nExpected: ${asset.sha256}\nActual:   ${actualSha256}`);
   }
 
   const cacheRoot = join(projectRoot, '.moyu', 'video-decoder');

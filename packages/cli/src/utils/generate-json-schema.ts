@@ -13,12 +13,13 @@ export interface GenerateJsonSchemaOptions {
   exportName: string;
 }
 
-export async function generateJsonSchema({ inputPath, outputPath, exportName }: GenerateJsonSchemaOptions): Promise<void> {
+export async function generateJsonSchema({
+  inputPath,
+  outputPath,
+  exportName,
+}: GenerateJsonSchemaOptions): Promise<void> {
   if (!existsSync(inputPath)) {
-    consola.error(
-      `Schema source file not found: ${inputPath}\n` +
-        'Make sure the file exists at the expected path.',
-    );
+    consola.error(`Schema source file not found: ${inputPath}\n` + 'Make sure the file exists at the expected path.');
     process.exit(1);
   }
 

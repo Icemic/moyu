@@ -56,8 +56,8 @@ export default defineCommand({
     const channel = versions.channels[selectedChannel];
 
     // 3. Select version
-    const versionEntries = Object.entries(channel.versions).sort(
-      ([, a], [, b]) => b.published_at.localeCompare(a.published_at),
+    const versionEntries = Object.entries(channel.versions).sort(([, a], [, b]) =>
+      b.published_at.localeCompare(a.published_at),
     );
     if (versionEntries.length === 0) {
       throw new Error(`No versions available in channel "${selectedChannel}".`);

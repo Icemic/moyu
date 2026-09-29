@@ -338,6 +338,11 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                     self.schedule_next_redraw(now);
                 }
 
+                // The project script has run and the first frame has been asked for, so
+                // the runtime is ready for inspection. The splash screen is cosmetic and
+                // does not hold this back.
+                moyu_debugger::mark_ready();
+
                 // show splash screen
                 if !get_engine_config().skip_splash {
                     let core = core.clone();
@@ -392,6 +397,9 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
 
         let _core_handle = set_core(core.clone());
         self._core_handle.lock().replace(_core_handle);
+
+        // The debug bridge answers requests about the core, so it starts once the core exists.
+        moyu_debugger::start();
 
         self.event_proxy
             .send_event(ApplicationInitEvent::Graphic)

@@ -31,6 +31,7 @@ log = {workspace = true}
 
 moyu_audio = {workspace = true}
 moyu_core = {workspace = true, features = ["js_runtime"]}
+moyu_debugger = {workspace = true}
 moyu_gamepad = {workspace = true}
 moyu_macros = {workspace = true}
 moyu_nodes = {workspace = true}
