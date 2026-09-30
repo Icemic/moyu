@@ -74,6 +74,23 @@ pub struct Core {
     pub(crate) stage_transform: Arc<RwLock<(f32, f32, f32)>>,
 }
 
+/// Number of physical pixels one stage unit occupies on the given surface.
+///
+/// The stage is fitted into the surface uniformly (see
+/// [`get_scale_and_translate`]), so the smaller of the two axis ratios
+/// describes the actual display scale. Multi-resolution asset selection uses
+/// this value as the target variant scale.
+fn compute_asset_scale(surface: &SurfaceSize, stage: &SurfaceSize) -> f32 {
+    let (surface_width, surface_height) = surface.logical_size();
+    let (stage_width, stage_height) = stage.logical_size();
+    let scale_factor = surface.scale_factor();
+
+    let scale_x = surface_width * scale_factor / stage_width;
+    let scale_y = surface_height * scale_factor / stage_height;
+
+    scale_x.min(scale_y) as f32
+}
+
 impl Core {
     pub fn new(window: Arc<Window>) -> Self {
         let env = get_engine_config();
@@ -115,6 +132,16 @@ impl Core {
             env.stage_size.height() as f32,
             surface_size.logical_size_f32().0,
             surface_size.logical_size_f32().1,
+        );
+
+        // The display ratio decides which variant file asset loading picks.
+        let asset_scale = compute_asset_scale(&surface_size, &stage_size);
+        moyu_resource::set_asset_scale(asset_scale);
+        log::info!(
+            "multi-resolution assets: {:?} (scales: {:?}, policy: {:?}), display ratio: {asset_scale:.3}",
+            env.multi_res_assets,
+            env.multi_res_asset_scales,
+            env.multi_res_asset_policy,
         );
 
         let surface_size = Arc::new(RwLock::new(surface_size));
@@ -298,7 +325,8 @@ impl Core {
     pub fn resize_stage(&self, new_size: SurfaceSize) {
         *(self.surface_size.write()) = new_size;
 
-        let stage_size = self.stage_size.read().logical_size_f32();
+        let stage = *self.stage_size.read();
+        let stage_size = stage.logical_size_f32();
 
         let (scale, translate_x, translate_y) = get_scale_and_translate(
             stage_size.0,
@@ -308,6 +336,11 @@ impl Core {
         );
 
         *(self.stage_transform.write()) = (scale, translate_x, translate_y);
+
+        // Only assets loaded after this point follow the new ratio.
+        let asset_scale = compute_asset_scale(&new_size, &stage);
+        moyu_resource::set_asset_scale(asset_scale);
+        log::debug!("display ratio updated to {asset_scale:.3}");
 
         if let Some(graphics) = self.graphics.load().as_ref() {
             graphics.reconfigure_surface(new_size, self.stage_size());

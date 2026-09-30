@@ -1,11 +1,18 @@
 use arc_swap::{ArcSwap, ArcSwapOption};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 #[derive(Debug)]
 pub struct Texture {
     pub status: ArcSwap<TextureStatus>,
     pub texture: ArcSwapOption<wgpu::Texture>,
     pub view: ArcSwapOption<wgpu::TextureView>,
+    /// Pixel ratio of the loaded file, `1.0` for the base asset.
+    ///
+    /// Renderers divide texture pixel sizes by this value so that the on-screen
+    /// size does not depend on which multi-resolution variant was loaded.
+    /// Stored as IEEE-754 bits so that reads and writes stay lock-free.
+    pixel_ratio: AtomicU32,
 }
 
 impl Default for Texture {
@@ -20,7 +27,17 @@ impl Texture {
             status: ArcSwap::default(),
             texture: ArcSwapOption::default(),
             view: ArcSwapOption::default(),
+            pixel_ratio: AtomicU32::new(1.0f32.to_bits()),
         }
+    }
+
+    /// Pixel ratio of the loaded file, `1.0` for the base asset.
+    pub fn pixel_ratio(&self) -> f32 {
+        f32::from_bits(self.pixel_ratio.load(Ordering::Relaxed))
+    }
+
+    pub fn set_pixel_ratio(&self, ratio: f32) {
+        self.pixel_ratio.store(ratio.to_bits(), Ordering::Relaxed);
     }
 
     pub fn size(&self) -> (u32, u32) {

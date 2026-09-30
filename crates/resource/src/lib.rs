@@ -1,5 +1,6 @@
 mod loaders;
 mod mipmap;
+mod variant;
 pub mod types;
 
 use dashmap::DashMap;
@@ -11,6 +12,8 @@ use wgpu::{Device, Queue};
 
 use crate::loaders::*;
 use crate::types::*;
+
+pub use variant::{asset_scale, read_asset, set_asset_scale};
 
 #[derive(Debug)]
 pub struct ResourceManager {
@@ -77,7 +80,7 @@ impl ResourceManager {
                 let texture = load_texture(
                     &self.device,
                     &self.queue,
-                    &url,
+                    src,
                     self.mipmap_generator.clone(),
                 );
                 let asset = Arc::new(Asset::Texture(texture));

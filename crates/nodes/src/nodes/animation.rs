@@ -32,6 +32,12 @@ pub struct Animation {
     /// animation format
     pub format: AnimationFormat,
 
+    /// Pixel ratio of the loaded file, `1.0` for the base asset.
+    ///
+    /// The renderer divides frame pixel sizes by this value so that the
+    /// on-screen size does not depend on which variant was loaded.
+    pub pixel_ratio: f32,
+
     /// animation decoder
     pub(crate) decoder: Option<AnimationDecoder>,
     /// next frame timestamp
@@ -48,8 +54,9 @@ pub struct Animation {
     /// vertex buffer
     pub(crate) vertex_buffer: Option<wgpu::Buffer>,
 
-    /// next animation data to load, it will replace `decoder` after loaded and reset to None
-    pub(crate) next_data: Arc<ArcSwapOption<Vec<u8>>>,
+    /// next animation data to load, it will replace `decoder` after loaded and reset to None,
+    /// together with the pixel ratio of the file it was read from
+    pub(crate) next_data: Arc<ArcSwapOption<(Vec<u8>, f32)>>,
 
     #[base]
     node_base: NodeBase,
@@ -62,6 +69,7 @@ impl Animation {
             next_src: None,
             area: [0.0, 0.0, 1.0, 1.0],
             format: AnimationFormat::APNG,
+            pixel_ratio: 1.0,
             decoder: None,
             next_frame: None,
             upload_buffer: Vec::new(),

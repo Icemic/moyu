@@ -4,7 +4,8 @@ mod present_mode;
 
 use csscolorparser::Color;
 use once_cell::sync::OnceCell;
-use serde::{Deserialize, Serialize};
+use serde::de::Visitor;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use ts_rs::TS;
 
 use crate::dir::parse_entry_dir;
@@ -32,6 +33,79 @@ pub enum WindowState {
 pub enum AutorunMode {
     All,
     NativeOnly,
+}
+
+/// How multi-resolution asset variants (`abc@2x.png`) are selected.
+///
+/// Written in the configuration file as `"auto"`, `"off"`, or a scale such as
+/// `2`. Serde cannot derive one enum from that mix of shapes, so both
+/// directions are implemented by hand.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MultiResAssetsMode {
+    /// Pick a variant scale matching the current display ratio.
+    Auto,
+    /// Always use the base asset.
+    Off,
+    /// Use the variant with exactly this scale, falling back to the base asset
+    /// when the variant file is missing.
+    Fixed(f32),
+}
+
+impl Serialize for MultiResAssetsMode {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Auto => serializer.serialize_str("auto"),
+            Self::Off => serializer.serialize_str("off"),
+            Self::Fixed(scale) => serializer.serialize_f32(*scale),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for MultiResAssetsMode {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct ModeVisitor;
+
+        impl Visitor<'_> for ModeVisitor {
+            type Value = MultiResAssetsMode;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("\"auto\", \"off\", or a scale such as 2")
+            }
+
+            fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Self::Value, E> {
+                match value {
+                    "auto" => Ok(MultiResAssetsMode::Auto),
+                    "off" => Ok(MultiResAssetsMode::Off),
+                    other => Err(E::unknown_variant(other, &["auto", "off"])),
+                }
+            }
+
+            fn visit_f64<E: serde::de::Error>(self, value: f64) -> Result<Self::Value, E> {
+                Ok(MultiResAssetsMode::Fixed(value as f32))
+            }
+
+            fn visit_i64<E: serde::de::Error>(self, value: i64) -> Result<Self::Value, E> {
+                Ok(MultiResAssetsMode::Fixed(value as f32))
+            }
+
+            fn visit_u64<E: serde::de::Error>(self, value: u64) -> Result<Self::Value, E> {
+                Ok(MultiResAssetsMode::Fixed(value as f32))
+            }
+        }
+
+        deserializer.deserialize_any(ModeVisitor)
+    }
+}
+
+/// Order in which candidate variant scales are tried.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MultiResAssetPolicy {
+    /// Prefer the smallest candidate scale that is not smaller than the display
+    /// ratio, so assets are never upscaled when a larger variant exists.
+    Quality,
+    /// Prefer the candidate scale closest to the display ratio in log space.
+    Balanced,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -96,6 +170,10 @@ pub struct MoyuConfig {
     #[serde(rename = "enableMSAA")]
     pub enable_msaa: bool,
     pub enable_mipmaps: bool,
+    pub multi_res_assets: MultiResAssetsMode,
+    /// Variant scales to try besides the base asset. Empty means base only.
+    pub multi_res_asset_scales: Vec<f32>,
+    pub multi_res_asset_policy: MultiResAssetPolicy,
     pub enable_gamepads: bool,
     pub skip_splash: bool,
     pub steam: Option<SteamConfig>,
@@ -124,10 +202,37 @@ impl Default for MoyuConfig {
             show_fps: false,
             enable_msaa: false,
             enable_mipmaps: false,
+            multi_res_assets: MultiResAssetsMode::Off,
+            multi_res_asset_scales: vec![1.5, 2.0],
+            multi_res_asset_policy: MultiResAssetPolicy::Quality,
             enable_gamepads: false,
             skip_splash: false,
             steam: None,
             params: String::new(),
+        }
+    }
+}
+
+impl MoyuConfig {
+    /// Drop multi-resolution asset settings that cannot be used, so consumers
+    /// can rely on the values returned by [`get_engine_config`].
+    ///
+    /// `1` is rejected as a candidate scale because the base asset already
+    /// covers it and is never probed.
+    fn normalize_multi_res_assets(&mut self) {
+        self.multi_res_asset_scales.retain(|scale| {
+            let valid = *scale > 0.0 && *scale != 1.0;
+            if !valid {
+                log::warn!("ignoring invalid multiResAssetScales entry {scale}");
+            }
+            valid
+        });
+
+        if let MultiResAssetsMode::Fixed(scale) = self.multi_res_assets {
+            if scale <= 0.0 {
+                log::warn!("invalid multiResAssets value {scale}, falling back to 'auto'");
+                self.multi_res_assets = MultiResAssetsMode::Auto;
+            }
         }
     }
 }
@@ -202,6 +307,7 @@ pub async fn setup() {
                     config.params = params;
                 }
 
+                config.normalize_multi_res_assets();
                 MOYU_ENV.set(config).unwrap();
                 break;
             }
@@ -217,10 +323,45 @@ pub async fn setup() {
 
 #[cfg(web)]
 pub fn setup_with_wasm_config(config: wasm_bindgen::JsValue) {
-    let config: MoyuConfig = config.into_serde().unwrap_or_default();
+    let mut config: MoyuConfig = config.into_serde().unwrap_or_default();
+    config.normalize_multi_res_assets();
     MOYU_ENV.set(config).unwrap();
 }
 
 pub fn get_engine_config() -> &'static MoyuConfig {
     MOYU_ENV.get().unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The mode is written as a string or as a number, which serde cannot
+    /// derive; this pins the format the configuration file uses.
+    #[test]
+    fn parses_and_writes_multi_res_assets_mode() {
+        for (json, expected) in [
+            ("\"auto\"", MultiResAssetsMode::Auto),
+            ("\"off\"", MultiResAssetsMode::Off),
+            ("2.0", MultiResAssetsMode::Fixed(2.0)),
+            ("1.5", MultiResAssetsMode::Fixed(1.5)),
+        ] {
+            assert_eq!(
+                serde_json::from_str::<MultiResAssetsMode>(json).unwrap(),
+                expected,
+                "parsing {json}"
+            );
+            assert_eq!(
+                serde_json::to_string(&expected).unwrap(),
+                json,
+                "writing {json}"
+            );
+        }
+
+        // An integer is accepted too, and written back as a float.
+        assert_eq!(
+            serde_json::from_str::<MultiResAssetsMode>("2").unwrap(),
+            MultiResAssetsMode::Fixed(2.0)
+        );
+    }
 }

@@ -358,7 +358,8 @@ impl Renderer for SpriteRenderer {
                 SpriteMode::Normal => {
                     let [x1, y1, x2, y2] = node.area;
                     let (width, height) = texture.size();
-                    (width as f32 * (x2 - x1), height as f32 * (y2 - y1))
+                    let ratio = texture.pixel_ratio();
+                    (width as f32 / ratio * (x2 - x1), height as f32 / ratio * (y2 - y1))
                 }
                 SpriteMode::Nineslice => (node.target_width as f32, node.target_height as f32),
             };
@@ -390,7 +391,10 @@ impl Renderer for SpriteRenderer {
             }
 
             let (tex_width, tex_height) = texture.size();
-            let (tex_width, tex_height) = (tex_width as f32, tex_height as f32);
+            // Texture pixels are converted to stage units, which does not depend
+            // on which multi-resolution variant was loaded.
+            let ratio = texture.pixel_ratio();
+            let (tex_width, tex_height) = (tex_width as f32 / ratio, tex_height as f32 / ratio);
 
             if node.base_mut().pop_update_vertices() {
                 let instances = match node.mode {

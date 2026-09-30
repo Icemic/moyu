@@ -1,48 +1,54 @@
 use log::debug;
-use moyu_image::decode;
-use moyu_pal::url::Url;
-use moyu_pal::{fs, task};
+use moyu_image::{Rgba8Image, decode};
+use moyu_pal::task;
 use std::sync::Arc;
 use wgpu::{Device, Queue};
 
 use crate::mipmap::MipmapGenerator;
 use crate::types::{Texture, TextureStatus};
+use crate::variant;
 
+/// Load a texture, using the multi-resolution variant that matches the current
+/// display ratio.
+///
+/// `src` is the logical asset path the project references, relative to the assets
+/// directory.
 pub(crate) fn load_texture(
     device: &Device,
     queue: &Queue,
-    url: &Url,
+    src: &str,
     mipmap_generator: Option<Arc<MipmapGenerator>>,
 ) -> Arc<Texture> {
-    debug!("loading texture from {}", url);
-
     let texture = Arc::new(Texture::new());
 
     {
         let device = device.clone();
         let queue = queue.clone();
         let texture = texture.clone();
-        let url = url.to_owned();
+        let src = src.to_owned();
         let task_fn = async move {
-            let bytes = match fs::read(&url).await {
-                Ok(v) => v,
-                Err(err) => {
-                    log::error!("Failed to read '{}': {}", url, err);
-                    return;
-                }
+            let Some((url, scale, image)) =
+                variant::load_variant(&src, |bytes| decode(&bytes).ok()).await
+            else {
+                log::error!("failed to load texture '{}'", src);
+                texture.set_status(TextureStatus::Error);
+                return;
             };
 
-            if let Err(err) = load_image_to_texture(
+            texture.set_pixel_ratio(scale);
+
+            if let Err(err) = upload_image(
                 &texture,
                 &device,
                 &queue,
-                &bytes,
+                image,
                 Some(url.as_str()),
                 mipmap_generator.as_deref(),
             ) {
-                log::error!("Failed to load image '{}': {}", url, err);
+                log::error!("failed to upload texture '{}' ({}): {}", src, url, err);
+                texture.set_status(TextureStatus::Error);
             } else {
-                debug!("texture '{}' loaded", url);
+                debug!("texture '{}' loaded from '{}' (scale {})", src, url, scale);
             }
         };
 
@@ -52,6 +58,7 @@ pub(crate) fn load_texture(
     texture
 }
 
+/// Decode image bytes and upload them into the texture.
 pub(crate) fn load_image_to_texture(
     texture: &Arc<Texture>,
     device: &Device,
@@ -60,7 +67,20 @@ pub(crate) fn load_image_to_texture(
     label: Option<&str>,
     mipmap_generator: Option<&MipmapGenerator>,
 ) -> anyhow::Result<()> {
-    let mut image = decode(bytes)?;
+    let image = decode(bytes)?;
+
+    upload_image(texture, device, queue, image, label, mipmap_generator)
+}
+
+/// Upload an already decoded image into the texture.
+pub(crate) fn upload_image(
+    texture: &Arc<Texture>,
+    device: &Device,
+    queue: &Queue,
+    mut image: Rgba8Image,
+    label: Option<&str>,
+    mipmap_generator: Option<&MipmapGenerator>,
+) -> anyhow::Result<()> {
     let dimensions = (image.width(), image.height());
 
     image.premultiply_alpha_in_place();

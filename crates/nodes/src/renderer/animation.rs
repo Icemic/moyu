@@ -5,7 +5,6 @@ use moyu_core::core::render_command::RenderCommand;
 use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use moyu_core::traits::{RenderCommandSender, Renderer};
 use moyu_image::{AnimationDecoder, AnimationFormat as ImageAnimationFormat};
-use moyu_pal::dir::assets_dir;
 use wgpu::{util::DeviceExt, *};
 
 use crate::nodes::{Animation, AnimationFormat};
@@ -153,25 +152,18 @@ impl Renderer for AnimationRenderer {
         if let Some(next_src) = node.next_src.take() {
             let _ = node.next_data.swap(None);
             let next_data = node.next_data.clone();
-            let next_src_copy = next_src.clone();
+            let src = next_src.clone();
 
             moyu_pal::task::spawn(async move {
-                let asset_full_path = assets_dir().join(&next_src_copy).unwrap();
-
-                let data = match moyu_pal::fs::read(&asset_full_path).await {
-                    Ok(data) => data,
-                    Err(e) => {
-                        log::error!("Failed to read animation file: {}", e);
-                        return Err(anyhow::anyhow!(
-                            "Failed to read animation file: {}",
-                            e.to_string()
-                        ));
+                match moyu_resource::read_asset(&src).await {
+                    Some((url, scale, data)) => {
+                        log::debug!("animation '{}' loaded from '{}' (scale {})", src, url, scale);
+                        next_data.store(Some(Arc::new((data, scale))));
                     }
-                };
-
-                next_data.store(Some(Arc::new(data)));
-
-                Ok(())
+                    None => {
+                        log::error!("failed to load animation '{}'", src);
+                    }
+                }
             });
 
             node.src = Some(next_src);
@@ -180,13 +172,14 @@ impl Renderer for AnimationRenderer {
         // if there is next_data, decode it and create texture and decoder,
         // then reset next_data to None
         if let Some(next_data) = node.next_data.swap(None) {
+            let (data, scale) = (*next_data).clone();
             let format = node.format;
             let format = match format {
                 AnimationFormat::APNG => ImageAnimationFormat::Apng,
                 AnimationFormat::WEBP => ImageAnimationFormat::WebP,
                 AnimationFormat::JXL => ImageAnimationFormat::Jxl,
             };
-            let decoder = match AnimationDecoder::new((*next_data).clone(), format) {
+            let decoder = match AnimationDecoder::new(data, format) {
                 Ok(decoder) => decoder,
                 Err(error) => {
                     log::error!("Failed to decode animation: {}", error);
@@ -229,6 +222,7 @@ impl Renderer for AnimationRenderer {
             });
 
             node.decoder = Some(decoder);
+            node.pixel_ratio = scale;
             node.next_frame = None;
             node.upload_buffer.clear();
             node.view = Some(view);
@@ -239,9 +233,10 @@ impl Renderer for AnimationRenderer {
         if let Some(view) = &node.view {
             let size = view.texture().size();
             let [x1, y1, x2, y2] = node.area;
+            let ratio = node.pixel_ratio;
             node.base_mut().set_intrinsic_size(
-                size.width as f32 * (x2 - x1),
-                size.height as f32 * (y2 - y1),
+                size.width as f32 / ratio * (x2 - x1),
+                size.height as f32 / ratio * (y2 - y1),
             );
         }
     }
@@ -262,10 +257,13 @@ impl Renderer for AnimationRenderer {
             let size = texture.size();
 
             if node.base_mut().pop_update_vertices() {
+                // Frame pixels are converted to stage units, which does not
+                // depend on which multi-resolution variant was loaded.
+                let ratio = node.pixel_ratio;
                 let vertices = calculate_quad_vertices(
                     node,
-                    size.width as f32,
-                    size.height as f32,
+                    size.width as f32 / ratio,
+                    size.height as f32 / ratio,
                     &[0., 0.],
                     &node.area,
                     &[1., 1.],
