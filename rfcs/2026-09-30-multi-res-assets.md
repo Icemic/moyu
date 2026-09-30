@@ -273,25 +273,27 @@ load_asset(AssetKind::Texture, "bg/room.png")
 
 ## 预检
 
-作者会把 `@1.33x` 放进去却忘了写进配置，得到静默降级。这是本功能最容易踩的坑，CLI 与编辑器各做一道预检。
+变体文件不被使用（或配置指向了不存在的档位）时引擎不会报错，这是本功能最容易踩的坑。CLI 与编辑器各做一道预检。
 
-**CLI 预检**（`moyu run` / `moyu pack` 启动前，扫描 `assets/` 与 `index.json`，只警告不阻断）：
+**CLI 预检**（`packages/cli/src/utils/multi-res-assets.ts`，由 `moyu run` / `moyu pack` 在启动前调用；扫描 `assets/` 与 `index.json`，只警告不阻断）：
 
-1. 存在 `@Nx` 文件但该档位不在候选集合中 → 警告"该文件不会被自动使用"。
-2. 候选集合里的档位在 `assets/` 中一个文件都没有 → 提示"每个资源会多一次失败试读"。
-3. 存在 `abc@2x.png` 但缺少基础图 `abc.png` → 警告"该变体无法被引用"。
+1. 存在 `@Nx` 文件但 `multiResAssets` 为 `off`（含未设置）→ 警告文件数量，并提示改为 `"auto"`。
+2. 存在 `@Nx` 文件但该档位不在候选集合中（或与 `Fixed` 值不符）→ 按档位分组警告，附一个示例文件。
+3. 存在 `@1x` 文件 → 警告：档位 `1` 由基础图承担，该文件永远不会被使用。
+4. 候选集合里的档位在 `assets/` 中一个文件都没有 → 提示"每个资源会多一次失败试读"。
+5. 存在 `abc@2x.png` 但缺少基础图 `abc.png` → 列出这些变体，说明无法被引用。
 
-**编辑器预检**（FishFlow）：扫描时识别变体文件并从资源选择器中隐藏，同时给出与 CLI 一致的警告。
+编辑器侧（FishFlow）的计划：扫描时识别变体文件并从资源选择器中隐藏，同时给出与 CLI 一致的警告。
 
 ## 分阶段实施
 
-状态：M0～M3 已完成，M4 待办，M5 另开迭代。
+状态：M0～M4 已完成，M5 另开迭代。
 
 - **M0（0.5 天）** ✅：`MoyuConfig` 增加三个字段（含默认集合与非法值校验）；`Core::new` / `resize_stage` 计算并写出 `T`；启动日志打印模式、集合与当前 `T`。
 - **M1（0.5～1 天）** ✅：`moyu_resource` 增加命名解析、候选生成、`load_variant`（试读与加载合并读取）；`Texture.pixel_ratio`。
 - **M2（0.5 天）** ✅：sprite / animation 的尺寸补偿。
 - **M3（0.5 天）** ✅：文档（`customize/settings.md`、`start/assets.mdx`）。配置 schema 是外部 gist，需单独同步。
-- **M4（0.5 天）**：实现 CLI 预检（见上节三项检查）。
+- **M4（0.5 天）** ✅：CLI 预检（见上节）。
 - **M5（另开迭代）**：`system.getStageSize` 附带 `assetScale`；调试桥节点视图显示实际命中的变体；FishFlow 隐藏变体文件并给出警告。
 
 ### 实施备注

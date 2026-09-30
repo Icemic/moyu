@@ -15,6 +15,7 @@ import { defineCommand } from 'citty';
 import consola from 'consola';
 import { detectPlatform, loadMeta } from '../utils/engine.js';
 import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
+import { checkMultiResAssets } from '../utils/multi-res-assets.js';
 import { DEV_SERVER_PORT, requireWebEngineAssets, startStaticFileServer } from '../utils/static-server.js';
 
 export default defineCommand({
@@ -42,6 +43,8 @@ export default defineCommand({
   run: async ({ args }) => {
     const projectRoot = requireProjectRoot();
     const metaPath = metaFile(projectRoot);
+
+    await checkMultiResAssets(projectRoot);
 
     // Ensure engine is downloaded and active
     const meta = await loadMeta(metaPath);

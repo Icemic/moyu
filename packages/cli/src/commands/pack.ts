@@ -17,6 +17,7 @@ import { ANDROID_FORMATS, ANDROID_PLATFORM, isAndroidFormat, packAndroid } from 
 import { formatBytes, loadMeta } from '../utils/engine.js';
 import { generateJsonSchema } from '../utils/generate-json-schema.js';
 import { metaFile, platformDir, requireProjectRoot } from '../utils/project.js';
+import { checkMultiResAssets } from '../utils/multi-res-assets.js';
 import { ensureVideoDecoderLibrary, supportsVideoDecoder } from '../utils/video-decoder.js';
 
 // Disable web workers – not available in Node.js
@@ -98,6 +99,8 @@ export default defineCommand({
     const compress = frameworkMode ? true : args.compress;
     const tmpPackDir = join(projectRoot, '.moyu', 'tmp-pack');
     const archiveName = frameworkMode ? FRAMEWORK_ARCHIVE_NAME : GAME_ARCHIVE_NAME;
+
+    await checkMultiResAssets(projectRoot);
 
     const dateString = new Date().toISOString().replace(/[-:T.Z]/g, '');
     const outputDir = args.output
