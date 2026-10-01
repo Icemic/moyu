@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+1. Support multi-resolution asset variants.
+
+### Changed
+
+1. Add WebAudio backend for WASM playback to avoid dropouts.
+
 ## [0.20.0] - 2026-09-29
 
 ### Changed
