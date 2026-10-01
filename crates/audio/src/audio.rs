@@ -54,7 +54,7 @@ impl Audio {
 
     pub fn play(
         &mut self,
-        manager: &mut AudioManager,
+        manager: &mut AudioManager<crate::AudioBackend>,
         fade_time: Option<u32>,
         global_volume: f64,
         on_stopped: Option<Box<dyn FnOnce() + Send>>,

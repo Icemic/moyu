@@ -24,5 +24,24 @@ moyu_core = {workspace = true, features = ["js_runtime"]}
 moyu_macros = {workspace = true}
 moyu_pal = {workspace = true}
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+send_wrapper = "0.6"
+wasm-bindgen = {workspace = true}
+wasm-bindgen-futures = {workspace = true}
+web-sys = {workspace = true, features = [
+	"AudioContext",
+	"AudioContextState",
+	"AudioBuffer",
+	"AudioBufferSourceNode",
+	"AudioDestinationNode",
+	"AudioNode",
+	"AudioScheduledSourceNode",
+	"BaseAudioContext",
+	"Event",
+	"EventTarget",
+	"Window",
+]}
+
 [dev-dependencies]
 arc-swap = {workspace = true}
