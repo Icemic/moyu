@@ -6,6 +6,11 @@ use std::sync::Mutex as StdMutex;
 use std::time::Duration;
 
 use anyhow::Result;
+#[cfg(target_arch = "wasm32")]
+use kira::backend::cpal::{
+    CpalBackendSettings,
+    cpal::{BufferSize, StreamConfig},
+};
 use kira::sound::static_sound::StaticSoundSettings;
 use kira::sound::{EndPosition, PlaybackPosition, Region};
 use kira::{AudioManagerSettings, DefaultBackend, Panning, StartTime};
@@ -120,6 +125,15 @@ impl Default for AudioSettings {
     }
 }
 
+/// Buffer size in frames requested from the WebAudio backend.
+///
+/// The WebAudio backend renders on the main thread and chains buffers through the `ended`
+/// events of `AudioBufferSourceNode`s. The default 2048 frames (~43 ms at 48 kHz) leave little
+/// slack when the main thread stalls longer than that, which is audible as dropouts on Android
+/// Chrome. A larger buffer buys a proportionally larger slack.
+#[cfg(target_arch = "wasm32")]
+const WEB_AUDIO_BUFFER_FRAMES: u32 = 6144;
+
 #[derive(Plugin)]
 pub struct AudioManager {
     manager: Arc<Mutex<kira::AudioManager<DefaultBackend>>>,
@@ -128,7 +142,25 @@ pub struct AudioManager {
 
 impl AudioManager {
     pub fn new() -> Result<Self> {
-        let manager = kira::AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())?;
+        // Channels and sample rate restate the backend defaults (stereo, 48 kHz); only the
+        // buffer size differs, since `SupportedStreamConfig::config` always reports
+        // `BufferSize::Default` and leaves no way to override it.
+        #[cfg(target_arch = "wasm32")]
+        let settings = AudioManagerSettings::<DefaultBackend> {
+            backend_settings: CpalBackendSettings {
+                config: Some(StreamConfig {
+                    channels: 2,
+                    sample_rate: 48_000,
+                    buffer_size: BufferSize::Fixed(WEB_AUDIO_BUFFER_FRAMES),
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        let settings = AudioManagerSettings::<DefaultBackend>::default();
+
+        let manager = kira::AudioManager::<DefaultBackend>::new(settings)?;
         let manager = Arc::new(Mutex::new(manager));
 
         Ok(Self {
