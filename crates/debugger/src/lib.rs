@@ -481,16 +481,18 @@ fn mouse_action(request: &MouseRequest) -> Result<PointerAction, String> {
         "left" => PointerButton::Left,
         "right" => PointerButton::Right,
         "middle" => PointerButton::Middle,
+        "back" => PointerButton::Back,
+        "forward" => PointerButton::Forward,
         other => {
             return Err(format!(
-                "Unknown button: {other}; use left, right or middle"
+                "Unknown button: {other}; use left, right, middle, back or forward"
             ));
         }
     };
 
     match request.action.as_str() {
         "move" => Ok(PointerAction::Move),
-        "down" => Ok(PointerAction::Down),
+        "down" => Ok(PointerAction::Down(button)),
         "up" => Ok(PointerAction::Up(button)),
         "click" => Ok(PointerAction::Click(button)),
         "wheel" => {

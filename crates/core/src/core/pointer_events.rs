@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use log::error;
 use winit::dpi::PhysicalPosition;
 use winit::event::{
@@ -11,13 +13,24 @@ use crate::events::{
     MouseEvent, MouseEventKind, TouchEvent, TouchEventKind, WheelEvent, WheelEventDeltaMode,
     WheelEventKind,
 };
-use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerLocation, PointerState};
+use crate::state::{
+    ClickRecord, DeviceType, MOUSE_IDENTIFIER, MousePress, PointerLocation, PointerState,
+};
 use crate::traits::PointerEventKind;
 use crate::utils::dispatch_event::dispatch_event;
 use crate::utils::hit_test::{get_local_logical_position, hit_test};
 
 use super::Core;
 use super::input::{DispatchRecord, PointerButton, TouchPhase};
+
+/// Two left clicks on the same target within this interval, and with little movement
+/// between them, are reported as a double click. The window is implementation defined
+/// on the web; the engine uses a fixed value.
+const DOUBLE_CLICK_INTERVAL: Duration = Duration::from_millis(500);
+
+/// Maximum movement between two left clicks still counted as a double click, in stage
+/// logical pixels.
+const DOUBLE_CLICK_DISTANCE: f32 = 4.0;
 
 macro_rules! get_pointer_state {
     ($self:ident, $name:ident, $identifier:expr) => {
@@ -84,12 +97,14 @@ impl Core {
 
                 if let Some(last_hover_node) = &pointer_state.current_target {
                     let target_id = *last_hover_node.node.read().base().id();
-                    dispatch_event(MouseEvent {
-                        kind: MouseEventKind::MouseLeave,
+                    dispatch_event(self.mouse_event(
+                        MouseEventKind::MouseLeave,
                         target_id,
-                        bubble_target_ids: last_hover_node.parent_ids.clone(),
-                        location: pointer_state.location,
-                    });
+                        last_hover_node.parent_ids.clone(),
+                        0,
+                        buttons_mask(&pointer_state),
+                        pointer_state.location,
+                    ));
                     dispatch_pointer_event(
                         last_hover_node,
                         pointer_state.location,
@@ -99,15 +114,21 @@ impl Core {
                 true
             }
             WindowEvent::MouseInput { button, state, .. } => {
-                match state {
-                    ElementState::Pressed => {
-                        self.pointer_press(MOUSE_IDENTIFIER, &mut DispatchRecord::disabled())
+                // Only the buttons DOM defines produce events; other physical buttons
+                // are ignored.
+                if let Some(button) = from_winit_button(*button) {
+                    match state {
+                        ElementState::Pressed => self.pointer_press(
+                            MOUSE_IDENTIFIER,
+                            button,
+                            &mut DispatchRecord::disabled(),
+                        ),
+                        ElementState::Released => self.pointer_release(
+                            MOUSE_IDENTIFIER,
+                            button,
+                            &mut DispatchRecord::disabled(),
+                        ),
                     }
-                    ElementState::Released => self.pointer_release(
-                        MOUSE_IDENTIFIER,
-                        (*button).into(),
-                        &mut DispatchRecord::disabled(),
-                    ),
                 }
                 true
             }
@@ -278,6 +299,8 @@ impl Core {
 
         get_pointer_state_mut!(self, pointer_state, identifier);
 
+        let buttons = buttons_mask(pointer_state);
+
         let last_hover_node = &mut pointer_state.current_target;
 
         if refresh_hover_node && pointer_state.location.valid {
@@ -303,12 +326,14 @@ impl Core {
                 if identifier == MOUSE_IDENTIFIER {
                     let target_id = *node.node.read().base().id();
 
-                    dispatch_event(MouseEvent {
-                        kind: MouseEventKind::MouseMove,
+                    dispatch_event(self.mouse_event(
+                        MouseEventKind::MouseMove,
                         target_id,
-                        bubble_target_ids: node.parent_ids.clone(),
-                        location: pointer_state.location,
-                    });
+                        node.parent_ids.clone(),
+                        0,
+                        buttons,
+                        pointer_state.location,
+                    ));
                     dispatch_pointer_event(&node, pointer_state.location, PointerEventKind::Over);
                     record.push("MouseMove");
 
@@ -336,23 +361,27 @@ impl Core {
                         drop(node_ref);
 
                         // if last focused node is different from current node, it's a mouse leave event and a mouse enter event
-                        dispatch_event(MouseEvent {
-                            kind: MouseEventKind::MouseLeave,
+                        dispatch_event(self.mouse_event(
+                            MouseEventKind::MouseLeave,
                             target_id,
-                            bubble_target_ids: last_hover_node.parent_ids.clone(),
+                            last_hover_node.parent_ids.clone(),
+                            0,
+                            buttons,
                             location,
-                        });
+                        ));
                         dispatch_pointer_event(last_hover_node, location, PointerEventKind::Leave);
                         record.push("MouseLeave");
                     }
 
                     // there is always a mouse enter event if current node is different from last focused node (may be None)
-                    dispatch_event(MouseEvent {
-                        kind: MouseEventKind::MouseEnter,
+                    dispatch_event(self.mouse_event(
+                        MouseEventKind::MouseEnter,
                         target_id,
-                        bubble_target_ids: node.parent_ids.clone(),
-                        location: pointer_state.location,
-                    });
+                        node.parent_ids.clone(),
+                        0,
+                        buttons,
+                        pointer_state.location,
+                    ));
                     dispatch_pointer_event(&node, pointer_state.location, PointerEventKind::Enter);
                     record.push("MouseEnter");
                 }
@@ -386,12 +415,14 @@ impl Core {
                 // drop node guard before dispatching event, since it may cause deadlock
                 drop(node_ref);
 
-                dispatch_event(MouseEvent {
-                    kind: MouseEventKind::MouseLeave,
+                dispatch_event(self.mouse_event(
+                    MouseEventKind::MouseLeave,
                     target_id,
-                    bubble_target_ids: last_hover_node.parent_ids.clone(),
-                    location: pointer_state.location,
-                });
+                    last_hover_node.parent_ids.clone(),
+                    0,
+                    buttons,
+                    pointer_state.location,
+                ));
                 dispatch_pointer_event(
                     last_hover_node,
                     pointer_state.location,
@@ -404,8 +435,13 @@ impl Core {
         }
     }
 
-    /// Press at the pointer's current target.
-    pub(super) fn pointer_press(&self, identifier: i32, record: &mut DispatchRecord<'_>) {
+    /// Press a mouse button at the pointer's current target.
+    pub(super) fn pointer_press(
+        &self,
+        identifier: i32,
+        button: PointerButton,
+        record: &mut DispatchRecord<'_>,
+    ) {
         get_pointer_state_mut!(self, pointer_state, identifier);
 
         let Some(last_hover_node) = &pointer_state.current_target else {
@@ -418,19 +454,42 @@ impl Core {
 
         self.editable.handle_pointer_down(target_id);
 
-        dispatch_event(MouseEvent {
-            kind: MouseEventKind::MouseDown,
-            target_id,
-            bubble_target_ids,
-            location,
+        // Record the press before dispatching, so the event's mask includes the button
+        // being pressed.
+        pointer_state.mouse_downs[button.index()] = Some(MousePress {
+            node_id: target_id,
+            parent_ids: bubble_target_ids.clone(),
         });
+        let buttons = buttons_mask(pointer_state);
+
+        dispatch_event(self.mouse_event(
+            MouseEventKind::MouseDown,
+            target_id,
+            bubble_target_ids.clone(),
+            button.as_button_number(),
+            buttons,
+            location,
+        ));
         dispatch_pointer_event(last_hover_node, location, PointerEventKind::Down);
         record.push("MouseDown");
 
-        pointer_state.down_id = Some(target_id);
+        // The engine follows Chromium on Linux: the right-button press opens the
+        // context menu, independent of the release that follows.
+        if button == PointerButton::Right {
+            dispatch_event(self.mouse_event(
+                MouseEventKind::ContextMenu,
+                target_id,
+                bubble_target_ids,
+                button.as_button_number(),
+                buttons,
+                location,
+            ));
+            record.push("ContextMenu");
+        }
     }
 
-    /// Release at the pointer's current target, adding the gesture the button carries.
+    /// Release a mouse button at the pointer's current target, dispatching the click
+    /// gesture the release completes.
     pub(super) fn pointer_release(
         &self,
         identifier: i32,
@@ -447,47 +506,117 @@ impl Core {
         let bubble_target_ids = last_hover_node.parent_ids.clone();
         let location = pointer_state.location;
 
-        dispatch_event(MouseEvent {
-            kind: MouseEventKind::MouseUp,
+        // The button is no longer held, so it drops out of the mask the event carries.
+        let press = pointer_state.mouse_downs[button.index()].take();
+        let buttons = buttons_mask(pointer_state);
+
+        dispatch_event(self.mouse_event(
+            MouseEventKind::MouseUp,
             target_id,
-            bubble_target_ids: bubble_target_ids.clone(),
+            bubble_target_ids.clone(),
+            button.as_button_number(),
+            buttons,
             location,
-        });
+        ));
         dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
         record.push("MouseUp");
 
-        // A release only counts as a gesture when it pairs with a press on the same node.
-        let down_id = pointer_state.down_id.take();
-
-        if down_id != Some(target_id) {
+        // A release only completes a gesture when the same button was pressed first.
+        let Some(press) = press else {
             return;
-        }
+        };
+
+        // The gesture targets the nearest common ancestor of the press and release
+        // targets. Ancestor chains are ordered root first and exclude the root, so
+        // their longest shared prefix ends at that ancestor; an empty shared prefix
+        // means the root itself.
+        let common_len = press
+            .parent_ids
+            .iter()
+            .copied()
+            .chain(std::iter::once(press.node_id))
+            .zip(
+                bubble_target_ids
+                    .iter()
+                    .copied()
+                    .chain(std::iter::once(target_id)),
+            )
+            .take_while(|(a, b)| a == b)
+            .count();
+
+        let (gesture_target, gesture_bubble) = if common_len == 0 {
+            (0, Vec::new())
+        } else {
+            (
+                press
+                    .parent_ids
+                    .get(common_len - 1)
+                    .copied()
+                    .unwrap_or(press.node_id),
+                press.parent_ids[..common_len - 1].to_vec(),
+            )
+        };
 
         match button {
             PointerButton::Left => {
-                dispatch_event(MouseEvent {
-                    kind: MouseEventKind::Click,
-                    target_id,
-                    bubble_target_ids,
+                dispatch_event(self.mouse_event(
+                    MouseEventKind::Click,
+                    gesture_target,
+                    gesture_bubble.clone(),
+                    0,
+                    buttons,
                     location,
-                });
-                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Click);
+                ));
                 record.push("Click");
-            }
-            PointerButton::Right => {
-                dispatch_event(MouseEvent {
-                    kind: MouseEventKind::ContextMenu,
-                    target_id,
-                    bubble_target_ids,
-                    location,
+
+                // Node-level clicks keep their existing meaning: the press and the
+                // release landed on the same node.
+                if press.node_id == target_id {
+                    dispatch_pointer_event(last_hover_node, location, PointerEventKind::Click);
+                }
+
+                let now = self.instant.elapsed();
+                let position = (location.client_x as f32, location.client_y as f32);
+                let repeated = pointer_state.last_click.as_ref().is_some_and(|last| {
+                    last.target_id == gesture_target
+                        && now.saturating_sub(last.at) <= DOUBLE_CLICK_INTERVAL
+                        && (last.x - position.0).powi(2) + (last.y - position.1).powi(2)
+                            <= DOUBLE_CLICK_DISTANCE * DOUBLE_CLICK_DISTANCE
                 });
-                record.push("ContextMenu");
+
+                if repeated {
+                    dispatch_event(self.mouse_event(
+                        MouseEventKind::DoubleClick,
+                        gesture_target,
+                        gesture_bubble,
+                        0,
+                        buttons,
+                        location,
+                    ));
+                    record.push("DoubleClick");
+                    pointer_state.last_click = None;
+                } else {
+                    pointer_state.last_click = Some(ClickRecord {
+                        target_id: gesture_target,
+                        x: position.0,
+                        y: position.1,
+                        at: now,
+                    });
+                }
             }
             PointerButton::Middle
+            | PointerButton::Right
             | PointerButton::Back
-            | PointerButton::Forward
-            | PointerButton::Other => {
-                // no gesture is attached to these buttons
+            | PointerButton::Forward => {
+                dispatch_event(self.mouse_event(
+                    MouseEventKind::AuxClick,
+                    gesture_target,
+                    gesture_bubble,
+                    button.as_button_number(),
+                    buttons,
+                    location,
+                ));
+                record.push("AuxClick");
             }
         }
     }
@@ -524,7 +653,7 @@ impl Core {
                 dispatch_pointer_event(last_hover_node, location, PointerEventKind::Down);
                 record.push("TouchStart");
 
-                pointer_state.down_id = Some(target_id);
+                pointer_state.touch_down_id = Some(target_id);
             }
             TouchPhase::Move => {
                 dispatch_event(TouchEvent {
@@ -548,7 +677,7 @@ impl Core {
                 dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
                 record.push("TouchEnd");
 
-                pointer_state.down_id.take();
+                pointer_state.touch_down_id.take();
             }
             TouchPhase::Cancel => {
                 dispatch_event(TouchEvent {
@@ -561,7 +690,7 @@ impl Core {
                 dispatch_pointer_event(last_hover_node, location, PointerEventKind::Leave);
                 record.push("TouchCancel");
 
-                pointer_state.down_id = None;
+                pointer_state.touch_down_id = None;
             }
         }
     }
@@ -603,15 +732,53 @@ impl Core {
     }
 }
 
-impl From<MouseButton> for PointerButton {
-    fn from(button: MouseButton) -> Self {
-        match button {
-            MouseButton::Left => Self::Left,
-            MouseButton::Right => Self::Right,
-            MouseButton::Middle => Self::Middle,
-            MouseButton::Back => Self::Back,
-            MouseButton::Forward => Self::Forward,
-            MouseButton::Other(_) => Self::Other,
+/// Map a winit mouse button to the engine's vocabulary. DOM only defines the five
+/// standard buttons, so any other physical button yields `None` and is ignored.
+fn from_winit_button(button: MouseButton) -> Option<PointerButton> {
+    match button {
+        MouseButton::Left => Some(PointerButton::Left),
+        MouseButton::Middle => Some(PointerButton::Middle),
+        MouseButton::Right => Some(PointerButton::Right),
+        MouseButton::Back => Some(PointerButton::Back),
+        MouseButton::Forward => Some(PointerButton::Forward),
+        MouseButton::Other(_) => None,
+    }
+}
+
+/// Bitmask of the mouse buttons currently held, in the DOM `MouseEvent.buttons` encoding.
+fn buttons_mask(pointer_state: &PointerState) -> u32 {
+    PointerButton::ALL
+        .iter()
+        .zip(&pointer_state.mouse_downs)
+        .filter_map(|(button, press)| press.as_ref().map(|_| button.bit()))
+        .sum()
+}
+
+impl Core {
+    /// Build a mouse event carrying the button it is about, the buttons held and the
+    /// modifier keys currently down.
+    fn mouse_event(
+        &self,
+        kind: MouseEventKind,
+        target_id: u32,
+        bubble_target_ids: Vec<u32>,
+        button: i32,
+        buttons: u32,
+        location: PointerLocation,
+    ) -> MouseEvent {
+        let modifiers = self.modifiers_state.load();
+
+        MouseEvent {
+            kind,
+            target_id,
+            bubble_target_ids,
+            button,
+            buttons,
+            ctrl_key: modifiers.control_key(),
+            shift_key: modifiers.shift_key(),
+            alt_key: modifiers.alt_key(),
+            meta_key: modifiers.super_key(),
+            location,
         }
     }
 }

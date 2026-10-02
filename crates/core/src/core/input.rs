@@ -11,21 +11,70 @@
 //! state, runs hit testing and dispatches the engine events a window event would, so an
 //! injected click has the same effects as a user's.
 
+use std::sync::Arc;
+
+use winit::keyboard::ModifiersState;
+
 use crate::events::{KeyboardEventKind, KeyboardLocation, WheelEventDeltaMode};
 use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerLocation};
 
 use super::Core;
 
-/// Mouse button an action uses. Mirrors the buttons a window can report; `Other` covers
-/// the ones the engine tracks but attaches no gesture to.
+/// Mouse button an action uses. Only the buttons DOM defines are carried; physical
+/// buttons beyond them are ignored by the engine.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PointerButton {
     Left,
-    Right,
     Middle,
+    Right,
     Back,
     Forward,
-    Other,
+}
+
+impl PointerButton {
+    /// All buttons, in the order their press records occupy in
+    /// [`crate::state::PointerState::mouse_downs`].
+    pub(crate) const ALL: [Self; 5] = [
+        Self::Left,
+        Self::Middle,
+        Self::Right,
+        Self::Back,
+        Self::Forward,
+    ];
+
+    /// Index this button's press record occupies in `PointerState::mouse_downs`.
+    pub(crate) fn index(self) -> usize {
+        match self {
+            Self::Left => 0,
+            Self::Middle => 1,
+            Self::Right => 2,
+            Self::Back => 3,
+            Self::Forward => 4,
+        }
+    }
+
+    /// The button's bit in the DOM `MouseEvent.buttons` mask. The auxiliary (middle)
+    /// button is 4, not 2.
+    pub(crate) fn bit(self) -> u32 {
+        match self {
+            Self::Left => 1,
+            Self::Middle => 4,
+            Self::Right => 2,
+            Self::Back => 8,
+            Self::Forward => 16,
+        }
+    }
+
+    /// The button's value in the DOM `MouseEvent.button` property.
+    pub(crate) fn as_button_number(self) -> i32 {
+        match self {
+            Self::Left => 0,
+            Self::Middle => 1,
+            Self::Right => 2,
+            Self::Back => 3,
+            Self::Forward => 4,
+        }
+    }
 }
 
 /// Phase of a touch.
@@ -42,8 +91,8 @@ pub enum TouchPhase {
 pub enum PointerAction {
     Move,
     /// Press the button. The press records the target the release pairs with, so the
-    /// button itself only matters when it is released.
-    Down,
+    /// released button is what completes the gesture.
+    Down(PointerButton),
     Up(PointerButton),
     /// Press and release in one action, which is what a window reports as a click.
     Click(PointerButton),
@@ -139,12 +188,14 @@ impl Core {
 
         match action {
             PointerAction::Move => {}
-            PointerAction::Down => self.pointer_press(MOUSE_IDENTIFIER, &mut record),
+            PointerAction::Down(button) => {
+                self.pointer_press(MOUSE_IDENTIFIER, button, &mut record)
+            }
             PointerAction::Up(button) => {
                 self.pointer_release(MOUSE_IDENTIFIER, button, &mut record)
             }
             PointerAction::Click(button) => {
-                self.pointer_press(MOUSE_IDENTIFIER, &mut record);
+                self.pointer_press(MOUSE_IDENTIFIER, button, &mut record);
                 self.pointer_release(MOUSE_IDENTIFIER, button, &mut record);
             }
             PointerAction::Wheel {
@@ -181,7 +232,7 @@ impl Core {
         let active = self
             .pointer_map
             .get(&pointer_id)
-            .is_some_and(|state| state.down_id.is_some());
+            .is_some_and(|state| state.touch_down_id.is_some());
 
         match phase {
             TouchPhase::Start => {
@@ -227,8 +278,25 @@ impl Core {
     /// Send one keyboard event.
     ///
     /// Keyboard events go to the engine as a whole (no target node), exactly as the
-    /// window event path sends them.
+    /// window event path sends them. The injected modifiers also become the shared
+    /// modifier state, so a synthetic mouse event right after carries them the same
+    /// way it would after a real key press.
     pub fn simulate_key(&self, input: KeyInput) {
+        let mut modifiers = ModifiersState::empty();
+        if input.modifiers.ctrl {
+            modifiers |= ModifiersState::CONTROL;
+        }
+        if input.modifiers.shift {
+            modifiers |= ModifiersState::SHIFT;
+        }
+        if input.modifiers.alt {
+            modifiers |= ModifiersState::ALT;
+        }
+        if input.modifiers.meta {
+            modifiers |= ModifiersState::SUPER;
+        }
+        self.modifiers_state.store(Arc::new(modifiers));
+
         super::keyboard_events::dispatch_keyboard_event(input);
     }
 

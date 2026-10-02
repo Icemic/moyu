@@ -163,7 +163,8 @@ pub struct MouseRequest {
     pub x: Option<f32>,
     pub y: Option<f32>,
     pub node_id: Option<u32>,
-    /// `left`, `right` or `middle`; used by `up` and `click`.
+    /// `left`, `right`, `middle`, `back` or `forward`; used by `down`, `up` and
+    /// `click`.
     pub button: Option<String>,
     /// Scroll amounts, used by `wheel`.
     pub delta_x: Option<f64>,
