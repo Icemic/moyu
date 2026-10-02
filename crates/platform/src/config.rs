@@ -144,7 +144,7 @@ pub enum FontSourceConfig {
 #[serde(rename_all = "lowercase")]
 pub enum FontSourceKind {
     Cjk,
-    Latin,
+    Western,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

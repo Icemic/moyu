@@ -217,8 +217,8 @@ impl TextRenderer {
                             Some(FontSourceKind::Cjk) => {
                                 source.with_kind(huozi::FontSourceKind::Cjk)
                             }
-                            Some(FontSourceKind::Latin) => {
-                                source.with_kind(huozi::FontSourceKind::Latin)
+                            Some(FontSourceKind::Western) => {
+                                source.with_kind(huozi::FontSourceKind::Western)
                             }
                             None => source,
                         };
