@@ -348,8 +348,8 @@ const mouseTool: ToolDefinition = {
       },
       button: {
         type: 'string',
-        enum: ['left', 'right', 'middle'],
-        description: 'Mouse button for up and click; defaults to left',
+        enum: ['left', 'right', 'middle', 'back', 'forward'],
+        description: 'Mouse button for down, up and click; defaults to left',
       },
       deltaX: { type: 'number', description: 'Horizontal scroll amount for wheel; defaults to 0' },
       deltaY: { type: 'number', description: 'Vertical scroll amount for wheel; defaults to 0' },
