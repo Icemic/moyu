@@ -1,6 +1,8 @@
 use log::error;
 use winit::dpi::PhysicalPosition;
-use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent};
+use winit::event::{
+    ElementState, MouseButton, MouseScrollDelta, TouchPhase as WinitTouchPhase, WindowEvent,
+};
 use winit::window::{CursorIcon, Window};
 
 use crate::base::*;
@@ -15,6 +17,7 @@ use crate::utils::dispatch_event::dispatch_event;
 use crate::utils::hit_test::{get_local_logical_position, hit_test};
 
 use super::Core;
+use super::input::{PointerButton, TouchPhase};
 
 macro_rules! get_pointer_state {
     ($self:ident, $name:ident, $identifier:expr) => {
@@ -96,81 +99,10 @@ impl Core {
                 true
             }
             WindowEvent::MouseInput { button, state, .. } => {
-                get_pointer_state_mut!(self, pointer_state, MOUSE_IDENTIFIER, true);
-
-                if let Some(last_hover_node) = &pointer_state.current_target {
-                    let target_id = *last_hover_node.node.read().base().id();
-                    let bubble_target_ids = last_hover_node.parent_ids.clone();
-
-                    let location = pointer_state.location;
-
-                    match state {
-                        ElementState::Pressed => {
-                            self.editable.handle_pointer_down(target_id);
-
-                            dispatch_event(MouseEvent {
-                                kind: MouseEventKind::MouseDown,
-                                target_id,
-                                bubble_target_ids,
-                                location,
-                            });
-                            dispatch_pointer_event(
-                                last_hover_node,
-                                location,
-                                PointerEventKind::Down,
-                            );
-
-                            pointer_state.down_id = Some(target_id);
-                        }
-                        ElementState::Released => {
-                            dispatch_event(MouseEvent {
-                                kind: MouseEventKind::MouseUp,
-                                target_id,
-                                bubble_target_ids: bubble_target_ids.clone(),
-                                location,
-                            });
-                            dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
-
-                            let down_id = pointer_state.down_id.take();
-
-                            if down_id == Some(target_id) {
-                                match button {
-                                    winit::event::MouseButton::Left => {
-                                        dispatch_event(MouseEvent {
-                                            kind: MouseEventKind::Click,
-                                            target_id,
-                                            bubble_target_ids,
-                                            location,
-                                        });
-                                        dispatch_pointer_event(
-                                            last_hover_node,
-                                            location,
-                                            PointerEventKind::Click,
-                                        );
-                                    }
-                                    winit::event::MouseButton::Right => {
-                                        dispatch_event(MouseEvent {
-                                            kind: MouseEventKind::ContextMenu,
-                                            target_id,
-                                            bubble_target_ids,
-                                            location,
-                                        });
-                                    }
-                                    winit::event::MouseButton::Back => {
-                                        // do nothing
-                                    }
-                                    winit::event::MouseButton::Forward => {
-                                        // do nothing
-                                    }
-                                    winit::event::MouseButton::Middle => {
-                                        // do nothing
-                                    }
-                                    winit::event::MouseButton::Other(_) => {
-                                        // do nothing
-                                    }
-                                }
-                            }
-                        }
+                match state {
+                    ElementState::Pressed => self.pointer_press(MOUSE_IDENTIFIER),
+                    ElementState::Released => {
+                        self.pointer_release(MOUSE_IDENTIFIER, (*button).into())
                     }
                 }
                 true
@@ -185,118 +117,42 @@ impl Core {
                     pointer_state.location
                 };
 
+                let phase = match touch.phase {
+                    WinitTouchPhase::Started => TouchPhase::Start,
+                    WinitTouchPhase::Moved => TouchPhase::Move,
+                    WinitTouchPhase::Ended => TouchPhase::End,
+                    WinitTouchPhase::Cancelled => TouchPhase::Cancel,
+                };
+
                 self.handle_pointer_move(window, &touch.location, identifier);
-                self.handle_pointer_hover(identifier, touch.phase == TouchPhase::Started);
+                self.handle_pointer_hover(identifier, phase == TouchPhase::Start);
 
-                get_pointer_state_mut!(self, pointer_state, identifier, true);
+                // ignore duplicated touch move event
+                let unchanged = self
+                    .pointer_map
+                    .get(&identifier)
+                    .is_some_and(|pointer_state| pointer_state.location == last_location);
 
-                if last_location == pointer_state.location && touch.phase == TouchPhase::Moved {
-                    // ignore duplicated touch move event
-                    return true;
+                if !(phase == TouchPhase::Move && unchanged) {
+                    self.pointer_touch(identifier, phase);
                 }
 
-                if let Some(last_hover_node) = &pointer_state.current_target {
-                    let target_id = *last_hover_node.node.read().base().id();
-                    let bubble_target_ids = last_hover_node.parent_ids.clone();
-
-                    let location = pointer_state.location;
-
-                    match touch.phase {
-                        TouchPhase::Started => {
-                            self.editable.handle_pointer_down(target_id);
-
-                            dispatch_event(TouchEvent {
-                                kind: TouchEventKind::TouchStart,
-                                target_id,
-                                bubble_target_ids,
-                                location,
-                                identifier: touch.id as u32,
-                            });
-                            dispatch_pointer_event(
-                                last_hover_node,
-                                location,
-                                PointerEventKind::Down,
-                            );
-                            pointer_state.down_id = Some(target_id);
-                        }
-                        TouchPhase::Moved => {
-                            dispatch_event(TouchEvent {
-                                kind: TouchEventKind::TouchMove,
-                                target_id,
-                                bubble_target_ids,
-                                location,
-                                identifier: touch.id as u32,
-                            });
-                            dispatch_pointer_event(
-                                last_hover_node,
-                                location,
-                                PointerEventKind::Over,
-                            );
-                        }
-                        TouchPhase::Ended => {
-                            dispatch_event(TouchEvent {
-                                kind: TouchEventKind::TouchEnd,
-                                target_id,
-                                bubble_target_ids,
-                                location,
-                                identifier: touch.id as u32,
-                            });
-                            dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
-                            pointer_state.down_id.take();
-                        }
-                        TouchPhase::Cancelled => {
-                            dispatch_event(TouchEvent {
-                                kind: TouchEventKind::TouchCancel,
-                                target_id,
-                                bubble_target_ids,
-                                location,
-                                identifier: touch.id as u32,
-                            });
-                            dispatch_pointer_event(
-                                last_hover_node,
-                                location,
-                                PointerEventKind::Leave,
-                            );
-                            pointer_state.down_id = None;
-                        }
-                    }
-                }
                 true
             }
             WindowEvent::MouseWheel {
                 delta, phase: _, ..
             } => {
-                get_pointer_state!(self, pointer_state, MOUSE_IDENTIFIER, true);
-
-                if let Some(last_hover_node) = &pointer_state.current_target {
-                    let target_id = *last_hover_node.node.read().base().id();
-                    let bubble_target_ids = last_hover_node.parent_ids.clone();
-
-                    match delta {
-                        MouseScrollDelta::LineDelta(x, y) => {
-                            dispatch_event(WheelEvent {
-                                kind: WheelEventKind::Wheel,
-                                target_id,
-                                bubble_target_ids,
-                                delta_x: *x as f64,
-                                delta_y: *y as f64,
-                                delta_z: 0.0,
-                                delta_mode: WheelEventDeltaMode::Line,
-                            });
-                        }
-                        MouseScrollDelta::PixelDelta(pos) => {
-                            dispatch_event(WheelEvent {
-                                kind: WheelEventKind::Wheel,
-                                target_id,
-                                bubble_target_ids,
-                                delta_x: pos.x,
-                                delta_y: pos.y,
-                                delta_z: 0.0,
-                                delta_mode: WheelEventDeltaMode::Pixel,
-                            });
-                        }
+                let (delta_x, delta_y, mode) = match delta {
+                    MouseScrollDelta::LineDelta(x, y) => {
+                        (*x as f64, *y as f64, WheelEventDeltaMode::Line)
                     }
-                }
+                    MouseScrollDelta::PixelDelta(position) => {
+                        (position.x, position.y, WheelEventDeltaMode::Pixel)
+                    }
+                };
+
+                self.pointer_wheel(MOUSE_IDENTIFIER, delta_x, delta_y, mode);
+
                 true
             }
             _ => false,
@@ -481,6 +337,175 @@ impl Core {
         }
     }
 
+    /// Press at the pointer's current target.
+    fn pointer_press(&self, identifier: i32) {
+        get_pointer_state_mut!(self, pointer_state, identifier);
+
+        let Some(last_hover_node) = &pointer_state.current_target else {
+            return;
+        };
+
+        let target_id = *last_hover_node.node.read().base().id();
+        let bubble_target_ids = last_hover_node.parent_ids.clone();
+        let location = pointer_state.location;
+
+        self.editable.handle_pointer_down(target_id);
+
+        dispatch_event(MouseEvent {
+            kind: MouseEventKind::MouseDown,
+            target_id,
+            bubble_target_ids,
+            location,
+        });
+        dispatch_pointer_event(last_hover_node, location, PointerEventKind::Down);
+
+        pointer_state.down_id = Some(target_id);
+    }
+
+    /// Release at the pointer's current target, adding the gesture the button carries.
+    fn pointer_release(&self, identifier: i32, button: PointerButton) {
+        get_pointer_state_mut!(self, pointer_state, identifier);
+
+        let Some(last_hover_node) = &pointer_state.current_target else {
+            return;
+        };
+
+        let target_id = *last_hover_node.node.read().base().id();
+        let bubble_target_ids = last_hover_node.parent_ids.clone();
+        let location = pointer_state.location;
+
+        dispatch_event(MouseEvent {
+            kind: MouseEventKind::MouseUp,
+            target_id,
+            bubble_target_ids: bubble_target_ids.clone(),
+            location,
+        });
+        dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
+
+        // A release only counts as a gesture when it pairs with a press on the same node.
+        let down_id = pointer_state.down_id.take();
+
+        if down_id != Some(target_id) {
+            return;
+        }
+
+        match button {
+            PointerButton::Left => {
+                dispatch_event(MouseEvent {
+                    kind: MouseEventKind::Click,
+                    target_id,
+                    bubble_target_ids,
+                    location,
+                });
+                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Click);
+            }
+            PointerButton::Right => {
+                dispatch_event(MouseEvent {
+                    kind: MouseEventKind::ContextMenu,
+                    target_id,
+                    bubble_target_ids,
+                    location,
+                });
+            }
+            PointerButton::Middle
+            | PointerButton::Back
+            | PointerButton::Forward
+            | PointerButton::Other => {
+                // no gesture is attached to these buttons
+            }
+        }
+    }
+
+    /// Dispatch one touch phase to the pointer's current target.
+    fn pointer_touch(&self, identifier: i32, phase: TouchPhase) {
+        get_pointer_state_mut!(self, pointer_state, identifier);
+
+        let Some(last_hover_node) = &pointer_state.current_target else {
+            return;
+        };
+
+        let target_id = *last_hover_node.node.read().base().id();
+        let bubble_target_ids = last_hover_node.parent_ids.clone();
+        let location = pointer_state.location;
+        let touch_identifier = identifier as u32;
+
+        match phase {
+            TouchPhase::Start => {
+                self.editable.handle_pointer_down(target_id);
+
+                dispatch_event(TouchEvent {
+                    kind: TouchEventKind::TouchStart,
+                    target_id,
+                    bubble_target_ids,
+                    location,
+                    identifier: touch_identifier,
+                });
+                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Down);
+
+                pointer_state.down_id = Some(target_id);
+            }
+            TouchPhase::Move => {
+                dispatch_event(TouchEvent {
+                    kind: TouchEventKind::TouchMove,
+                    target_id,
+                    bubble_target_ids,
+                    location,
+                    identifier: touch_identifier,
+                });
+                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Over);
+            }
+            TouchPhase::End => {
+                dispatch_event(TouchEvent {
+                    kind: TouchEventKind::TouchEnd,
+                    target_id,
+                    bubble_target_ids,
+                    location,
+                    identifier: touch_identifier,
+                });
+                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
+
+                pointer_state.down_id.take();
+            }
+            TouchPhase::Cancel => {
+                dispatch_event(TouchEvent {
+                    kind: TouchEventKind::TouchCancel,
+                    target_id,
+                    bubble_target_ids,
+                    location,
+                    identifier: touch_identifier,
+                });
+                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Leave);
+
+                pointer_state.down_id = None;
+            }
+        }
+    }
+
+    /// Scroll the pointer's current target.
+    fn pointer_wheel(
+        &self,
+        identifier: i32,
+        delta_x: f64,
+        delta_y: f64,
+        mode: WheelEventDeltaMode,
+    ) {
+        get_pointer_state!(self, pointer_state, identifier);
+
+        let Some(last_hover_node) = &pointer_state.current_target else {
+            return;
+        };
+
+        dispatch_event(WheelEvent {
+            kind: WheelEventKind::Wheel,
+            target_id: *last_hover_node.node.read().base().id(),
+            bubble_target_ids: last_hover_node.parent_ids.clone(),
+            delta_x,
+            delta_y,
+            delta_z: 0.0,
+            delta_mode: mode,
+        });
+    }
+
     /// Check if the pointer state exists, if not, create one.
     fn get_ensure_pointer_state(&self, identifier: i32, device_type: DeviceType) {
         self.pointer_map.entry(identifier).or_insert_with(|| {
@@ -488,6 +513,19 @@ impl Core {
             pointer_state.device_type = device_type;
             pointer_state
         });
+    }
+}
+
+impl From<MouseButton> for PointerButton {
+    fn from(button: MouseButton) -> Self {
+        match button {
+            MouseButton::Left => Self::Left,
+            MouseButton::Right => Self::Right,
+            MouseButton::Middle => Self::Middle,
+            MouseButton::Back => Self::Back,
+            MouseButton::Forward => Self::Forward,
+            MouseButton::Other(_) => Self::Other,
+        }
     }
 }
 

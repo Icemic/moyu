@@ -10,6 +10,7 @@ use crate::events::{KeyboardEvent, KeyboardEventKind, KeyboardLocation};
 use crate::utils::dispatch_event::dispatch_event;
 
 use super::Core;
+use super::input::{KeyInput, KeyboardModifiers};
 
 impl Core {
     pub fn handle_keyboard_events(&self, _window: &Window, event: &WindowEvent) -> bool {
@@ -78,24 +79,19 @@ impl Core {
                         }
                     };
 
-                    let event = KeyboardEvent {
+                    dispatch_keyboard_event(KeyInput {
                         kind,
-                        target_id: 0,
-                        bubble_target_ids: vec![],
                         key,
                         code,
                         location,
                         repeat: event.repeat,
-                        ctrl_key: modifiers_state.control_key(),
-                        shift_key: modifiers_state.shift_key(),
-                        alt_key: modifiers_state.alt_key(),
-                        meta_key: modifiers_state.super_key(),
-                        // is_composing should always be false since KeyboardInput event will not
-                        // be fired when the user is composing text. (IME event will be fired instead)
-                        is_composing: false,
-                    };
-
-                    dispatch_event(event);
+                        modifiers: KeyboardModifiers {
+                            ctrl: modifiers_state.control_key(),
+                            shift: modifiers_state.shift_key(),
+                            alt: modifiers_state.alt_key(),
+                            meta: modifiers_state.super_key(),
+                        },
+                    });
                 }
 
                 true
@@ -108,4 +104,24 @@ impl Core {
             _ => false,
         }
     }
+}
+
+/// Dispatch one keyboard event to the engine.
+fn dispatch_keyboard_event(input: KeyInput) {
+    dispatch_event(KeyboardEvent {
+        kind: input.kind,
+        target_id: 0,
+        bubble_target_ids: vec![],
+        key: input.key,
+        code: input.code,
+        location: input.location,
+        repeat: input.repeat,
+        ctrl_key: input.modifiers.ctrl,
+        shift_key: input.modifiers.shift,
+        alt_key: input.modifiers.alt,
+        meta_key: input.modifiers.meta,
+        // is_composing should always be false since KeyboardInput event will not
+        // be fired when the user is composing text. (IME event will be fired instead)
+        is_composing: false,
+    });
 }

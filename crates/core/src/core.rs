@@ -2,6 +2,7 @@ mod editable;
 pub mod filter_registry;
 mod global;
 mod handle_events;
+mod input;
 mod keyboard_events;
 mod pointer_events;
 mod render;
