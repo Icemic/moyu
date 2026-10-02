@@ -85,7 +85,7 @@ moyu debug tree | grep sprite
 
 | 工具 | 用途 |
 | --- | --- |
-| `debug_start` | 带着调试桥启动引擎并等它就绪；会先停掉上一个会话。 |
+| `debug_start` | 带着调试桥启动引擎并等它就绪；会先停掉上一个会话。传 `attach: true` 改为只监听端口，返回需要设置的 `MOYU_ENGINE_DEBUG_WS`。 |
 | `debug_stop` | 停止 `debug_start` 启动的引擎与监听。 |
 | `debug_state` | 引擎状态快照。 |
 | `debug_eval` | 在引擎里执行 JavaScript。 |
@@ -93,6 +93,9 @@ moyu debug tree | grep sprite
 | `debug_tree` | 列出节点树。 |
 | `debug_props` | 单个节点的属性与派生值。 |
 | `debug_screenshot` | 截图，以图像形式返回。 |
+| `debug_mouse` | 模拟鼠标动作（`move` / `down` / `up` / `click` / `wheel`），目标用舞台坐标或节点 id。 |
+| `debug_touch` | 模拟触摸相位（`start` / `move` / `end` / `cancel`）。 |
+| `debug_key` | 模拟键盘事件（`down` / `up` / `press`），`key` 为 `event.key` 值。 |
 
 会话在工具调用之间保持存活，因此可以启动一次引擎、反复查询。默认的 native 会话会打开窗口；传 `web: true` 改为提供项目页面，并返回一个需要在浏览器里打开的地址。
 

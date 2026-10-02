@@ -15,6 +15,8 @@ import type { ToolContent, ToolDefinition, ToolResult } from './protocol.js';
 const START_READY_TIMEOUT_MS = 60_000;
 /** How long a tool waits for the engine to finish starting up before giving up. */
 const READY_TIMEOUT_MS = 30_000;
+/** Port an attach session listens on when the caller does not pick one. */
+const DEFAULT_ATTACH_PORT = 6321;
 
 let session: DebugSession | null = null;
 
@@ -34,6 +36,9 @@ export function createTools(): ToolDefinition[] {
     treeTool,
     propsTool,
     screenshotTool,
+    mouseTool,
+    touchTool,
+    keyTool,
   ];
 }
 
@@ -47,7 +52,10 @@ const startTool: ToolDefinition = {
   description:
     'Start the project engine with the debug bridge and wait until it is running. Call this before any ' +
     'other moyu tool. Starting a session stops the previous one. Native sessions open a window; web ' +
-    'sessions serve the project and report a page URL that has to be opened in a browser.',
+    'sessions serve the project and report a page URL that has to be opened in a browser. With attach, ' +
+    'the session only listens on a port and reports the MOYU_ENGINE_DEBUG_WS value an engine must be ' +
+    'started with; nothing is launched or waited for, which is how a locally built or packaged engine ' +
+    'gets inspected.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -68,10 +76,37 @@ const startTool: ToolDefinition = {
         type: 'string',
         description: 'Project directory to run; defaults to the directory the server was started in',
       },
+      attach: {
+        type: 'boolean',
+        description:
+          'Only listen for an engine started by hand and report the MOYU_ENGINE_DEBUG_WS value it ' +
+          'must be started with; nothing is launched or waited for',
+        default: false,
+      },
+      listen: {
+        type: 'number',
+        description: 'Port an attach session listens on; defaults to 6321',
+        default: DEFAULT_ATTACH_PORT,
+      },
     },
   },
   run: async (args) => {
     stopSession();
+
+    if (args.attach === true) {
+      session = await startDebugSession({
+        attachPort: typeof args.listen === 'number' ? args.listen : DEFAULT_ATTACH_PORT,
+      });
+
+      return text(
+        [
+          `Listening for an engine on port ${String(session.host.port)} (attach).`,
+          'Start the engine yourself and point it at this endpoint:',
+          `  MOYU_ENGINE_DEBUG_WS=${String(session.attachEndpoint)}`,
+          'Then call any other debug tool to work with it.',
+        ].join('\n'),
+      );
+    }
 
     const projectRoot = resolveProjectRoot(args);
     const web = args.web === true;
@@ -107,7 +142,9 @@ const startTool: ToolDefinition = {
 const stopTool: ToolDefinition = {
   name: 'debug_stop',
   title: 'Stop the debug session',
-  description: 'Stop the engine and the debug bridge started by debug_start.',
+  description:
+    'Stop the debug session started by debug_start. An attach session only closes the listener; the ' +
+    'engine keeps running.',
   inputSchema: { type: 'object', properties: {} },
   run: async () => {
     const hadSession = session !== null;
@@ -275,6 +312,125 @@ const screenshotTool: ToolDefinition = {
       ],
     };
   },
+};
+
+// ---------------------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------------------
+
+const mouseTool: ToolDefinition = {
+  name: 'debug_mouse',
+  title: 'Send a mouse action',
+  description:
+    'Simulate a mouse action (move, down, up, click or wheel) at a stage position or at a node. The ' +
+    'action goes through the real input pipeline, so hover, pointer pairing and gestures behave as ' +
+    'they do for a user. Give x and y in stage logical coordinates, or a nodeId to aim at the center ' +
+    'of a node. Returns the node that was hit, the bubble chain, and the events dispatched.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['move', 'down', 'up', 'click', 'wheel'],
+        description: 'Mouse action to perform',
+      },
+      x: {
+        type: 'number',
+        description: 'Stage logical X coordinate; use with y, or use nodeId instead',
+      },
+      y: {
+        type: 'number',
+        description: 'Stage logical Y coordinate; use with x, or use nodeId instead',
+      },
+      nodeId: {
+        type: 'number',
+        description: 'Target node id; the action lands at the center of its bounds',
+      },
+      button: {
+        type: 'string',
+        enum: ['left', 'right', 'middle'],
+        description: 'Mouse button for up and click; defaults to left',
+      },
+      deltaX: { type: 'number', description: 'Horizontal scroll amount for wheel; defaults to 0' },
+      deltaY: { type: 'number', description: 'Vertical scroll amount for wheel; defaults to 0' },
+      mode: {
+        type: 'string',
+        enum: ['line', 'pixel'],
+        description: 'Unit of the wheel deltas; defaults to line',
+      },
+    },
+    required: ['action'],
+  },
+  run: async (args) => text(JSON.stringify(await request('engine:mouse', args), null, 2)),
+};
+
+const touchTool: ToolDefinition = {
+  name: 'debug_touch',
+  title: 'Send a touch phase',
+  description:
+    'Simulate one touch phase (start, move, end or cancel). A touch is a session: start comes first ' +
+    'and later phases may omit the position to keep the touch where it is. Give x and y in stage ' +
+    'logical coordinates, or a nodeId to aim at the center of a node. Returns the node that was hit, ' +
+    'the bubble chain, and the events dispatched.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['start', 'move', 'end', 'cancel'],
+        description: 'Touch phase to perform',
+      },
+      x: {
+        type: 'number',
+        description: 'Stage logical X coordinate; required for start, optional afterwards',
+      },
+      y: {
+        type: 'number',
+        description: 'Stage logical Y coordinate; required for start, optional afterwards',
+      },
+      nodeId: {
+        type: 'number',
+        description: 'Target node id; the touch starts at the center of its bounds',
+      },
+      identifier: {
+        type: 'number',
+        description: 'Touch point identifier; defaults to 0',
+      },
+    },
+    required: ['action'],
+  },
+  run: async (args) => text(JSON.stringify(await request('engine:touch', args), null, 2)),
+};
+
+const keyTool: ToolDefinition = {
+  name: 'debug_key',
+  title: 'Send a keyboard event',
+  description:
+    'Simulate a keyboard event (down, up or press). Keyboard events go to the engine as a whole, ' +
+    'like real key presses. key is the event.key value such as Escape, Enter or a; code defaults to ' +
+    'the same value.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['down', 'up', 'press'],
+        description: 'Keyboard action to perform',
+      },
+      key: {
+        type: 'string',
+        description: 'The event.key value, such as Escape, Enter or a',
+      },
+      code: { type: 'string', description: 'Physical key name; defaults to key' },
+      repeat: { type: 'boolean', description: 'Whether this is a key repeat; defaults to false' },
+      ctrlKey: { type: 'boolean', description: 'Whether Ctrl is held; defaults to false' },
+      shiftKey: { type: 'boolean', description: 'Whether Shift is held; defaults to false' },
+      altKey: { type: 'boolean', description: 'Whether Alt is held; defaults to false' },
+      metaKey: { type: 'boolean', description: 'Whether Meta is held; defaults to false' },
+    },
+    required: ['action', 'key'],
+  },
+  run: async (args) => text(JSON.stringify(await request('engine:key', args), null, 2)),
 };
 
 // ---------------------------------------------------------------------------

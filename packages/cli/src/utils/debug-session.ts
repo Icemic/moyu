@@ -52,6 +52,11 @@ export interface DebugSession {
   mode: 'native' | 'web' | 'attach';
   /** Page to open for a `web` session. */
   url?: string;
+  /**
+   * Endpoint an engine must be told to connect to; set for `attach` sessions, where
+   * nothing is launched and the caller starts the engine itself.
+   */
+  attachEndpoint?: string;
   /** Stop the engine and the listener. Safe to call more than once. */
   stop(): void;
 }
@@ -142,6 +147,7 @@ async function startAttachSession(port: number): Promise<DebugSession> {
   return {
     host,
     mode: 'attach',
+    attachEndpoint: endpoint,
     stop: () => host.close(),
   };
 }
