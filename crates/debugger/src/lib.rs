@@ -565,7 +565,7 @@ fn pointer_action_done(action: String, report: PointerInputReport) -> PointerAct
 fn input_error_message(error: InputError) -> String {
     match error {
         InputError::NoActiveTouch(identifier) => {
-            format!("Touch {identifier} has not been started; send a start action first")
+            format!("Touch {identifier} is not active; send a start action first")
         }
         InputError::MissingPosition => {
             "A touch start needs a position (x and y, or a nodeId)".to_string()

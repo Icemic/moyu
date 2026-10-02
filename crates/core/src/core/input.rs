@@ -160,8 +160,9 @@ impl Core {
     /// Advance one touch.
     ///
     /// The position is required for `Start`; later phases may omit it and keep the
-    /// touch's current position. A phase other than `Start` needs a touch that was
-    /// started before, which is what a real device guarantees.
+    /// touch's current position. A phase other than `Start` needs a touch that is
+    /// currently active — started and not yet ended — which is the order a real device
+    /// produces.
     pub fn simulate_touch(
         &self,
         phase: TouchPhase,
@@ -175,6 +176,13 @@ impl Core {
             .get(&pointer_id)
             .map(|state| state.location);
 
+        // A press marks a touch as active: `Start` sets it and `End` / `Cancel` clear
+        // it, so a touch that already ended does not pass as active again.
+        let active = self
+            .pointer_map
+            .get(&pointer_id)
+            .is_some_and(|state| state.down_id.is_some());
+
         match phase {
             TouchPhase::Start => {
                 let (Some(x), Some(y)) = (x, y) else {
@@ -185,7 +193,7 @@ impl Core {
                 self.pointer_to(pointer_id, x, y);
             }
             TouchPhase::Move | TouchPhase::End | TouchPhase::Cancel => {
-                if previous.is_none() {
+                if !active {
                     return Err(InputError::NoActiveTouch(identifier));
                 }
 
