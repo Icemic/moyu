@@ -44,6 +44,9 @@ export interface MoyuListenerAttributes {
   onMouseDown?: MoyuEventHandler<MouseEvent>;
   onMouseUp?: MoyuEventHandler<MouseEvent>;
   onMouseMove?: MoyuEventHandler<MouseEvent>;
+  onAuxClick?: MoyuEventHandler<MouseEvent>;
+  onDoubleClick?: MoyuEventHandler<MouseEvent>;
+  onContextMenu?: MoyuEventHandler<MouseEvent>;
   onKeyDown?: MoyuEventHandler<KeyboardEvent>;
   onKeyUp?: MoyuEventHandler<KeyboardEvent>;
   onKeyPress?: MoyuEventHandler<KeyboardEvent>;

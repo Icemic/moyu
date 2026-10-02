@@ -1,8 +1,9 @@
 import type { WheelEventDeltaMode } from '../events';
-import type { MouseEvent } from './mouse';
+import type { BubbleEvent } from './base';
 
-export interface WheelEvent extends Omit<MouseEvent, 'kind'> {
+export interface WheelEvent extends BubbleEvent {
   kind: 'Wheel';
+  currentTargetLabel?: string;
   deltaX: number;
   deltaY: number;
   deltaZ: number;

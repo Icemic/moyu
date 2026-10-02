@@ -63,6 +63,13 @@ globalThis.__moyu_receive_event = (raw_event: MoyuEvent) => {
 function handleBubbleEvent(name: string, body: RawMouseEvent | RawTouchEvent | RawWheelEvent) {
   const event: MouseEvent | TouchEvent | WheelEvent = createBubbleEvent(body, body.targetId);
 
+  if (name === 'mouseevent') {
+    // DOM exposes the client position as both `clientX` / `clientY` and `x` / `y`.
+    const mouseEvent = event as MouseEvent;
+    mouseEvent.x = mouseEvent.clientX;
+    mouseEvent.y = mouseEvent.clientY;
+  }
+
   const { kind, bubbleTargetIds } = body;
 
   // if targetId is 0, it is a global event (send to root node or send from plugin)

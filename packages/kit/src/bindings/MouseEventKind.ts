@@ -7,5 +7,6 @@ export type MouseEventKind =
   | 'MouseUp'
   | 'MouseMove'
   | 'Click'
+  | 'AuxClick'
   | 'DoubleClick'
   | 'ContextMenu';
