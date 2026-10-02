@@ -32,21 +32,27 @@ use std::time::Duration;
 
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD as BASE64;
+use moyu_core::core::{
+    Core, InputError, KeyInput, KeyboardModifiers, PointerAction, PointerButton,
+    PointerInputReport, TouchPhase, try_get_core,
+};
+use moyu_core::events::{KeyboardEventKind, KeyboardLocation, WheelEventDeltaMode};
 use moyu_pal::config::get_engine_config;
 use moyu_pal::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::logs::{LogEntry, LogLevel};
 use protocol::{
-    EvalDone, EvalOutcome, EvalRequest, Hello, LogPush, LogsDone, LogsRequest, PropsDone,
-    PropsRequest, ReadyPush, RequestError, ScreenshotDone, ScreenshotRequest, StateDone, TreeDone,
+    EvalDone, EvalOutcome, EvalRequest, Hello, KeyDone, KeyRequest, LogPush, LogsDone, LogsRequest,
+    MouseDone, MouseRequest, PointerActionDone, PropsDone, PropsRequest, ReadyPush, RequestError,
+    ScreenshotDone, ScreenshotRequest, StagePoint, StateDone, TouchDone, TouchRequest, TreeDone,
     TreeRequest,
 };
 use serde::Serialize;
 
 #[cfg(native)]
-use native::eval as platform_eval;
+use native::{eval as platform_eval, on_main_thread as platform_on_main_thread};
 #[cfg(web)]
-use web::eval as platform_eval;
+use web::{eval as platform_eval, on_main_thread as platform_on_main_thread};
 
 /// Budget for one evaluation when the client does not ask for a specific one.
 const DEFAULT_EVAL_TIMEOUT: Duration = Duration::from_secs(5);
@@ -175,7 +181,17 @@ pub(crate) fn hello(session: &DebugSession) -> String {
         platform: state::platform_name(),
         engine_version: env!("CARGO_PKG_VERSION"),
         entry: get_engine_config().entry.clone().unwrap_or_default(),
-        capabilities: vec!["state", "eval", "logs", "tree", "props", "screenshot"],
+        capabilities: vec![
+            "state",
+            "eval",
+            "logs",
+            "tree",
+            "props",
+            "screenshot",
+            "mouse",
+            "touch",
+            "key",
+        ],
         ready: is_ready(),
     })
 }
@@ -192,9 +208,10 @@ pub(crate) async fn handle_request(text: &str, session: &DebugSession) -> Option
         "engine:logs" => Some(logs_answer(&kind, request_id, session, request)),
         "engine:tree" => Some(tree_answer(&kind, request_id, session, request)),
         "engine:props" => Some(props_answer(&kind, request_id, session, request)),
-        "engine:screenshot" => {
-            Some(screenshot_answer(&kind, request_id, session, request).await)
-        }
+        "engine:screenshot" => Some(screenshot_answer(&kind, request_id, session, request).await),
+        "engine:mouse" => Some(mouse_answer(&kind, request_id, session, request).await),
+        "engine:touch" => Some(touch_answer(&kind, request_id, session, request).await),
+        "engine:key" => Some(key_answer(&kind, request_id, session, request).await),
         other => Some(error(
             other,
             request_id,
@@ -261,6 +278,299 @@ async fn screenshot_answer(
         height: capture.height,
         data: BASE64.encode(&capture.data),
     })
+}
+
+/// Run one engine call on the main thread, where input processing and JavaScript live.
+async fn run_on_engine_thread<T: Send + 'static>(
+    f: impl FnOnce(&Core) -> T + Send + 'static,
+) -> Result<T, String> {
+    let core = try_get_core()
+        .cloned()
+        .ok_or_else(|| "Engine core is not ready yet".to_string())?;
+
+    platform_on_main_thread(move || f(&core)).await
+}
+
+/// Send one mouse action into the engine.
+async fn mouse_answer(
+    kind: &str,
+    request_id: Option<u64>,
+    session: &DebugSession,
+    request: serde_json::Value,
+) -> String {
+    let Some(request_id) = request_id else {
+        return invalid_request(kind, session);
+    };
+
+    let Ok(request) = serde_json::from_value::<MouseRequest>(request) else {
+        return error(
+            kind,
+            Some(request_id),
+            session,
+            "invalid_request",
+            "Request needs an action".to_string(),
+        );
+    };
+
+    let action = match mouse_action(&request) {
+        Ok(action) => action,
+        Err(reason) => return error(kind, Some(request_id), session, "invalid_request", reason),
+    };
+
+    let (x, y) = match resolve_point(request.x, request.y, request.node_id) {
+        Ok(point) => point,
+        Err(reason) => return error(kind, Some(request_id), session, "invalid_request", reason),
+    };
+
+    let report = match run_on_engine_thread(move |core| core.simulate_pointer(x, y, action)).await {
+        Ok(report) => report,
+        Err(reason) => return error(kind, Some(request_id), session, "internal", reason),
+    };
+
+    serialize(&MouseDone {
+        kind: "engine:mouse:done",
+        session_id: &session.session_id,
+        request_id,
+        result: pointer_action_done(request.action, report),
+    })
+}
+
+/// Send one touch phase into the engine.
+async fn touch_answer(
+    kind: &str,
+    request_id: Option<u64>,
+    session: &DebugSession,
+    request: serde_json::Value,
+) -> String {
+    let Some(request_id) = request_id else {
+        return invalid_request(kind, session);
+    };
+
+    let Ok(request) = serde_json::from_value::<TouchRequest>(request) else {
+        return error(
+            kind,
+            Some(request_id),
+            session,
+            "invalid_request",
+            "Request needs an action".to_string(),
+        );
+    };
+
+    let phase = match request.action.as_str() {
+        "start" => TouchPhase::Start,
+        "move" => TouchPhase::Move,
+        "end" => TouchPhase::End,
+        "cancel" => TouchPhase::Cancel,
+        other => {
+            return error(
+                kind,
+                Some(request_id),
+                session,
+                "invalid_request",
+                format!("Unknown touch action: {other}; use start, move, end or cancel"),
+            );
+        }
+    };
+
+    let point = match resolve_optional_point(request.x, request.y, request.node_id) {
+        Ok(point) => point,
+        Err(reason) => return error(kind, Some(request_id), session, "invalid_request", reason),
+    };
+
+    let (x, y) = match point {
+        Some((x, y)) => (Some(x), Some(y)),
+        None => (None, None),
+    };
+    let identifier = request.identifier.unwrap_or(0);
+
+    let report = match run_on_engine_thread(move |core| {
+        core.simulate_touch(phase, x, y, identifier)
+    })
+    .await
+    {
+        Ok(Ok(report)) => report,
+        Ok(Err(input_error)) => {
+            return error(
+                kind,
+                Some(request_id),
+                session,
+                "invalid_request",
+                input_error_message(input_error),
+            );
+        }
+        Err(reason) => return error(kind, Some(request_id), session, "internal", reason),
+    };
+
+    serialize(&TouchDone {
+        kind: "engine:touch:done",
+        session_id: &session.session_id,
+        request_id,
+        result: pointer_action_done(request.action, report),
+    })
+}
+
+/// Send one keyboard event into the engine.
+async fn key_answer(
+    kind: &str,
+    request_id: Option<u64>,
+    session: &DebugSession,
+    request: serde_json::Value,
+) -> String {
+    let Some(request_id) = request_id else {
+        return invalid_request(kind, session);
+    };
+
+    let Ok(request) = serde_json::from_value::<KeyRequest>(request) else {
+        return error(
+            kind,
+            Some(request_id),
+            session,
+            "invalid_request",
+            "Request needs an action and a key".to_string(),
+        );
+    };
+
+    let event_kind = match request.action.as_str() {
+        "down" => KeyboardEventKind::KeyDown,
+        "up" => KeyboardEventKind::KeyUp,
+        "press" => KeyboardEventKind::KeyPress,
+        other => {
+            return error(
+                kind,
+                Some(request_id),
+                session,
+                "invalid_request",
+                format!("Unknown key action: {other}; use down, up or press"),
+            );
+        }
+    };
+
+    let code = request.code.clone().unwrap_or_else(|| request.key.clone());
+    let input = KeyInput {
+        kind: event_kind,
+        key: request.key.clone(),
+        code: code.clone(),
+        location: KeyboardLocation::Standard,
+        repeat: request.repeat.unwrap_or(false),
+        modifiers: KeyboardModifiers {
+            ctrl: request.ctrl_key.unwrap_or(false),
+            shift: request.shift_key.unwrap_or(false),
+            alt: request.alt_key.unwrap_or(false),
+            meta: request.meta_key.unwrap_or(false),
+        },
+    };
+
+    if let Err(reason) = run_on_engine_thread(move |core| core.simulate_key(input)).await {
+        return error(kind, Some(request_id), session, "internal", reason);
+    }
+
+    serialize(&KeyDone {
+        kind: "engine:key:done",
+        session_id: &session.session_id,
+        request_id,
+        action: request.action,
+        key: request.key,
+        code,
+        dispatched: vec![event_kind.as_str()],
+    })
+}
+
+/// Build the pointer action a mouse request asks for.
+fn mouse_action(request: &MouseRequest) -> Result<PointerAction, String> {
+    let button = match request.button.as_deref().unwrap_or("left") {
+        "left" => PointerButton::Left,
+        "right" => PointerButton::Right,
+        "middle" => PointerButton::Middle,
+        other => {
+            return Err(format!(
+                "Unknown button: {other}; use left, right or middle"
+            ));
+        }
+    };
+
+    match request.action.as_str() {
+        "move" => Ok(PointerAction::Move),
+        "down" => Ok(PointerAction::Down),
+        "up" => Ok(PointerAction::Up(button)),
+        "click" => Ok(PointerAction::Click(button)),
+        "wheel" => {
+            let mode = match request.mode.as_deref().unwrap_or("line") {
+                "line" => WheelEventDeltaMode::Line,
+                "pixel" => WheelEventDeltaMode::Pixel,
+                other => {
+                    return Err(format!("Unknown wheel mode: {other}; use line or pixel"));
+                }
+            };
+
+            Ok(PointerAction::Wheel {
+                delta_x: request.delta_x.unwrap_or(0.0),
+                delta_y: request.delta_y.unwrap_or(0.0),
+                mode,
+            })
+        }
+        other => Err(format!(
+            "Unknown mouse action: {other}; use move, down, up, click or wheel"
+        )),
+    }
+}
+
+/// Where a pointer action should land: stage coordinates, or the center of a node.
+fn resolve_point(
+    x: Option<f32>,
+    y: Option<f32>,
+    node_id: Option<u32>,
+) -> Result<(f32, f32), String> {
+    match (x, y) {
+        (Some(_), Some(_)) if node_id.is_some() => {
+            Err("Give either x and y, or a nodeId, not both".to_string())
+        }
+        (Some(x), Some(y)) => Ok((x, y)),
+        (None, None) => match node_id {
+            Some(node_id) => nodes::center_of(node_id),
+            None => Err("A position is required: give x and y, or a nodeId".to_string()),
+        },
+        _ => Err("x and y must be given together".to_string()),
+    }
+}
+
+/// Like [`resolve_point`], but a request without any position is allowed; touch phases
+/// after `start` use that to keep the touch's current position.
+fn resolve_optional_point(
+    x: Option<f32>,
+    y: Option<f32>,
+    node_id: Option<u32>,
+) -> Result<Option<(f32, f32)>, String> {
+    if x.is_none() && y.is_none() && node_id.is_none() {
+        return Ok(None);
+    }
+
+    resolve_point(x, y, node_id).map(Some)
+}
+
+/// Turn a core pointer report into the bridge's answer payload.
+fn pointer_action_done(action: String, report: PointerInputReport) -> PointerActionDone {
+    PointerActionDone {
+        action,
+        point: StagePoint {
+            x: report.location.client_x as f32,
+            y: report.location.client_y as f32,
+        },
+        target_node_id: report.target_node_id,
+        bubble_node_ids: report.bubble_node_ids,
+        dispatched: report.dispatched,
+    }
+}
+
+/// Explain a rejected touch phase to the caller.
+fn input_error_message(error: InputError) -> String {
+    match error {
+        InputError::NoActiveTouch(identifier) => {
+            format!("Touch {identifier} has not been started; send a start action first")
+        }
+        InputError::MissingPosition => {
+            "A touch start needs a position (x and y, or a nodeId)".to_string()
+        }
+    }
 }
 
 /// Read one level of the node tree, or the root node when no id is given.

@@ -32,6 +32,10 @@ use crate::state::{MOUSE_IDENTIFIER, PointerState};
 use crate::{nodes::Container, traits::*};
 
 pub use self::global::*;
+pub use self::input::{
+    InputError, KeyInput, KeyboardModifiers, PointerAction, PointerButton, PointerInputReport,
+    TouchPhase,
+};
 
 pub type NodeLock = Arc<RwLock<Box<dyn Node>>>;
 pub type NodeMap = Arc<DashMap<u32, NodeLock>>;

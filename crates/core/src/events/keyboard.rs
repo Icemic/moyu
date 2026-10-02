@@ -10,6 +10,17 @@ pub enum KeyboardEventKind {
     KeyPress,
 }
 
+impl KeyboardEventKind {
+    /// The name JavaScript sees for this event kind.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::KeyDown => "KeyDown",
+            Self::KeyUp => "KeyUp",
+            Self::KeyPress => "KeyPress",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
 pub enum KeyboardLocation {
     Standard,

@@ -17,7 +17,7 @@ use crate::utils::dispatch_event::dispatch_event;
 use crate::utils::hit_test::{get_local_logical_position, hit_test};
 
 use super::Core;
-use super::input::{PointerButton, TouchPhase};
+use super::input::{DispatchRecord, PointerButton, TouchPhase};
 
 macro_rules! get_pointer_state {
     ($self:ident, $name:ident, $identifier:expr) => {
@@ -74,7 +74,7 @@ impl Core {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
                 self.handle_pointer_move(window, position, MOUSE_IDENTIFIER);
-                self.handle_pointer_hover(MOUSE_IDENTIFIER, true);
+                self.handle_pointer_hover(MOUSE_IDENTIFIER, true, &mut DispatchRecord::disabled());
 
                 true
             }
@@ -100,10 +100,14 @@ impl Core {
             }
             WindowEvent::MouseInput { button, state, .. } => {
                 match state {
-                    ElementState::Pressed => self.pointer_press(MOUSE_IDENTIFIER),
-                    ElementState::Released => {
-                        self.pointer_release(MOUSE_IDENTIFIER, (*button).into())
+                    ElementState::Pressed => {
+                        self.pointer_press(MOUSE_IDENTIFIER, &mut DispatchRecord::disabled())
                     }
+                    ElementState::Released => self.pointer_release(
+                        MOUSE_IDENTIFIER,
+                        (*button).into(),
+                        &mut DispatchRecord::disabled(),
+                    ),
                 }
                 true
             }
@@ -124,8 +128,10 @@ impl Core {
                     WinitTouchPhase::Cancelled => TouchPhase::Cancel,
                 };
 
+                let mut record = DispatchRecord::disabled();
+
                 self.handle_pointer_move(window, &touch.location, identifier);
-                self.handle_pointer_hover(identifier, phase == TouchPhase::Start);
+                self.handle_pointer_hover(identifier, phase == TouchPhase::Start, &mut record);
 
                 // ignore duplicated touch move event
                 let unchanged = self
@@ -134,7 +140,7 @@ impl Core {
                     .is_some_and(|pointer_state| pointer_state.location == last_location);
 
                 if !(phase == TouchPhase::Move && unchanged) {
-                    self.pointer_touch(identifier, phase);
+                    self.pointer_touch(identifier, phase, &mut record);
                 }
 
                 true
@@ -151,7 +157,13 @@ impl Core {
                     }
                 };
 
-                self.pointer_wheel(MOUSE_IDENTIFIER, delta_x, delta_y, mode);
+                self.pointer_wheel(
+                    MOUSE_IDENTIFIER,
+                    delta_x,
+                    delta_y,
+                    mode,
+                    &mut DispatchRecord::disabled(),
+                );
 
                 true
             }
@@ -166,8 +178,6 @@ impl Core {
         position: &PhysicalPosition<f64>,
         identifier: i32,
     ) {
-        get_pointer_state_mut!(self, pointer_state, identifier);
-
         let stage_size = {
             let stage_size = self.stage_size.read();
             *stage_size
@@ -190,14 +200,67 @@ impl Core {
         let stage_logical_x = (global_logical_x - translate_x) / scale;
         let stage_logical_y = (global_logical_y - translate_y) / scale;
 
-        pointer_state.location.valid = true;
-        pointer_state.location.client_x = stage_logical_x.round() as i32;
-        pointer_state.location.client_y = stage_logical_y.round() as i32;
-        pointer_state.location.screen_x = screen_logical_x.round() as i32;
-        pointer_state.location.screen_y = screen_logical_y.round() as i32;
+        self.store_pointer_location(
+            identifier,
+            stage_logical_x,
+            stage_logical_y,
+            screen_logical_x,
+            screen_logical_y,
+        );
     }
 
-    pub(super) fn handle_pointer_hover(&self, identifier: i32, refresh_hover_node: bool) {
+    /// Record a pointer's position.
+    ///
+    /// `stage_x`/`stage_y` are stage logical units; `screen_x`/`screen_y` additionally
+    /// include the window's position on the desktop. Both are rounded, as the window
+    /// event path always did.
+    fn store_pointer_location(
+        &self,
+        identifier: i32,
+        stage_x: f32,
+        stage_y: f32,
+        screen_x: f32,
+        screen_y: f32,
+    ) {
+        get_pointer_state_mut!(self, pointer_state, identifier);
+
+        pointer_state.location.valid = true;
+        pointer_state.location.client_x = stage_x.round() as i32;
+        pointer_state.location.client_y = stage_y.round() as i32;
+        pointer_state.location.screen_x = screen_x.round() as i32;
+        pointer_state.location.screen_y = screen_y.round() as i32;
+    }
+
+    /// Move a pointer to a position on the stage.
+    ///
+    /// Window events arrive in surface pixels and go through `handle_pointer_move`;
+    /// this is the inverse, for callers that already work in stage coordinates.
+    pub(super) fn pointer_to(&self, identifier: i32, x: f32, y: f32) {
+        let stage_size = {
+            let stage_size = self.stage_size.read();
+            *stage_size
+        };
+
+        let (scale, translate_x, translate_y) = {
+            let stage_transform = self.stage_transform.read();
+            *stage_transform
+        };
+
+        let window_position = self.window.inner_position().unwrap_or_default();
+        let scale_factor = stage_size.scale_factor();
+
+        let screen_x = (window_position.x as f64 / scale_factor) as f32 + x * scale + translate_x;
+        let screen_y = (window_position.y as f64 / scale_factor) as f32 + y * scale + translate_y;
+
+        self.store_pointer_location(identifier, x, y, screen_x, screen_y);
+    }
+
+    pub(super) fn handle_pointer_hover(
+        &self,
+        identifier: i32,
+        refresh_hover_node: bool,
+        record: &mut DispatchRecord<'_>,
+    ) {
         let surface_size = {
             let surface_size = self.surface_size.read();
             *surface_size
@@ -247,6 +310,7 @@ impl Core {
                         location: pointer_state.location,
                     });
                     dispatch_pointer_event(&node, pointer_state.location, PointerEventKind::Over);
+                    record.push("MouseMove");
 
                     if let Some(last_hover_node) = last_hover_node {
                         if last_hover_node == &node {
@@ -279,6 +343,7 @@ impl Core {
                             location,
                         });
                         dispatch_pointer_event(last_hover_node, location, PointerEventKind::Leave);
+                        record.push("MouseLeave");
                     }
 
                     // there is always a mouse enter event if current node is different from last focused node (may be None)
@@ -289,6 +354,7 @@ impl Core {
                         location: pointer_state.location,
                     });
                     dispatch_pointer_event(&node, pointer_state.location, PointerEventKind::Enter);
+                    record.push("MouseEnter");
                 }
 
                 self.set_cursor(node.node.read().base().cursor().clone());
@@ -331,6 +397,7 @@ impl Core {
                     pointer_state.location,
                     PointerEventKind::Leave,
                 );
+                record.push("MouseLeave");
 
                 self.set_cursor(MoyuCursor::Visible(CursorIcon::Default));
             }
@@ -338,7 +405,7 @@ impl Core {
     }
 
     /// Press at the pointer's current target.
-    fn pointer_press(&self, identifier: i32) {
+    pub(super) fn pointer_press(&self, identifier: i32, record: &mut DispatchRecord<'_>) {
         get_pointer_state_mut!(self, pointer_state, identifier);
 
         let Some(last_hover_node) = &pointer_state.current_target else {
@@ -358,12 +425,18 @@ impl Core {
             location,
         });
         dispatch_pointer_event(last_hover_node, location, PointerEventKind::Down);
+        record.push("MouseDown");
 
         pointer_state.down_id = Some(target_id);
     }
 
     /// Release at the pointer's current target, adding the gesture the button carries.
-    fn pointer_release(&self, identifier: i32, button: PointerButton) {
+    pub(super) fn pointer_release(
+        &self,
+        identifier: i32,
+        button: PointerButton,
+        record: &mut DispatchRecord<'_>,
+    ) {
         get_pointer_state_mut!(self, pointer_state, identifier);
 
         let Some(last_hover_node) = &pointer_state.current_target else {
@@ -381,6 +454,7 @@ impl Core {
             location,
         });
         dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
+        record.push("MouseUp");
 
         // A release only counts as a gesture when it pairs with a press on the same node.
         let down_id = pointer_state.down_id.take();
@@ -398,6 +472,7 @@ impl Core {
                     location,
                 });
                 dispatch_pointer_event(last_hover_node, location, PointerEventKind::Click);
+                record.push("Click");
             }
             PointerButton::Right => {
                 dispatch_event(MouseEvent {
@@ -406,6 +481,7 @@ impl Core {
                     bubble_target_ids,
                     location,
                 });
+                record.push("ContextMenu");
             }
             PointerButton::Middle
             | PointerButton::Back
@@ -417,7 +493,12 @@ impl Core {
     }
 
     /// Dispatch one touch phase to the pointer's current target.
-    fn pointer_touch(&self, identifier: i32, phase: TouchPhase) {
+    pub(super) fn pointer_touch(
+        &self,
+        identifier: i32,
+        phase: TouchPhase,
+        record: &mut DispatchRecord<'_>,
+    ) {
         get_pointer_state_mut!(self, pointer_state, identifier);
 
         let Some(last_hover_node) = &pointer_state.current_target else {
@@ -441,6 +522,7 @@ impl Core {
                     identifier: touch_identifier,
                 });
                 dispatch_pointer_event(last_hover_node, location, PointerEventKind::Down);
+                record.push("TouchStart");
 
                 pointer_state.down_id = Some(target_id);
             }
@@ -453,6 +535,7 @@ impl Core {
                     identifier: touch_identifier,
                 });
                 dispatch_pointer_event(last_hover_node, location, PointerEventKind::Over);
+                record.push("TouchMove");
             }
             TouchPhase::End => {
                 dispatch_event(TouchEvent {
@@ -463,6 +546,7 @@ impl Core {
                     identifier: touch_identifier,
                 });
                 dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
+                record.push("TouchEnd");
 
                 pointer_state.down_id.take();
             }
@@ -475,6 +559,7 @@ impl Core {
                     identifier: touch_identifier,
                 });
                 dispatch_pointer_event(last_hover_node, location, PointerEventKind::Leave);
+                record.push("TouchCancel");
 
                 pointer_state.down_id = None;
             }
@@ -482,12 +567,13 @@ impl Core {
     }
 
     /// Scroll the pointer's current target.
-    fn pointer_wheel(
+    pub(super) fn pointer_wheel(
         &self,
         identifier: i32,
         delta_x: f64,
         delta_y: f64,
         mode: WheelEventDeltaMode,
+        record: &mut DispatchRecord<'_>,
     ) {
         get_pointer_state!(self, pointer_state, identifier);
 
@@ -504,10 +590,11 @@ impl Core {
             delta_z: 0.0,
             delta_mode: mode,
         });
+        record.push("Wheel");
     }
 
     /// Check if the pointer state exists, if not, create one.
-    fn get_ensure_pointer_state(&self, identifier: i32, device_type: DeviceType) {
+    pub(super) fn get_ensure_pointer_state(&self, identifier: i32, device_type: DeviceType) {
         self.pointer_map.entry(identifier).or_insert_with(|| {
             let mut pointer_state = PointerState::default();
             pointer_state.device_type = device_type;

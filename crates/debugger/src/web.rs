@@ -116,6 +116,14 @@ pub(super) async fn eval(code: &str, _timeout: Duration) -> Result<EvalOutcome, 
     }
 }
 
+/// Run a closure on the page's main thread.
+///
+/// The page has a single thread, which is also where input is processed, so there is
+/// nothing to marshal over.
+pub(super) async fn on_main_thread<T>(f: impl FnOnce() -> T) -> Result<T, String> {
+    Ok(f())
+}
+
 /// Display form of a value, equivalent to `String(value)`.
 ///
 /// wasm-bindgen has no binding for the `ToString` coercion, so the global `String`

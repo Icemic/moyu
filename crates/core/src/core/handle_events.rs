@@ -16,6 +16,8 @@ use crate::state::MOUSE_IDENTIFIER;
 use crate::utils::dispatch_event::dispatch_event;
 
 use super::Core;
+#[cfg(desktop)]
+use super::input::DispatchRecord;
 
 impl Core {
     pub fn handle_about_to_wait(&self, _: &ActiveEventLoop) {
@@ -73,7 +75,11 @@ impl Core {
                             });
 
                             #[cfg(desktop)]
-                            self.handle_pointer_hover(MOUSE_IDENTIFIER, true);
+                            self.handle_pointer_hover(
+                                MOUSE_IDENTIFIER,
+                                true,
+                                &mut DispatchRecord::disabled(),
+                            );
 
                             #[cfg(native)]
                             if let Some(vm) = moyu_runtime::try_get_vm() {

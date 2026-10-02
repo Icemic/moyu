@@ -107,7 +107,9 @@ impl Core {
 }
 
 /// Dispatch one keyboard event to the engine.
-fn dispatch_keyboard_event(input: KeyInput) {
+///
+/// Shared by the window event path and synthetic input.
+pub(super) fn dispatch_keyboard_event(input: KeyInput) {
     dispatch_event(KeyboardEvent {
         kind: input.kind,
         target_id: 0,

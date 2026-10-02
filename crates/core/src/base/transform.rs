@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use glam::Affine3A;
+use glam::{Affine3A, vec3a};
 
 /// | a | c | tx|
 /// | b | d | ty|
@@ -20,6 +20,13 @@ impl Transform {
     /// multiply with a transform
     pub fn multiply(&mut self, transform: Self) {
         self.0 *= transform.0;
+    }
+
+    /// Apply this transform to a point, treating its z as 0.
+    pub fn transform_point(&self, x: f32, y: f32) -> (f32, f32) {
+        let point = self.0.transform_point3a(vec3a(x, y, 0.0));
+
+        (point.x, point.y)
     }
 }
 

@@ -153,6 +153,57 @@ pub struct ScreenshotRequest {
     pub keep_aspect_ratio: Option<bool>,
 }
 
+/// `engine:mouse` request payload.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MouseRequest {
+    /// `move`, `down`, `up`, `click` or `wheel`.
+    pub action: String,
+    /// Stage coordinates to act at, or `node_id` instead of them.
+    pub x: Option<f32>,
+    pub y: Option<f32>,
+    pub node_id: Option<u32>,
+    /// `left`, `right` or `middle`; used by `up` and `click`.
+    pub button: Option<String>,
+    /// Scroll amounts, used by `wheel`.
+    pub delta_x: Option<f64>,
+    pub delta_y: Option<f64>,
+    /// `line` or `pixel`; used by `wheel`.
+    pub mode: Option<String>,
+}
+
+/// `engine:touch` request payload.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TouchRequest {
+    /// `start`, `move`, `end` or `cancel`.
+    pub action: String,
+    /// Stage coordinates to act at, or `node_id` instead of them; optional after
+    /// `start`, which keeps the touch's current position.
+    pub x: Option<f32>,
+    pub y: Option<f32>,
+    pub node_id: Option<u32>,
+    /// Touch point identifier; defaults to 0.
+    pub identifier: Option<u32>,
+}
+
+/// `engine:key` request payload.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyRequest {
+    /// `down`, `up` or `press`.
+    pub action: String,
+    /// The `event.key` value, such as `Escape` or `a`.
+    pub key: String,
+    /// The physical key name; defaults to `key`.
+    pub code: Option<String>,
+    pub repeat: Option<bool>,
+    pub ctrl_key: Option<bool>,
+    pub shift_key: Option<bool>,
+    pub alt_key: Option<bool>,
+    pub meta_key: Option<bool>,
+}
+
 /// Answer to `engine:tree`.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -189,6 +240,70 @@ pub struct ScreenshotDone<'a> {
     pub height: u32,
     /// The image file, base64 encoded.
     pub data: String,
+}
+
+/// Stage coordinates a pointer action ended at.
+#[derive(Serialize)]
+pub struct StagePoint {
+    pub x: f32,
+    pub y: f32,
+}
+
+/// Where a pointer action landed and what it reached. Shared by the answers to
+/// `engine:mouse` and `engine:touch`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PointerActionDone {
+    /// The action string from the request.
+    pub action: String,
+    /// Stage coordinates the pointer ended up at.
+    pub point: StagePoint,
+    /// Node the action targeted; the root node (id 0) when nothing interactive was hit.
+    pub target_node_id: u32,
+    /// Ancestors of the target, in the order events bubble through them.
+    pub bubble_node_ids: Vec<u32>,
+    /// Event kinds the engine dispatched, named as JavaScript sees them.
+    pub dispatched: Vec<&'static str>,
+}
+
+/// Answer to `engine:mouse`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MouseDone<'a> {
+    #[serde(rename = "type")]
+    pub kind: &'static str,
+    pub session_id: &'a str,
+    pub request_id: u64,
+    #[serde(flatten)]
+    pub result: PointerActionDone,
+}
+
+/// Answer to `engine:touch`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TouchDone<'a> {
+    #[serde(rename = "type")]
+    pub kind: &'static str,
+    pub session_id: &'a str,
+    pub request_id: u64,
+    #[serde(flatten)]
+    pub result: PointerActionDone,
+}
+
+/// Answer to `engine:key`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyDone<'a> {
+    #[serde(rename = "type")]
+    pub kind: &'static str,
+    pub session_id: &'a str,
+    pub request_id: u64,
+    /// The action string from the request.
+    pub action: String,
+    pub key: String,
+    pub code: String,
+    /// Event kinds the engine dispatched, named as JavaScript sees them.
+    pub dispatched: Vec<&'static str>,
 }
 
 /// Answer to a request that could not be fulfilled.

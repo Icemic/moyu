@@ -132,6 +132,31 @@ pub(super) async fn eval(code: &str, timeout: Duration) -> Result<EvalOutcome, E
     }
 }
 
+/// How long a call may wait for the engine's main thread before giving up.
+const MAIN_THREAD_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Run a closure on the engine's main thread.
+///
+/// Input processing and JavaScript live there, so requests that touch either are
+/// marshalled over; the result comes back through a channel.
+pub(super) async fn on_main_thread<T: Send + 'static>(
+    f: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, String> {
+    let vm = moyu_runtime::try_get_vm().ok_or_else(|| "The engine is not ready yet".to_string())?;
+
+    let (tx, rx) = tokio::sync::oneshot::channel();
+
+    vm.on_vm_thread(move |_| {
+        let _ = tx.send(f());
+    });
+
+    match tokio::time::timeout(MAIN_THREAD_TIMEOUT, rx).await {
+        Ok(Ok(value)) => Ok(value),
+        Ok(Err(_)) => Err("The engine thread dropped the task".to_string()),
+        Err(_) => Err("The engine did not process the input in time".to_string()),
+    }
+}
+
 /// Run the snippet and describe the result. Everything happens on the VM thread,
 /// because values read from the context cannot leave it.
 fn evaluate(context: &Context, code: &str) -> Result<EvalOutcome, EvalFailure> {

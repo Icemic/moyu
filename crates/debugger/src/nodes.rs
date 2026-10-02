@@ -127,6 +127,26 @@ pub(super) fn find(node_id: u32) -> Option<NodeLock> {
     try_get_core()?.node_map().get(&node_id).map(|node| node.clone())
 }
 
+/// Point in stage coordinates at the center of a node, used to target synthetic input.
+///
+/// Bounds are computed while rendering, so a node without visible content has none;
+/// such a node falls back to its own origin, mapped into stage space.
+pub(super) fn center_of(node_id: u32) -> Result<(f32, f32), String> {
+    let node = find(node_id).ok_or_else(|| format!("No node with id {node_id}"))?;
+    let node = node.read();
+    let base = node.base();
+    let bounds = base.global_content_bounds();
+
+    if bounds.is_empty() {
+        return Ok(base.global_transform().transform_point(0.0, 0.0));
+    }
+
+    Ok((
+        bounds.min_x() + bounds.width() / 2.0,
+        bounds.min_y() + bounds.height() / 2.0,
+    ))
+}
+
 fn vector(point: &Point) -> Vector2 {
     Vector2 {
         x: point.x,
