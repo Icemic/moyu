@@ -28,6 +28,18 @@ pub(crate) struct MousePress {
     pub parent_ids: Vec<u32>,
 }
 
+/// A touch that is still a candidate for the mouse compatibility gesture. Tracked from
+/// `Start` until `End` / `Cancel`, so the release can tell a tap from a drag.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct TapGesture {
+    /// Where the touch started, in stage logical coordinates.
+    pub start_x: f32,
+    pub start_y: f32,
+    /// Set once the touch travels past the tap slop, or when another touch becomes
+    /// active.
+    pub cancelled: bool,
+}
+
 /// The last completed left click, used to recognize a double click.
 #[derive(Debug, PartialEq)]
 pub(crate) struct ClickRecord {
@@ -51,6 +63,8 @@ pub(crate) struct PointerState {
     pub current_target: Option<HitTestTarget>,
     /// if a touch is down (started and not yet ended), record the node id it started on
     pub touch_down_id: Option<u32>,
+    /// tap candidate for the touch currently down on this pointer, if any
+    pub tap: Option<TapGesture>,
     /// press records per mouse button, indexed by `PointerButton::index()`
     pub mouse_downs: [Option<MousePress>; 5],
     /// the last completed left click, for double click detection

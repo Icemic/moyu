@@ -15,6 +15,7 @@ use crate::events::{
 };
 use crate::state::{
     ClickRecord, DeviceType, MOUSE_IDENTIFIER, MousePress, PointerLocation, PointerState,
+    TapGesture,
 };
 use crate::traits::PointerEventKind;
 use crate::utils::dispatch_event::dispatch_event;
@@ -31,6 +32,11 @@ const DOUBLE_CLICK_INTERVAL: Duration = Duration::from_millis(500);
 /// Maximum movement between two left clicks still counted as a double click, in stage
 /// logical pixels.
 const DOUBLE_CLICK_DISTANCE: f32 = 4.0;
+
+/// Maximum distance a touch may travel and still be a tap, in stage logical pixels. A
+/// tap produces the mouse compatibility gesture browsers send, so this plays the role
+/// the browser's own tap slop does.
+const TAP_SLOP: f32 = 12.0;
 
 macro_rules! get_pointer_state {
     ($self:ident, $name:ident, $identifier:expr) => {
@@ -622,77 +628,161 @@ impl Core {
     }
 
     /// Dispatch one touch phase to the pointer's current target.
+    ///
+    /// A tap — a touch that starts and ends within [`TAP_SLOP`] while no other touch is
+    /// down — additionally produces the mouse compatibility gesture browsers send: the
+    /// mouse pointer moves to where the finger lifted and the ordinary press / release
+    /// pair runs there, so hover state, cursor, click target and double click detection
+    /// all follow the mouse path.
     pub(super) fn pointer_touch(
         &self,
         identifier: i32,
         phase: TouchPhase,
         record: &mut DispatchRecord<'_>,
     ) {
-        get_pointer_state_mut!(self, pointer_state, identifier);
+        // A second finger makes the gesture multi-touch, which produces no mouse
+        // compatibility events. The touches already down are cancelled before this
+        // pointer's state is locked: their state lives in the same map, and taking a
+        // second shard while holding one deadlocks.
+        let multi_touch = phase == TouchPhase::Start && self.cancel_other_touches(identifier);
 
-        let Some(last_hover_node) = &pointer_state.current_target else {
-            return;
-        };
+        let mut tap_position = None;
 
-        let target_id = *last_hover_node.node.read().base().id();
-        let bubble_target_ids = last_hover_node.parent_ids.clone();
-        let location = pointer_state.location;
-        let touch_identifier = identifier as u32;
+        {
+            get_pointer_state_mut!(self, pointer_state, identifier);
 
-        match phase {
-            TouchPhase::Start => {
-                self.editable.handle_pointer_down(target_id);
+            let location = pointer_state.location;
+            let touch_identifier = identifier as u32;
 
-                dispatch_event(TouchEvent {
-                    kind: TouchEventKind::TouchStart,
-                    target_id,
-                    bubble_target_ids,
-                    location,
-                    identifier: touch_identifier,
-                });
-                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Down);
-                record.push("TouchStart");
-
-                pointer_state.touch_down_id = Some(target_id);
+            // Give up on the tap once the finger travels past the slop. Every move is
+            // checked: a finger that leaves and comes back may end near its start while
+            // the gesture was a drag.
+            if phase == TouchPhase::Move {
+                if let Some(tap) = &mut pointer_state.tap {
+                    let dx = location.client_x as f32 - tap.start_x;
+                    let dy = location.client_y as f32 - tap.start_y;
+                    if dx * dx + dy * dy > TAP_SLOP * TAP_SLOP {
+                        tap.cancelled = true;
+                    }
+                }
             }
-            TouchPhase::Move => {
-                dispatch_event(TouchEvent {
-                    kind: TouchEventKind::TouchMove,
-                    target_id,
-                    bubble_target_ids,
-                    location,
-                    identifier: touch_identifier,
-                });
-                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Over);
-                record.push("TouchMove");
-            }
-            TouchPhase::End => {
-                dispatch_event(TouchEvent {
-                    kind: TouchEventKind::TouchEnd,
-                    target_id,
-                    bubble_target_ids,
-                    location,
-                    identifier: touch_identifier,
-                });
-                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
-                record.push("TouchEnd");
 
-                pointer_state.touch_down_id.take();
-            }
-            TouchPhase::Cancel => {
-                dispatch_event(TouchEvent {
-                    kind: TouchEventKind::TouchCancel,
-                    target_id,
-                    bubble_target_ids,
-                    location,
-                    identifier: touch_identifier,
-                });
-                dispatch_pointer_event(last_hover_node, location, PointerEventKind::Leave);
-                record.push("TouchCancel");
+            let Some(last_hover_node) = &pointer_state.current_target else {
+                return;
+            };
 
-                pointer_state.touch_down_id = None;
+            let target_id = *last_hover_node.node.read().base().id();
+            let bubble_target_ids = last_hover_node.parent_ids.clone();
+
+            match phase {
+                TouchPhase::Start => {
+                    self.editable.handle_pointer_down(target_id);
+
+                    dispatch_event(TouchEvent {
+                        kind: TouchEventKind::TouchStart,
+                        target_id,
+                        bubble_target_ids,
+                        location,
+                        identifier: touch_identifier,
+                    });
+                    dispatch_pointer_event(last_hover_node, location, PointerEventKind::Down);
+                    record.push("TouchStart");
+
+                    pointer_state.touch_down_id = Some(target_id);
+                    pointer_state.tap = Some(TapGesture {
+                        start_x: location.client_x as f32,
+                        start_y: location.client_y as f32,
+                        cancelled: multi_touch,
+                    });
+                }
+                TouchPhase::Move => {
+                    dispatch_event(TouchEvent {
+                        kind: TouchEventKind::TouchMove,
+                        target_id,
+                        bubble_target_ids,
+                        location,
+                        identifier: touch_identifier,
+                    });
+                    dispatch_pointer_event(last_hover_node, location, PointerEventKind::Over);
+                    record.push("TouchMove");
+                }
+                TouchPhase::End => {
+                    dispatch_event(TouchEvent {
+                        kind: TouchEventKind::TouchEnd,
+                        target_id,
+                        bubble_target_ids,
+                        location,
+                        identifier: touch_identifier,
+                    });
+                    dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
+                    record.push("TouchEnd");
+
+                    pointer_state.touch_down_id.take();
+
+                    if pointer_state.tap.take().is_some_and(|tap| !tap.cancelled) {
+                        tap_position = Some((location.client_x as f32, location.client_y as f32));
+                    }
+                }
+                TouchPhase::Cancel => {
+                    dispatch_event(TouchEvent {
+                        kind: TouchEventKind::TouchCancel,
+                        target_id,
+                        bubble_target_ids,
+                        location,
+                        identifier: touch_identifier,
+                    });
+                    dispatch_pointer_event(last_hover_node, location, PointerEventKind::Leave);
+                    record.push("TouchCancel");
+
+                    pointer_state.touch_down_id = None;
+                    pointer_state.tap = None;
+                }
             }
         }
+
+        if let Some((x, y)) = tap_position {
+            self.synthesize_tap_click(x, y, record);
+        }
+    }
+
+    /// Cancel the tap candidate on every touch other than `identifier`, reporting
+    /// whether any of them was down.
+    ///
+    /// Called when a new touch starts: from that point on the gesture is multi-touch,
+    /// so neither the touches already down nor the new one produces a mouse
+    /// compatibility click. Iterating the map without holding a shard is why the caller
+    /// runs this before locking the starting touch's state.
+    fn cancel_other_touches(&self, identifier: i32) -> bool {
+        let mut found = false;
+
+        for mut entry in self.pointer_map.iter_mut() {
+            if *entry.key() == identifier {
+                continue;
+            }
+
+            let state = entry.value_mut();
+            if state.touch_down_id.is_some() {
+                found = true;
+            }
+            if let Some(tap) = state.tap.as_mut() {
+                tap.cancelled = true;
+            }
+        }
+
+        found
+    }
+
+    /// Produce the mouse compatibility gesture of a tap: move the mouse pointer to
+    /// where the finger lifted, then press and release the left button there.
+    ///
+    /// Both steps reuse the mouse path, so the synthesized click goes through the same
+    /// hover update, hit testing, gesture target resolution and double click detection
+    /// as a real one.
+    fn synthesize_tap_click(&self, x: f32, y: f32, record: &mut DispatchRecord<'_>) {
+        self.pointer_to(MOUSE_IDENTIFIER, x, y);
+        self.handle_pointer_hover(MOUSE_IDENTIFIER, true, record);
+        self.pointer_press(MOUSE_IDENTIFIER, PointerButton::Left, record);
+        self.pointer_release(MOUSE_IDENTIFIER, PointerButton::Left, record);
     }
 
     /// Scroll the pointer's current target.
