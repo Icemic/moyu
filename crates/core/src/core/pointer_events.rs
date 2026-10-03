@@ -22,7 +22,7 @@ use crate::utils::dispatch_event::dispatch_event;
 use crate::utils::hit_test::{get_local_logical_position, hit_test};
 
 use super::Core;
-use super::input::{DispatchRecord, PointerButton, TouchPhase};
+use super::input::{DispatchRecord, MouseEventSource, PointerButton, TouchPhase};
 
 /// Two left clicks on the same target within this interval, and with little movement
 /// between them, are reported as a double click. The window is implementation defined
@@ -93,7 +93,12 @@ impl Core {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
                 self.handle_pointer_move(window, position, MOUSE_IDENTIFIER);
-                self.handle_pointer_hover(MOUSE_IDENTIFIER, true, &mut DispatchRecord::disabled());
+                self.handle_pointer_hover(
+                    MOUSE_IDENTIFIER,
+                    true,
+                    MouseEventSource::User,
+                    &mut DispatchRecord::disabled(),
+                );
 
                 true
             }
@@ -110,6 +115,7 @@ impl Core {
                         0,
                         buttons_mask(&pointer_state),
                         pointer_state.location,
+                        MouseEventSource::User,
                     ));
                     dispatch_pointer_event(
                         last_hover_node,
@@ -127,11 +133,13 @@ impl Core {
                         ElementState::Pressed => self.pointer_press(
                             MOUSE_IDENTIFIER,
                             button,
+                            MouseEventSource::User,
                             &mut DispatchRecord::disabled(),
                         ),
                         ElementState::Released => self.pointer_release(
                             MOUSE_IDENTIFIER,
                             button,
+                            MouseEventSource::User,
                             &mut DispatchRecord::disabled(),
                         ),
                     }
@@ -158,7 +166,12 @@ impl Core {
                 let mut record = DispatchRecord::disabled();
 
                 self.handle_pointer_move(window, &touch.location, identifier);
-                self.handle_pointer_hover(identifier, phase == TouchPhase::Start, &mut record);
+                self.handle_pointer_hover(
+                    identifier,
+                    phase == TouchPhase::Start,
+                    MouseEventSource::User,
+                    &mut record,
+                );
 
                 // ignore duplicated touch move event
                 let unchanged = self
@@ -286,6 +299,7 @@ impl Core {
         &self,
         identifier: i32,
         refresh_hover_node: bool,
+        source: MouseEventSource,
         record: &mut DispatchRecord<'_>,
     ) {
         let surface_size = {
@@ -339,6 +353,7 @@ impl Core {
                         0,
                         buttons,
                         pointer_state.location,
+                        source,
                     ));
                     dispatch_pointer_event(&node, pointer_state.location, PointerEventKind::Over);
                     record.push("MouseMove");
@@ -374,6 +389,7 @@ impl Core {
                             0,
                             buttons,
                             location,
+                            source,
                         ));
                         dispatch_pointer_event(last_hover_node, location, PointerEventKind::Leave);
                         record.push("MouseLeave");
@@ -387,6 +403,7 @@ impl Core {
                         0,
                         buttons,
                         pointer_state.location,
+                        source,
                     ));
                     dispatch_pointer_event(&node, pointer_state.location, PointerEventKind::Enter);
                     record.push("MouseEnter");
@@ -428,6 +445,7 @@ impl Core {
                     0,
                     buttons,
                     pointer_state.location,
+                    source,
                 ));
                 dispatch_pointer_event(
                     last_hover_node,
@@ -446,6 +464,7 @@ impl Core {
         &self,
         identifier: i32,
         button: PointerButton,
+        source: MouseEventSource,
         record: &mut DispatchRecord<'_>,
     ) {
         get_pointer_state_mut!(self, pointer_state, identifier);
@@ -475,6 +494,7 @@ impl Core {
             button.as_button_number(),
             buttons,
             location,
+            source,
         ));
         dispatch_pointer_event(last_hover_node, location, PointerEventKind::Down);
         record.push("MouseDown");
@@ -489,6 +509,7 @@ impl Core {
                 button.as_button_number(),
                 buttons,
                 location,
+                source,
             ));
             record.push("ContextMenu");
         }
@@ -500,6 +521,7 @@ impl Core {
         &self,
         identifier: i32,
         button: PointerButton,
+        source: MouseEventSource,
         record: &mut DispatchRecord<'_>,
     ) {
         get_pointer_state_mut!(self, pointer_state, identifier);
@@ -523,6 +545,7 @@ impl Core {
             button.as_button_number(),
             buttons,
             location,
+            source,
         ));
         dispatch_pointer_event(last_hover_node, location, PointerEventKind::Up);
         record.push("MouseUp");
@@ -572,6 +595,7 @@ impl Core {
                     0,
                     buttons,
                     location,
+                    source,
                 ));
                 record.push("Click");
 
@@ -598,6 +622,7 @@ impl Core {
                         0,
                         buttons,
                         location,
+                        source,
                     ));
                     record.push("DoubleClick");
                     pointer_state.last_click = None;
@@ -621,6 +646,7 @@ impl Core {
                     button.as_button_number(),
                     buttons,
                     location,
+                    source,
                 ));
                 record.push("AuxClick");
             }
@@ -777,12 +803,23 @@ impl Core {
     ///
     /// Both steps reuse the mouse path, so the synthesized click goes through the same
     /// hover update, hit testing, gesture target resolution and double click detection
-    /// as a real one.
+    /// as a real one. The events carry `synthetic`, since the user operated a finger
+    /// rather than a mouse.
     fn synthesize_tap_click(&self, x: f32, y: f32, record: &mut DispatchRecord<'_>) {
         self.pointer_to(MOUSE_IDENTIFIER, x, y);
-        self.handle_pointer_hover(MOUSE_IDENTIFIER, true, record);
-        self.pointer_press(MOUSE_IDENTIFIER, PointerButton::Left, record);
-        self.pointer_release(MOUSE_IDENTIFIER, PointerButton::Left, record);
+        self.handle_pointer_hover(MOUSE_IDENTIFIER, true, MouseEventSource::Synthetic, record);
+        self.pointer_press(
+            MOUSE_IDENTIFIER,
+            PointerButton::Left,
+            MouseEventSource::Synthetic,
+            record,
+        );
+        self.pointer_release(
+            MOUSE_IDENTIFIER,
+            PointerButton::Left,
+            MouseEventSource::Synthetic,
+            record,
+        );
     }
 
     /// Scroll the pointer's current target.
@@ -855,6 +892,7 @@ impl Core {
         button: i32,
         buttons: u32,
         location: PointerLocation,
+        source: MouseEventSource,
     ) -> MouseEvent {
         let modifiers = self.modifiers_state.load();
 
@@ -868,6 +906,7 @@ impl Core {
             shift_key: modifiers.shift_key(),
             alt_key: modifiers.alt_key(),
             meta_key: modifiers.super_key(),
+            synthetic: source == MouseEventSource::Synthetic,
             location,
         }
     }

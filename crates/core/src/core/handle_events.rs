@@ -17,7 +17,7 @@ use crate::utils::dispatch_event::dispatch_event;
 
 use super::Core;
 #[cfg(desktop)]
-use super::input::DispatchRecord;
+use super::input::{DispatchRecord, MouseEventSource};
 
 impl Core {
     pub fn handle_about_to_wait(&self, _: &ActiveEventLoop) {
@@ -78,6 +78,7 @@ impl Core {
                             self.handle_pointer_hover(
                                 MOUSE_IDENTIFIER,
                                 true,
+                                MouseEventSource::Synthetic,
                                 &mut DispatchRecord::disabled(),
                             );
 

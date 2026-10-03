@@ -146,6 +146,22 @@ pub enum InputError {
     MissingPosition,
 }
 
+/// Where the mouse events one dispatch reports came from.
+///
+/// The engine dispatches some mouse events on its own: the mouse compatibility gesture of
+/// a touch tap, and the hover refresh a frame performs while the pointer stays where it
+/// is. Those are marked [`MouseEventSource::Synthetic`] so a consumer can tell them from
+/// the user operating a mouse; a synthetic input call such as the debug bridge's is a
+/// user's gesture as far as the engine is concerned, so it reports
+/// [`MouseEventSource::User`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MouseEventSource {
+    /// A pointer device the user operated.
+    User,
+    /// The engine itself.
+    Synthetic,
+}
+
 /// Events one input action dispatched, for the caller to report.
 ///
 /// Recording is opt-in: the window event path passes [`DispatchRecord::disabled`], so its
@@ -184,19 +200,35 @@ impl Core {
         let mut record = DispatchRecord::enabled(&mut dispatched);
 
         self.pointer_to(MOUSE_IDENTIFIER, x, y);
-        self.handle_pointer_hover(MOUSE_IDENTIFIER, true, &mut record);
+        self.handle_pointer_hover(MOUSE_IDENTIFIER, true, MouseEventSource::User, &mut record);
 
         match action {
             PointerAction::Move => {}
-            PointerAction::Down(button) => {
-                self.pointer_press(MOUSE_IDENTIFIER, button, &mut record)
-            }
-            PointerAction::Up(button) => {
-                self.pointer_release(MOUSE_IDENTIFIER, button, &mut record)
-            }
+            PointerAction::Down(button) => self.pointer_press(
+                MOUSE_IDENTIFIER,
+                button,
+                MouseEventSource::User,
+                &mut record,
+            ),
+            PointerAction::Up(button) => self.pointer_release(
+                MOUSE_IDENTIFIER,
+                button,
+                MouseEventSource::User,
+                &mut record,
+            ),
             PointerAction::Click(button) => {
-                self.pointer_press(MOUSE_IDENTIFIER, button, &mut record);
-                self.pointer_release(MOUSE_IDENTIFIER, button, &mut record);
+                self.pointer_press(
+                    MOUSE_IDENTIFIER,
+                    button,
+                    MouseEventSource::User,
+                    &mut record,
+                );
+                self.pointer_release(
+                    MOUSE_IDENTIFIER,
+                    button,
+                    MouseEventSource::User,
+                    &mut record,
+                );
             }
             PointerAction::Wheel {
                 delta_x,
@@ -259,7 +291,12 @@ impl Core {
 
         // A real device refreshes what a touch hovers when it starts, and keeps
         // targeting the same node while it moves.
-        self.handle_pointer_hover(pointer_id, phase == TouchPhase::Start, &mut record);
+        self.handle_pointer_hover(
+            pointer_id,
+            phase == TouchPhase::Start,
+            MouseEventSource::User,
+            &mut record,
+        );
 
         // A move that did not change the position is a duplicated event, which the
         // window event path drops as well.
