@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-03
+
 ### Added
 
 1. Support multi-resolution asset variants.
+2. Add MCP support of input events.
 
 ### Changed
 
 1. Add WebAudio backend for WASM playback to avoid dropouts.
+2. Synthesize mouse clicks for touch taps.
+
+### Fixed
+
+1. Audio dropouts on Chromium-based browsers.
 
 ## [0.20.0] - 2026-09-29
 
