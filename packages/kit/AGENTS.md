@@ -121,6 +121,7 @@ moyu.executePluginCommand(pluginName, payload); // 插件命令
 **事件类别：**
 
 - **冒泡事件**：`MouseEvent` / `TouchEvent` / `KeyboardEvent` / `WheelEvent`，从目标节点向上冒泡
+- **触摸的鼠标兼容事件**：触摸 tap 结束时，引擎会补发一套鼠标事件（`MouseMove` / `MouseDown` / `MouseUp` / `Click`），因此 `onClick` 与 `onPress` 在鼠标与触摸下都生效。控件不要再从 `onTouchEnd` 触发点击动作，否则同一次 tap 会触发两次；拖动类交互继续用触摸事件。
 - **节点事件**：`NodeEvent`（创建、销毁）
 - **全局事件**：通过 `addEventListener(type, handler)` 监听
 

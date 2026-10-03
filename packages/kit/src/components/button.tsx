@@ -16,7 +16,12 @@ export interface ButtonProps extends Omit<MoyuNodeAttributes, 'onClick'> {
   sprite: ControlSpriteProps;
   disabled?: boolean;
   lockOn?: Exclude<ControlState, 'disabled'>;
-  onPress?: (event: PressEvent) => void;
+  /**
+   * Called when the button is activated, which is the engine's click gesture. The press
+   * visual comes from the pointer press instead, so a gesture that ends away from the
+   * button shows as pressed but does not activate it.
+   */
+  onPress?: (event: MouseEvent) => void;
   text?: string;
   textStyle?: ControlStateValue<ControlTextStyle>;
   textOffsetX?: number;
@@ -95,18 +100,12 @@ export function Button({
         setPressed(false);
       })}
       onMouseDown={mergeEvent(onMouseDown, () => setPressed(true))}
-      onMouseUp={mergeEvent(onMouseUp, (event: MouseEvent) => {
-        if (pressed) {
-          onPress?.(event);
-        }
+      onMouseUp={mergeEvent(onMouseUp, () => {
         setPressed(false);
         setHovered(true);
       })}
       onTouchStart={mergeEvent(onTouchStart, () => setPressed(true))}
-      onTouchEnd={mergeEvent(onTouchEnd, (event: TouchEvent) => {
-        if (pressed) {
-          onPress?.(event);
-        }
+      onTouchEnd={mergeEvent(onTouchEnd, () => {
         setPressed(false);
         setHovered(true);
       })}
@@ -114,7 +113,13 @@ export function Button({
         setHovered(false);
         setPressed(false);
       })}
-      onClick={(event: MouseEvent) => event.stopPropagation()}
+      // onPress fires on click, the engine's "press and release on the same target"
+      // gesture. It covers the mouse and a touch tap alike, and a gesture that ends
+      // away from the button resolves to another target, so it does not activate it.
+      onClick={(event: MouseEvent) => {
+        onPress?.(event);
+        event.stopPropagation();
+      }}
     >
       <sprite {...spriteProps} src={resolveControlStateValue(src, state)} cursor="pointer">
         {text !== undefined ? (

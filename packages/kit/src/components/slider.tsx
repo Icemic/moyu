@@ -18,6 +18,7 @@ export interface SliderProps extends Omit<MoyuNodeAttributes, 'onClick'> {
   defaultValue?: number;
   onValueChange?: (value: number) => void;
   onValueCommit?: (value: number) => void;
+  /** Called when the pointer presses the slider, before the drag starts. */
   onPress?: (event: PressEvent) => void;
   disabled?: boolean;
   track: SliderTrackProps;
@@ -32,11 +33,16 @@ function clampValue(value: number): number {
 }
 
 interface DragState {
-  startPosition: number;
+  /** Where the pointer was when the drag started, in stage coordinates. */
+  startPointerX: number;
   startValue: number;
-  touchIdentifier?: number;
-  startedOnThumb: boolean;
-  moved: boolean;
+  /**
+   * Identifier of the touch that started the drag, `undefined` when the mouse did. The
+   * engine re-dispatches a mouse move every frame while the mouse pointer is over the
+   * track, and the touch and mouse pointers are separate, so a drag only follows the
+   * pointer device that started it.
+   */
+  pointerIdentifier?: number;
 }
 
 export function Slider({
@@ -91,14 +97,18 @@ export function Slider({
   }, [onValueCommit]);
 
   useEffect(() => {
-    const handleMouseUp = () => endDragging(true);
+    const handleMouseUp = () => {
+      if (dragStateRef.current?.pointerIdentifier === undefined) {
+        endDragging(true);
+      }
+    };
     const handleTouchEnd = (event: TouchEvent) => {
-      if (dragStateRef.current?.touchIdentifier === event.identifier) {
+      if (dragStateRef.current?.pointerIdentifier === event.identifier) {
         endDragging(true);
       }
     };
     const handleTouchCancel = (event: TouchEvent) => {
-      if (dragStateRef.current?.touchIdentifier === event.identifier) {
+      if (dragStateRef.current?.pointerIdentifier === event.identifier) {
         endDragging(false);
       }
     };
@@ -123,52 +133,45 @@ export function Slider({
     if (dragStateRef.current !== null) {
       return;
     }
+
+    onPress?.(event);
+    if (event.defaultPrevented) {
+      return;
+    }
+
     const thumbPosition = currentValueRef.current * distance;
+    const onThumb = event.offsetX >= thumbPosition && event.offsetX <= thumbPosition + thumb.targetWidth;
+    let startValue = currentValueRef.current;
+
+    // Pressing the bare track moves the thumb under the pointer and the drag continues
+    // from there, so a tap jumps to the pressed position and a drag follows the pointer.
+    if (!onThumb && distance > 0) {
+      startValue = clampValue((event.offsetX - thumb.targetWidth / 2) / distance);
+      setSliderValue(startValue);
+    }
+
     dragStateRef.current = {
-      startPosition: event.offsetX,
-      startValue: currentValueRef.current,
-      touchIdentifier: 'identifier' in event ? event.identifier : undefined,
-      startedOnThumb: event.offsetX >= thumbPosition && event.offsetX <= thumbPosition + thumb.targetWidth,
-      moved: false,
+      // The movement is measured in stage coordinates: `offsetX` is relative to the node
+      // the pointer is over, which changes when the pointer leaves the track.
+      startPointerX: event.clientX,
+      startValue,
+      pointerIdentifier: 'identifier' in event ? event.identifier : undefined,
     };
     setDragging(true);
   };
 
   const moveDragging = (event: MouseEvent | TouchEvent) => {
     const dragState = dragStateRef.current;
-    if (
-      dragState === null ||
-      ('identifier' in event && dragState.touchIdentifier !== event.identifier) ||
-      distance === 0
-    ) {
+    const eventIdentifier = 'identifier' in event ? event.identifier : undefined;
+    if (dragState === null || dragState.pointerIdentifier !== eventIdentifier || distance === 0) {
       return;
     }
     event.stopPropagation();
-    const delta = event.offsetX - dragState.startPosition;
-    if (delta !== 0) {
-      dragState.moved = true;
-    }
-    setSliderValue(dragState.startValue + delta / distance);
-  };
-
-  const handlePress = (event: PressEvent) => {
-    const dragState = dragStateRef.current;
-    if (dragState === null || ('identifier' in event && dragState.touchIdentifier !== event.identifier)) {
-      return;
-    }
-    onPress?.(event);
-    if (event.defaultPrevented) {
-      endDragging(false);
-      return;
-    }
-    if (!dragState.moved && !dragState.startedOnThumb && distance > 0) {
-      setSliderValue((event.offsetX - thumb.targetWidth / 2) / distance);
-    }
-    endDragging(true);
+    setSliderValue(dragState.startValue + (event.clientX - dragState.startPointerX) / distance);
   };
 
   const handleTouchCancel = (event: TouchEvent) => {
-    if (dragStateRef.current?.touchIdentifier === event.identifier) {
+    if (dragStateRef.current?.pointerIdentifier === event.identifier) {
       endDragging(false);
     }
   };
@@ -186,7 +189,6 @@ export function Slider({
         pivot: [0, 0.5],
         y: (track.targetHeight ?? 0) / 2,
       }}
-      onPress={handlePress}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onMouseDown={mergeEvent(onMouseDown, startDragging)}
