@@ -47,7 +47,8 @@ packages/kit/src/
 │   ├── useStage.ts          # createStage / StageContextProvider / GameControl
 │   ├── useScenario.ts       # useScenario / nextLine / setWaiting
 │   ├── useFadeInOut.ts      # 淡入淡出辅助
-│   └── useSoundEffect.ts    # 音效便捷 hook
+│   ├── useSoundEffect.ts    # 音效便捷 hook
+│   └── useTouchInput.ts     # 当前输入是否来自触摸
 ├── components/
 │   └── navigation.tsx       # createStackNavigator / Navigation / useNavigation
 ├── spring/                  # react-spring 集成
@@ -120,7 +121,7 @@ moyu.executePluginCommand(pluginName, payload); // 插件命令
 
 **事件类别：**
 
-- **冒泡事件**：`MouseEvent` / `TouchEvent` / `KeyboardEvent` / `WheelEvent`，从目标节点向上冒泡
+- **冒泡事件**：`MouseEvent` / `TouchEvent` / `KeyboardEvent` / `WheelEvent`，从目标节点向上冒泡；`MouseEvent.synthetic` 为 `true` 表示事件由引擎产生（tap 的鼠标兼容手势，或每帧的 hover 刷新），而不是鼠标设备。
 - **触摸的鼠标兼容事件**：触摸 tap 结束时，引擎会补发一套鼠标事件（`MouseMove` / `MouseDown` / `MouseUp` / `Click`），因此 `onClick` 与 `onPress` 在鼠标与触摸下都生效。控件不要再从 `onTouchEnd` 触发点击动作，否则同一次 tap 会触发两次；拖动类交互继续用触摸事件。
 - **节点事件**：`NodeEvent`（创建、销毁）
 - **全局事件**：通过 `addEventListener(type, handler)` 监听
@@ -349,6 +350,10 @@ declare namespace JSX {
 
 - 落在 `hooks/` 下单独文件，在 `hooks.ts` 中 re-export。
 - 优先复用 `useStage` / `useScenario` / valtio snapshot 等既有能力。
+
+### 输入方式相关的 UI
+
+鼠标专有的 hover 交互在触摸设备上无法触发。需要根据输入方式调整 UI 时用 `useTouchInput()`：它在触摸输入后返回 `true`，直到用户真正移动鼠标（`MouseEvent.synthetic` 为 `true` 的事件不计）。状态在模块内共享，多个组件不会重复安装监听。
 
 ### 修改 bindings
 

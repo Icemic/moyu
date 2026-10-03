@@ -132,13 +132,19 @@ self.pointer_release(MOUSE_IDENTIFIER, PointerButton::Left, record);
 | 仓库 | 文件 | 改动 |
 | --- | --- | --- |
 | `moyu-framework` | `src/pages/stage.tsx` | 删除全局 `touchend → handleClick`，只保留 `click`；否则一次 tap 会推进两行 |
-| `moyu-framework` | `src/actors/textbox.tsx` | 文本框功能按钮目前只在鼠标悬停时显示，触摸设备没有 hover，按触摸输入常驻显示（见下） |
+| `moyu-framework` | `src/actors/textbox.tsx` | 文本框功能按钮只在鼠标悬停时显示，改为用 `useTouchInput()` 在触摸输入下常驻显示 |
 | `moyu-framework-fishflow` | `src/pages/stage.tsx` | 同上删除全局 `touchend` |
-| `moyu-framework-fishflow` | `src/actors/textbox.tsx` | 同上；该仓库有 `controls.hover.showOnHover` 配置，触摸检测与它叠加 |
+| `moyu-framework-fishflow` | `src/actors/textbox.tsx` | 同上；该仓库有 `controls.hover.showOnHover` 配置，触摸模式与它叠加 |
 
 其余页面（backlog / menu / saveload / settings / title / error）无需改动，它们的 `onClick` 由合成事件覆盖。
 
-按钮常驻显示的做法：监听全局 `touchstart` 进入触摸模式，`mousemove` 退出触摸模式；触摸模式下忽略 `showOnHover` 判定，按钮组始终可见。全局 `touchstart` / `mousemove` 的区分在两种平台都成立（web 端 winit 按 `pointerType` 分流触摸与鼠标指针，触摸不会产生 `mousemove`）。
+### 输入方式判断交给 kit：`useTouchInput()`
+
+"鼠标悬停才显示的 UI 在触摸设备上怎么显示"需要一个输入方式判断，kit 提供 `useTouchInput(): boolean`：触摸输入后为 `true`，直到用户移动鼠标。
+
+它依赖引擎新增的来源标记：`MouseEvent.synthetic` 为 `true` 表示事件由引擎产生（tap 的鼠标兼容手势、每帧的 hover 刷新），`synthetic` 为假才是鼠标设备。这样框架不需要自己推导"这一轮的鼠标事件算不算用户操作"（时间窗、位置比对），也不需要区分平台。
+
+状态是模块级共享的：它是设备属性，多个组件各自监听只会重复安装同一套全局监听。
 
 ## 决策记录
 
@@ -153,6 +159,8 @@ self.pointer_release(MOUSE_IDENTIFIER, PointerButton::Left, record);
 | D7 | `Button.onPress` 由引擎的 `Click` 触发：引擎已经算好了手势目标，组件侧用 `pressed` 状态判断会因为同轮次下发而读到未更新的值，用 ref 补那么一份状态等于把这个概念重建一遍。按压视觉仍由 `onMouseDown` / `onTouchStart` 驱动。 | 2026-10-03 |
 | D8 | `Slider` 的拖动增量改用 `clientX`（舞台坐标）：`offsetX` 相对的是命中目标（同 DOM 的 `event.target`），指针移到别的节点上时参考系会变，增量会跳。 | 2026-10-03 |
 | D9 | `Slider` 在按下轨道时即刻跳值并从该位置开始拖动，不再区分"点按"与"拖动"；拖动只跟随发起它的指针设备，因为引擎每帧重发 `MouseMove`，而触摸与鼠标是两个独立指针。 | 2026-10-03 |
+| D10 | `MouseEvent` 增加 `synthetic` 标记：tap 的鼠标兼容手势与每帧的 hover 刷新都由引擎产生，与鼠标设备的事件区分开。调试桥的合成输入仍报 `synthetic: false`，因为它模拟的是用户操作。 | 2026-10-03 |
+| D11 | 输入方式判断放在 kit 的 `useTouchInput()`，由 kit 统一维护；状态模块级共享，`mousemove` 只在非 `synthetic` 时结束触摸模式。 | 2026-10-03 |
 
 ## 分阶段实施
 
@@ -211,7 +219,30 @@ kit 侧除按上表删减外，`Button.onPress` 改为由引擎的 `Click` 触�
 
 **拖动的坐标系**：事件探针实测确认，引擎在触摸的 `TouchMove` / `TouchEnd` 上会按固定目标重新计算 `offset`（手指从 x=706 移到 606 时 `offsetX` 由 201 变为 101）。需要改掉 `offsetX` 的原因在于它相对的是**命中目标**（与 DOM 中相对 `event.target` 一致），而这个目标在指针移到别的节点上时会变：鼠标按住轨道后向左移出 266 像素，`offsetX` 从 201 变为 115（目标由轨道变为上层节点），用它算出的增量是 −86，与实际位移不符。拖动增量因此改用参考系稳定的 `clientX`（舞台坐标）；"按下点是否在手柄上"仍用 `offsetX`，因为那本来就是相对轨道的定位问题。
 
-**生效范围**：`moyu-framework` 通过相对路径依赖本地 kit，改动立即生效；`moyu-framework-fishflow` 依赖已发布的 `@momoyu-ink/kit`，其框架侧改动要等下一次 kit 发布后才会生效。
+**生效范围**：`moyu-framework` 通过相对路径依赖本地 kit，改动立即生效；`moyu-framework-fishflow` 在其 `@momoyu-ink/kit` 依赖升级之前无法解析 `useTouchInput`，该仓库的 typecheck 会因此报错，待依赖升级后消除（代码按目标状态写好，不做临时回退）。
+
+### M3：输入来源标记与 `useTouchInput()`（M2 之后追加）
+
+M2 里"触摸输入常驻显示按钮"的判断最初实现在框架侧：监听 `touchstart` / `mousemove`，用「同一轮次的鼠标事件」时间窗加「位置是否变化」两道启发式区分"用户在动鼠标"和"引擎自己发的事件"。这实际上是在 JS 里重新推导引擎已知的信息，两处框架各写一遍；因此改为先给引擎事件的来源打标，再由 kit 提供判断。
+
+- `crates/core/src/events/mouse.rs`：`MouseEvent` 增加 `synthetic`；
+- `crates/core/src/core/input.rs`：`MouseEventSource { User, Synthetic }`，`handle_pointer_hover` / `pointer_press` / `pointer_release` 增加来源参数；
+- `pointer_events.rs`：tap 合成的鼠标事件标为 `Synthetic`；`handle_events.rs` 每帧的 hover 刷新同样标为 `Synthetic`（它重复的是鼠标当前位置，也不是用户操作）；
+- `packages/kit/src/hooks/useTouchInput.ts`：新 hook，触摸输入置 `true`，`synthetic` 为假的 `mousemove` 置 `false`；状态模块级共享；
+- 两个框架的 textbox 改用该 hook，删除各自的本地实现。
+
+`debug_mouse` 注入的鼠标事件报 `User`：它模拟的是用户操作，与设备鼠标同一条路径。
+
+实测（本地引擎 + framework dev server，事件探针读原始载荷）：
+
+| 用例 | 实际结果 |
+| --- | --- |
+| tap 产生的鼠标事件 | `MouseDown` / `MouseUp` / `Click` 均为 `synthetic: true` |
+| 每帧 hover 刷新的 `MouseMove` | 全部 `synthetic: true`（连续 24 个采样） |
+| `debug_mouse move` 的 `MouseMove` | `synthetic: false` |
+| 触摸后在游戏内停留约 90 秒 | `useTouchInput()` 保持 `true`，未被每帧刷新事件打断 |
+| 触摸后移动鼠标 | hook 输出 `setTouchInput -> false`，按钮组节点被卸载（资源回收日志中 `textbox_button.png` / `textbox_close.png` 被释放） |
+
 
 ## 影响面与风险
 

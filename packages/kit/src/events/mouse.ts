@@ -56,4 +56,11 @@ export interface MouseEvent extends BubbleEvent {
   shiftKey: boolean;
   altKey: boolean;
   metaKey: boolean;
+  /**
+   * True when the engine produced this event rather than a mouse device: the mouse
+   * compatibility gesture of a touch tap, and the hover refresh a frame performs while
+   * the pointer stays where it is. A consumer that wants to know whether the user is
+   * operating a mouse should ignore synthetic events.
+   */
+  synthetic: boolean;
 }
