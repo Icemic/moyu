@@ -81,8 +81,10 @@ fn hit_test_children(
             }
         }
 
-        if focusable
-            .is_some_and(|focusable| focusable.contains(local_logical_x, local_logical_y, payload))
+        if child_ref.base().hit_test_self()
+            && focusable.is_some_and(|focusable| {
+                focusable.contains(local_logical_x, local_logical_y, payload)
+            })
         {
             return Some(HitTestTarget {
                 node: child.clone(),

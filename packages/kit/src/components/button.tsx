@@ -88,6 +88,9 @@ export function Button({
       anchor={anchor}
       pivot={pivot}
       interactive={disabled ? false : interactive}
+      // The sprite is the button face; the wrapper only groups layout, so points the
+      // sprite rejects (pixel-level hit testing) fall through to what is behind it.
+      hitTestSelf={false}
       onMouseEnter={mergeEvent(onMouseEnter, (event: MouseEvent) => {
         if (event.targetId === event.currentTargetId) {
           event.stopPropagation();

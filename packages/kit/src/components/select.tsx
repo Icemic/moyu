@@ -69,6 +69,7 @@ export function Select({
       anchor={anchor}
       pivot={pivot}
       interactive={disabled ? false : containerProps.interactive}
+      hitTestSelf={false}
     >
       <Button
         sprite={trigger}

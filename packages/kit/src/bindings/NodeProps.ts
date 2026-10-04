@@ -18,6 +18,7 @@ export type NodeProps = {
   tint?: string;
   opacity?: number;
   interactive?: boolean;
+  hitTestSelf?: boolean;
   cursor?: MoyuCursor;
   zIndex?: number;
   excludeFromLayout?: boolean;

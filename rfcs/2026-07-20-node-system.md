@@ -167,7 +167,7 @@ NodeBase.children: Vec<NodeLock>
 | 定位 | `translate`、`anchor`、`pivot`、layout position | 手动定位和父布局分配位置 |
 | 变换 | scale、rotation、skew、local/global transform | 计算节点和子树的空间关系 |
 | 视觉 | `visible`、tint、opacity、global opacity | 通用视觉状态及继承结果 |
-| 输入 | `interactive`、cursor | 是否允许子树参与命中及光标表现 |
+| 输入 | `interactive`、`hitTestSelf`、cursor | 子树与自身的命中开关及光标表现 |
 | 层级 | `zIndex` | 同父直接子节点的绘制和命中顺序 |
 | 边界 | content bounds、global content bounds | 节点及子树的视觉 AABB |
 | 失效 | update ID、prepare 和 vertex 标记 | 控制变换传播与 renderer 更新 |
@@ -408,6 +408,16 @@ flowchart LR
 - 相同 `zIndex` 时，原始 children 中靠后的节点优先；
 - `interactive=false` 会跳过节点及其整棵输入子树。
 
+### 自身命中开关
+
+`hitTestSelf` 控制节点自身是否作为命中目标，默认 `true`：
+
+- `hitTestSelf=false` 时，节点自身不参与命中判定，子树照常参与；
+- 位置被该节点拒绝时，遍历继续检查绘制顺序更靠后的兄弟节点，命中交给下层节点；
+- 目标位于该节点子树内时，事件仍经过该节点冒泡，祖先链上的处理器不受影响。
+
+`interactive=false` 跳过节点及其整棵输入子树，`hitTestSelf=false` 只作用于节点自身。包装型节点用后者表达“只参与布局与分组，不作为命中目标”，与 DOM 的 `pointer-events: none`、Flutter 的 `deferToChild` 语义一致。kit 的 Button 与 Select 外层容器即采用该设置，使贴图启用像素级命中后，透明位置的命中交给后面的节点。
+
 鼠标、触摸和滚轮共享这套目标选择顺序。命中目标确定后，事件系统再处理 hover、按下、释放和对应的节点事件派发。
 
 当前命中遍历不检查 `visible`，因此不可见但 interactive 的节点仍可能成为目标。这是现有实现限制，不应被依赖；后续应独立统一可见性与输入语义。
@@ -500,7 +510,7 @@ Core 在确定目标和更新内部 pointer 状态后，将事件发送给 JS �
 1. **身份与属性**：ID 唯一、通用 Patch 的 Missing/Set/Reset、通用属性先于专属属性；
 2. **树操作**：add、insert、remove、reorder、reparent 及非法输入错误；
 3. **布局与变换**：父变换失效传播、anchor/pivot、layout position 与 content bounds；
-4. **绘制与命中**：负/正 `zIndex`、相同值稳定顺序、整棵子树连续、逆序命中；
+4. **绘制与命中**：负/正 `zIndex`、相同值稳定顺序、整棵子树连续、逆序命中与 `hitTestSelf` 跳过自身；
 5. **生命周期**：prepare/measure/arrange/update/command collection 顺序、shadow、可见性和销毁事件。
 
 最低工程验证包括：
@@ -535,6 +545,10 @@ Clip、离屏 pass 和其他 wrapper 依赖进入/离开命令包围完整子树
 ### 把布局放到 Renderer update
 
 Renderer update 发生在布局和 transform 之后。此时首次改变尺寸会导致父布局下一帧才收敛。影响尺寸的工作必须在 prepare 完成，并由 measure 在同一帧消费。
+
+### 由子节点属性推导包装节点的命中行为
+
+包装节点（例如 Button 外层容器）若读取子节点是否启用像素级命中，再决定自身是否参与命中，会让父节点的行为依赖子节点属性，多层包装时也无法确定由哪一层声明。命中行为由节点自身表达：包装节点直接设置 `hitTestSelf=false`，与子节点属性无关。
 
 ## 后续工作
 

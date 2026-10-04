@@ -56,6 +56,8 @@ pub struct NodeBase {
     global_opacity: f32,
     /// if this node will response to user input, will affect itself and all children
     interactive: bool,
+    /// if this node itself can be a hit test target, children are unaffected
+    hit_test_self: bool,
     /// cursor style
     cursor: MoyuCursor,
     /// Paint order among direct siblings.
@@ -105,6 +107,7 @@ impl NodeBase {
             opacity: 1.0,
             global_opacity: 1.0,
             interactive: true,
+            hit_test_self: true,
             cursor: MoyuCursor::default(),
             z_index: 0,
             content_bounds: Bound::default(),
@@ -249,6 +252,10 @@ impl NodeBase {
     #[inline]
     pub fn interactive(&self) -> bool {
         self.interactive
+    }
+    #[inline]
+    pub fn hit_test_self(&self) -> bool {
+        self.hit_test_self
     }
     #[inline]
     pub fn cursor(&self) -> &MoyuCursor {
@@ -416,6 +423,10 @@ impl NodeBase {
         self.interactive = interactive;
     }
     #[inline]
+    pub fn set_hit_test_self(&mut self, hit_test_self: bool) {
+        self.hit_test_self = hit_test_self;
+    }
+    #[inline]
     pub fn set_cursor(&mut self, cursor: MoyuCursor) {
         self.cursor = cursor;
     }
@@ -478,6 +489,7 @@ impl NodeBase {
         apply_patch!(props.tint => |v| self.set_tint(v), Color::new(1.0, 1.0, 1.0, 1.0));
         apply_patch!(props.opacity => |v| self.set_opacity(v), 1.0);
         apply_patch!(props.interactive => |v| self.set_interactive(v), true);
+        apply_patch!(props.hit_test_self => |v| self.set_hit_test_self(v), true);
         apply_patch!(props.cursor => |v| self.set_cursor(v), MoyuCursor::default());
         apply_patch!(props.z_index => |v| self.set_z_index(v), 0);
         apply_patch!(props.exclude_from_layout => |v| self.set_exclude_from_layout(v), false);
@@ -636,6 +648,7 @@ pub struct NodeProps {
     pub tint: Patch<Color>,
     pub opacity: Patch<f32>,
     pub interactive: Patch<bool>,
+    pub hit_test_self: Patch<bool>,
     pub cursor: Patch<MoyuCursor>,
     pub z_index: Patch<i32>,
     pub exclude_from_layout: Patch<bool>,
