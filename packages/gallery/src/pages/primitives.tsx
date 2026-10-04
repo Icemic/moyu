@@ -232,6 +232,53 @@ function SpritePanel() {
   );
 }
 
+/**
+ * alphaHitTest demo: a ring sprite on top of an opaque plate. Clicking the
+ * transparent corners hits the plate only when the ring tests the texture alpha.
+ */
+function AlphaHitTestPanel() {
+  const { t } = useLingui();
+
+  const stack = (labelPrefix: string, title: string, alphaHitTest: boolean) => (
+    <vbox gap={16} alignItems="center">
+      <text {...TEXT.caption} text={title} />
+      <container>
+        <sprite
+          {...chipSprite(ITEM_COLORS[1])}
+          label={`${labelPrefix}-plate`}
+          targetWidth={100}
+          targetHeight={100}
+          interactive
+          cursor="default"
+        />
+        <sprite
+          label={`${labelPrefix}-ring`}
+          src="images/radio_unchecked.png"
+          scale={2}
+          tint={ITEM_COLORS[2]}
+          interactive
+          cursor="pointer"
+          alphaHitTest={alphaHitTest}
+        />
+      </container>
+    </vbox>
+  );
+
+  return (
+    <Panel
+      title={t`Sprite 像素级命中`}
+      width={544 - 64}
+      height={320}
+      note={t`点击圆环四角的透明区域：左侧 alphaHitTest 命中底板，右侧默认只按矩形判定，始终命中圆环。`}
+    >
+      <hbox gap={72} x={32}>
+        {stack('alpha', t`alphaHitTest 开启`, true)}
+        {stack('rect', t`默认（矩形判定）`, false)}
+      </hbox>
+    </Panel>
+  );
+}
+
 function AnimationPanel() {
   const { t } = useLingui();
 
@@ -283,6 +330,7 @@ export function PrimitivesPage() {
           <SpritePanel />
         </hbox>
         <hbox gap={32}>
+          <AlphaHitTestPanel />
           <AnimationPanel />
           <ClipPanel />
         </hbox>

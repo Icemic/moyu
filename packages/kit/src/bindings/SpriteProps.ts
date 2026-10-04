@@ -10,4 +10,5 @@ export type SpriteProps = {
   nineSliceMode?: NineSliceMode;
   targetWidth?: number;
   targetHeight?: number;
+  alphaHitTest?: boolean;
 };

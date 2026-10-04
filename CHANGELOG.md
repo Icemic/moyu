@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+1. Add alpha-based hit testing for sprite nodes.
+
 ## [0.21.0] - 2026-10-03
 
 ### Added

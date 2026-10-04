@@ -1,3 +1,4 @@
+mod alpha_mask;
 mod animation;
 mod codecs;
 mod error;
@@ -5,6 +6,7 @@ mod image;
 mod ops;
 mod utils;
 
+pub use alpha_mask::AlphaMask;
 pub use animation::{AnimationDecoder, AnimationFormat};
 pub use error::ImageError;
 pub use image::Rgba8Image;

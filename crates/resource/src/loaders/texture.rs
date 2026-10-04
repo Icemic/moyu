@@ -84,6 +84,7 @@ pub(crate) fn upload_image(
     let dimensions = (image.width(), image.height());
 
     image.premultiply_alpha_in_place();
+    let alpha_mask = image.extract_alpha_mask();
     let rgba = image.into_data();
 
     texture.set_status(TextureStatus::Uploading);
@@ -136,6 +137,9 @@ pub(crate) fn upload_image(
 
     let view = texture_gpu.create_view(&wgpu::TextureViewDescriptor::default());
 
+    // Publish the mask before the texture turns ready, so hit testing can rely on
+    // `Ready` implying an available mask.
+    texture.set_alpha_mask(alpha_mask);
     texture.set_texture(texture_gpu, view);
     texture.set_status(TextureStatus::Ready);
 

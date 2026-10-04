@@ -77,7 +77,11 @@ msgstr "Achievement と Steamworks API の手動テスト。"
 msgid "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
 msgstr "Achievement ページに表示される数値進捗は、バックエンドで紐付けられた Stat から取得されます。書き込み後は StoreStats が必要です。"
 
-#: src/pages/primitives.tsx:239
+#: src/pages/primitives.tsx:275
+msgid "alphaHitTest 开启"
+msgstr "alphaHitTest オン"
+
+#: src/pages/primitives.tsx:286
 msgid "Animation 帧动画"
 msgstr "Animation フレームアニメーション"
 
@@ -85,7 +89,7 @@ msgstr "Animation フレームアニメーション"
 msgid "API name 来自 App ID 480 的真实后台配置。"
 msgstr "API name は App ID 480 の実際のバックエンド設定を使用しています。"
 
-#: src/pages/primitives.tsx:239
+#: src/pages/primitives.tsx:286
 msgid "APNG 格式帧动画；tint 同样作用于动画帧。"
 msgstr "APNG 形式のフレームアニメーションです。tint はアニメーションフレームにも適用されます。"
 
@@ -133,7 +137,7 @@ msgstr "Button、Checkbox、Radio、Select、Slider、ScrollView。"
 msgid "Checkbox 勾选框"
 msgstr "Checkbox チェックボックス"
 
-#: src/pages/primitives.tsx:258
+#: src/pages/primitives.tsx:305
 msgid "Clip 裁剪"
 msgstr "Clip クリッピング"
 
@@ -221,6 +225,10 @@ msgstr "space-between：間隔は均等で、gap = 20 以上になります。"
 msgid "Spring 动画"
 msgstr "Spring アニメーション"
 
+#: src/pages/primitives.tsx:269
+msgid "Sprite 像素级命中"
+msgstr "Sprite ピクセル単位のヒットテスト"
+
 #: src/pages/primitives.tsx:205
 msgid "Sprite 精灵"
 msgstr "Sprite スプライト"
@@ -241,7 +249,7 @@ msgstr "Text テキスト表示"
 msgid "Text 文本样式"
 msgstr "Text テキストスタイル"
 
-#: src/pages/primitives.tsx:247
+#: src/pages/primitives.tsx:294
 msgid "tint 金色"
 msgstr "tint ゴールド"
 
@@ -363,7 +371,7 @@ msgstr "アニメーション / Shader 方式"
 msgid "原始对照 Original"
 msgstr "元画像 Original"
 
-#: src/pages/primitives.tsx:243
+#: src/pages/primitives.tsx:290
 msgid "原色"
 msgstr "元の色"
 
@@ -416,7 +424,7 @@ msgstr "変形と計測"
 msgid "变换后的候选窗位置"
 msgstr "変形後の候補ウィンドウ位置"
 
-#: src/pages/primitives.tsx:258
+#: src/pages/primitives.tsx:305
 msgid "只有落在 440×260 视口内的内容会被绘制。"
 msgstr "440×260 のビューポート内にある内容だけが描画されます。"
 
@@ -751,6 +759,10 @@ msgstr "SPRING をクリックして目標状態を切り替えます。\n"
 msgid "点击切换变换"
 msgstr "クリックして変形を切り替え"
 
+#: src/pages/primitives.tsx:272
+msgid "点击圆环四角的透明区域：左侧 alphaHitTest 命中底板，右侧默认只按矩形判定，始终命中圆环。"
+msgstr "リング四隅の透明部分をクリック：左側は alphaHitTest が下のプレートにヒットし、右側は矩形判定のみのため常にリングにヒットします。"
+
 #: src/pages/steam.tsx:39
 msgid "点击按钮开始测试。"
 msgstr "ボタンをクリックしてテストを開始します。"
@@ -860,7 +872,7 @@ msgstr "カスタム Shader"
 msgid "色相旋转 Hue Rotate"
 msgstr "色相回転 Hue Rotate"
 
-#: src/pages/primitives.tsx:260
+#: src/pages/primitives.tsx:307
 msgid "被裁剪的内容"
 msgstr "クリッピングされる内容"
 
@@ -888,7 +900,7 @@ msgstr "トランジション画面"
 msgid "这段交互文本"
 msgstr "このインタラクティブテキスト"
 
-#: src/pages/primitives.tsx:262
+#: src/pages/primitives.tsx:309
 msgid "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
 msgstr "このテキストはクリッピング領域の右端と下端を超えており、はみ出した部分は表示されません。"
 
@@ -987,6 +999,10 @@ msgstr "彩度 {0}"
 #: src/pages/filters.tsx:41
 msgid "饱和度 Saturation"
 msgstr "彩度 Saturation"
+
+#: src/pages/primitives.tsx:276
+msgid "默认（矩形判定）"
+msgstr "デフォルト（矩形判定）"
 
 #: src/pages/controls.tsx:117
 msgid "默认值 0.35，内部维护状态"

@@ -1,4 +1,5 @@
 use arc_swap::{ArcSwap, ArcSwapOption};
+use moyu_image::AlphaMask;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -7,6 +8,8 @@ pub struct Texture {
     pub status: ArcSwap<TextureStatus>,
     pub texture: ArcSwapOption<wgpu::Texture>,
     pub view: ArcSwapOption<wgpu::TextureView>,
+    /// Alpha coverage of the uploaded pixels, used for pixel-level hit testing.
+    alpha_mask: ArcSwapOption<AlphaMask>,
     /// Pixel ratio of the loaded file, `1.0` for the base asset.
     ///
     /// Renderers divide texture pixel sizes by this value so that the on-screen
@@ -27,6 +30,7 @@ impl Texture {
             status: ArcSwap::default(),
             texture: ArcSwapOption::default(),
             view: ArcSwapOption::default(),
+            alpha_mask: ArcSwapOption::default(),
             pixel_ratio: AtomicU32::new(1.0f32.to_bits()),
         }
     }
@@ -59,6 +63,16 @@ impl Texture {
     pub fn set_texture(&self, texture: wgpu::Texture, view: wgpu::TextureView) {
         self.texture.store(Some(Arc::new(texture)));
         self.view.store(Some(Arc::new(view)));
+    }
+
+    /// Alpha mask for pixel-level hit testing. It is published before the status
+    /// turns `Ready`, so an uploaded texture always has one.
+    pub fn alpha_mask(&self) -> Option<Arc<AlphaMask>> {
+        self.alpha_mask.load_full()
+    }
+
+    pub fn set_alpha_mask(&self, mask: AlphaMask) {
+        self.alpha_mask.store(Some(Arc::new(mask)));
     }
 
     pub fn texture_unwrap(&self) -> Arc<wgpu::Texture> {

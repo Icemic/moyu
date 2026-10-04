@@ -7,10 +7,10 @@ use wgpu::Buffer;
 
 use moyu_core::apply_patch;
 use moyu_core::nodes::NodeBase;
-use moyu_core::traits::{Focusable, Node, NodeBaseTrait};
+use moyu_core::traits::{Focusable, FocusablePayload, Node, NodeBaseTrait};
 use moyu_core::utils::convert::{JSValue, from_js};
 use moyu_core::utils::patch::Patch;
-use moyu_resource::types::AssetId;
+use moyu_resource::types::{Asset, AssetId};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
@@ -60,6 +60,9 @@ pub struct Sprite {
     /// (for nineslice mode) target height
     pub target_height: u32,
 
+    /// whether hit testing samples the texture alpha instead of only the rectangle
+    pub alpha_hit_test: bool,
+
     pub instance_buffer: Option<Buffer>,
 
     #[base]
@@ -79,6 +82,7 @@ impl Sprite {
             nine_slice_mode: NineSliceMode::Stretch,
             target_width: 0,
             target_height: 0,
+            alpha_hit_test: false,
             instance_buffer: None,
             node_base: NodeBase::new(label),
         }
@@ -93,7 +97,57 @@ impl Sprite {
     }
 }
 
-impl Focusable for Sprite {}
+impl Focusable for Sprite {
+    fn contains(&self, x: f32, y: f32, _: &FocusablePayload) -> bool {
+        if !self.base().content_bounds().contains(x, y) {
+            return false;
+        }
+
+        // Pixel-level testing covers the normal mode quad only; nineslice slices
+        // have no single texture mapping and fall back to the rectangle.
+        if !self.alpha_hit_test || self.mode != SpriteMode::Normal {
+            return true;
+        }
+
+        // The mask travels with the texture and is read as plain memory, so hit
+        // testing stays synchronous. Fall back to the rectangle while it is missing.
+        let texture_id = self.texture_id.load();
+        let Some(texture_id) = texture_id.as_ref() else {
+            return true;
+        };
+        let Some(asset) = texture_id.asset() else {
+            return true;
+        };
+        let Asset::Texture(texture) = asset.as_ref() else {
+            return true;
+        };
+        let Some(mask) = texture.alpha_mask() else {
+            return true;
+        };
+
+        let (tex_width, tex_height) = texture.size();
+        let (tex_width, tex_height) = (tex_width as f32, tex_height as f32);
+        let ratio = texture.pixel_ratio();
+        let [ax0, ay0, ax1, ay1] = self.area;
+
+        // The quad the normal-mode renderer draws, in stage units
+        // (see `calculate_sprite_instance`).
+        let quad_width = tex_width / ratio * (ax1 - ax0);
+        let quad_height = tex_height / ratio * (ay1 - ay0);
+        if quad_width <= 0.0 || quad_height <= 0.0 {
+            return false;
+        }
+        if x < 0.0 || y < 0.0 || x > quad_width || y > quad_height {
+            return false;
+        }
+
+        // Local position -> texel: `u = x / quad_width`, then `texel = (ax0 + u * (ax1 - ax0)) * tex_width`.
+        let texel_x = (ax0 * tex_width + x * ratio).clamp(0.0, tex_width - 1.0) as u32;
+        let texel_y = (ay0 * tex_height + y * ratio).clamp(0.0, tex_height - 1.0) as u32;
+
+        mask.is_opaque(texel_x, texel_y)
+    }
+}
 
 #[derive(Debug, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -107,6 +161,7 @@ pub struct SpriteProps {
     pub nine_slice_mode: Patch<NineSliceMode>,
     pub target_width: Patch<f32>,
     pub target_height: Patch<f32>,
+    pub alpha_hit_test: Patch<bool>,
 }
 
 impl Node for Sprite {
@@ -158,6 +213,8 @@ impl Node for Sprite {
             self.target_height = target_height as u32;
             self.update_intrinsic_size();
         }, 0);
+
+        apply_patch!(props.alpha_hit_test => self.alpha_hit_test, false);
 
         // force update vertices
         self.base_mut().pend_prepare();

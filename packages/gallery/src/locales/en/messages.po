@@ -77,7 +77,11 @@ msgstr "Manual tests for Achievements and the Steamworks API."
 msgid "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
 msgstr "Numeric progress shown on the Achievement page comes from a backend-bound Stat; call StoreStats after writing it."
 
-#: src/pages/primitives.tsx:239
+#: src/pages/primitives.tsx:275
+msgid "alphaHitTest 开启"
+msgstr "alphaHitTest on"
+
+#: src/pages/primitives.tsx:286
 msgid "Animation 帧动画"
 msgstr "Animation frames"
 
@@ -85,7 +89,7 @@ msgstr "Animation frames"
 msgid "API name 来自 App ID 480 的真实后台配置。"
 msgstr "API names come from the actual backend configuration for App ID 480."
 
-#: src/pages/primitives.tsx:239
+#: src/pages/primitives.tsx:286
 msgid "APNG 格式帧动画；tint 同样作用于动画帧。"
 msgstr "APNG frame animation; tint also applies to animation frames."
 
@@ -133,7 +137,7 @@ msgstr "Button, Checkbox, Radio, Select, Slider, and ScrollView."
 msgid "Checkbox 勾选框"
 msgstr "Checkbox"
 
-#: src/pages/primitives.tsx:258
+#: src/pages/primitives.tsx:305
 msgid "Clip 裁剪"
 msgstr "Clip"
 
@@ -221,6 +225,10 @@ msgstr "space-between: spacing is equal and no less than gap = 20."
 msgid "Spring 动画"
 msgstr "Spring animation"
 
+#: src/pages/primitives.tsx:269
+msgid "Sprite 像素级命中"
+msgstr "Sprite pixel hit testing"
+
 #: src/pages/primitives.tsx:205
 msgid "Sprite 精灵"
 msgstr "Sprite"
@@ -241,7 +249,7 @@ msgstr "Text printing"
 msgid "Text 文本样式"
 msgstr "Text styling"
 
-#: src/pages/primitives.tsx:247
+#: src/pages/primitives.tsx:294
 msgid "tint 金色"
 msgstr "gold tint"
 
@@ -363,7 +371,7 @@ msgstr "Animation / Shader approach"
 msgid "原始对照 Original"
 msgstr "Original"
 
-#: src/pages/primitives.tsx:243
+#: src/pages/primitives.tsx:290
 msgid "原色"
 msgstr "Original color"
 
@@ -416,7 +424,7 @@ msgstr "Transforms and measurement"
 msgid "变换后的候选窗位置"
 msgstr "Candidate window position after transforms"
 
-#: src/pages/primitives.tsx:258
+#: src/pages/primitives.tsx:305
 msgid "只有落在 440×260 视口内的内容会被绘制。"
 msgstr "Only content within the 440×260 viewport is drawn."
 
@@ -751,6 +759,10 @@ msgstr "Click SPRING to toggle the target state.\n"
 msgid "点击切换变换"
 msgstr "Click to toggle transforms"
 
+#: src/pages/primitives.tsx:272
+msgid "点击圆环四角的透明区域：左侧 alphaHitTest 命中底板，右侧默认只按矩形判定，始终命中圆环。"
+msgstr "Click the transparent corners of the ring: on the left alphaHitTest hits the plate underneath, while the default rectangle test always hits the ring."
+
 #: src/pages/steam.tsx:39
 msgid "点击按钮开始测试。"
 msgstr "Click a button to start a test."
@@ -860,7 +872,7 @@ msgstr "Custom Shader"
 msgid "色相旋转 Hue Rotate"
 msgstr "Hue Rotate"
 
-#: src/pages/primitives.tsx:260
+#: src/pages/primitives.tsx:307
 msgid "被裁剪的内容"
 msgstr "Clipped content"
 
@@ -888,7 +900,7 @@ msgstr "Transition image"
 msgid "这段交互文本"
 msgstr " this interactive text "
 
-#: src/pages/primitives.tsx:262
+#: src/pages/primitives.tsx:309
 msgid "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
 msgstr "This text extends beyond the right and bottom edges of the clipping area; the overflow is not shown."
 
@@ -987,6 +999,10 @@ msgstr "Saturation: {0}"
 #: src/pages/filters.tsx:41
 msgid "饱和度 Saturation"
 msgstr "Saturation"
+
+#: src/pages/primitives.tsx:276
+msgid "默认（矩形判定）"
+msgstr "Default (rectangle test)"
 
 #: src/pages/controls.tsx:117
 msgid "默认值 0.35，内部维护状态"

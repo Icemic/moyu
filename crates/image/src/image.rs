@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use fast_image_resize::pixels::U8x4;
 use fast_image_resize::{ImageView, ImageViewMut};
 
+use crate::alpha_mask::AlphaMask;
 use crate::error::{ImageError, Result};
 use crate::ops;
 
@@ -138,6 +139,57 @@ impl Rgba8Image {
         fast_image_resize::premultiply_alpha_inplace_u8x4(self);
     }
 
+    /// Build the alpha mask for pixel-level hit testing.
+    ///
+    /// Transparent texels are accumulated a byte at a time, so each write covers
+    /// eight texels and nothing is written for the opaque stretches in between.
+    /// The bitmap is allocated lazily, so an image whose texels are all
+    /// non-transparent only returns [`AlphaMask::Opaque`].
+    pub fn extract_alpha_mask(&self) -> AlphaMask {
+        let row_bytes = self.width as usize * 4;
+        let stride = self.stride as usize;
+        let byte_count = (self.width as usize * self.height as usize).div_ceil(8);
+        let mut transparent: Option<Vec<u8>> = None;
+
+        // Texels are numbered row-major, so the accumulator carries across row
+        // boundaries and only the trailing partial byte needs a separate flush.
+        let mut byte = 0u8;
+        let mut bit = 0u8;
+        let mut byte_index = 0usize;
+
+        for row in 0..self.height as usize {
+            let start = row * stride;
+            for pixel in self.data[start..start + row_bytes].chunks_exact(4) {
+                byte |= u8::from(pixel[3] == 0) << bit;
+                bit += 1;
+
+                if bit == 8 {
+                    if byte != 0 {
+                        transparent
+                            .get_or_insert_with(|| vec![0u8; byte_count])[byte_index] |= byte;
+                    }
+                    byte = 0;
+                    bit = 0;
+                    byte_index += 1;
+                }
+            }
+        }
+
+        if bit != 0 && byte != 0 {
+            transparent
+                .get_or_insert_with(|| vec![0u8; byte_count])[byte_index] |= byte;
+        }
+
+        match transparent {
+            Some(transparent) => AlphaMask::Bitmap {
+                width: self.width,
+                height: self.height,
+                transparent,
+            },
+            None => AlphaMask::Opaque,
+        }
+    }
+
     pub fn resize(&self, width: u32, height: u32) -> Result<Self> {
         ops::resize(self, width, height)
     }
@@ -146,6 +198,7 @@ impl Rgba8Image {
 #[cfg(test)]
 mod tests {
     use super::Rgba8Image;
+    use crate::AlphaMask;
 
     #[test]
     fn compact_data_skips_stride_padding() {
@@ -228,5 +281,55 @@ mod tests {
     fn rejects_invalid_layout() {
         assert!(Rgba8Image::from_rgba8(2, 1, 4, vec![0; 8]).is_err());
         assert!(Rgba8Image::from_rgba8(1, 2, 4, vec![0; 4]).is_err());
+    }
+
+    #[test]
+    fn alpha_mask_marks_transparent_texels() {
+        // Row padding is filled with zeros as well; the mask must only look at pixels.
+        let image = Rgba8Image::from_rgba8(
+            1,
+            3,
+            8,
+            vec![
+                1, 2, 3, 255, 0, 0, 0, 0, //
+                4, 5, 6, 1, 0, 0, 0, 0, //
+                7, 8, 9, 0, 0, 0, 0, 0,
+            ],
+        )
+        .unwrap();
+
+        let mask = image.extract_alpha_mask();
+
+        assert!(mask.is_opaque(0, 0));
+        assert!(mask.is_opaque(0, 1));
+        assert!(!mask.is_opaque(0, 2));
+        assert!(!mask.is_opaque(1, 0));
+    }
+
+    #[test]
+    fn alpha_mask_stays_opaque_without_transparent_texels() {
+        let image = Rgba8Image::from_rgba8(2, 1, 8, vec![1, 2, 3, 255, 4, 5, 6, 1]).unwrap();
+
+        assert_eq!(image.extract_alpha_mask(), AlphaMask::Opaque);
+    }
+
+    #[test]
+    fn alpha_mask_packs_texels_across_byte_boundaries() {
+        let mut data = vec![1u8; 16 * 4];
+        for x in [0usize, 8, 9, 15] {
+            data[x * 4 + 3] = 0;
+        }
+        let image = Rgba8Image::from_rgba8(16, 1, 64, data).unwrap();
+
+        let mask = image.extract_alpha_mask();
+
+        assert!(!mask.is_opaque(0, 0));
+        assert!(mask.is_opaque(1, 0));
+        assert!(mask.is_opaque(7, 0));
+        assert!(!mask.is_opaque(8, 0));
+        assert!(!mask.is_opaque(9, 0));
+        assert!(mask.is_opaque(10, 0));
+        assert!(mask.is_opaque(14, 0));
+        assert!(!mask.is_opaque(15, 0));
     }
 }
