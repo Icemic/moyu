@@ -51,7 +51,7 @@ pub struct Sprite {
     /// (for sprite mode) clip area
     pub area: [f32; 4],
 
-    /// (for nineslice mode) bounds, [left, top, right, bottom]
+    /// (for nineslice mode) bounds, [left, top, right, bottom] as ratios of `area`, 0..1
     pub bounds: [f32; 4],
     /// (for nineslice mode) nine slice mode
     pub nine_slice_mode: NineSliceMode,
