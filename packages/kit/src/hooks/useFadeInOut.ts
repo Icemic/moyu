@@ -2,8 +2,8 @@ import { type SpringRef, type SpringValues, useSpring } from '../spring';
 
 export function useFadeInOut(
   inTime: number,
-  _keepTime: number,
-  _outTime: number,
+  keepTime: number,
+  outTime: number,
   pause = false,
   onFinished?: () => void,
 ): [SpringValues<{ opacity: number }>, SpringRef<{ opacity: number }>, () => void] {
@@ -15,7 +15,7 @@ export function useFadeInOut(
       pause,
       onRest: (result) => {
         if (result.value.opacity === 1) {
-          void api.start({ reverse: true, delay: 1500, config: { duration: 1000 } });
+          void api.start({ reverse: true, delay: keepTime, config: { duration: outTime } });
         } else {
           onFinished?.();
         }
