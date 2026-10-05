@@ -8,10 +8,12 @@ use moyu_core::traits::{Node, NodeBaseTrait, RendererUpdatePayload};
 use moyu_core::traits::{RenderCommandSender, Renderer};
 use moyu_resource::types::{Asset, AssetId, AssetKind, Texture, TextureStatus};
 
-use crate::nodes::{Sprite, SpriteMode};
+use crate::nodes::{NineSliceMode, Sprite, SpriteMode};
 
 pub const RECTANGLE_INDICES: &[u16] = &[0, 1, 2, 0, 2, 3];
 
+/// Instance layout of the plain pipeline, shared by every sprite that does not
+/// tile: normal draws plus nineslice `stretch` and `blank`.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SpriteInstance {
@@ -22,6 +24,38 @@ pub struct SpriteInstance {
     pub local_bounds: [f32; 4],
     pub uv_bounds: [f32; 4],
     pub tint: [f32; 4],
+}
+
+/// Instance layout of the tiling pipeline; only `repeat` and `mirror` nodes use it.
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SpriteTilingInstance {
+    pub transform_0: [f32; 4],
+    pub transform_1: [f32; 4],
+    pub transform_2: [f32; 4],
+    pub transform_3: [f32; 4],
+    pub local_bounds: [f32; 4],
+    pub uv_bounds: [f32; 4],
+    pub tint: [f32; 4],
+    /// (repeat_x, repeat_y, mirror, unused): how the slice pattern tiles inside
+    /// `local_bounds`; `1` on an axis draws the pattern once.
+    pub uv_params: [f32; 4],
+}
+
+impl SpriteInstance {
+    /// Add the tiling parameters, producing the instance the tiling pipeline reads.
+    fn with_tiling(self, tile: [f32; 2], mirror: bool) -> SpriteTilingInstance {
+        SpriteTilingInstance {
+            transform_0: self.transform_0,
+            transform_1: self.transform_1,
+            transform_2: self.transform_2,
+            transform_3: self.transform_3,
+            local_bounds: self.local_bounds,
+            uv_bounds: self.uv_bounds,
+            tint: self.tint,
+            uv_params: [tile[0], tile[1], if mirror { 1.0 } else { 0.0 }, 0.0],
+        }
+    }
 }
 
 impl VertexDesc for SpriteInstance {
@@ -43,6 +77,45 @@ impl VertexDesc for SpriteInstance {
             array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: Self::attribs(),
+        }
+    }
+}
+
+impl VertexDesc for SpriteTilingInstance {
+    fn attribs() -> &'static [wgpu::VertexAttribute] {
+        static ATTRIBS: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
+            2 => Float32x4, // transform_0
+            3 => Float32x4, // transform_1
+            4 => Float32x4, // transform_2
+            5 => Float32x4, // transform_3
+            6 => Float32x4, // local_bounds
+            7 => Float32x4, // uv_bounds
+            8 => Float32x4, // tint
+            9 => Float32x4  // uv_params
+        ];
+        &ATTRIBS
+    }
+
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: Self::attribs(),
+        }
+    }
+}
+
+/// Instances for one draw, in the layout of the pipeline that consumes them.
+enum InstanceData {
+    Plain(Vec<SpriteInstance>),
+    Tiling(Vec<SpriteTilingInstance>),
+}
+
+impl InstanceData {
+    fn bytes(&self) -> &[u8] {
+        match self {
+            InstanceData::Plain(instances) => bytemuck::cast_slice(instances),
+            InstanceData::Tiling(instances) => bytemuck::cast_slice(instances),
         }
     }
 }
@@ -134,6 +207,7 @@ fn calculate_sprite_instance(
 
 pub struct SpriteRenderer {
     pipeline: RenderPipeline,
+    tile_pipeline: RenderPipeline,
     bind_group_layout: BindGroupLayout,
     sampler: Sampler,
     quad_buffer: Buffer,
@@ -175,7 +249,7 @@ impl SpriteRenderer {
         // shader
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Sprite Shader"),
-            source: ShaderSource::Wgsl(include_str!("./shaders/default.wgsl").into()),
+            source: ShaderSource::Wgsl(include_str!("./shaders/sprite.wgsl").into()),
         });
 
         let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -187,49 +261,66 @@ impl SpriteRenderer {
             immediate_size: 0,
         });
 
-        let pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Sprite Render Pipeline"),
-            layout: Some(&render_pipeline_layout),
-            vertex: VertexState {
-                module: &shader,
-                entry_point: Some("vs_main"),
-                buffers: &[
-                    Some(SpriteVertex::desc()),
-                    Some(SpriteInstance::desc()),
-                ],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            },
-            fragment: Some(FragmentState {
-                module: &shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(ColorTargetState {
-                    format: config.format,
-                    blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                    write_mask: ColorWrites::ALL,
-                })],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: FrontFace::Ccw,
-                cull_mode: Some(Face::Back),
-                // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-                polygon_mode: PolygonMode::Fill,
-                // Requires Features::DEPTH_CLIP_CONTROL
-                unclipped_depth: false,
-                // Requires Features::CONSERVATIVE_RASTERIZATION
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: MultisampleState {
-                count: sample_count,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview_mask: None,
-            cache: None,
-        });
+        // Both pipelines share the module, layout and render state; the entry points
+        // and the instance layout differ. The plain pipeline keeps the fragment inputs
+        // minimal and omits the tiling parameters; the tiling pipeline is used solely
+        // by repeat and mirror.
+        let create_pipeline =
+            |label: &str, vertex_entry: &str, fragment_entry: &str, instance_layout: VertexBufferLayout| {
+            device.create_render_pipeline(&RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(&render_pipeline_layout),
+                vertex: VertexState {
+                    module: &shader,
+                    entry_point: Some(vertex_entry),
+                    buffers: &[Some(SpriteVertex::desc()), Some(instance_layout)],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(FragmentState {
+                    module: &shader,
+                    entry_point: Some(fragment_entry),
+                    targets: &[Some(ColorTargetState {
+                        format: config.format,
+                        blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                        write_mask: ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+                primitive: PrimitiveState {
+                    topology: PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: FrontFace::Ccw,
+                    cull_mode: Some(Face::Back),
+                    // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                    polygon_mode: PolygonMode::Fill,
+                    // Requires Features::DEPTH_CLIP_CONTROL
+                    unclipped_depth: false,
+                    // Requires Features::CONSERVATIVE_RASTERIZATION
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: MultisampleState {
+                    count: sample_count,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+
+        let pipeline = create_pipeline(
+            "Sprite Render Pipeline",
+            "vs_main",
+            "fs_main",
+            SpriteInstance::desc(),
+        );
+        let tile_pipeline = create_pipeline(
+            "Sprite Tile Render Pipeline",
+            "vs_tile",
+            "fs_tile",
+            SpriteTilingInstance::desc(),
+        );
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -270,6 +361,7 @@ impl SpriteRenderer {
 
         Self {
             pipeline,
+            tile_pipeline,
             bind_group_layout,
             sampler,
             quad_buffer,
@@ -398,14 +490,14 @@ impl Renderer for SpriteRenderer {
 
             if node.base_mut().pop_update_vertices() {
                 let instances = match node.mode {
-                    SpriteMode::Normal => vec![calculate_sprite_instance(
+                    SpriteMode::Normal => InstanceData::Plain(vec![calculate_sprite_instance(
                         node,
                         tex_width,
                         tex_height,
                         &[0., 0.],
                         &node.area,
                         &[1., 1.],
-                    )],
+                    )]),
                     SpriteMode::Nineslice => {
                         //
                         // (0,0)                            texture width
@@ -448,10 +540,21 @@ impl Renderer for SpriteRenderer {
                         let target_center_height =
                             (node.target_height as f32 - tex_height * (top + bottom)).max(0.);
 
-                        let center_h_scale = target_center_width / min_center_width;
-                        let center_v_scale = target_center_height / min_center_height;
+                        // The center collapses when the edges already cover the whole
+                        // area, so guard the division instead of producing NaN geometry.
+                        let center_h_scale = if min_center_width > 0.0 {
+                            target_center_width / min_center_width
+                        } else {
+                            0.0
+                        };
+                        let center_v_scale = if min_center_height > 0.0 {
+                            target_center_height / min_center_height
+                        } else {
+                            0.0
+                        };
 
-                        // meshes to store vertices of 9 slices
+                        // meshes to store vertices of 9 slices, the center slice last so
+                        // that blank can draw the first 8 and skip it
                         let mut meshes = vec![];
 
                         // left top
@@ -492,16 +595,6 @@ impl Renderer for SpriteRenderer {
                             &[bleft, 0.],
                             &[(ax0 + left), ay0, (ax1 - right), (ay0 + top)],
                             &[center_h_scale, 1.],
-                        ));
-
-                        // center center
-                        meshes.push(calculate_sprite_instance(
-                            node,
-                            tex_width,
-                            tex_height,
-                            &[bleft, btop],
-                            &[(ax0 + left), (ay0 + top), (ax1 - right), (ay1 - bottom)],
-                            &[center_h_scale, center_v_scale],
                         ));
 
                         // center bottom
@@ -547,11 +640,49 @@ impl Renderer for SpriteRenderer {
                             &[1., 1.],
                         ));
 
-                        meshes
+                        // center center, drawn last so blank can skip it
+                        meshes.push(calculate_sprite_instance(
+                            node,
+                            tex_width,
+                            tex_height,
+                            &[bleft, btop],
+                            &[(ax0 + left), (ay0 + top), (ax1 - right), (ay1 - bottom)],
+                            &[center_h_scale, center_v_scale],
+                        ));
+
+                        if matches!(
+                            node.nine_slice_mode,
+                            NineSliceMode::Repeat | NineSliceMode::Mirror
+                        ) {
+                            // One tile factor per slice, in push order: corners stay at
+                            // their natural size, edges stretch on one axis only and the
+                            // center on both.
+                            let factors = [
+                                [1., 1.],
+                                [1., center_v_scale],
+                                [1., 1.],
+                                [center_h_scale, 1.],
+                                [center_h_scale, 1.],
+                                [1., 1.],
+                                [1., center_v_scale],
+                                [1., 1.],
+                                [center_h_scale, center_v_scale],
+                            ];
+                            let mirror = node.nine_slice_mode == NineSliceMode::Mirror;
+                            InstanceData::Tiling(
+                                meshes
+                                    .into_iter()
+                                    .zip(factors)
+                                    .map(|(instance, tile)| instance.with_tiling(tile, mirror))
+                                    .collect(),
+                            )
+                        } else {
+                            InstanceData::Plain(meshes)
+                        }
                     }
                 };
 
-                let buf = bytemuck::cast_slice(&instances);
+                let buf = instances.bytes();
                 let current_size = node.instance_buffer.as_ref().map(|b| b.size()).unwrap_or(0);
 
                 if node.instance_buffer.is_none() || current_size < buf.len() as u64 {
@@ -597,14 +728,32 @@ impl Renderer for SpriteRenderer {
         let mut bind_group = None;
         let mut instance_buffer = None;
         let mut instance_count = 0;
+        let mut pipeline = &self.pipeline;
 
         if let Some(sprite) = node.as_any().downcast_ref::<Sprite>() {
             if let Some(texture_id) = sprite.texture_id.load().as_ref() {
                 bind_group = self.bind_group_map.get(texture_id);
                 instance_buffer = sprite.instance_buffer.clone();
+                // Only repeat and mirror need the tiling entry points and the wider
+                // instance layout they consume; every other draw stays on the plain
+                // pipeline.
+                pipeline = match sprite.mode {
+                    SpriteMode::Normal => &self.pipeline,
+                    SpriteMode::Nineslice => match sprite.nine_slice_mode {
+                        NineSliceMode::Repeat | NineSliceMode::Mirror => &self.tile_pipeline,
+                        NineSliceMode::Stretch | NineSliceMode::Blank => &self.pipeline,
+                    },
+                };
                 instance_count = match sprite.mode {
                     SpriteMode::Normal => 1,
-                    SpriteMode::Nineslice => 9,
+                    // The center slice is last, so blank draws the first 8 and skips it.
+                    SpriteMode::Nineslice => {
+                        if sprite.nine_slice_mode == NineSliceMode::Blank {
+                            8
+                        } else {
+                            9
+                        }
+                    }
                 };
             }
         } else {
@@ -614,7 +763,7 @@ impl Renderer for SpriteRenderer {
         if let (Some(bind_group), Some(instance_buffer)) = (bind_group, instance_buffer) {
             render_queue
                 .send(RenderCommand::Draw {
-                    pipeline: self.pipeline.clone(),
+                    pipeline: pipeline.clone(),
                     bind_group: bind_group.clone(),
                     extra_bind_groups: vec![],
                     vertex_buffer: Some(self.quad_buffer.clone()),

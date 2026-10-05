@@ -26,11 +26,11 @@ pub enum NineSliceMode {
     /// Stretch edge and center areas to fill the bounds.
     #[default]
     Stretch,
-    /// Repeat edge and center areas to fill the bounds.
+    /// Repeat edge and center areas at their natural size to fill the bounds.
     Repeat,
-    /// Repeat edge and center areas to fill the bounds, but mirror the texture on each repeat.
+    /// Like repeat, but mirror the pattern on every other repeat.
     Mirror,
-    /// Leave edge and center areas blank (do not draw center area).
+    /// Draw corners and edges as in stretch, and leave the center undrawn.
     Blank,
 }
 
