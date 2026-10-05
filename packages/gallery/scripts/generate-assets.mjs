@@ -333,6 +333,45 @@ function sampleImage() {
   return c;
 }
 
+function ninesliceModeSample() {
+  // Sample image for the nineslice fill modes. Corner blocks, striped edges and a
+  // dotted center make stretch, repeat, mirror and blank tell apart at a glance;
+  // the rounded border shows that corners never distort.
+  const s = SUPERSAMPLE;
+  const u = (v) => v * s;
+  const c = createCanvas(u(64), u(64));
+
+  fillRect(c, 0, 0, u(64), u(64), GRAY(64));
+
+  // Corner blocks, inside the 25% corner area.
+  for (const [x, y] of [[5, 5], [49, 5], [5, 49], [49, 49]]) {
+    fillRect(c, u(x), u(y), u(x + 10), u(y + 10), GRAY(208));
+  }
+
+  // Vertical stripes along the top and bottom edges.
+  for (let x = 16; x < 48; x += 8) {
+    fillRect(c, u(x), u(4), u(x + 4), u(14), GRAY(200));
+    fillRect(c, u(x), u(50), u(x + 4), u(60), GRAY(200));
+  }
+
+  // Horizontal stripes along the left and right edges.
+  for (let y = 16; y < 48; y += 8) {
+    fillRect(c, u(4), u(y), u(14), u(y + 4), GRAY(200));
+    fillRect(c, u(50), u(y), u(60), u(y + 4), GRAY(200));
+  }
+
+  // Center glyph: an "F" shows repeat as identical copies, mirror as alternating
+  // copies, stretch as one widened copy and blank as none.
+  fillRect(c, u(20), u(18), u(24), u(46), GRAY(210));
+  fillRect(c, u(20), u(18), u(44), u(22), GRAY(210));
+  fillRect(c, u(20), u(29), u(36), u(33), GRAY(210));
+
+  // Rounded border, split across the slices.
+  strokeRoundRect(c, u(1), u(1), u(63), u(63), u(6), u(2), WHITE);
+
+  return c;
+}
+
 function hueToRgb(t) {
   // HSV with s = 0.72, v = 0.95.
   const h = (t % 1) * 6;
@@ -457,6 +496,7 @@ save(sliderHandleSprite(235), 'slider_handle_hover.png');
 save(sliderHandleSprite(170), 'slider_handle_press.png');
 
 save(sampleImage(), 'sample.png', { supersampled: false });
+save(ninesliceModeSample(), 'nineslice_modes.png');
 
 // 8x8 pure white pixel: tint and stretch for divider lines and accent bars.
 {

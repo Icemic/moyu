@@ -232,6 +232,39 @@ function SpritePanel() {
   );
 }
 
+const NINESLICE_MODES = ['stretch', 'repeat', 'mirror', 'blank'] as const;
+
+/** All four nineslice fill modes side by side on the same source image. */
+function NinesliceModePanel() {
+  const { t } = useLingui();
+
+  return (
+    <Panel
+      title={t`九宫格填充模式`}
+      width={1300}
+      height={320}
+      note={t`同一张源图，targetWidth 300 / targetHeight 150：repeat 与 mirror 保持图案原始尺寸平铺，blank 不绘制中心。`}
+    >
+      <hbox gap={16} x={8} y={10}>
+        {NINESLICE_MODES.map((mode) => (
+          <vbox key={mode} gap={12} alignItems="center">
+            <sprite
+              label={`nineslice-${mode}`}
+              src="images/nineslice_modes.png"
+              mode="nineslice"
+              bounds={[0.25, 0.25, 0.25, 0.25]}
+              targetWidth={300}
+              targetHeight={150}
+              nineSliceMode={mode}
+            />
+            <text {...TEXT.caption} text={mode} />
+          </vbox>
+        ))}
+      </hbox>
+    </Panel>
+  );
+}
+
 /**
  * alphaHitTest demo: a ring sprite on top of an opaque plate. Clicking the
  * transparent corners hits the plate only when the ring tests the texture alpha.
@@ -328,6 +361,9 @@ export function PrimitivesPage() {
         <TextPrintingPanel />
         <hbox gap={32}>
           <SpritePanel />
+        </hbox>
+        <hbox gap={32}>
+          <NinesliceModePanel />
         </hbox>
         <hbox gap={32}>
           <AlphaHitTestPanel />

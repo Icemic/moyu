@@ -77,11 +77,11 @@ msgstr "Achievement 与 Steamworks API 手动测试。"
 msgid "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
 msgstr "Achievement 页面显示的数值进度来自后台绑定的 Stat，写入后需要 StoreStats。"
 
-#: src/pages/primitives.tsx:275
+#: src/pages/primitives.tsx:308
 msgid "alphaHitTest 开启"
 msgstr "alphaHitTest 开启"
 
-#: src/pages/primitives.tsx:286
+#: src/pages/primitives.tsx:319
 msgid "Animation 帧动画"
 msgstr "Animation 帧动画"
 
@@ -89,7 +89,7 @@ msgstr "Animation 帧动画"
 msgid "API name 来自 App ID 480 的真实后台配置。"
 msgstr "API name 来自 App ID 480 的真实后台配置。"
 
-#: src/pages/primitives.tsx:286
+#: src/pages/primitives.tsx:319
 msgid "APNG 格式帧动画；tint 同样作用于动画帧。"
 msgstr "APNG 格式帧动画；tint 同样作用于动画帧。"
 
@@ -137,7 +137,7 @@ msgstr "Button、Checkbox、Radio、Select、Slider 与 ScrollView。"
 msgid "Checkbox 勾选框"
 msgstr "Checkbox 勾选框"
 
-#: src/pages/primitives.tsx:305
+#: src/pages/primitives.tsx:338
 msgid "Clip 裁剪"
 msgstr "Clip 裁剪"
 
@@ -225,7 +225,7 @@ msgstr "space-between：间隔相等且不小于 gap = 20。"
 msgid "Spring 动画"
 msgstr "Spring 动画"
 
-#: src/pages/primitives.tsx:269
+#: src/pages/primitives.tsx:302
 msgid "Sprite 像素级命中"
 msgstr "Sprite 像素级命中"
 
@@ -249,7 +249,7 @@ msgstr "Text 文本打印"
 msgid "Text 文本样式"
 msgstr "Text 文本样式"
 
-#: src/pages/primitives.tsx:294
+#: src/pages/primitives.tsx:327
 msgid "tint 金色"
 msgstr "tint 金色"
 
@@ -289,6 +289,10 @@ msgstr "下拉列表展开时会覆盖下方内容（zIndex）。"
 #: src/pages/primitives.tsx:222
 msgid "九宫格：圆角与描边不随拉伸变形，线条不模糊"
 msgstr "九宫格：圆角与描边不随拉伸变形，线条不模糊"
+
+#: src/pages/primitives.tsx:243
+msgid "九宫格填充模式"
+msgstr "九宫格填充模式"
 
 #: src/pages/filters.tsx:39
 msgid "亮度 Brightness"
@@ -371,7 +375,7 @@ msgstr "动画 / Shader 方案"
 msgid "原始对照 Original"
 msgstr "原始对照 Original"
 
-#: src/pages/primitives.tsx:290
+#: src/pages/primitives.tsx:323
 msgid "原色"
 msgstr "原色"
 
@@ -424,7 +428,7 @@ msgstr "变换与测量"
 msgid "变换后的候选窗位置"
 msgstr "变换后的候选窗位置"
 
-#: src/pages/primitives.tsx:305
+#: src/pages/primitives.tsx:338
 msgid "只有落在 440×260 视口内的内容会被绘制。"
 msgstr "只有落在 440×260 视口内的内容会被绘制。"
 
@@ -439,6 +443,10 @@ msgstr "右"
 #: src/pages/controls.tsx:58
 msgid "右对齐"
 msgstr "右对齐"
+
+#: src/pages/primitives.tsx:246
+msgid "同一张源图，targetWidth 300 / targetHeight 150：repeat 与 mirror 保持图案原始尺寸平铺，blank 不绘制中心。"
+msgstr "同一张源图，targetWidth 300 / targetHeight 150：repeat 与 mirror 保持图案原始尺寸平铺，blank 不绘制中心。"
 
 #: src/pages/raw-shaders.tsx:173
 msgid "启动"
@@ -759,7 +767,7 @@ msgstr "点击 SPRING 切换目标状态。\n"
 msgid "点击切换变换"
 msgstr "点击切换变换"
 
-#: src/pages/primitives.tsx:272
+#: src/pages/primitives.tsx:305
 msgid "点击圆环四角的透明区域：左侧 alphaHitTest 命中底板，右侧默认只按矩形判定，始终命中圆环。"
 msgstr "点击圆环四角的透明区域：左侧 alphaHitTest 命中底板，右侧默认只按矩形判定，始终命中圆环。"
 
@@ -872,7 +880,7 @@ msgstr "自定义 Shader"
 msgid "色相旋转 Hue Rotate"
 msgstr "色相旋转 Hue Rotate"
 
-#: src/pages/primitives.tsx:307
+#: src/pages/primitives.tsx:340
 msgid "被裁剪的内容"
 msgstr "被裁剪的内容"
 
@@ -900,7 +908,7 @@ msgstr "转场画面"
 msgid "这段交互文本"
 msgstr "这段交互文本"
 
-#: src/pages/primitives.tsx:309
+#: src/pages/primitives.tsx:342
 msgid "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
 msgstr "这段文字超出了裁剪区域的右边界和下边界，超出的部分不会显示。"
 
@@ -1000,7 +1008,7 @@ msgstr "饱和度 {0}"
 msgid "饱和度 Saturation"
 msgstr "饱和度 Saturation"
 
-#: src/pages/primitives.tsx:276
+#: src/pages/primitives.tsx:309
 msgid "默认（矩形判定）"
 msgstr "默认（矩形判定）"
 
