@@ -4,6 +4,7 @@ import type { JsonValue } from './serde_json/JsonValue';
 
 export type ScenarioCommand =
   | { subCommand: 'addStory'; name: string }
+  | { subCommand: 'addStoryFromContent'; name: string; content: string }
   | { subCommand: 'replaceStoryData'; name: string; content: string }
   | { subCommand: 'removeStory'; name: string }
   | { subCommand: 'hasStory'; name: string }

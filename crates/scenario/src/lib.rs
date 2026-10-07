@@ -506,6 +506,35 @@ impl ScenarioPlugin {
         Ok(promise)
     }
 
+    /// Register a new story from raw sixu text.
+    ///
+    /// Unlike `replace_story_data`, this never replaces an existing story: it
+    /// returns `false` and leaves the loaded story untouched when a story with
+    /// the same name already exists.
+    fn add_story_from_content(&self, name: &str, content: &str) -> Result<JSValue> {
+        if self.has_story(name) {
+            log::warn!("Story '{}' already exists, skipping add", name);
+            return to_js(&false);
+        }
+
+        let (_, story) = sixu::parser::parse(name, content)
+            .map_err(|error| anyhow::anyhow!("Failed to parse story '{}': {}", name, error))?;
+
+        self.runtime
+            .lock()
+            .context_mut()
+            .stories_mut()
+            .push(story);
+
+        log::info!(
+            "Story '{}' registered from content ({} bytes)",
+            name,
+            content.len()
+        );
+
+        to_js(&true)
+    }
+
     fn remove_story(&self, name: &str) -> Result<JSValue> {
         let mut runtime = self.runtime.lock();
         let stories = runtime.context_mut().stories_mut();

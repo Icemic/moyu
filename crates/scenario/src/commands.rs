@@ -23,6 +23,11 @@ enum ScenarioCommand {
     AddStory {
         name: String,
     },
+    /// Register a new story from sixu text, keeping an existing story untouched
+    AddStoryFromContent {
+        name: String,
+        content: String,
+    },
     /// Replace in-memory story definition and return a hot-reload recovery plan.
     ReplaceStoryData {
         name: String,
@@ -169,6 +174,9 @@ impl Command for ScenarioPlugin {
         match payload {
             ScenarioCommand::AddStory { name } => {
                 return self.add_story(&name).map(Some);
+            }
+            ScenarioCommand::AddStoryFromContent { name, content } => {
+                return self.add_story_from_content(&name, &content).map(Some);
             }
             ScenarioCommand::ReplaceStoryData { name, content } => {
                 return self.replace_story_data(&name, &content).map(Some);
