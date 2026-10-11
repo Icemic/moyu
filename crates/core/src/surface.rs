@@ -1,104 +1,22 @@
+//! WGPU surface initialization.
+//!
+//! The platform object behind the surface comes from the window system; everything
+//! else here (backend selection, adapter validation, device creation, surface format
+//! and present mode) is graphics work.
+
 use anyhow::{Result, anyhow};
-use log::{info, warn};
+use log::info;
+#[cfg(android)]
+use log::warn;
 use moyu_pal::config::{RenderingBackend, get_engine_config};
 use std::sync::Arc;
 use wgpu::{Device, Instance, Queue, Surface, SurfaceConfiguration};
-use winit::dpi::Size;
-use winit::event_loop::{ActiveEventLoop, EventLoop};
-#[cfg(android)]
-use winit::platform::android::activity::AndroidApp;
-use winit::{dpi::PhysicalSize, window::Window};
 
-pub fn create_eventloop<T>(#[cfg(android)] app: AndroidApp) -> EventLoop<T> {
-    // create main thread infinity loop
-    #[cfg(not(android))]
-    {
-        EventLoop::with_user_event().build().unwrap()
-    }
+use crate::core::WindowSystem;
 
-    #[cfg(android)]
-    {
-        use winit::platform::android::EventLoopBuilderExtAndroid;
-        EventLoop::with_user_event()
-            .with_android_app(app)
-            .build()
-            .unwrap()
-    }
-}
-
-pub fn create_window(event_loop: &ActiveEventLoop, #[cfg(web)] element_id: &str) -> Arc<Window> {
-    let env = get_engine_config();
-    // create window
-    let mut builder = Window::default_attributes()
-        .with_inner_size(Size::Logical(env.initial_surface_size.as_tuple().into()))
-        .with_resizable(env.window_resizable)
-        .with_visible(false)
-        .with_active(true)
-        .with_title(&env.window_title);
-
-    // On the web the page owns the canvas size, so there is no minimum size to enforce there.
-    #[cfg(native)]
-    {
-        builder = builder.with_min_inner_size(PhysicalSize::new(400, 300));
-    }
-
-    match env.window_state {
-        moyu_pal::config::WindowState::Maximized => {
-            builder = builder.with_maximized(true);
-        }
-        moyu_pal::config::WindowState::Minimized => {
-            warn!("You should not start with a minimized window.");
-        }
-        moyu_pal::config::WindowState::Fullscreen => {
-            builder = builder.with_fullscreen(Some(winit::window::Fullscreen::Borderless(
-                event_loop.primary_monitor(),
-            )));
-        }
-        _ => {
-            // idle
-        }
-    };
-
-    let window = event_loop
-        .create_window(builder)
-        .expect("Failed to create window.");
-
-    // web target only
-    // add a canvas element to dom as 'window'
-    #[cfg(web)]
-    {
-        use winit::platform::web::WindowExtWebSys;
-
-        let host = web_sys::window()
-            .and_then(|win| win.document())
-            .and_then(|document| document.get_element_by_id(element_id))
-            .unwrap_or_else(|| {
-                panic!("couldn't find the element to mount the canvas: {element_id}")
-            });
-
-        let canvas = window
-            .canvas()
-            .expect("Failed to get canvas from winit window.");
-
-        // The mount element plays the role of the window on the web: it owns the size and the
-        // canvas fills it. winit observes the resulting canvas box and reports it as a resize,
-        // so the surface follows without the engine measuring anything itself.
-        // `display: block` keeps the canvas from adding a baseline gap to its parent.
-        let style = canvas.style();
-        let _ = style.set_property("display", "block");
-        let _ = style.set_property("width", "100%");
-        let _ = style.set_property("height", "100%");
-
-        host.append_child(&web_sys::Element::from(canvas))
-            .expect("couldn't append canvas to the mount element");
-    }
-
-    Arc::new(window)
-}
-
-pub async fn create_wgpu_surface(
-    window: &Arc<Window>,
-    size: &PhysicalSize<u32>,
+pub(crate) async fn create_wgpu_surface(
+    window_system: &Arc<dyn WindowSystem>,
+    size: (u32, u32),
 ) -> (
     Instance,
     Surface<'static>,
@@ -109,7 +27,9 @@ pub async fn create_wgpu_surface(
     let backends = match get_engine_config().backend {
         #[cfg(android)]
         RenderingBackend::Auto => {
-            match create_wgpu_surface_with_backends(window, size, wgpu::Backends::VULKAN).await {
+            match create_wgpu_surface_with_backends(window_system, size, wgpu::Backends::VULKAN)
+                .await
+            {
                 Ok(surface) => return surface,
                 Err(err) => {
                     warn!("Vulkan is unavailable on this device, falling back to GLES: {err}");
@@ -126,14 +46,14 @@ pub async fn create_wgpu_surface(
         RenderingBackend::GLES => wgpu::Backends::GL,
     };
 
-    create_wgpu_surface_with_backends(window, size, backends)
+    create_wgpu_surface_with_backends(window_system, size, backends)
         .await
         .unwrap_or_else(|err| panic!("Failed to initialize graphics: {err}"))
 }
 
 async fn create_wgpu_surface_with_backends(
-    window: &Arc<Window>,
-    size: &PhysicalSize<u32>,
+    window_system: &Arc<dyn WindowSystem>,
+    size: (u32, u32),
     backends: wgpu::Backends,
 ) -> Result<(
     Instance,
@@ -146,9 +66,9 @@ async fn create_wgpu_surface_with_backends(
     instance_descriptor.backends = backends;
     instance_descriptor.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::Fxc;
     let instance = wgpu::Instance::new(instance_descriptor);
-    let surface = instance
-        .create_surface(window.clone())
-        .map_err(|err| anyhow!("failed to create surface: {err}"))?;
+    let surface = window_system
+        .create_surface(&instance)
+        .map_err(|error| anyhow!("failed to create surface: {error}"))?;
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
@@ -259,8 +179,8 @@ async fn create_wgpu_surface_with_backends(
         format,
         color_space: wgpu::SurfaceColorSpace::Auto,
         // width or height should not be 0 or it will cause crash
-        width: size.width,
-        height: size.height,
+        width: size.0,
+        height: size.1,
         // determines how to sync the surface with the display
         present_mode,
         alpha_mode,

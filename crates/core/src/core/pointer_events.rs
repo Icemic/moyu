@@ -1,11 +1,7 @@
 use std::time::Duration;
 
+use cursor_icon::CursorIcon;
 use log::error;
-use winit::dpi::PhysicalPosition;
-use winit::event::{
-    ElementState, MouseButton, MouseScrollDelta, TouchPhase as WinitTouchPhase, WindowEvent,
-};
-use winit::window::{CursorIcon, Window};
 
 use crate::base::*;
 use crate::core::FocusablePayload;
@@ -89,135 +85,110 @@ macro_rules! get_pointer_state_mut {
 }
 
 impl Core {
-    pub fn handle_pointer_events(&self, window: &Window, event: &WindowEvent) -> bool {
-        match event {
-            WindowEvent::CursorMoved { position, .. } => {
-                self.handle_pointer_move(window, position, MOUSE_IDENTIFIER);
-                self.handle_pointer_hover(
-                    MOUSE_IDENTIFIER,
-                    true,
-                    MouseEventSource::User,
-                    &mut DispatchRecord::disabled(),
-                );
+    /// Handle the pointer moving over the surface.
+    pub(super) fn handle_cursor_moved(&self, physical_x: f64, physical_y: f64) {
+        self.handle_pointer_move(physical_x, physical_y, MOUSE_IDENTIFIER);
+        self.handle_pointer_hover(
+            MOUSE_IDENTIFIER,
+            true,
+            MouseEventSource::User,
+            &mut DispatchRecord::disabled(),
+        );
+    }
 
-                true
-            }
-            // clear hover node when cursor leaves window
-            WindowEvent::CursorLeft { .. } => {
-                get_pointer_state!(self, pointer_state, MOUSE_IDENTIFIER, true);
+    /// Handle the pointer leaving the surface.
+    pub(super) fn handle_cursor_left(&self) {
+        get_pointer_state!(self, pointer_state, MOUSE_IDENTIFIER);
 
-                if let Some(last_hover_node) = &pointer_state.current_target {
-                    let target_id = *last_hover_node.node.read().base().id();
-                    dispatch_event(self.mouse_event(
-                        MouseEventKind::MouseLeave,
-                        target_id,
-                        last_hover_node.parent_ids.clone(),
-                        0,
-                        buttons_mask(&pointer_state),
-                        pointer_state.location,
-                        MouseEventSource::User,
-                    ));
-                    dispatch_pointer_event(
-                        last_hover_node,
-                        pointer_state.location,
-                        PointerEventKind::Leave,
-                    );
-                }
-                true
-            }
-            WindowEvent::MouseInput { button, state, .. } => {
-                // Only the buttons DOM defines produce events; other physical buttons
-                // are ignored.
-                if let Some(button) = from_winit_button(*button) {
-                    match state {
-                        ElementState::Pressed => self.pointer_press(
-                            MOUSE_IDENTIFIER,
-                            button,
-                            MouseEventSource::User,
-                            &mut DispatchRecord::disabled(),
-                        ),
-                        ElementState::Released => self.pointer_release(
-                            MOUSE_IDENTIFIER,
-                            button,
-                            MouseEventSource::User,
-                            &mut DispatchRecord::disabled(),
-                        ),
-                    }
-                }
-                true
-            }
-            WindowEvent::Touch(touch) => {
-                let identifier = touch.id as i32;
-
-                self.get_ensure_pointer_state(identifier, DeviceType::Finger(identifier as u32));
-
-                let last_location = {
-                    get_pointer_state!(self, pointer_state, identifier, true);
-                    pointer_state.location
-                };
-
-                let phase = match touch.phase {
-                    WinitTouchPhase::Started => TouchPhase::Start,
-                    WinitTouchPhase::Moved => TouchPhase::Move,
-                    WinitTouchPhase::Ended => TouchPhase::End,
-                    WinitTouchPhase::Cancelled => TouchPhase::Cancel,
-                };
-
-                let mut record = DispatchRecord::disabled();
-
-                self.handle_pointer_move(window, &touch.location, identifier);
-                self.handle_pointer_hover(
-                    identifier,
-                    phase == TouchPhase::Start,
-                    MouseEventSource::User,
-                    &mut record,
-                );
-
-                // ignore duplicated touch move event
-                let unchanged = self
-                    .pointer_map
-                    .get(&identifier)
-                    .is_some_and(|pointer_state| pointer_state.location == last_location);
-
-                if !(phase == TouchPhase::Move && unchanged) {
-                    self.pointer_touch(identifier, phase, &mut record);
-                }
-
-                true
-            }
-            WindowEvent::MouseWheel {
-                delta, phase: _, ..
-            } => {
-                let (delta_x, delta_y, mode) = match delta {
-                    MouseScrollDelta::LineDelta(x, y) => {
-                        (*x as f64, *y as f64, WheelEventDeltaMode::Line)
-                    }
-                    MouseScrollDelta::PixelDelta(position) => {
-                        (position.x, position.y, WheelEventDeltaMode::Pixel)
-                    }
-                };
-
-                self.pointer_wheel(
-                    MOUSE_IDENTIFIER,
-                    delta_x,
-                    delta_y,
-                    mode,
-                    &mut DispatchRecord::disabled(),
-                );
-
-                true
-            }
-            _ => false,
+        if let Some(last_hover_node) = &pointer_state.current_target {
+            let target_id = *last_hover_node.node.read().base().id();
+            dispatch_event(self.mouse_event(
+                MouseEventKind::MouseLeave,
+                target_id,
+                last_hover_node.parent_ids.clone(),
+                0,
+                buttons_mask(&pointer_state),
+                pointer_state.location,
+                MouseEventSource::User,
+            ));
+            dispatch_pointer_event(
+                last_hover_node,
+                pointer_state.location,
+                PointerEventKind::Leave,
+            );
         }
     }
 
-    /// Handle hover changes on mouse move or touch, and record locations relative to client and screen (always in logical).
-    fn handle_pointer_move(
+    /// Handle a mouse button press or release.
+    pub(super) fn handle_pointer_button(&self, button: PointerButton, pressed: bool) {
+        if pressed {
+            self.pointer_press(
+                MOUSE_IDENTIFIER,
+                button,
+                MouseEventSource::User,
+                &mut DispatchRecord::disabled(),
+            );
+        } else {
+            self.pointer_release(
+                MOUSE_IDENTIFIER,
+                button,
+                MouseEventSource::User,
+                &mut DispatchRecord::disabled(),
+            );
+        }
+    }
+
+    /// Handle one touch phase reported for a touch point.
+    pub(super) fn handle_touch(
         &self,
-        window: &Window,
-        position: &PhysicalPosition<f64>,
-        identifier: i32,
+        identifier: u32,
+        phase: TouchPhase,
+        physical_x: f64,
+        physical_y: f64,
     ) {
+        let pointer_id = identifier as i32;
+
+        self.get_ensure_pointer_state(pointer_id, DeviceType::Finger(identifier));
+
+        let last_location = {
+            get_pointer_state!(self, pointer_state, pointer_id);
+            pointer_state.location
+        };
+
+        let mut record = DispatchRecord::disabled();
+
+        self.handle_pointer_move(physical_x, physical_y, pointer_id);
+        self.handle_pointer_hover(
+            pointer_id,
+            phase == TouchPhase::Start,
+            MouseEventSource::User,
+            &mut record,
+        );
+
+        // ignore duplicated touch move event
+        let unchanged = self
+            .pointer_map
+            .get(&pointer_id)
+            .is_some_and(|pointer_state| pointer_state.location == last_location);
+
+        if !(phase == TouchPhase::Move && unchanged) {
+            self.pointer_touch(pointer_id, phase, &mut record);
+        }
+    }
+
+    /// Handle wheel scrolling.
+    pub(super) fn handle_wheel(&self, delta_x: f64, delta_y: f64, mode: WheelEventDeltaMode) {
+        self.pointer_wheel(
+            MOUSE_IDENTIFIER,
+            delta_x,
+            delta_y,
+            mode,
+            &mut DispatchRecord::disabled(),
+        );
+    }
+
+    /// Handle hover changes on mouse move or touch, and record locations relative to client and screen (always in logical).
+    fn handle_pointer_move(&self, physical_x: f64, physical_y: f64, identifier: i32) {
         let stage_size = {
             let stage_size = self.stage_size.read();
             *stage_size
@@ -228,14 +199,14 @@ impl Core {
             *stage_transform
         };
 
-        let window_position = window.inner_position().unwrap_or_default();
+        let (window_x, window_y) = self.window_system.window_position();
         let scale_factor = stage_size.scale_factor();
 
-        let global_logical_x = (position.x / scale_factor) as f32;
-        let global_logical_y = (position.y / scale_factor) as f32;
+        let global_logical_x = (physical_x / scale_factor) as f32;
+        let global_logical_y = (physical_y / scale_factor) as f32;
 
-        let screen_logical_x = ((window_position.x as f64 + position.x) / scale_factor) as f32;
-        let screen_logical_y = ((window_position.y as f64 + position.y) / scale_factor) as f32;
+        let screen_logical_x = ((window_x as f64 + physical_x) / scale_factor) as f32;
+        let screen_logical_y = ((window_y as f64 + physical_y) / scale_factor) as f32;
 
         let stage_logical_x = (global_logical_x - translate_x) / scale;
         let stage_logical_y = (global_logical_y - translate_y) / scale;
@@ -286,11 +257,11 @@ impl Core {
             *stage_transform
         };
 
-        let window_position = self.window.inner_position().unwrap_or_default();
+        let (window_x, window_y) = self.window_system.window_position();
         let scale_factor = stage_size.scale_factor();
 
-        let screen_x = (window_position.x as f64 / scale_factor) as f32 + x * scale + translate_x;
-        let screen_y = (window_position.y as f64 / scale_factor) as f32 + y * scale + translate_y;
+        let screen_x = (window_x as f64 / scale_factor) as f32 + x * scale + translate_x;
+        let screen_y = (window_y as f64 / scale_factor) as f32 + y * scale + translate_y;
 
         self.store_pointer_location(identifier, x, y, screen_x, screen_y);
     }
@@ -859,19 +830,6 @@ impl Core {
     }
 }
 
-/// Map a winit mouse button to the engine's vocabulary. DOM only defines the five
-/// standard buttons, so any other physical button yields `None` and is ignored.
-fn from_winit_button(button: MouseButton) -> Option<PointerButton> {
-    match button {
-        MouseButton::Left => Some(PointerButton::Left),
-        MouseButton::Middle => Some(PointerButton::Middle),
-        MouseButton::Right => Some(PointerButton::Right),
-        MouseButton::Back => Some(PointerButton::Back),
-        MouseButton::Forward => Some(PointerButton::Forward),
-        MouseButton::Other(_) => None,
-    }
-}
-
 /// Bitmask of the mouse buttons currently held, in the DOM `MouseEvent.buttons` encoding.
 fn buttons_mask(pointer_state: &PointerState) -> u32 {
     PointerButton::ALL
@@ -902,10 +860,10 @@ impl Core {
             bubble_target_ids,
             button,
             buttons,
-            ctrl_key: modifiers.control_key(),
-            shift_key: modifiers.shift_key(),
-            alt_key: modifiers.alt_key(),
-            meta_key: modifiers.super_key(),
+            ctrl_key: modifiers.ctrl,
+            shift_key: modifiers.shift,
+            alt_key: modifiers.alt,
+            meta_key: modifiers.meta,
             synthetic: source == MouseEventSource::Synthetic,
             location,
         }

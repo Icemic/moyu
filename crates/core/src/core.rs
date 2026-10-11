@@ -3,12 +3,12 @@ pub mod filter_registry;
 mod global;
 mod handle_events;
 mod input;
-mod keyboard_events;
 mod pointer_events;
 mod render;
 pub mod render_command;
 mod render_state;
 pub mod texture_pool;
+mod window_system;
 
 use anyhow::Result;
 use arc_swap::{ArcSwap, ArcSwapOption};
@@ -21,11 +21,7 @@ use moyu_pal::sync::{Mutex, RwLock};
 use moyu_pal::time::Instant;
 use render::Graphics;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-#[cfg(desktop)]
-use winit::dpi::{LogicalSize, Size};
-use winit::keyboard::ModifiersState;
-use winit::window::{Fullscreen, Window};
+use std::sync::atomic::AtomicBool;
 
 use crate::base::*;
 use crate::state::{MOUSE_IDENTIFIER, PointerState};
@@ -36,6 +32,10 @@ pub use self::input::{
     InputError, KeyInput, KeyboardModifiers, PointerAction, PointerButton, PointerInputReport,
     TouchPhase,
 };
+pub use self::window_system::{
+    ImeEvent, SurfaceMetrics, WindowSystem, WindowSystemError, WindowSystemEvent,
+    WindowSystemResult,
+};
 
 pub type NodeLock = Arc<RwLock<Box<dyn Node>>>;
 pub type NodeMap = Arc<DashMap<u32, NodeLock>>;
@@ -45,7 +45,7 @@ pub type PluginLock = Arc<Mutex<dyn Plugin>>;
 pub type PluginRef<'a> = Ref<'a, String, PluginLock>;
 
 pub struct Core {
-    pub(crate) window: Arc<Window>,
+    pub(crate) window_system: Arc<dyn WindowSystem>,
     pub(crate) graphics: ArcSwapOption<Graphics>,
     #[cfg(native)]
     pub(crate) graphics_thread:
@@ -64,12 +64,10 @@ pub struct Core {
 
     pub(crate) window_state: ArcSwap<WindowState>,
     pub(crate) cursor_state: ArcSwap<MoyuCursor>,
-    pub(crate) modifiers_state: ArcSwap<ModifiersState>,
+    pub(crate) modifiers_state: ArcSwap<KeyboardModifiers>,
 
     /// Pause the rendering process, default is `false`
     pub(crate) is_paused: AtomicBool,
-    /// Flag to indicate whether the application is about to quit.
-    pub(crate) about_to_quit: AtomicBool,
 
     /// Size of current surface, which means the size of the window on desktop platforms, the size of the canvas \
     /// on web platform, and the size of the screen on mobile platforms.
@@ -97,33 +95,35 @@ fn compute_asset_scale(surface: &SurfaceSize, stage: &SurfaceSize) -> f32 {
 }
 
 impl Core {
-    pub fn new(window: Arc<Window>) -> Self {
+    pub fn new(window_system: Arc<dyn WindowSystem>) -> Self {
         let env = get_engine_config();
 
         // store surface and stage size
-        let mut size = window.inner_size();
+        let metrics = window_system.surface_metrics();
+        let mut physical_size = (metrics.physical_width, metrics.physical_height);
 
-        if size.width == 0 || size.height == 0 {
+        if metrics.physical_width == 0 || metrics.physical_height == 0 {
             // for web, it is common to have zero size at the beginning
             // see: https://github.com/rust-windowing/winit/pull/2859
             // and https://github.com/rust-windowing/winit/pull/3502#issuecomment-1953234987
             #[cfg(not(web))]
             log::warn!(
                 "Window size is zero (width: {}, height: {}), use initial surface size from config.",
-                size.width,
-                size.height
+                metrics.physical_width,
+                metrics.physical_height
             );
 
             let logical_size = env.initial_surface_size.as_tuple();
-            let scale_factor = window.scale_factor();
-            size = winit::dpi::PhysicalSize {
-                width: (logical_size.0 as f64 * scale_factor) as u32,
-                height: (logical_size.1 as f64 * scale_factor) as u32,
-            };
+            let scale_factor = metrics.scale_factor;
+            physical_size = (
+                (logical_size.0 as f64 * scale_factor) as u32,
+                (logical_size.1 as f64 * scale_factor) as u32,
+            );
         }
 
-        let scale_factor = window.scale_factor();
-        let surface_size = SurfaceSize::from_physical_size(&size, scale_factor);
+        let scale_factor = metrics.scale_factor;
+        let surface_size =
+            SurfaceSize::from_physical_size(physical_size.0, physical_size.1, scale_factor);
 
         let mut stage_size = SurfaceSize::default();
         stage_size.set_logical_size(
@@ -164,11 +164,14 @@ impl Core {
         // add mouse pointer which is always there
         pointer_map.insert(MOUSE_IDENTIFIER, PointerState::default());
 
-        let editable =
-            EditableManager::new(window.clone(), node_map.clone(), stage_transform.clone());
+        let editable = EditableManager::new(
+            window_system.clone(),
+            node_map.clone(),
+            stage_transform.clone(),
+        );
 
         Self {
-            window,
+            window_system,
             graphics: ArcSwapOption::empty(),
             #[cfg(native)]
             graphics_thread: ArcSwapOption::empty(),
@@ -184,9 +187,8 @@ impl Core {
 
             window_state: ArcSwap::new(Arc::new(WindowState::Idle)),
             cursor_state: ArcSwap::new(Arc::new(MoyuCursor::default())),
-            modifiers_state: ArcSwap::new(Arc::new(ModifiersState::empty())),
+            modifiers_state: ArcSwap::new(Arc::new(KeyboardModifiers::default())),
             is_paused: AtomicBool::new(false),
-            about_to_quit: AtomicBool::new(false),
 
             surface_size,
             stage_size,
@@ -223,40 +225,30 @@ impl Core {
         self.plugins.get(name)
     }
 
-    /// Get window of winit. This is useful when you need to do some low-level operations.
-    /// However, it may break the encapsulation of the framework, so use it with caution.
-    pub fn window(&self) -> &Arc<Window> {
-        &self.window
+    /// The window system this core runs on.
+    pub fn window_system(&self) -> &Arc<dyn WindowSystem> {
+        &self.window_system
     }
 
-    /// Move window to center of the screen. Only works on desktop platforms.
+    /// Move the window to the center of the screen. Only works on desktop platforms.
     pub fn move_to_center(&self) {
-        #[cfg(desktop)]
-        {
-            let window = &self.window;
-            if let Some(monitor) = window.current_monitor() {
-                let monitor_size = monitor.size();
-                let window_size = window.outer_size();
-
-                window.set_outer_position(winit::dpi::PhysicalPosition {
-                    x: monitor_size.width.saturating_sub(window_size.width) as f64 / 2.
-                        + monitor.position().x as f64,
-                    y: monitor_size.height.saturating_sub(window_size.height) as f64 / 2.
-                        + monitor.position().y as f64,
-                });
-            }
+        if let Err(error) = self.window_system.move_to_center() {
+            log::debug!("failed to move the window to center: {error}");
         }
     }
 
     /// Sync the engine surface size with the actual window size.
     pub fn sync_surface_size_with_window(&self, force_reconfigure: bool) {
-        let physical_size = self.window.inner_size();
-        if physical_size.width == 0 || physical_size.height == 0 {
+        let metrics = self.window_system.surface_metrics();
+        if metrics.physical_width == 0 || metrics.physical_height == 0 {
             return;
         }
 
-        let surface_size =
-            SurfaceSize::from_physical_size(&physical_size, self.window.scale_factor());
+        let surface_size = SurfaceSize::from_physical_size(
+            metrics.physical_width,
+            metrics.physical_height,
+            metrics.scale_factor,
+        );
         if force_reconfigure || self.surface_size() != surface_size {
             self.resize_stage(surface_size);
         }
@@ -300,27 +292,18 @@ impl Core {
 
         #[cfg(desktop)]
         {
-            let window = &self.window;
-            let factor = factor.unwrap_or(window.scale_factor());
-
-            let window_fullscreen = window.fullscreen();
-            let window_minimized = window.is_minimized();
-            let window_maximized = window.is_maximized();
-
             if logical_width > 0. && logical_height > 0. {
+                let factor =
+                    factor.unwrap_or_else(|| self.window_system.surface_metrics().scale_factor);
                 let surface_size = SurfaceSize::new(logical_width, logical_height, factor);
                 self.resize_stage(surface_size);
 
-                let window_size = Size::Logical(LogicalSize::new(logical_width, logical_height));
-                let _ = window.request_inner_size(window_size);
-
-                window.set_minimized(window_minimized.unwrap_or(false));
-                window.set_maximized(window_maximized);
-
-                // reset fullscreen status
-                if window_fullscreen.is_some() {
-                    window.set_fullscreen(None);
-                    window.set_fullscreen(window_fullscreen);
+                // The window saves and restores its previous state around the request.
+                if let Err(error) = self
+                    .window_system
+                    .request_window_size(logical_width, logical_height)
+                {
+                    log::warn!("failed to resize the window: {error}");
                 }
             }
         }
@@ -358,7 +341,7 @@ impl Core {
     #[cfg(web)]
     pub async fn init_graphics(&self) {
         let graphics = Graphics::init(
-            &self.window,
+            self.window_system.clone(),
             &self.surface_size(),
             &self.stage_size(),
             self.node_map.clone(),
@@ -372,7 +355,7 @@ impl Core {
     #[cfg(native)]
     pub fn init_graphics(&self) {
         let graphics = moyu_pal::task::block_on_without_runtime(Graphics::init(
-            &self.window,
+            self.window_system.clone(),
             &self.surface_size(),
             &self.stage_size(),
             self.node_map.clone(),
@@ -445,87 +428,25 @@ impl Core {
         *self.stage_size.read()
     }
 
-    pub fn fullscreen(&self) -> bool {
-        let window_state = self.window_state.load();
-        match **window_state {
-            WindowState::Fullscreen => true,
-            _ => false,
-        }
-    }
-
-    pub fn maximized(&self) -> bool {
-        let window_state = self.window_state.load();
-        match **window_state {
-            WindowState::Maximized => true,
-            _ => false,
-        }
-    }
-
-    pub fn minimized(&self) -> bool {
-        let window_state = self.window_state.load();
-        match **window_state {
-            WindowState::Minimized => true,
-            _ => false,
-        }
-    }
-
-    pub fn idle(&self) -> bool {
-        let window_state = self.window_state.load();
-        match **window_state {
-            WindowState::Idle => true,
-            _ => false,
-        }
-    }
-
     pub fn get_window_state(&self) -> WindowState {
         **self.window_state.load()
     }
 
     /// set window state, should be called in main thread
     pub fn set_window_state(&self, state: WindowState) {
-        let window = &self.window;
         // get current focus state since focus may lost after state changes.
-        let has_focus = window.has_focus();
+        let has_focus = self.window_system.has_focus();
 
-        let is_fullscreen = window.fullscreen().is_some();
-
-        match state {
-            WindowState::Idle => {
-                window.set_maximized(false);
-                window.set_minimized(false);
-                if is_fullscreen {
-                    window.set_fullscreen(None);
-                }
-            }
-            WindowState::Maximized => {
-                if is_fullscreen {
-                    window.set_fullscreen(None);
-                }
-                window.set_maximized(true);
-            }
-            WindowState::Minimized => {
-                if is_fullscreen {
-                    window.set_fullscreen(None);
-                }
-                window.set_minimized(true);
-            }
-            WindowState::Fullscreen => {
-                window.set_fullscreen(Some(Fullscreen::Borderless(None)));
-            }
-        };
+        if let Err(error) = self.window_system.set_window_state(state) {
+            log::warn!("failed to set window state: {error}");
+        }
 
         // restore focus state
         if has_focus && state != WindowState::Minimized {
-            window.focus_window();
+            self.window_system.focus_window();
         }
 
         self.window_state.store(Arc::new(state));
-    }
-
-    pub fn set_fullscreen_with_monitor(&self, monitor: Option<winit::monitor::MonitorHandle>) {
-        self.window
-            .set_fullscreen(Some(Fullscreen::Borderless(monitor)));
-        self.window_state.store(Arc::new(WindowState::Fullscreen));
     }
 
     #[inline]
@@ -533,22 +454,13 @@ impl Core {
         let prev_cursor = self.cursor_state.swap(Arc::new(cursor.clone()));
 
         if *prev_cursor != cursor {
-            match cursor {
-                MoyuCursor::Visible(cursor) => {
-                    self.window.set_cursor(cursor);
-                    self.window.set_cursor_visible(true);
-                    debug!("set cursor to {}", cursor.name());
-                }
-                MoyuCursor::Hidden => {
-                    self.window.set_cursor_visible(false);
-                    debug!("set cursor to hidden");
-                }
-            }
+            debug!("set cursor to {}", cursor.name());
+            self.window_system.set_cursor(cursor);
         }
     }
 
-    /// quit the application
+    /// Ask the window system to end the session.
     pub fn quit(&self) {
-        self.about_to_quit.store(true, Ordering::Relaxed);
+        self.window_system.request_quit();
     }
 }

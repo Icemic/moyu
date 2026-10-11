@@ -947,9 +947,6 @@ name = "dpi"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "ehttp"
@@ -2144,6 +2141,7 @@ dependencies = [
 name = "moyu"
 version = "0.21.0"
 dependencies = [
+ "anyhow",
  "cfg_aliases",
  "embed-resource",
  "log",
@@ -2164,6 +2162,8 @@ dependencies = [
  "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
  "winit",
 ]
 
@@ -2215,7 +2215,6 @@ dependencies = [
  "web-sys",
  "webbrowser",
  "wgpu",
- "winit",
 ]
 
 [[package]]
@@ -5291,7 +5290,6 @@ dependencies = [
  "raw-window-handle",
  "redox_syscall 0.4.1",
  "rustix 0.38.44",
- "serde",
  "smithay-client-toolkit",
  "smol_str",
  "tracing",

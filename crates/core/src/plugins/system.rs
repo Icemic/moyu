@@ -57,6 +57,22 @@ impl PlatformInfo {
 
 const PLATFORM_INFO: PlatformInfo = PlatformInfo::current();
 
+/// Logical position of the window's inner area, in logical pixels.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LogicalPosition {
+    x: i32,
+    y: i32,
+}
+
+/// Logical size of the window's inner area, in logical pixels.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LogicalSize {
+    width: u32,
+    height: u32,
+}
+
 impl SystemPlugin {
     pub fn new(core: Arc<Core>) -> Self {
         Self {
@@ -149,22 +165,27 @@ impl Command for SystemPlugin {
                 self.core.set_window_state(state);
             }
             SystemCommand::SetTitle { title } => {
-                self.core.window().set_title(&title);
+                self.core.window_system().set_title(&title)?;
             }
             SystemCommand::GetWindowState => {
                 let state = self.core.get_window_state();
                 return Ok(Some(to_js(&state)?));
             }
             SystemCommand::GetWindowInnerPosition => {
-                let scale_factor = self.core.window().scale_factor();
-                let position = self.core.window().inner_position()?;
-                let position: winit::dpi::LogicalPosition<i32> = position.to_logical(scale_factor);
+                let metrics = self.core.window_system().surface_metrics();
+                let (x, y) = self.core.window_system().window_position();
+                let position = LogicalPosition {
+                    x: (x as f64 / metrics.scale_factor).round() as i32,
+                    y: (y as f64 / metrics.scale_factor).round() as i32,
+                };
                 return Ok(Some(to_js(&position)?));
             }
             SystemCommand::GetWindowInnerSize => {
-                let scale_factor = self.core.window().scale_factor();
-                let size = self.core.window().inner_size();
-                let size: winit::dpi::LogicalSize<u32> = size.to_logical(scale_factor);
+                let metrics = self.core.window_system().surface_metrics();
+                let size = LogicalSize {
+                    width: (metrics.physical_width as f64 / metrics.scale_factor).round() as u32,
+                    height: (metrics.physical_height as f64 / metrics.scale_factor).round() as u32,
+                };
                 return Ok(Some(to_js(&size)?));
             }
             SystemCommand::GetStageSize => {

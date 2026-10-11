@@ -2,6 +2,7 @@ mod entry;
 #[cfg(native)]
 mod mimalloc;
 mod splash;
+mod winit_window_system;
 
 #[cfg(target_os = "android")]
 use winit::platform::android::activity::AndroidApp;
@@ -15,7 +16,7 @@ async fn android_main(app: AndroidApp) {
     let _android_app_handle = moyu_pal::platform::setup_android(&app);
     moyu_pal::config::setup().await;
 
-    let event_loop = moyu_core::surface::create_eventloop(app);
+    let event_loop = winit_window_system::create_eventloop(app);
     entry::main_entry(event_loop).await;
 }
 
@@ -32,6 +33,6 @@ pub async fn moyu_init(element_id: &str, config: Option<wasm_bindgen::JsValue>) 
         moyu_pal::config::setup().await;
     }
 
-    let event_loop = moyu_core::surface::create_eventloop();
+    let event_loop = winit_window_system::create_eventloop();
     entry::main_entry(event_loop, element_id).await;
 }
