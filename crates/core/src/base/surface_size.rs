@@ -1,5 +1,4 @@
 use serde::Serialize;
-use winit::dpi::PhysicalSize;
 
 /// Size struct for surface, it handles all size related stuff
 #[derive(Debug, PartialEq, Copy, Clone, Default, Serialize)]
@@ -23,9 +22,9 @@ impl SurfaceSize {
         }
     }
 
-    pub fn from_physical_size(physical_size: &PhysicalSize<u32>, scale_factor: f64) -> Self {
-        let width = physical_size.width as f64 / scale_factor;
-        let height = physical_size.height as f64 / scale_factor;
+    pub fn from_physical_size(width: u32, height: u32, scale_factor: f64) -> Self {
+        let width = width as f64 / scale_factor;
+        let height = height as f64 / scale_factor;
 
         Self {
             width,

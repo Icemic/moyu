@@ -1,18 +1,12 @@
 use std::sync::Arc;
 
 use moyu_audio::AudioManager;
-use moyu_core::core::{Core, get_core, set_core, try_get_core};
+use moyu_core::core::{Core, WindowSystem, WindowSystemEvent, get_core, set_core, try_get_core};
 use moyu_core::events::GameEvent;
 use moyu_core::nodes::Container;
 use moyu_core::plugins::SystemPlugin;
 use moyu_core::setup;
-use moyu_core::surface::create_window;
 use moyu_core::utils::dispatch_event::dispatch_event;
-use moyu_core::winit::application::ApplicationHandler;
-use moyu_core::winit::event::StartCause;
-#[cfg(native)]
-use moyu_core::winit::event::WindowEvent;
-use moyu_core::winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
 #[cfg(any(desktop, web))]
 use moyu_gamepad::GamepadPlugin;
 use moyu_nodes::nodes::{
@@ -33,6 +27,12 @@ use moyu_scenario::ScenarioPlugin;
 use moyu_steam::SteamPlugin;
 #[cfg(native)]
 use std::time::{Duration, Instant};
+use winit::application::ApplicationHandler;
+use winit::event::StartCause;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy};
+
+use crate::winit_window_system::{WinitWindowSystem, create_window};
 
 #[allow(dead_code)]
 pub async fn main_entry(
@@ -55,7 +55,7 @@ pub async fn main_entry(
         }
     }));
 
-    let mut app = Application::new(
+    let mut app = WinitApplication::new(
         event_proxy,
         #[cfg(web)]
         element_id,
@@ -75,10 +75,13 @@ pub(crate) enum ApplicationInitEvent {
     Plugin,
     LoadUserScript,
     ShowAndStart,
+    Quit,
 }
 
-struct Application {
+struct WinitApplication {
     event_proxy: EventLoopProxy<ApplicationInitEvent>,
+    /// The window and its window system, created on the first `resumed`.
+    window_system: Option<Arc<WinitWindowSystem>>,
     #[cfg(web)]
     element_id: String,
     #[cfg(desktop)]
@@ -97,14 +100,15 @@ struct Application {
     _core_handle: Arc<Mutex<Option<VisibleHand<Arc<Core>>>>>,
 }
 
-impl Application {
+impl WinitApplication {
     fn new(
         event_proxy: EventLoopProxy<ApplicationInitEvent>,
         #[cfg(web)] element_id: &str,
         #[cfg(desktop)] steam_plugin: Option<SteamPlugin>,
     ) -> Self {
-        Application {
+        WinitApplication {
             event_proxy,
+            window_system: None,
             #[cfg(web)]
             element_id: element_id.to_string(),
             #[cfg(desktop)]
@@ -123,9 +127,20 @@ impl Application {
         try_get_core()
     }
 
+    /// The window system of the current session.
+    ///
+    /// Only called from the callbacks that run after `resumed` has created it.
+    fn window_system(&self) -> &Arc<WinitWindowSystem> {
+        self.window_system
+            .as_ref()
+            .expect("the window system is created on resumed")
+    }
+
     #[cfg(native)]
-    fn refresh_frame_interval(&mut self, window: &moyu_core::winit::window::Window) {
-        let refresh_rate = window
+    fn refresh_frame_interval(&mut self) {
+        let refresh_rate = self
+            .window_system()
+            .window()
             .current_monitor()
             .and_then(|monitor| monitor.refresh_rate_millihertz())
             .unwrap_or(60_000);
@@ -141,9 +156,9 @@ impl Application {
             self.frame_interval = next_frame_interval;
             self.next_redraw_at = None;
 
-            let size = window.inner_size();
+            let metrics = self.window_system().surface_metrics();
 
-            if size.width > 0 && size.height > 0 {
+            if metrics.physical_width > 0 && metrics.physical_height > 0 {
                 self.schedule_next_redraw(Instant::now());
             }
         }
@@ -168,22 +183,23 @@ impl Application {
     }
 }
 
-impl ApplicationHandler<ApplicationInitEvent> for Application {
+impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
         #[cfg(native)]
         if matches!(cause, StartCause::ResumeTimeReached { .. })
             && self.initialized
             && self.next_redraw_at.is_some()
-            && let Some(core) = self.core()
         {
-            let size = core.window().inner_size();
-            if size.width > 0 && size.height > 0 {
-                core.window().request_redraw();
+            let window_system = self.window_system();
+            let metrics = window_system.surface_metrics();
+
+            if metrics.physical_width > 0 && metrics.physical_height > 0 {
+                window_system.request_redraw();
             }
         }
     }
 
-    fn user_event(&mut self, _: &ActiveEventLoop, event: ApplicationInitEvent) {
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: ApplicationInitEvent) {
         match event {
             ApplicationInitEvent::Start => {
                 // do nothing
@@ -329,8 +345,8 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
                 // Size changes after this point arrive as resize events.
                 core.sync_surface_size_with_window(false);
 
-                core.window().set_visible(true);
-                core.window().request_redraw();
+                self.window_system().set_visible(true);
+                self.window_system().request_redraw();
 
                 #[cfg(native)]
                 {
@@ -358,18 +374,23 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
 
                 self.initialized = true;
             }
+            ApplicationInitEvent::Quit => {
+                event_loop.exit();
+            }
         }
     }
-    fn resumed(&mut self, event_loop: &moyu_core::winit::event_loop::ActiveEventLoop) {
-        if let Some(core) = self.core().cloned() {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.core().is_some() {
             #[cfg(native)]
-            self.refresh_frame_interval(core.window());
+            self.refresh_frame_interval();
 
             #[cfg(mobile)]
-            core.reconfigure_surface_with_window();
+            if let Some(core) = self.core() {
+                core.handle_window_system_event(WindowSystemEvent::Resumed);
+            }
 
-            core.window().set_visible(true);
-            core.window().request_redraw();
+            self.window_system().set_visible(true);
+            self.window_system().request_redraw();
 
             return;
         }
@@ -382,18 +403,20 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
 
         #[cfg(windows)]
         {
-            use moyu_core::winit::platform::windows::IconExtWindows;
-            use moyu_core::winit::window::Icon;
+            use winit::platform::windows::IconExtWindows;
+            use winit::window::Icon;
             if let Ok(icon) = Icon::from_resource(1, None) {
                 window.set_window_icon(Some(icon));
             }
         }
 
-        #[cfg(native)]
-        self.refresh_frame_interval(&window);
+        let window_system = Arc::new(WinitWindowSystem::new(window, self.event_proxy.clone()));
+        self.window_system = Some(window_system.clone());
 
-        let core = Core::new(window);
-        let core = Arc::new(core);
+        #[cfg(native)]
+        self.refresh_frame_interval();
+
+        let core = Arc::new(Core::new(window_system));
 
         let _core_handle = set_core(core.clone());
         self._core_handle.lock().replace(_core_handle);
@@ -406,21 +429,21 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
             .unwrap();
     }
 
-    fn suspended(&mut self, _: &moyu_core::winit::event_loop::ActiveEventLoop) {
+    fn suspended(&mut self, _: &ActiveEventLoop) {
         #[cfg(native)]
         {
             self.next_redraw_at = None;
         }
         #[cfg(mobile)]
         if let Some(core) = self.core() {
-            core.release_render_surface();
+            core.handle_window_system_event(WindowSystemEvent::Suspended);
         }
         log::warn!("Suspended");
     }
 
-    fn about_to_wait(&mut self, event_loop: &moyu_core::winit::event_loop::ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         if let Some(core) = self.core() {
-            core.handle_about_to_wait(event_loop);
+            core.handle_window_system_event(WindowSystemEvent::Idle);
         }
 
         #[cfg(native)]
@@ -438,34 +461,40 @@ impl ApplicationHandler<ApplicationInitEvent> for Application {
 
     fn window_event(
         &mut self,
-        event_loop: &moyu_core::winit::event_loop::ActiveEventLoop,
-        window_id: moyu_core::winit::window::WindowId,
-        event: moyu_core::winit::event::WindowEvent,
+        _event_loop: &ActiveEventLoop,
+        window_id: winit::window::WindowId,
+        event: WindowEvent,
     ) {
         if !self.initialized {
             return;
         }
 
-        if let Some(core) = self.core() {
-            core.handle_window_event(&event, &window_id, event_loop);
+        if window_id != self.window_system().window().id() {
+            return;
+        }
 
-            #[cfg(native)]
-            match &event {
-                WindowEvent::RedrawRequested => {
-                    let size = core.window().inner_size();
-                    if size.width == 0 || size.height == 0 {
-                        self.next_redraw_at = None;
-                    } else {
-                        let now = Instant::now();
-                        self.schedule_next_redraw(now);
-                    }
+        if let Some(system_event) = self.window_system().convert_window_event(&event)
+            && let Some(core) = self.core()
+        {
+            core.handle_window_system_event(system_event);
+        }
+
+        #[cfg(native)]
+        match &event {
+            WindowEvent::RedrawRequested => {
+                let metrics = self.window_system().surface_metrics();
+
+                if metrics.physical_width == 0 || metrics.physical_height == 0 {
+                    self.next_redraw_at = None;
+                } else {
+                    let now = Instant::now();
+                    self.schedule_next_redraw(now);
                 }
-                WindowEvent::Moved(_) | WindowEvent::ScaleFactorChanged { .. } => {
-                    let core = core.clone();
-                    self.refresh_frame_interval(core.window());
-                }
-                _ => {}
             }
+            WindowEvent::Moved(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                self.refresh_frame_interval();
+            }
+            _ => {}
         }
     }
 }

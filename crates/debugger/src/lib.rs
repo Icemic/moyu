@@ -458,6 +458,7 @@ async fn key_answer(
             alt: request.alt_key.unwrap_or(false),
             meta: request.meta_key.unwrap_or(false),
         },
+        text: None,
     };
 
     if let Err(reason) = run_on_engine_thread(move |core| core.simulate_key(input)).await {

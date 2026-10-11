@@ -1,12 +1,12 @@
 use anyhow::Result;
 use moyu_core::base::Rect;
+use moyu_core::core::{ImeEvent, KeyInput};
+use moyu_core::events::KeyboardEventKind;
 use moyu_core::nodes::NodeBase;
 use moyu_core::traits::{Command, EditableTarget, Focusable, Node, NodeBaseTrait, NodeEventSource};
 use moyu_core::utils::convert::{JSValue, from_js, to_js};
 use moyu_core::utils::layout::measure_children_layout_size;
 use moyu_core::utils::patch::Patch;
-use moyu_core::winit::event::{Ime, KeyEvent};
-use moyu_core::winit::keyboard::{Key, ModifiersState, NamedKey};
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -339,35 +339,32 @@ impl EditableTarget for Editable {
         });
     }
 
-    fn handle_keyboard_input(&mut self, event: &KeyEvent, modifiers: ModifiersState) {
-        if !event.state.is_pressed() || self.disabled || self.read_only {
+    fn handle_keyboard_input(&mut self, input: &KeyInput) {
+        if input.kind != KeyboardEventKind::KeyDown || self.disabled || self.read_only {
             return;
         }
 
         self.settle_pending_clear();
-        match event.logical_key.as_ref() {
-            Key::Named(NamedKey::Backspace) => self.delete_backward(),
-            Key::Named(NamedKey::Space)
-                if !modifiers.super_key() && (!modifiers.control_key() || modifiers.alt_key()) =>
-            {
-                self.insert_text(" ");
-            }
-            Key::Character(_)
-                if !modifiers.super_key() && (!modifiers.control_key() || modifiers.alt_key()) =>
-            {
-                if let Some(text) = event.text.as_deref() {
-                    self.insert_text(text);
-                }
-            }
-            _ => {}
+
+        if input.key == "Backspace" {
+            self.delete_backward();
+            return;
+        }
+
+        if input.modifiers.meta || (input.modifiers.ctrl && !input.modifiers.alt) {
+            return;
+        }
+
+        if let Some(text) = input.text.as_deref() {
+            self.insert_text(text);
         }
     }
 
-    fn handle_ime(&mut self, event: &Ime) {
+    fn handle_ime(&mut self, event: &ImeEvent) {
         match event {
-            Ime::Preedit(text, _) => self.update_preedit(text),
-            Ime::Commit(text) => self.commit_composition(text),
-            Ime::Enabled | Ime::Disabled => {}
+            ImeEvent::Preedit(text) => self.update_preedit(text),
+            ImeEvent::Commit(text) => self.commit_composition(text),
+            ImeEvent::Enabled | ImeEvent::Disabled => {}
         }
     }
 

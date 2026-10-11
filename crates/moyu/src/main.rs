@@ -7,6 +7,7 @@ mod entry;
 #[cfg(native)]
 mod mimalloc;
 mod splash;
+mod winit_window_system;
 
 #[cfg(desktop)]
 #[tokio::main]
@@ -52,7 +53,7 @@ async fn main() {
     #[cfg(debug_assertions)]
     log::debug!("Environtment: {:#?}", moyu_pal::config::get_engine_config());
 
-    let event_loop = moyu_core::surface::create_eventloop();
+    let event_loop = winit_window_system::create_eventloop();
 
     entry::main_entry(event_loop, steam_plugin).await;
 }

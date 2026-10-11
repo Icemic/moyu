@@ -5,7 +5,7 @@
 - **作者**：末语项目组
 - **适用范围**：`moyu`、`moyu_debugger`、`moyu_core`、`moyu_ops`、`moyu_pal`、`moyu_runtime`、`packages/cli`
 - **相关实现**：`crates/debugger/`（引擎侧调试桥：协议、状态快照、节点视图、属性记录、日志缓冲、Logger 包装、截图与两个传输）、`crates/platform/src/logger.rs`（平台日志后端与安装）、`crates/core/src/core/render.rs`（截图回读）、`crates/ops/src/node.rs`（属性转发点）、`packages/cli/src/utils/debug-session.ts`、`packages/cli/src/commands/debug.ts`、`packages/cli/src/commands/mcp.ts`、`packages/cli/src/mcp/`
-- **相关 RFC**：[宿主平台抽象](./2026-09-06-host-platform-abstraction.md)、[Moyu JSON Schema 扩展约定](./2026-07-28-json-schema-exchange-protocol.md)
+- **相关 RFC**：[窗口系统抽象](./2026-09-06-window-system-abstraction.md)、[Moyu JSON Schema 扩展约定](./2026-07-28-json-schema-exchange-protocol.md)
 
 ## 摘要
 
@@ -645,7 +645,7 @@ MCP 的价值在于：工具参数是结构化 JSON（避免命令行转义问�
 
 ## 参考
 
-- [RFC：宿主平台抽象](./2026-09-06-host-platform-abstraction.md)
+- [RFC：窗口系统抽象](./2026-09-06-window-system-abstraction.md)
 - [RFC：Moyu JSON Schema 扩展约定](./2026-07-28-json-schema-exchange-protocol.md)
 - 客户端实现：`packages/cli/src/utils/debug-session.ts`（会话）、`packages/cli/src/commands/debug.ts`（子命令）、`packages/cli/src/mcp/`（MCP 协议与工具）
 - 用户文档：`packages/cli/README.md`

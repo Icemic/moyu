@@ -12,12 +12,11 @@ use moyu_pal::time::Instant;
 use moyu_resource::ResourceManager;
 use wgpu::util::{DeviceExt, StagingBelt};
 use wgpu::{COPY_BYTES_PER_ROW_ALIGNMENT, Device, Instance, Queue, Surface, SurfaceConfiguration};
-use winit::window::Window;
 
 use crate::base::*;
-use crate::core::NodeMap;
 use crate::core::render_command::RenderCommand;
 use crate::core::render_state::RenderState;
+use crate::core::{NodeMap, WindowSystem};
 use crate::surface::create_wgpu_surface;
 use crate::traits::*;
 use crate::utils::coordinates::{
@@ -28,7 +27,7 @@ use crate::utils::fps_meter::FpsMeter;
 use crate::utils::walk::{walk_nodes_enter_leave, walk_nodes_enter_leave_logical};
 
 pub struct Graphics {
-    pub(crate) window: Arc<Window>,
+    pub(crate) window_system: Arc<dyn WindowSystem>,
     pub(crate) instance: Instance,
     pub(crate) surface: Mutex<Option<Surface<'static>>>,
     pub(crate) device: Device,
@@ -81,15 +80,15 @@ unsafe impl Sync for Graphics {}
 
 impl Graphics {
     pub async fn init(
-        window: &Arc<Window>,
+        window_system: Arc<dyn WindowSystem>,
         surface_size: &SurfaceSize,
         stage_size: &SurfaceSize,
         node_map: NodeMap,
     ) -> Self {
-        let physical_size = surface_size.physical_size().into();
+        let physical_size = surface_size.physical_size();
 
         let (instance, surface, device, queue, config) =
-            create_wgpu_surface(window, &physical_size).await;
+            create_wgpu_surface(&window_system, physical_size).await;
         let sample_count = if get_engine_config().enable_msaa {
             4
         } else {
@@ -148,7 +147,7 @@ impl Graphics {
         let filter_registry = RefCell::new(filter_registry);
 
         Self {
-            window: window.clone(),
+            window_system,
             instance,
             surface: Mutex::new(Some(surface)),
             device,
@@ -230,10 +229,10 @@ impl Graphics {
 
     /// Recreate the platform surface from the current window (render-thread side).
     fn recreate_surface(&self) {
-        let surface = match self.instance.create_surface(self.window.clone()) {
+        let surface = match self.window_system.create_surface(&self.instance) {
             Ok(s) => s,
-            Err(err) => {
-                log::error!("Failed to recreate surface: {}", err);
+            Err(error) => {
+                log::error!("Failed to recreate surface: {}", error);
                 return;
             }
         };
@@ -386,8 +385,13 @@ impl Graphics {
         if moyu_pal::config::get_engine_config().show_fps {
             if self.fps_meter.tick() {
                 let fps = self.fps_meter.get_fps();
-                self.window
-                    .set_title(&format!("fps(rendering): {:.1}", fps));
+
+                if let Err(error) = self
+                    .window_system
+                    .set_title(&format!("fps(rendering): {:.1}", fps))
+                {
+                    log::debug!("failed to update the FPS title: {error}");
+                }
             }
         }
 
@@ -406,7 +410,7 @@ impl Graphics {
 
         let timestamp = self.instant.elapsed().as_secs_f64();
 
-        let scale_factor = self.window.scale_factor() as f32;
+        let scale_factor = self.window_system.surface_metrics().scale_factor as f32;
         let surface_logical_size = (
             surface_width as f32 / scale_factor,
             surface_height as f32 / scale_factor,
@@ -875,7 +879,7 @@ impl Graphics {
                     }
 
                     // TODO: in winit, it is an empty function now, keep an eye on it.
-                    self.window.pre_present_notify();
+                    self.window_system.pre_present_notify();
 
                     queue.submit(
                         std::iter::once(belt_encoder.take().unwrap().finish())
@@ -894,7 +898,7 @@ impl Graphics {
                     self.texture_pool.borrow_mut().cleanup(timestamp);
 
                     #[cfg(web)]
-                    self.window.request_redraw();
+                    self.window_system.request_redraw();
                 }
                 RenderCommand::WriteBuffer {
                     buffer,

@@ -1,12 +1,8 @@
 use std::sync::Arc;
 
 use moyu_pal::sync::{Mutex, RwLock};
-use winit::dpi::{PhysicalPosition, PhysicalSize};
-use winit::event::{Ime, KeyEvent};
-use winit::keyboard::ModifiersState;
-use winit::window::Window;
 
-use super::{NodeLock, NodeMap};
+use super::{ImeEvent, KeyInput, NodeLock, NodeMap, WindowSystem};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ImeState {
@@ -21,7 +17,7 @@ struct EditableManagerState {
 }
 
 pub struct EditableManager {
-    window: Arc<Window>,
+    window_system: Arc<dyn WindowSystem>,
     node_map: NodeMap,
     stage_transform: Arc<RwLock<(f32, f32, f32)>>,
     state: Mutex<EditableManagerState>,
@@ -29,12 +25,12 @@ pub struct EditableManager {
 
 impl EditableManager {
     pub(super) fn new(
-        window: Arc<Window>,
+        window_system: Arc<dyn WindowSystem>,
         node_map: NodeMap,
         stage_transform: Arc<RwLock<(f32, f32, f32)>>,
     ) -> Self {
         Self {
-            window,
+            window_system,
             node_map,
             stage_transform,
             state: Mutex::new(EditableManagerState {
@@ -90,7 +86,7 @@ impl EditableManager {
         }
     }
 
-    pub(super) fn handle_keyboard_input(&self, event: &KeyEvent, modifiers: ModifiersState) {
+    pub(super) fn handle_keyboard_input(&self, input: &KeyInput) {
         self.revalidate_active_target();
 
         let Some(node_id) = self.active_target() else {
@@ -101,23 +97,23 @@ impl EditableManager {
         };
         let mut node = node.write();
         if let Some(editable) = node.as_editable_target_mut() {
-            editable.handle_keyboard_input(event, modifiers);
+            editable.handle_keyboard_input(input);
         }
     }
 
     /// Routes composition data only to the editable owned by the enabled IME state.
     ///
-    /// `Ime::Enabled` is a platform lifecycle notification, not an acknowledgement
+    /// `ImeEvent::Enabled` is a platform lifecycle notification, not an acknowledgement
     /// for `set_ime_allowed`, so it is used only to refresh the candidate position.
-    pub(super) fn handle_ime(&self, event: &Ime) {
+    pub(super) fn handle_ime(&self, event: &ImeEvent) {
         let Some(target_id) = self.enabled_target() else {
             return;
         };
 
-        if matches!(event, Ime::Enabled) {
+        if matches!(event, ImeEvent::Enabled) {
             self.update_ime_cursor_area(target_id);
         }
-        if !matches!(event, Ime::Preedit(_, _) | Ime::Commit(_)) {
+        if !matches!(event, ImeEvent::Preedit(_) | ImeEvent::Commit(_)) {
             return;
         }
         let Some(node) = self.node_map.get(&target_id).map(|node| node.clone()) else {
@@ -216,7 +212,9 @@ impl EditableManager {
         };
 
         if let Some(allowed) = ime_allowed {
-            self.window.set_ime_allowed(allowed);
+            if let Err(error) = self.window_system.set_ime_allowed(allowed) {
+                log::warn!("failed to update the input method state: {error}");
+            }
         }
     }
 
@@ -241,7 +239,7 @@ impl EditableManager {
     }
 
     fn desired_ime_target(&self) -> Option<u32> {
-        if !self.window.has_focus() {
+        if !self.window_system.has_focus() {
             return None;
         }
         let target_id = self.active_target()?;
@@ -272,7 +270,7 @@ impl EditableManager {
         };
 
         let (scale, translate_x, translate_y) = *self.stage_transform.read();
-        let scale_factor = self.window.scale_factor() as f32;
+        let scale_factor = self.window_system.surface_metrics().scale_factor as f32;
         let x = ((stage_rect.min_x() * scale + translate_x) * scale_factor).round() as i32;
         let y = ((stage_rect.min_y() * scale + translate_y) * scale_factor).round() as i32;
         let width = (stage_rect.width() * scale * scale_factor).max(0.0).round() as u32;
@@ -280,10 +278,9 @@ impl EditableManager {
             .max(0.0)
             .round() as u32;
 
-        self.window.set_ime_cursor_area(
-            PhysicalPosition::new(x, y),
-            PhysicalSize::new(width, height),
-        );
+        if let Err(error) = self.window_system.set_ime_cursor_area(x, y, width, height) {
+            log::debug!("failed to update the IME cursor area: {error}");
+        }
     }
 }
 

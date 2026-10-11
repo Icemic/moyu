@@ -1,11 +1,10 @@
 //! The engine's own input vocabulary and the synthetic input entry points.
 //!
-//! Window events arrive as winit types; these types name the same concepts in engine
-//! terms, so that input can be described and processed without depending on a windowing
-//! backend. The window event paths in `pointer_events` and `keyboard_events` map onto
-//! them at the edge and share their dispatch helpers with the synthetic entry points
-//! below, which the debug bridge exposes over `engine:mouse` / `engine:touch` /
-//! `engine:key`.
+//! These types name input in engine terms, so that input can be described and
+//! processed without depending on a windowing backend; the window system converts
+//! platform events into them before they enter the core. The dispatch helpers here are
+//! shared with the synthetic entry points, which the debug bridge exposes over
+//! `engine:mouse` / `engine:touch` / `engine:key`.
 //!
 //! Synthetic input drives that same pipeline instead of faking events: it writes pointer
 //! state, runs hit testing and dispatches the engine events a window event would, so an
@@ -13,10 +12,9 @@
 
 use std::sync::Arc;
 
-use winit::keyboard::ModifiersState;
-
-use crate::events::{KeyboardEventKind, KeyboardLocation, WheelEventDeltaMode};
+use crate::events::{KeyboardEvent, KeyboardEventKind, KeyboardLocation, WheelEventDeltaMode};
 use crate::state::{DeviceType, MOUSE_IDENTIFIER, PointerLocation};
+use crate::utils::dispatch_event::dispatch_event;
 
 use super::Core;
 
@@ -104,7 +102,7 @@ pub enum PointerAction {
 }
 
 /// Modifier keys held while a keyboard event is sent.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct KeyboardModifiers {
     pub ctrl: bool,
     pub shift: bool,
@@ -121,6 +119,9 @@ pub struct KeyInput {
     pub location: KeyboardLocation,
     pub repeat: bool,
     pub modifiers: KeyboardModifiers,
+    /// Text the key produced, when the platform reports one. Used by editable input;
+    /// the JavaScript keyboard event does not carry this field.
+    pub text: Option<String>,
 }
 
 /// What a synthetic pointer action reached.
@@ -319,22 +320,9 @@ impl Core {
     /// modifier state, so a synthetic mouse event right after carries them the same
     /// way it would after a real key press.
     pub fn simulate_key(&self, input: KeyInput) {
-        let mut modifiers = ModifiersState::empty();
-        if input.modifiers.ctrl {
-            modifiers |= ModifiersState::CONTROL;
-        }
-        if input.modifiers.shift {
-            modifiers |= ModifiersState::SHIFT;
-        }
-        if input.modifiers.alt {
-            modifiers |= ModifiersState::ALT;
-        }
-        if input.modifiers.meta {
-            modifiers |= ModifiersState::SUPER;
-        }
-        self.modifiers_state.store(Arc::new(modifiers));
+        self.modifiers_state.store(Arc::new(input.modifiers));
 
-        super::keyboard_events::dispatch_keyboard_event(input);
+        dispatch_keyboard_event(input);
     }
 
     /// Describe what a pointer action ended up targeting.
@@ -360,4 +348,26 @@ impl Core {
             dispatched,
         }
     }
+}
+
+/// Dispatch one keyboard event to the engine.
+///
+/// Shared by the window system event path and synthetic input.
+pub(super) fn dispatch_keyboard_event(input: KeyInput) {
+    dispatch_event(KeyboardEvent {
+        kind: input.kind,
+        target_id: 0,
+        bubble_target_ids: vec![],
+        key: input.key,
+        code: input.code,
+        location: input.location,
+        repeat: input.repeat,
+        ctrl_key: input.modifiers.ctrl,
+        shift_key: input.modifiers.shift,
+        alt_key: input.modifiers.alt,
+        meta_key: input.modifiers.meta,
+        // is_composing should always be false since KeyboardInput event will not
+        // be fired when the user is composing text. (IME event will be fired instead)
+        is_composing: false,
+    });
 }

@@ -14,8 +14,8 @@ pub trait Plugin: PluginBaseTrait + Send + Sync {
     fn plugin_name(&self) -> &'static str;
 
     /// Called on the main thread inside the event loop. This is where you can do anything polling related.
-    /// When `vsync` is true, it means it is called in [winit::event::WindowEvent::RedrawRequested].
-    /// When `vsync` is false, it means it is called in [winit::event::Event::AboutToWait].
+    /// When `vsync` is true, it runs as part of a renderable frame (`WindowSystemEvent::Frame`).
+    /// When `vsync` is false, it runs on an idle event loop turn (`WindowSystemEvent::Idle`).
     #[allow(unused_variables)]
     fn update(&mut self, vsync: bool) {
         // defaults to do nothing
