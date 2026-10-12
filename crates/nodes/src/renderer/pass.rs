@@ -78,7 +78,7 @@ fn wait_for_future<T>(device: &Device, future: impl Future<Output = T>) -> T {
 }
 
 impl ShaderPass {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
+    pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("Shader Bind Group Layout"),
             entries: &[
@@ -192,14 +192,14 @@ impl ShaderPass {
             mip_level_count: 1,
             sample_count: 1,
             dimension: TextureDimension::D2,
-            format: config.format,
+            format,
             usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
             view_formats: &[],
         });
         let dummy_view = dummy_texture.create_view(&TextureViewDescriptor::default());
 
         Self {
-            format: config.format,
+            format,
             sample_count,
             bind_group_layout,
             sampler,

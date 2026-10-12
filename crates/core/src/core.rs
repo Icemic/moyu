@@ -6,6 +6,7 @@ mod input;
 mod pointer_events;
 mod render;
 pub mod render_command;
+pub(crate) mod render_output;
 mod render_state;
 pub mod texture_pool;
 mod window_system;
@@ -32,6 +33,7 @@ pub use self::input::{
     InputError, KeyInput, KeyboardModifiers, PointerAction, PointerButton, PointerInputReport,
     TouchPhase,
 };
+pub use self::render_output::{FrameOutput, RenderTarget};
 pub use self::window_system::{
     ImeEvent, SurfaceMetrics, WindowSystem, WindowSystemError, WindowSystemEvent,
     WindowSystemResult,

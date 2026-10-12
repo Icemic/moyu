@@ -36,7 +36,7 @@ pub struct TextRenderer {
 }
 
 impl TextRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
+    pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
         let size = wgpu::Extent3d {
             width: TEXTURE_SIZE,
             height: TEXTURE_SIZE,
@@ -128,7 +128,7 @@ impl TextRenderer {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
-                    format: config.format,
+                    format,
                     blend: Some(BlendState {
                         color: BlendComponent {
                             src_factor: BlendFactor::SrcAlpha,

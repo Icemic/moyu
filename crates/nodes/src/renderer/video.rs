@@ -26,7 +26,7 @@ pub struct VideoRenderer {
 }
 
 impl VideoRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
+    pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
         // YUV bind group layout: Y texture, U texture, V texture, sampler
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
@@ -107,7 +107,7 @@ impl VideoRenderer {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
-                    format: config.format,
+                    format,
                     blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
                 })],

@@ -11,13 +11,14 @@ use moyu_pal::sync::Mutex;
 use moyu_pal::time::Instant;
 use moyu_resource::ResourceManager;
 use wgpu::util::{DeviceExt, StagingBelt};
-use wgpu::{COPY_BYTES_PER_ROW_ALIGNMENT, Device, Instance, Queue, Surface, SurfaceConfiguration};
+use wgpu::{COPY_BYTES_PER_ROW_ALIGNMENT, Device, Instance, Queue};
 
 use crate::base::*;
 use crate::core::render_command::RenderCommand;
+use crate::core::render_output::FrameOutput;
 use crate::core::render_state::RenderState;
 use crate::core::{NodeMap, WindowSystem};
-use crate::surface::create_wgpu_surface;
+use crate::surface::create_render_context;
 use crate::traits::*;
 use crate::utils::coordinates::{
     calculate_surface_physical_coordinates,
@@ -29,10 +30,9 @@ use crate::utils::walk::{walk_nodes_enter_leave, walk_nodes_enter_leave_logical}
 pub struct Graphics {
     pub(crate) window_system: Arc<dyn WindowSystem>,
     pub(crate) instance: Instance,
-    pub(crate) surface: Mutex<Option<Surface<'static>>>,
+    pub(crate) output: Box<dyn FrameOutput>,
     pub(crate) device: Device,
     pub(crate) queue: Queue,
-    pub(crate) config: Arc<Mutex<SurfaceConfiguration>>,
     sample_count: u32,
     msaa_view: Mutex<Option<wgpu::TextureView>>,
 
@@ -87,8 +87,8 @@ impl Graphics {
     ) -> Self {
         let physical_size = surface_size.physical_size();
 
-        let (instance, surface, device, queue, config) =
-            create_wgpu_surface(&window_system, physical_size).await;
+        let (instance, device, queue, output) =
+            create_render_context(&window_system, physical_size).await;
         let sample_count = if get_engine_config().enable_msaa {
             4
         } else {
@@ -135,24 +135,23 @@ impl Graphics {
         // 创建 Filter Registry 并注册滤镜
         let mut filter_registry = crate::core::filter_registry::FilterRegistry::new();
         filter_registry.register(Box::new(
-            crate::nodes::filters::BlurPerfectFilterRenderer::new(&device, config.format),
+            crate::nodes::filters::BlurPerfectFilterRenderer::new(&device, output.format()),
         ));
         filter_registry.register(Box::new(crate::nodes::filters::BlurFilterRenderer::new(
             &device,
-            config.format,
+            output.format(),
         )));
         filter_registry.register(Box::new(
-            crate::nodes::filters::ColorAdjustFilterRenderer::new(&device, config.format),
+            crate::nodes::filters::ColorAdjustFilterRenderer::new(&device, output.format()),
         ));
         let filter_registry = RefCell::new(filter_registry);
 
         Self {
             window_system,
             instance,
-            surface: Mutex::new(Some(surface)),
+            output,
             device,
             queue,
-            config: Arc::new(Mutex::new(config)),
             sample_count,
             msaa_view: Mutex::new(None),
             resource_manager: Arc::new(resource_manager),
@@ -216,9 +215,7 @@ impl Graphics {
     }
 
     fn release_surface_now(&self) {
-        let surface = self.surface.lock().take();
-        drop(surface);
-        self.instance.poll_all(true);
+        self.output.release();
     }
 
     /// Queue a surface recreation on the render thread.
@@ -229,23 +226,12 @@ impl Graphics {
 
     /// Recreate the platform surface from the current window (render-thread side).
     fn recreate_surface(&self) {
-        let surface = match self.window_system.create_surface(&self.instance) {
-            Ok(s) => s,
-            Err(error) => {
-                log::error!("Failed to recreate surface: {}", error);
-                return;
-            }
-        };
-
-        let config = self.config.lock().clone();
-        surface.configure(&self.device, &config);
-
-        self.surface.lock().replace(surface);
-        log::info!("Surface recreated on render thread.");
+        self.output.recreate(&self.device);
     }
 
-    pub fn config(&self) -> &Arc<Mutex<SurfaceConfiguration>> {
-        &self.config
+    /// Texture format the frame output renders with.
+    pub fn output_format(&self) -> wgpu::TextureFormat {
+        self.output.format()
     }
 
     pub fn sample_count(&self) -> u32 {
@@ -257,10 +243,7 @@ impl Graphics {
     }
 
     fn surface_can_copy_src(&self) -> bool {
-        self.config
-            .lock()
-            .usage
-            .contains(wgpu::TextureUsages::COPY_SRC)
+        self.output.supports_copy_src()
     }
 
     /// Request a screenshot to be taken on the next render
@@ -321,7 +304,7 @@ impl Graphics {
                         width,
                         height,
                         bytes_per_row,
-                        self.config.lock().format,
+                        self.output.format(),
                     ));
                 }
                 Ok(Err(err)) => {
@@ -344,10 +327,7 @@ impl Graphics {
     fn refresh(&self) {
         self.instance.poll_all(true);
 
-        let config = self.config.lock().clone();
-        if let Some(surface) = self.surface.lock().as_ref() {
-            surface.configure(&self.device, &config);
-        }
+        self.output.refresh(&self.device);
 
         self.msaa_view.lock().take();
 
@@ -355,11 +335,8 @@ impl Graphics {
     }
 
     pub fn reconfigure_surface(&self, surface_size: SurfaceSize, stage_size: SurfaceSize) {
-        let mut config = self.config.lock();
-
         let (width, height) = surface_size.physical_size();
-        config.width = width;
-        config.height = height;
+        self.output.set_size(width, height);
 
         let stage_size = stage_size.logical_size_f32();
 
@@ -402,11 +379,7 @@ impl Graphics {
         let device = self.device.clone();
         let queue = self.queue.clone();
 
-        let config = self.config.lock();
-        let surface_width = config.width;
-        let surface_height = config.height;
-
-        drop(config);
+        let (surface_width, surface_height) = self.output.size();
 
         let timestamp = self.instant.elapsed().as_secs_f64();
 
@@ -584,7 +557,7 @@ impl Graphics {
 
         let mut belt_encoder = None;
 
-        let mut output = None;
+        let mut frame_target = None;
 
         // TODO: more strict size handling
         let mut surface_logical_size = (1., 1.);
@@ -660,7 +633,7 @@ impl Graphics {
                     // blocking the main thread's Suspended handler indefinitely.
                     RenderCommand::ReleaseSurface { done } => {
                         drop(current_pass.take());
-                        output.take();
+                        frame_target.take();
                         encoder.take();
                         belt_encoder.take();
                         state.clear_frame_resources();
@@ -685,28 +658,8 @@ impl Graphics {
                     stage_logical_size: stage,
                     scale_factor: scale,
                 } => {
-                    let o = match self.surface.lock().as_ref() {
-                        Some(surface) => match surface.get_current_texture() {
-                            wgpu::CurrentSurfaceTexture::Success(frame) => frame,
-                            wgpu::CurrentSurfaceTexture::Lost
-                            | wgpu::CurrentSurfaceTexture::Outdated
-                            | wgpu::CurrentSurfaceTexture::Suboptimal(_) => {
-                                log::warn!("surface needs reconfiguration.");
-                                self.refresh();
-                                need_skip_current_frame = true;
-                                continue;
-                            }
-                            wgpu::CurrentSurfaceTexture::Timeout
-                            | wgpu::CurrentSurfaceTexture::Occluded => {
-                                need_skip_current_frame = true;
-                                continue;
-                            }
-                            wgpu::CurrentSurfaceTexture::Validation => {
-                                log::error!("surface validation error, frame skipped.");
-                                need_skip_current_frame = true;
-                                continue;
-                            }
-                        },
+                    let target = match self.output.acquire(&self.device) {
+                        Some(target) => target,
                         None => {
                             need_skip_current_frame = true;
                             continue;
@@ -725,9 +678,7 @@ impl Graphics {
                         },
                     ));
 
-                    let v = o
-                        .texture
-                        .create_view(&wgpu::TextureViewDescriptor::default());
+                    let v = target.view.clone();
 
                     // Check if the actual texture size matches the expected size derived from update logic
                     // If mismatch, it means the window has been resized but the update thread hasn't caught up,
@@ -736,22 +687,20 @@ impl Graphics {
                     let expected_width = (surface.0 * scale) as u32;
                     let expected_height = (surface.1 * scale) as u32;
 
-                    if v.texture().width() != expected_width
-                        || v.texture().height() != expected_height
-                    {
+                    if target.size != (expected_width, expected_height) {
                         log::warn!(
                             "Surface size mismatch, waiting for reconfiguration: \
                             expected=({}, {}), actual=({}, {})",
                             expected_width,
                             expected_height,
-                            v.texture().width(),
-                            v.texture().height()
+                            target.size.0,
+                            target.size.1
                         );
                         need_skip_current_frame = true;
                         continue;
                     }
 
-                    output = Some(o);
+                    frame_target = Some(target);
                     surface_logical_size = surface;
                     stage_logical_size = stage;
                     scale_factor = scale;
@@ -850,7 +799,7 @@ impl Graphics {
                         // Copy the texture to the buffer
                         encoder.as_mut().unwrap().copy_texture_to_buffer(
                             wgpu::TexelCopyTextureInfo {
-                                texture: &output.as_ref().unwrap().texture,
+                                texture: &frame_target.as_ref().unwrap().texture,
                                 mip_level: 0,
                                 origin: wgpu::Origin3d {
                                     x: origin_x,
@@ -893,7 +842,7 @@ impl Graphics {
                     staging_belt.recall();
 
                     state.clear_frame_resources();
-                    queue.present(output.take().unwrap());
+                    frame_target.take().unwrap().present(&queue);
 
                     self.texture_pool.borrow_mut().cleanup(timestamp);
 
@@ -1149,7 +1098,7 @@ impl Graphics {
                     // 2. 复制 output texture 的指定区域到临时纹理
                     encoder.as_mut().unwrap().copy_texture_to_texture(
                         wgpu::TexelCopyTextureInfo {
-                            texture: &output.as_ref().unwrap().texture,
+                            texture: &frame_target.as_ref().unwrap().texture,
                             mip_level: 0,
                             origin: wgpu::Origin3d {
                                 x: region_x,
@@ -1218,7 +1167,7 @@ impl Graphics {
                 }
                 RenderCommand::ReleaseSurface { done } => {
                     drop(current_pass.take());
-                    output.take();
+                    frame_target.take();
                     encoder.take();
                     belt_encoder.take();
                     state.clear_frame_resources();

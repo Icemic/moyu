@@ -18,7 +18,7 @@ pub struct AnimationRenderer {
 }
 
 impl AnimationRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
+    pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
                 BindGroupLayoutEntry {
@@ -68,7 +68,7 @@ impl AnimationRenderer {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
-                    format: config.format,
+                    format,
                     blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
                 })],

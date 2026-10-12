@@ -8,7 +8,7 @@ use crate::traits::{Node, RenderCommandSender, Renderer, RendererUpdatePayload};
 pub struct VoidRenderer {}
 
 impl VoidRenderer {
-    pub fn new(_: &Device, _: &SurfaceConfiguration) -> Self {
+    pub fn new(_: &Device, _: TextureFormat) -> Self {
         Self {}
     }
 }

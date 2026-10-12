@@ -24,7 +24,7 @@ pub struct BackdropRenderer {
 }
 
 impl BackdropRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
+    pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Backdrop Shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/backdrop.wgsl").into()),
@@ -87,7 +87,7 @@ impl BackdropRenderer {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
-                    format: config.format,
+                    format,
                     blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
                 })],
@@ -118,7 +118,7 @@ impl BackdropRenderer {
         });
 
         Self {
-            format: config.format,
+            format,
             pipeline,
             bind_group_layout,
             sampler,

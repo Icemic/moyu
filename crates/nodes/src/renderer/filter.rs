@@ -27,7 +27,7 @@ pub struct OffscreenPassRenderer {
 }
 
 impl OffscreenPassRenderer {
-    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
+    pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
         let shader = device.create_shader_module(ShaderModuleDescriptor {
             label: Some("Backdrop Shader"),
             source: ShaderSource::Wgsl(include_str!("shaders/filter.wgsl").into()),
@@ -90,7 +90,7 @@ impl OffscreenPassRenderer {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(ColorTargetState {
-                    format: config.format,
+                    format,
                     blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
                 })],
@@ -121,7 +121,7 @@ impl OffscreenPassRenderer {
         });
 
         Self {
-            format: config.format,
+            format,
             sample_count,
             pipeline,
             bind_group_layout,

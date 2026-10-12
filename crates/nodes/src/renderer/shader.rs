@@ -139,8 +139,8 @@ impl ShaderRenderer {
         needs_recreation
     }
 
-    pub fn new(device: &Device, config: &SurfaceConfiguration, sample_count: u32) -> Self {
-        let pass = ShaderPass::new(device, config, sample_count);
+    pub fn new(device: &Device, format: TextureFormat, sample_count: u32) -> Self {
+        let pass = ShaderPass::new(device, format, sample_count);
 
         let present_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -215,7 +215,7 @@ impl ShaderRenderer {
                     module: &present_fragment_module,
                     entry_point: Some("fs_main"),
                     targets: &[Some(ColorTargetState {
-                        format: config.format,
+                        format,
                         blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                         write_mask: ColorWrites::ALL,
                     })],

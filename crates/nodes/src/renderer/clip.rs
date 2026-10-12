@@ -8,7 +8,7 @@ use crate::nodes::Clip;
 pub struct ClipRenderer;
 
 impl ClipRenderer {
-    pub fn new(_device: &Device, _config: &SurfaceConfiguration) -> Self {
+    pub fn new(_device: &Device, _format: TextureFormat) -> Self {
         Self {}
     }
 }
