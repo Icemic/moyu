@@ -6,7 +6,6 @@
 mod entry;
 #[cfg(native)]
 mod mimalloc;
-mod splash;
 mod winit_window_system;
 
 #[cfg(desktop)]

@@ -1,3 +1,9 @@
+//! The splash screen shown while the project script is starting up.
+//!
+//! It draws the engine logo over a white background and fades both in, then fades the
+//! logo out and removes both nodes. The caller decides whether it runs at all; a
+//! project that skips the splash goes straight to the `ready` event.
+
 use std::sync::Arc;
 
 use moyu_core::traits::Node;

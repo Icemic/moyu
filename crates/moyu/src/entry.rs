@@ -1,32 +1,16 @@
 use std::sync::Arc;
 
-use moyu_audio::AudioManager;
+use moyu_app::ScriptRuntime;
 use moyu_core::core::{Core, WindowSystem, WindowSystemEvent, get_core, set_core, try_get_core};
-use moyu_core::events::GameEvent;
-use moyu_core::nodes::Container;
-use moyu_core::plugins::SystemPlugin;
 use moyu_core::setup;
-use moyu_core::utils::dispatch_event::dispatch_event;
-#[cfg(any(desktop, web))]
-use moyu_gamepad::GamepadPlugin;
-use moyu_nodes::nodes::{
-    Animation, Backdrop, Clip, Editable, Filter, HBox, Shader, ShaderSlot, Sprite, Text, VBox, Video,
-};
-use moyu_nodes::renderer::{
-    AnimationRenderer, BackdropRenderer, ClipRenderer, OffscreenPassRenderer, ShaderRenderer,
-    ShaderSlotRenderer, SpriteRenderer, TextRenderer, VideoRenderer,
-};
-use moyu_pal::config::get_engine_config;
 use moyu_pal::platform;
 use moyu_pal::sync::Mutex;
 use moyu_pal::visible_hand::VisibleHand;
-#[cfg(native)]
-use moyu_runtime::QuickVM;
-use moyu_scenario::ScenarioPlugin;
 #[cfg(desktop)]
 use moyu_steam::SteamPlugin;
 #[cfg(native)]
 use std::time::{Duration, Instant};
+
 use winit::application::ApplicationHandler;
 use winit::event::StartCause;
 use winit::event::WindowEvent;
@@ -93,10 +77,7 @@ struct WinitApplication {
 
     initialized: bool,
 
-    #[cfg(native)]
-    _vm_handle: Arc<Mutex<Option<VisibleHand<Arc<QuickVM>>>>>,
-    #[cfg(web)]
-    _vm_handle: Arc<Mutex<Option<()>>>,
+    _vm_handle: Arc<Mutex<Option<ScriptRuntime>>>,
     _core_handle: Arc<Mutex<Option<VisibleHand<Arc<Core>>>>>,
 }
 
@@ -236,47 +217,7 @@ impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
             ApplicationInitEvent::Plugin => {
                 let core = get_core();
 
-                core.register_node_type::<Container>("container");
-                core.register_node_type::<VBox>("vbox");
-                core.register_node_type::<HBox>("hbox");
-                core.register_node_type::<Sprite>("sprite");
-                core.register_node_type::<Text>("text");
-                core.register_node_type::<Clip>("clip");
-                core.register_node_type::<Editable>("editable");
-                core.register_node_type::<Filter>("filter");
-                core.register_node_type::<Backdrop>("backdrop");
-                core.register_node_type::<Animation>("animation");
-                core.register_node_type::<Shader>("shader");
-                core.register_node_type::<ShaderSlot>("shader-slot");
-                core.register_node_type::<Video>("video");
-
-                if let Some(graphics) = core.graphics() {
-                    let device = graphics.device();
-                    let format = graphics.output_format();
-                    let sample_count = graphics.sample_count();
-
-                    let sprite_renderer = SpriteRenderer::new(device, format, sample_count);
-                    let text_renderer = TextRenderer::new(device, format, sample_count);
-                    let clip_renderer = ClipRenderer::new(device, format);
-                    let filter_renderer = OffscreenPassRenderer::new(device, format, sample_count);
-                    let backdrop_renderer = BackdropRenderer::new(device, format, sample_count);
-                    let animation_renderer = AnimationRenderer::new(device, format, sample_count);
-                    let shader_renderer = ShaderRenderer::new(device, format, sample_count);
-                    let shader_slot_renderer = ShaderSlotRenderer::new();
-                    let video_renderer = VideoRenderer::new(device, format, sample_count);
-
-                    text_renderer.init_huozi_from_env();
-
-                    graphics.register_renderer("sprite", Box::new(sprite_renderer));
-                    graphics.register_renderer("text", Box::new(text_renderer));
-                    graphics.register_renderer("clip", Box::new(clip_renderer));
-                    graphics.register_renderer("filter", Box::new(filter_renderer));
-                    graphics.register_renderer("backdrop", Box::new(backdrop_renderer));
-                    graphics.register_renderer("animation", Box::new(animation_renderer));
-                    graphics.register_renderer("shader", Box::new(shader_renderer));
-                    graphics.register_renderer("shader-slot", Box::new(shader_slot_renderer));
-                    graphics.register_renderer("video", Box::new(video_renderer));
-                }
+                moyu_app::register_builtins(core);
 
                 #[cfg(desktop)]
                 if let Some(plugin) = self.steam_plugin.take() {
@@ -286,31 +227,7 @@ impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
                 let core = get_core().clone();
                 let event_proxy = self.event_proxy.clone();
                 moyu_pal::task::spawn(async move {
-                    match AudioManager::new() {
-                        Ok(audio_manager) => {
-                            core.register_plugin("audio", Arc::new(Mutex::new(audio_manager)));
-                        }
-                        Err(err) => {
-                            log::error!("failed to create audio manager: {}", err);
-                        }
-                    }
-
-                    let system = SystemPlugin::new(core.clone());
-                    core.register_plugin("system", Arc::new(Mutex::new(system)));
-
-                    let mut scenario = ScenarioPlugin::new();
-                    if let Err(err) = scenario.init().await {
-                        log::error!("Failed to initialize scenario plugin: {}", err);
-                    }
-                    let scenario = Arc::new(Mutex::new(scenario));
-                    core.register_plugin("scenario", scenario.clone());
-
-                    #[cfg(any(desktop, web))]
-                    if get_engine_config().enable_gamepads {
-                        log::info!("enable gamepad plugin");
-                        let gamepad = GamepadPlugin::new();
-                        core.register_plugin("gamepad", Arc::new(Mutex::new(gamepad)));
-                    }
+                    moyu_app::register_plugins(&core).await;
                     event_proxy
                         .send_event(ApplicationInitEvent::LoadUserScript)
                         .unwrap();
@@ -320,7 +237,7 @@ impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
                 let core = get_core();
                 let event_proxy = self.event_proxy.clone();
                 // All plugins are ready, now we can spawn the runtime and execute scripts
-                let _vm_handle = match moyu_ops::spawn::spawn_runtime_with_core(core, move || {
+                let _vm_handle = match moyu_app::load_user_script(core, move || {
                     log::info!("User script loaded.");
                     event_proxy
                         .send_event(ApplicationInitEvent::ShowAndStart)
@@ -354,23 +271,7 @@ impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
                     self.schedule_next_redraw(now);
                 }
 
-                // The project script has run and the first frame has been asked for, so
-                // the runtime is ready for inspection. The splash screen is cosmetic and
-                // does not hold this back.
-                moyu_debugger::mark_ready();
-
-                // show splash screen
-                if !get_engine_config().skip_splash {
-                    let core = core.clone();
-                    moyu_pal::task::spawn(async move {
-                        crate::splash::show_splash_screen(core).await;
-                        // tell script that engine is ready to render
-                        dispatch_event(GameEvent::Ready);
-                    });
-                } else {
-                    // tell script that engine is ready to render
-                    dispatch_event(GameEvent::Ready);
-                }
+                moyu_app::announce_ready(core.clone());
 
                 self.initialized = true;
             }

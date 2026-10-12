@@ -2146,6 +2146,7 @@ dependencies = [
  "embed-resource",
  "log",
  "mimalloc",
+ "moyu_app",
  "moyu_audio",
  "moyu_core",
  "moyu_debugger",
@@ -2165,6 +2166,25 @@ dependencies = [
  "web-sys",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "moyu_app"
+version = "0.21.0"
+dependencies = [
+ "anyhow",
+ "cfg_aliases",
+ "log",
+ "moyu_audio",
+ "moyu_core",
+ "moyu_debugger",
+ "moyu_gamepad",
+ "moyu_nodes",
+ "moyu_ops",
+ "moyu_pal",
+ "moyu_resource",
+ "moyu_runtime",
+ "moyu_scenario",
 ]
 
 [[package]]

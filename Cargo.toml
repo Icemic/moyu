@@ -2,6 +2,7 @@
 default-members = ["crates/moyu"]
 members = [
   "crates/moyu",
+  "crates/app",
   "crates/core",
   "crates/resource",
   "crates/runtime",
@@ -61,6 +62,7 @@ opus = {version = "0.3", git = "https://github.com/Icemic/opus-rs", branch = "de
 steamworks = {git = "https://github.com/DeepSpaceMill/steamworks-rs", branch = "main"}
 
 moyu_audio = {path = "crates/audio"}
+moyu_app = {path = "crates/app"}
 moyu_core = {path = "crates/core"}
 moyu_debugger = {path = "crates/debugger"}
 moyu_gamepad = {path = "crates/gamepad"}
