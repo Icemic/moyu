@@ -242,7 +242,7 @@ pub async fn setup() {
     let mut args = pico_args::Arguments::from_env();
 
     #[cfg(desktop)]
-    let mut entry = {
+    let entry = {
         args.opt_value_from_str("--entry")
             .unwrap()
             .unwrap_or_else(|| {
@@ -251,25 +251,56 @@ pub async fn setup() {
             })
     };
 
-    // On Android the host application can pass the entry through the launch intent,
+    // On Android the embedding activity can pass the entry through the launch intent,
     // which is how a dynamically generated entry (for example a local preview
     // server) is loaded without repackaging the APK.
     #[cfg(android)]
-    let mut entry = crate::platform::intent_entry().unwrap_or_else(|| {
+    let entry = crate::platform::intent_entry().unwrap_or_else(|| {
         log::info!("no entry provided through the launch intent, defaulting to ./index.json");
         "./index.json".to_string()
     });
 
     #[cfg(ios)]
-    let mut entry = "./index.json".to_string();
+    let entry = "./index.json".to_string();
 
     #[cfg(web)]
-    let mut entry = web_sys::window()
+    let entry = web_sys::window()
         .unwrap()
         .get("__moyu_entry")
         .map(|v| v.as_string().unwrap())
         .unwrap_or("./index.json".to_string());
 
+    #[cfg(desktop)]
+    let params = args.opt_value_from_str("--params").unwrap();
+
+    #[cfg(android)]
+    let params = None;
+
+    #[cfg(ios)]
+    let params = None;
+
+    #[cfg(web)]
+    let params = web_sys::window()
+        .unwrap()
+        .get("__moyu_params")
+        .map(|v| v.as_string().unwrap());
+
+    load_config(entry, params)
+        .await
+        .unwrap_or_else(|error| show_fatal_error_and_exit(&error));
+}
+
+/// Load the engine configuration from an explicit entry, skipping the platform's own
+/// entry discovery.
+///
+/// A caller that already knows where the project lives — the Godot extension takes the
+/// path from its node — uses this instead of [`setup`]: the error is returned rather
+/// than bringing the process down, so the caller can report it its own way.
+pub async fn setup_with_entry(entry: &str) -> Result<(), String> {
+    load_config(entry.to_string(), None).await
+}
+
+async fn load_config(mut entry: String, params: Option<String>) -> Result<(), String> {
     loop {
         let entry_dir = parse_entry_dir(&entry);
         log::info!("loading entry file: {}", entry_dir);
@@ -278,8 +309,10 @@ pub async fn setup() {
                 let mut config = match serde_json::from_slice::<MoyuConfig>(&content) {
                     Ok(content) => content,
                     Err(error) => {
-                        log::error!("error when parsing config: {:?}", error);
-                        panic!("Failed to parse entry file: {}", error);
+                        log::error!("config file ({entry_dir}) cannot be parsed: {error}");
+                        return Err(format!(
+                            "Failed to parse entry file ({entry_dir}): {error}\nPlease check your configuration file."
+                        ));
                     }
                 };
 
@@ -293,28 +326,18 @@ pub async fn setup() {
 
                 config.entry = Some(entry);
 
-                #[cfg(desktop)]
-                if let Some(params) = args.opt_value_from_str("--params").unwrap() {
-                    config.params = params;
-                }
-
-                #[cfg(web)]
-                if let Some(params) = web_sys::window()
-                    .unwrap()
-                    .get("__moyu_params")
-                    .map(|v| v.as_string().unwrap())
-                {
-                    config.params = params;
+                if let Some(params) = &params {
+                    config.params = params.clone();
                 }
 
                 config.normalize_multi_res_assets();
                 MOYU_ENV.set(config).unwrap();
-                break;
+                return Ok(());
             }
             Err(err) => {
-                log::error!("Config file ({entry_dir}) cannot be loaded: {err:?}");
-                show_fatal_error_and_exit(&format!(
-                    "Failed to load configuration: {err:?}\nPlease check your configuration file."
+                log::error!("config file ({entry_dir}) cannot be loaded: {err:?}");
+                return Err(format!(
+                    "Failed to load configuration ({entry_dir}): {err:?}\nPlease check your configuration file."
                 ));
             }
         }

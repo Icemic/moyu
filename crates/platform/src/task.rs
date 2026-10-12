@@ -84,8 +84,22 @@ pub fn block_on<T: Future>(future: T) -> T::Output {
     unimplemented!("block_on is not supported in web mode.");
 }
 
-/// Block on a future without a runtime. Use it before the runtime is set up.
+/// Block on a future from a thread that may be outside the async runtime.
+///
+/// A thread that is already in a runtime context (its reactor included) polls the future
+/// directly; a thread the engine owns but the runtime does not — the script VM's, for
+/// instance — runs the future on the installed runtime instead.
 pub fn block_on_without_runtime<T: Future>(future: T) -> T::Output {
+    #[cfg(native)]
+    {
+        if Handle::try_current().is_ok() {
+            return pollster::block_on(future);
+        }
+
+        return get_runtime_handle().block_on(future);
+    }
+
+    #[cfg(web)]
     pollster::block_on(future)
 }
 

@@ -22,7 +22,7 @@ use moyu_pal::sync::{Mutex, RwLock};
 use moyu_pal::time::Instant;
 use render::Graphics;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::base::*;
 use crate::state::{MOUSE_IDENTIFIER, PointerState};
@@ -38,6 +38,7 @@ pub use self::window_system::{
     ImeEvent, SurfaceMetrics, WindowSystem, WindowSystemError, WindowSystemEvent,
     WindowSystemResult,
 };
+pub use render::ExternalGraphicsContext;
 
 pub type NodeLock = Arc<RwLock<Box<dyn Node>>>;
 pub type NodeMap = Arc<DashMap<u32, NodeLock>>;
@@ -70,6 +71,10 @@ pub struct Core {
 
     /// Pause the rendering process, default is `false`
     pub(crate) is_paused: AtomicBool,
+
+    /// Whether the caller drives graphics instead of the engine's own graphic threads.
+    /// Set by [`Core::init_graphics_on_device`].
+    pub(crate) caller_driven_graphics: AtomicBool,
 
     /// Size of current surface, which means the size of the window on desktop platforms, the size of the canvas \
     /// on web platform, and the size of the screen on mobile platforms.
@@ -191,13 +196,13 @@ impl Core {
             cursor_state: ArcSwap::new(Arc::new(MoyuCursor::default())),
             modifiers_state: ArcSwap::new(Arc::new(KeyboardModifiers::default())),
             is_paused: AtomicBool::new(false),
+            caller_driven_graphics: AtomicBool::new(false),
 
             surface_size,
             stage_size,
             stage_transform,
         }
     }
-
     pub fn register_node_type<T: Node + 'static>(&self, type_name: &str) {
         let factory = Box::new(|label: Option<String>| T::create_instance(label));
         self.node_factories.insert(type_name.to_string(), factory);
@@ -401,6 +406,43 @@ impl Core {
             graphics_update_thread,
             graphics_render_thread,
         ))));
+    }
+
+    /// Initialize graphics on a device the caller provides, driving the frame loop from
+    /// the caller's thread instead of the engine's graphic threads.
+    ///
+    /// A caller that shares its device with the engine — Godot bridges its Vulkan device
+    /// — must also share its submission order: the engine renders on the caller's thread
+    /// inside [`Core::render_frame_inline`], so its queue submissions never overlap the
+    /// caller's own. The frames land in an engine-owned texture, which the caller takes
+    /// with [`Graphics::output_texture`].
+    #[cfg(native)]
+    pub fn init_graphics_on_device(&self, context: ExternalGraphicsContext) {
+        let graphics = Graphics::init_on_device(
+            self.window_system.clone(),
+            context,
+            &self.surface_size(),
+            &self.stage_size(),
+            self.node_map.clone(),
+        );
+
+        self.graphics.store(Some(Arc::new(graphics)));
+        self.caller_driven_graphics.store(true, Ordering::Relaxed);
+    }
+
+    /// Assemble and render one frame on the calling thread.
+    ///
+    /// Callers that own their frame loop call this right after submitting
+    /// [`WindowSystemEvent::Frame`]. It is a no-op until graphics exists, so it may be
+    /// called unconditionally.
+    pub fn render_frame_inline(&self) -> anyhow::Result<()> {
+        let Some(graphics) = self.graphics.load().as_ref().cloned() else {
+            return Ok(());
+        };
+
+        graphics.update()?;
+        graphics.render(false)?;
+        Ok(())
     }
 
     /// get whole node map

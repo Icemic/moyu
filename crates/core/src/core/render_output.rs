@@ -2,7 +2,7 @@
 //!
 //! An output owns one output object and hands out a render target per frame. The
 //! window swapchain is one kind of output; an engine-owned texture — rendered for a
-//! host to sample instead of being shown on a display — is another. Both obey the
+//! caller to sample instead of being shown on a display — is another. Both obey the
 //! same contract: acquire the target for the frame, render into it, present it.
 
 use std::sync::Arc;
@@ -21,7 +21,7 @@ use super::WindowSystem;
 /// Format of an engine-owned output texture.
 ///
 /// UNORM matches the swapchain formats the engine already draws to, and the sRGB view
-/// format is declared so a host can sample the same image as an sRGB texture.
+/// format is declared so a caller can sample the same image as an sRGB texture.
 const TEXTURE_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
 const TEXTURE_VIEW_FORMATS: &[TextureFormat] = &[TextureFormat::Rgba8UnormSrgb];
 
@@ -39,7 +39,7 @@ pub struct RenderTarget {
 enum Delivery {
     /// The target is a swapchain image; presenting shows the frame on screen.
     Swapchain(SurfaceTexture),
-    /// The target is an engine-owned texture; the frame stays in it for the host.
+    /// The target is an engine-owned texture; the frame stays in it for the caller.
     Texture,
 }
 
@@ -60,6 +60,11 @@ pub trait FrameOutput: Send + Sync {
     fn format(&self) -> TextureFormat;
     /// Whether the frame target can be copied from (screenshots).
     fn supports_copy_src(&self) -> bool;
+    /// The texture the output renders into, when the frames live in an engine-owned
+    /// texture. `None` for outputs whose frames belong to the platform.
+    fn texture(&self) -> Option<Texture> {
+        None
+    }
 
     /// Record the size the output should have from now on. The change is applied by
     /// the next [`FrameOutput::refresh`], which runs on the render thread.
@@ -257,7 +262,7 @@ impl FrameOutput for SwapchainOutput {
     }
 }
 
-/// The texture output: frames stay in an engine-owned texture for a host to consume.
+/// The texture output: frames stay in an engine-owned texture for a caller to consume.
 pub(crate) struct TextureOutput {
     state: Mutex<TextureOutputState>,
 }
@@ -293,6 +298,10 @@ impl FrameOutput for TextureOutput {
 
     fn supports_copy_src(&self) -> bool {
         true
+    }
+
+    fn texture(&self) -> Option<Texture> {
+        Some(self.state.lock().texture.clone())
     }
 
     fn set_size(&self, width: u32, height: u32) {
@@ -333,7 +342,7 @@ impl FrameOutput for TextureOutput {
 
 /// Create the engine-owned texture a texture output renders into.
 ///
-/// `TEXTURE_BINDING` is what lets a host sample the finished frame; `COPY_SRC` keeps
+/// `TEXTURE_BINDING` is what lets a caller sample the finished frame; `COPY_SRC` keeps
 /// screenshots working the same way they do on the swapchain output.
 fn create_output_texture(device: &Device, size: (u32, u32)) -> (Texture, TextureView) {
     let texture = device.create_texture(&TextureDescriptor {
@@ -358,7 +367,7 @@ fn create_output_texture(device: &Device, size: (u32, u32)) -> (Texture, Texture
 
 /// Whether the window system can provide a surface at all decides which output the
 /// engine renders into. `Unsupported` means the platform has no surface to give
-/// (headless runs, hosts that sample a texture), so the engine owns the texture.
+/// (headless runs, callers that sample a texture), so the engine owns the texture.
 pub(crate) fn create_render_output(
     window_system: &Arc<dyn WindowSystem>,
     instance: &Instance,

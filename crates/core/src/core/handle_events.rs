@@ -97,19 +97,21 @@ impl Core {
         }
 
         #[cfg(native)]
-        if let Some(handles) = self.graphics_thread.load().as_ref() {
-            if handles.0.is_finished() {
-                // detect graphics thread exit
-                log::error!("Graphics thread exited unexpectedly.");
-                self.window_system.request_quit();
+        if !self.caller_driven_graphics.load(Ordering::Relaxed) {
+            if let Some(handles) = self.graphics_thread.load().as_ref() {
+                if handles.0.is_finished() {
+                    // detect graphics thread exit
+                    log::error!("Graphics thread exited unexpectedly.");
+                    self.window_system.request_quit();
+                } else {
+                    // wake up graphics thread
+                    handles.0.thread().unpark();
+                }
             } else {
-                // wake up graphics thread
-                handles.0.thread().unpark();
+                // keep the loop running until the graphics thread is created
+                self.window_system.request_redraw();
+                return;
             }
-        } else {
-            // keep the loop running until the graphics thread is created
-            self.window_system.request_redraw();
-            return;
         }
 
         // We convert u128 to u32 here, which is safe because the timestamp is an

@@ -15,7 +15,7 @@ release = true
 
 [features]
 default = ["text"]
-text = ["moyu_nodes/text", "moyu_ops/text"]
+text = ["moyu_app/text", "moyu_nodes/text", "moyu_ops/text"]
 
 [[bin]]
 name = "moyu"
@@ -34,6 +34,7 @@ wgpu = {workspace = true}
 winit = {workspace = true}
 
 moyu_audio = {workspace = true}
+moyu_app = {workspace = true}
 moyu_core = {workspace = true, features = ["js_runtime"]}
 moyu_debugger = {workspace = true}
 moyu_gamepad = {workspace = true}

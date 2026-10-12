@@ -1,10 +1,11 @@
 //! Shared engine assembly.
 //!
-//! A host owns the platform: the window system, the graphics device and the frame
-//! loop. Everything else a Moyu runtime needs to run a project is assembled here —
-//! the built-in nodes and their renderers, the plugin set, the script runtime and the
-//! splash screen. The default windowed runtime (`crates/moyu`) and the Godot host
-//! (`crates/godot`) both go through this module, so their startup orders stay in step.
+//! The embedding application owns the platform: the window system, the graphics device
+//! and the frame loop. Everything else a Moyu runtime needs to run a project is
+//! assembled here — the built-in nodes and their renderers, the plugin set, the script
+//! runtime and the splash screen. The default windowed runtime (`crates/moyu`) and the
+//! Godot extension (`crates/godot`) both go through this module, so their startup orders
+//! stay in step.
 
 mod splash;
 
@@ -136,7 +137,7 @@ pub async fn register_plugins(core: &Arc<Core>) {
 }
 
 /// Load the project entry script. `on_load` runs once the script has loaded, which is
-/// when the project's own content exists and the host can show the first frame.
+/// when the project's own content exists and the first frame can be drawn.
 pub fn load_user_script<F>(core: &Arc<Core>, on_load: F) -> anyhow::Result<ScriptRuntime>
 where
     F: FnOnce() + Send + 'static,

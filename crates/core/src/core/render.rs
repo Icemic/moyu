@@ -27,6 +27,17 @@ use crate::utils::coordinates::{
 use crate::utils::fps_meter::FpsMeter;
 use crate::utils::walk::{walk_nodes_enter_leave, walk_nodes_enter_leave_logical};
 
+/// The graphics objects a caller provides when the device is not the engine's own.
+///
+/// A caller that composites the engine's frames takes them from a texture that must live
+/// on its own device, so it builds the `wgpu` objects on top of that device (through
+/// `wgpu-hal`) and passes them in.
+pub struct ExternalGraphicsContext {
+    pub instance: Instance,
+    pub device: Device,
+    pub queue: Queue,
+}
+
 pub struct Graphics {
     pub(crate) window_system: Arc<dyn WindowSystem>,
     pub(crate) instance: Instance,
@@ -89,6 +100,61 @@ impl Graphics {
 
         let (instance, device, queue, output) =
             create_render_context(&window_system, physical_size).await;
+
+        Self::from_parts(
+            window_system,
+            instance,
+            device,
+            queue,
+            output,
+            surface_size,
+            stage_size,
+            node_map,
+        )
+    }
+
+    /// Initialize on a device the caller provides, rendering into an engine-owned
+    /// texture.
+    ///
+    /// A caller that composites the engine's frames itself brings its own device — Godot
+    /// bridges its Vulkan device — and takes the finished frames from the output texture
+    /// instead of presenting them.
+    pub fn init_on_device(
+        window_system: Arc<dyn WindowSystem>,
+        context: ExternalGraphicsContext,
+        surface_size: &SurfaceSize,
+        stage_size: &SurfaceSize,
+        node_map: NodeMap,
+    ) -> Self {
+        let output = Box::new(crate::core::render_output::TextureOutput::new(
+            &context.device,
+            surface_size.physical_size(),
+        ));
+
+        Self::from_parts(
+            window_system,
+            context.instance,
+            context.device,
+            context.queue,
+            output,
+            surface_size,
+            stage_size,
+            node_map,
+        )
+    }
+
+    /// Everything after the instance, device and frame output exist. Both entry points
+    /// differ only in where those three come from.
+    fn from_parts(
+        window_system: Arc<dyn WindowSystem>,
+        instance: Instance,
+        device: Device,
+        queue: Queue,
+        output: Box<dyn FrameOutput>,
+        surface_size: &SurfaceSize,
+        stage_size: &SurfaceSize,
+        node_map: NodeMap,
+    ) -> Self {
         let sample_count = if get_engine_config().enable_msaa {
             4
         } else {
@@ -232,6 +298,14 @@ impl Graphics {
     /// Texture format the frame output renders with.
     pub fn output_format(&self) -> wgpu::TextureFormat {
         self.output.format()
+    }
+
+    /// The texture the frames currently live in, for outputs that own one.
+    ///
+    /// A caller that samples the engine's frames takes this texture and registers it with
+    /// its own renderer; `None` means the frames belong to the platform (a swapchain).
+    pub fn output_texture(&self) -> Option<wgpu::Texture> {
+        self.output.texture()
     }
 
     pub fn sample_count(&self) -> u32 {

@@ -58,7 +58,7 @@ async fn create_render_context_with_backends(
     let instance = wgpu::Instance::new(instance_descriptor);
     let surface = match window_system.create_surface(&instance) {
         Ok(surface) => Some(surface),
-        // The window system has no surface to give: headless runs, and hosts that
+        // The window system has no surface to give: headless runs, and callers that
         // present the frame themselves sample a texture output instead.
         Err(WindowSystemError::Unsupported) => None,
         Err(error) => return Err(anyhow!("failed to create surface: {error}")),

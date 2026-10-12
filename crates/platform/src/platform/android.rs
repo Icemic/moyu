@@ -8,7 +8,7 @@ use crate::visible_hand::{InvisibleHand, VisibleHand};
 
 /// Intent extra key that overrides the engine entry file.
 ///
-/// It lets a host application point the engine at an entry that only exists at
+/// It lets the embedding activity point the engine at an entry that only exists at
 /// runtime (for example a local preview server) without repackaging the APK.
 pub const ENTRY_EXTRA: &str = "moyu.entry";
 
