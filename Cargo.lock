@@ -2290,6 +2290,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "moyu_live2d"
+version = "0.21.0"
+
+[[package]]
+name = "moyu_live2d_abi"
+version = "0.21.0"
+
+[[package]]
 name = "moyu_macros"
 version = "0.21.0"
 dependencies = [

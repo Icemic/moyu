@@ -1,0 +1,8 @@
+[package]
+authors = ["Icemic <bingfeng.web@gmail.com>"]
+description = "Live2D node and renderer for Moyu engine."
+edition = "2024"
+license = "MPL-2.0"
+name = "moyu_live2d"
+repository = "https://github.com/DeepSpaceMill/moyu"
+version.workspace = true

@@ -18,6 +18,8 @@ members = [
   "crates/steam",
   "crates/image",
   "crates/debugger",
+  "crates/live2d",
+  "crates/live2d-abi",
 ]
 resolver = "2"
 
