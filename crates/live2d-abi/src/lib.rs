@@ -23,12 +23,14 @@
 pub mod error;
 pub mod frame;
 pub mod init;
+pub mod model;
 pub mod query;
 pub mod types;
 pub mod version;
 
 pub use frame::{DrawableDesc, FrameDesc, MaskBufferDesc, MaskCommand};
 pub use init::{PluginInit, ReadFileFn};
+pub use model::ModelDesc;
 pub use query::{
     CanvasInfo, EventDesc, ExpressionInfo, HitAreaInfo, MotionInfo, ParameterInfo, PartInfo,
     TextureInfo,
