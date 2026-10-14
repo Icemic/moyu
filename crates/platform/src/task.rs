@@ -93,7 +93,14 @@ pub fn block_on_without_runtime<T: Future>(future: T) -> T::Output {
     #[cfg(native)]
     {
         if Handle::try_current().is_ok() {
-            return pollster::block_on(future);
+            // The future must not be subject to tokio's cooperative budget. Its
+            // thread is inside a runtime but outside any scheduler, so an
+            // exhausted budget makes tokio's futures wake themselves from within
+            // their own poll and the poller below spins instead of parking. The
+            // budget is also never restored here: on the main thread the runtime
+            // entered the poll that calls this function and does not leave it
+            // until the engine exits, so the budget only ever shrinks.
+            return pollster::block_on(tokio::task::coop::unconstrained(future));
         }
 
         return get_runtime_handle().block_on(future);
