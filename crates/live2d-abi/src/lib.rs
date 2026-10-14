@@ -20,6 +20,7 @@
 //! - All calls happen on the engine main thread; the plugin needs no internal
 //!   locking, and the host must not reenter the plugin from `read_file`.
 
+pub mod command;
 pub mod error;
 pub mod frame;
 pub mod init;
@@ -28,6 +29,7 @@ pub mod query;
 pub mod types;
 pub mod version;
 
+pub use command::ParameterPair;
 pub use frame::{DrawableDesc, FrameDesc, MaskBufferDesc, MaskCommand};
 pub use init::{PluginInit, ReadFileFn};
 pub use model::ModelDesc;
