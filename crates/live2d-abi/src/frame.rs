@@ -76,12 +76,13 @@ pub struct DrawableDesc {
     pub mask_buffer_index: i32,
     /// Mask channel inside the buffer, 0-3.
     pub mask_channel: u32,
-    /// Transform from snapshot vertex space to clip space, used to sample the
-    /// mask buffer.
+    /// Transform from snapshot vertex space to mask sampling coordinates
+    /// (UV, 0..1; v = 0 is the first row of the mask buffer).
     pub clip_matrix: Matrix4,
 }
 
-/// A mask render target the host provides as an RGBA8 texture.
+/// A mask render target the host provides as an RGBA8 texture. Every buffer
+/// has the same size; count and size are decided by the plugin.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct MaskBufferDesc {
@@ -101,9 +102,11 @@ pub struct MaskCommand {
     pub clear_before: bool,
     /// Index into `FrameDesc::drawables` providing geometry and texture.
     pub drawable_index: usize,
-    /// Transform from snapshot vertex space to clip space.
+    /// Transform from snapshot vertex space to mask clip space, used for
+    /// rasterization; y = +1 falls on the first row of the mask buffer, so the
+    /// same point maps to the same row when sampled through `clip_matrix`.
     pub matrix: Matrix4,
-    /// Clip-space rectangle `[x_min, y_min, x_max, y_max]` in NDC; fragments
-    /// outside it do not write to the mask.
+    /// Rectangle `[x_min, y_min, x_max, y_max]` in the same clip space as
+    /// `matrix`; fragments outside it do not write to the mask.
     pub clip_rect: [f32; 4],
 }
