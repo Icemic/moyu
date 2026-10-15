@@ -157,7 +157,12 @@ impl Renderer for AnimationRenderer {
             moyu_pal::task::spawn(async move {
                 match moyu_resource::read_asset(&src).await {
                     Some((url, scale, data)) => {
-                        log::debug!("animation '{}' loaded from '{}' (scale {})", src, url, scale);
+                        log::debug!(
+                            "animation '{}' loaded from '{}' (scale {})",
+                            src,
+                            url,
+                            scale
+                        );
                         next_data.store(Some(Arc::new((data, scale))));
                     }
                     None => {
@@ -223,7 +228,7 @@ impl Renderer for AnimationRenderer {
 
             node.decoder = Some(decoder);
             node.pixel_ratio = scale;
-            node.next_frame = None;
+            node.frame_deadline = None;
             node.upload_buffer.clear();
             node.view = Some(view);
             node.bind_group = Some(bind_group);
@@ -292,19 +297,72 @@ impl Renderer for AnimationRenderer {
                 }
             }
 
-            if let Some(decoder) = node.decoder.as_mut() {
-                let mut next_frame = node.next_frame.take();
-                let mut show_current_frame = false;
-                let mut reset_count = 0;
+            // Advance frames along an absolute timeline: a decoded frame keeps its
+            // scheduled start even when an update arrives late, so the playback speed
+            // follows the frame delays instead of the refresh rate. Frames missed
+            // during a hitch are decoded and composited in order, and only the last
+            // one is uploaded.
+            if node.decoder.is_some() {
+                const MAX_ADVANCES_PER_UPDATE: usize = 64;
+                // A zero delay would keep the timeline in place and make playback run
+                // at the update rate, so zero-delay frames keep a short minimum.
+                const ZERO_DELAY_SECONDS: f64 = 0.010;
 
-                loop {
-                    if show_current_frame {
-                        if let Err(error) =
-                            decoder.write_premultiplied_frame(&mut node.upload_buffer)
-                        {
-                            log::warn!("Failed to prepare animation frame: {}", error);
+                let now = payload.timestamp;
+                let mut deadline = node.frame_deadline;
+                let mut advances = 0;
+                let mut decoded = false;
+                let mut failed = false;
+
+                let decoder = node.decoder.as_mut().unwrap();
+
+                while advances < MAX_ADVANCES_PER_UPDATE {
+                    if let Some(end) = deadline
+                        && now < end
+                    {
+                        break;
+                    }
+
+                    // Frames are contiguous: the next one starts where the current ends.
+                    let frame_start = deadline.unwrap_or(now);
+                    let delay = match decoder.advance() {
+                        Ok(Some(delay)) => delay,
+                        // The animation ended, so it continues from its first frame.
+                        Ok(None) => match decoder.restart().and_then(|()| decoder.advance()) {
+                            Ok(Some(delay)) => delay,
+                            Ok(None) => {
+                                log::warn!("Animation decoder produced no frame after restart.");
+                                failed = true;
+                                break;
+                            }
+                            Err(error) => {
+                                log::warn!("Failed to restart animation: {}", error);
+                                failed = true;
+                                break;
+                            }
+                        },
+                        Err(error) => {
+                            log::warn!("Failed to decode animation frame: {}", error);
+                            failed = true;
                             break;
                         }
+                    };
+
+                    let seconds = if delay.is_zero() {
+                        ZERO_DELAY_SECONDS
+                    } else {
+                        delay.as_secs_f64()
+                    };
+                    deadline = Some(frame_start + seconds);
+                    advances += 1;
+                    decoded = true;
+                }
+
+                if decoded && !failed {
+                    if let Err(error) = decoder.write_premultiplied_frame(&mut node.upload_buffer) {
+                        log::warn!("Failed to prepare animation frame: {}", error);
+                        failed = true;
+                    } else {
                         queue.write_texture(
                             view.texture().as_image_copy(),
                             &node.upload_buffer,
@@ -315,40 +373,15 @@ impl Renderer for AnimationRenderer {
                             },
                             size,
                         );
-                        break;
                     }
+                }
 
-                    if next_frame.is_none() {
-                        match decoder.advance() {
-                            Ok(Some(delay)) => {
-                                next_frame = Some(payload.timestamp + delay.as_secs_f64());
-                            }
-                            Ok(None) if reset_count == 0 => {
-                                reset_count += 1;
-                                if let Err(error) = decoder.restart() {
-                                    log::warn!("Failed to restart animation: {}", error);
-                                    break;
-                                }
-                                continue;
-                            }
-                            Ok(None) => {
-                                log::warn!("Animation decoder ended unexpectedly.");
-                                break;
-                            }
-                            Err(error) => {
-                                log::warn!("Failed to decode animation frame: {}", error);
-                                break;
-                            }
-                        }
-                    }
-
-                    let next_frame = next_frame.take().expect("animation frame is scheduled");
-                    if payload.timestamp >= next_frame {
-                        show_current_frame = true;
-                    } else {
-                        node.next_frame = Some(next_frame);
-                        break;
-                    }
+                if failed {
+                    // Stop instead of retrying a broken stream on every update.
+                    node.decoder = None;
+                    node.frame_deadline = None;
+                } else {
+                    node.frame_deadline = deadline;
                 }
             }
         }

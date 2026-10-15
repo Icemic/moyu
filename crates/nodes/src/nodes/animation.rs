@@ -40,8 +40,8 @@ pub struct Animation {
 
     /// animation decoder
     pub(crate) decoder: Option<AnimationDecoder>,
-    /// next frame timestamp
-    pub(crate) next_frame: Option<f64>,
+    /// timestamp at which the displayed frame is replaced by the next one
+    pub(crate) frame_deadline: Option<f64>,
     /// reusable premultiplied RGBA8 GPU upload buffer
     pub(crate) upload_buffer: Vec<u8>,
 
@@ -71,7 +71,7 @@ impl Animation {
             format: AnimationFormat::APNG,
             pixel_ratio: 1.0,
             decoder: None,
-            next_frame: None,
+            frame_deadline: None,
             upload_buffer: Vec::new(),
             bind_group: None,
             view: None,
