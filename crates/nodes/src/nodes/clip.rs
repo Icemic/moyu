@@ -1,5 +1,5 @@
 use anyhow::Result;
-use moyu_core::base::Rect;
+use moyu_core::base::{Bound, Rect};
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 
@@ -75,5 +75,12 @@ impl Node for Clip {
 
     fn as_focusable(&self) -> Option<&dyn Focusable> {
         Some(self)
+    }
+
+    fn visible_bounds(&self) -> Bound {
+        // Content outside the clip rect is not visible, so it must not enlarge
+        // the bounds ancestors use for hit testing.
+        let (width, height) = self.base().layout_size();
+        Bound::new(0.0, 0.0, width, height)
     }
 }

@@ -556,10 +556,9 @@ impl NodeBase {
         let mut bounds = Bound::new(0.0, 0.0, self.layout_width, self.layout_height);
         for child in &self.children {
             let child_read = child.read();
-            let child_base = child_read.base();
-            let child_bounds = child_base
-                .content_bounds()
-                .transform(child_base.transform());
+            let child_bounds = child_read
+                .visible_bounds()
+                .transform(child_read.base().transform());
             bounds = bounds.union(&child_bounds);
         }
         self.content_bounds = bounds;

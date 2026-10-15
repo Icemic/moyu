@@ -4,6 +4,7 @@ use std::{any::Any, fmt::Debug};
 use anyhow::Result;
 use moyu_pal::sync::RwLock;
 
+use crate::base::Bound;
 use crate::nodes::NodeBase;
 use crate::utils::convert::JSValue;
 
@@ -50,6 +51,15 @@ pub trait Node: NodeBaseTrait + Debug + Send + Sync {
     fn measure(&mut self) {
         let (width, height) = self.base().intrinsic_size();
         self.base_mut().set_layout_size(width, height);
+    }
+
+    /// Bounds this node contributes when its parent aggregates subtree bounds.
+    ///
+    /// Defaults to the node's own content bounds. Nodes that clip their subtree
+    /// report only the part that stays visible, so clipped-out content cannot
+    /// enlarge ancestors' bounds.
+    fn visible_bounds(&self) -> Bound {
+        *self.base().content_bounds()
     }
 
     /// Arrange direct children after this node's layout size has been resolved.
