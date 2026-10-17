@@ -16,9 +16,18 @@ pub const FLAG_DOUBLE_SIDED: u32 = 1 << 1;
 /// its complement.
 pub const FLAG_MASK_INVERTED: u32 = 1 << 2;
 
-/// Blend mode lies outside the supported set (Normal+Over, AddCompatible,
-/// MultiplyCompatible); the host reports it once and draws as Normal.
+/// Blend mode lies outside the supported set (normal/blend/add); the host
+/// reports it once.
 pub const FLAG_BLEND_UNSUPPORTED: u32 = 1 << 3;
+
+/// Drawable blends normally: source premultiplied color over the destination.
+pub const BLEND_NORMAL: i32 = 0;
+
+/// Drawable adds its color to the destination.
+pub const BLEND_ADD: i32 = 1;
+
+/// Drawable multiplies the destination by its color.
+pub const BLEND_MULTIPLY: i32 = 2;
 
 /// Root of a frame snapshot.
 #[repr(C)]
@@ -51,9 +60,17 @@ pub struct FrameDesc {
 pub struct DrawableDesc {
     /// `FLAG_*` bitfield.
     pub flags: u32,
-    /// Raw Core blend mode value: low byte color blend type, next byte alpha
-    /// blend type.
+    /// Blend mode the drawable must be drawn with, one of `BLEND_*`.
+    ///
+    /// The plugin has already applied the fallback: a drawable whose native
+    /// mode is unsupported carries `BLEND_NORMAL` together with
+    /// `FLAG_BLEND_UNSUPPORTED`, so the host never interprets a native value.
     pub blend_mode: i32,
+    /// The mode the model declared, opaque to the host.
+    ///
+    /// Only for diagnostics: it is what `blendModeUnsupported` reports back to
+    /// the project, and the host must not draw with it.
+    pub source_blend_mode: i32,
     /// Index into the texture list.
     pub texture_index: i32,
     /// Drawable opacity with the model opacity folded in; the host applies it once.
@@ -91,6 +108,10 @@ pub struct MaskBufferDesc {
 }
 
 /// One mask draw command, executed in order by the host.
+///
+/// Every mask buffer is cleared to 1.0 once at the start of the frame, before
+/// any of its commands run; the plugin groups the clearing that way, so a
+/// command carries no per-command clear flag.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct MaskCommand {
@@ -98,8 +119,6 @@ pub struct MaskCommand {
     pub buffer_index: u32,
     /// Channel written by this command, 0-3.
     pub channel: u32,
-    /// Whether the target buffer is cleared to 1.0 before this command.
-    pub clear_before: bool,
     /// Index into `FrameDesc::drawables` providing geometry and texture.
     pub drawable_index: usize,
     /// Transform from snapshot vertex space to mask clip space, used for

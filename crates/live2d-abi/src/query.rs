@@ -57,13 +57,22 @@ pub struct HitAreaInfo {
     pub name: Span,
 }
 
+/// No parameter type is declared.
+pub const PARAMETER_KIND_UNKNOWN: i32 = -1;
+
+/// A regular parameter driven by a range of values.
+pub const PARAMETER_KIND_NORMAL: i32 = 0;
+
+/// A blend-shape parameter driven by weight.
+pub const PARAMETER_KIND_BLEND_SHAPE: i32 = 1;
+
 /// One parameter.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct ParameterInfo {
     /// Parameter id.
     pub id: Span,
-    /// Raw Core parameter type: 0 normal, 1 blend shape.
+    /// Parameter type, one of `PARAMETER_KIND_*`.
     pub kind: i32,
     /// Minimum value.
     pub min: f32,

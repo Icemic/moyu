@@ -1,7 +1,12 @@
 //! Contract version and capability negotiation.
 
 /// Major version of the contract; host and plugin must share it.
-pub const ABI_VERSION_MAJOR: u16 = 1;
+///
+/// 2.0 replaced the raw SDK blend mode with a decided value, turned the
+/// parameter type into a contract enum, and dropped `MaskCommand::clear_before`.
+/// The changes live in shared structs, so a 1.x plugin cannot be paired with a
+/// 2.x host and the version gate is what keeps them apart.
+pub const ABI_VERSION_MAJOR: u16 = 2;
 
 /// Minor version of the contract.
 pub const ABI_VERSION_MINOR: u16 = 0;

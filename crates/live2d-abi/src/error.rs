@@ -9,7 +9,8 @@ pub const INVALID_ARGUMENT: i32 = 1;
 /// Host and plugin do not share the same major contract version.
 pub const VERSION_MISMATCH: i32 = 2;
 
-/// Cubism Core could not be located or failed to load.
+/// The plugin could not be used: it is missing, or a dependency it loads at
+/// runtime is missing or too old.
 pub const CORE_UNAVAILABLE: i32 = 3;
 
 /// Asset could not be read, such as a missing model file.

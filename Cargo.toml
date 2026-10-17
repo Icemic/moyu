@@ -70,6 +70,8 @@ moyu_debugger = {path = "crates/debugger"}
 moyu_gamepad = {path = "crates/gamepad"}
 moyu_image = {path = "crates/image"}
 moyu_macros = {path = "crates/macros"}
+moyu_live2d = {path = "crates/live2d"}
+moyu_live2d_abi = {path = "crates/live2d-abi"}
 moyu_nodes = {path = "crates/nodes"}
 moyu_ops = {path = "crates/ops"}
 moyu_pal = {path = "crates/platform"}

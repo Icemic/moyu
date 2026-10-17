@@ -28,7 +28,7 @@ pub struct PluginInit {
     pub read_file: Option<ReadFileFn>,
     /// Opaque value passed back to `read_file`.
     pub user_data: *mut c_void,
-    /// Explicit path of the Cubism Core dynamic library; an empty span selects
-    /// the plugin's default search order.
+    /// Explicit path of the runtime library the plugin depends on; an empty
+    /// span selects the plugin's own search order.
     pub core_path: Span,
 }

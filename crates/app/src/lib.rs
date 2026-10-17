@@ -21,6 +21,10 @@ use moyu_core::utils::dispatch_event::dispatch_event;
 use moyu_gamepad::GamepadPlugin;
 #[cfg(feature = "text")]
 use moyu_nodes::nodes::Text;
+use moyu_live2d::Live2dNode;
+use moyu_live2d::renderer::Live2dRenderer;
+#[cfg(native)]
+use moyu_live2d::Live2dPlugin;
 use moyu_nodes::nodes::{
     Animation, Backdrop, Clip, Editable, Filter, HBox, Shader, ShaderSlot, Sprite, VBox, Video,
 };
@@ -63,6 +67,7 @@ pub fn register_builtins(core: &Arc<Core>) {
     core.register_node_type::<Shader>("shader");
     core.register_node_type::<ShaderSlot>("shader-slot");
     core.register_node_type::<Video>("video");
+    core.register_node_type::<Live2dNode>("live2d");
 
     let Some(graphics) = core.graphics() else {
         log::warn!("graphics is not initialized, built-in nodes have no renderers");
@@ -99,6 +104,10 @@ pub fn register_builtins(core: &Arc<Core>) {
         "video",
         Box::new(VideoRenderer::new(device, format, sample_count)),
     );
+    graphics.register_renderer(
+        "live2d",
+        Box::new(Live2dRenderer::new(device, format, sample_count)),
+    );
 
     #[cfg(feature = "text")]
     {
@@ -128,6 +137,12 @@ pub async fn register_plugins(core: &Arc<Core>) {
         log::error!("Failed to initialize scenario plugin: {}", err);
     }
     core.register_plugin("scenario", Arc::new(Mutex::new(scenario)));
+
+    // The Live2D plugin drives the loaded models once per frame, right here on
+    // the script thread. The web runtime has no dynamic libraries, so it has no
+    // plugin to register and its live2d nodes report the plugin as unavailable.
+    #[cfg(native)]
+    core.register_plugin("live2d", Arc::new(Mutex::new(Live2dPlugin)));
 
     #[cfg(any(desktop, web))]
     if get_engine_config().enable_gamepads {
