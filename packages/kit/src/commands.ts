@@ -1,6 +1,7 @@
 import type { AudioCommand } from './bindings/AudioCommand';
 import type { EditableCommand } from './bindings/EditableCommand';
 import type { GamepadCommand } from './bindings/GamepadCommand';
+import type { Live2dCommand } from './bindings/Live2dCommand';
 import type { ScenarioCommand } from './bindings/ScenarioCommand';
 import type { ShaderCommand } from './bindings/ShaderCommand';
 import type { SteamCommand } from './bindings/SteamCommand';
@@ -14,6 +15,7 @@ type _Command =
   | EditableCommand
   | TextCommand
   | GamepadCommand
+  | Live2dCommand
   | ScenarioCommand
   | ShaderCommand
   | SteamCommand
@@ -30,6 +32,9 @@ export * from './bindings/EditableCommand';
 export * from './bindings/EditableEvent';
 export * from './bindings/EditableState';
 export * from './bindings/GamepadCommand';
+export * from './bindings/Live2dCommand';
+export * from './bindings/Live2dEvent';
+export * from './bindings/Live2dMetadata';
 export * from './bindings/ScenarioCommand';
 export * from './bindings/SystemCommand';
 export * from './bindings/TextCommand';

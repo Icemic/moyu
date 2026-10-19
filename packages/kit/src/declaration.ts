@@ -23,6 +23,8 @@ import type { ShaderProps } from './bindings/ShaderProps';
 import type { ShaderSlotProps } from './bindings/ShaderSlotProps';
 import type { AnimationProps } from './bindings/AnimationProps';
 import type { VideoProps } from './bindings/VideoProps';
+import type { Live2dEvent } from './bindings/Live2dEvent';
+import type { Live2dProps } from './bindings/Live2dProps';
 
 export type Tuple2 = [number, number];
 export type Tuple3 = [number, number, number];
@@ -90,6 +92,15 @@ export type MoyuVideoAttributes = VideoProps &
     onEnded?: () => void;
     onStateChange?: (state: string) => void;
   };
+export type MoyuLive2dAttributes = Live2dProps &
+  MoyuNodeAttributes & {
+    /** The model finished loading; the payload holds its full metadata. */
+    onReady?: (event: Extract<Live2dEvent, { type: 'ready' }>) => void;
+    onMotionFinished?: (event: Extract<Live2dEvent, { type: 'motionFinished' }>) => void;
+    onMotionEvent?: (event: Extract<Live2dEvent, { type: 'motionEvent' }>) => void;
+    onBlendModeUnsupported?: (event: Extract<Live2dEvent, { type: 'blendModeUnsupported' }>) => void;
+    onError?: (event: Extract<Live2dEvent, { type: 'error' }>) => void;
+  };
 export type MoyuSpriteAttributes = SpriteProps & MoyuNodeAttributes;
 export type MoyuTextAttributes = TextProps &
   MoyuNodeAttributes & {
@@ -131,5 +142,6 @@ export declare namespace JSX {
     shader: DetailedMoyuProps<MoyuShaderAttributes>;
     'shader-slot': DetailedMoyuProps<MoyuShaderSlotAttributes>;
     video: DetailedMoyuProps<MoyuVideoAttributes>;
+    live2d: DetailedMoyuProps<MoyuLive2dAttributes>;
   }
 }
