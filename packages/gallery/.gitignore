@@ -1,0 +1,9 @@
+# Live2D assets are local-only: the sample models are proprietary and the plugin
+# ships outside this repository. See README.md for placement instructions.
+/assets/live2d/
+moyu_live2d_plugin.dll
+libmoyu_live2d_plugin.so
+libmoyu_live2d_plugin.dylib
+Live2DCubismCore.dll
+libLive2DCubismCore.so
+libLive2DCubismCore.dylib

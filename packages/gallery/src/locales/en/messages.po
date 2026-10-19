@@ -29,6 +29,10 @@ msgstr "· Initial layout: A, B, and C are arranged in order, with B 150 wide."
 msgid "· 删除 B 并重排：B 从树中移除，C 移动到 A 之前。"
 msgstr "· Remove and reorder B: B is removed from the tree, and C moves before A."
 
+#: src/pages/live2d.tsx:847
+msgid "（无）"
+msgstr "(none)"
+
 #: src/pages/layouts.tsx:26
 msgid "1. 自动 VBox"
 msgstr "1. Automatic VBox"
@@ -69,7 +73,7 @@ msgstr "9. Dynamic sizing / hiding / removal / reordering"
 msgid "ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet"
 msgstr "ACH_TRAVEL_FAR_ACCUM · Accumulated Stat, can only increase; 2640 / 5280 feet"
 
-#: src/gallery.tsx:156
+#: src/gallery.tsx:163
 msgid "Achievement 与 Steamworks API 手动测试。"
 msgstr "Manual tests for Achievements and the Steamworks API."
 
@@ -121,7 +125,7 @@ msgstr "Content drawn after the backdrop remains sharp"
 msgid "Backdrop 捕获其身后已绘制的画面并应用滤镜；在它之后绘制的内容不受影响。"
 msgstr "Backdrop captures what has already been drawn behind it and applies a filter; content drawn after it is unaffected."
 
-#: src/gallery.tsx:131
+#: src/gallery.tsx:132
 msgid "Backdrop 背景滤镜"
 msgstr "Backdrop filter"
 
@@ -129,7 +133,7 @@ msgstr "Backdrop filter"
 msgid "Button 按钮"
 msgstr "Button"
 
-#: src/gallery.tsx:114
+#: src/gallery.tsx:115
 msgid "Button、Checkbox、Radio、Select、Slider 与 ScrollView。"
 msgstr "Button, Checkbox, Radio, Select, Slider, and ScrollView."
 
@@ -149,11 +153,11 @@ msgstr "Container transforms"
 msgid "disabled：点击后不获得焦点"
 msgstr "disabled: does not receive focus when clicked"
 
-#: src/gallery.tsx:120
+#: src/gallery.tsx:121
 msgid "Editable 节点、末尾输入、IME、焦点与受控状态。"
 msgstr "Editable nodes, end-of-text input, IME, focus, and controlled state."
 
-#: src/gallery.tsx:125
+#: src/gallery.tsx:126
 msgid "Filter 滤镜"
 msgstr "Filter"
 
@@ -161,9 +165,17 @@ msgstr "Filter"
 msgid "HBox onLayout：{measured}"
 msgstr "HBox onLayout: {measured}"
 
-#: src/gallery.tsx:119
+#: src/gallery.tsx:120
 msgid "Input 输入框"
 msgstr "Input"
+
+#: src/gallery.tsx:157
+msgid "Live2D 模型、动作、表情、参数与遮罩渲染。"
+msgstr "Live2D models, motions, expressions, parameters and masked rendering."
+
+#: src/gallery.tsx:156
+msgid "Live2D（仅桌面端）"
+msgstr "Live2D (desktop only)"
 
 #: src/pages/primitives.tsx:140
 msgid "printMode"
@@ -189,13 +201,17 @@ msgstr "RadioGroup manages mutually exclusive selections within a group."
 msgid "Raw WGSL 着色器"
 msgstr "Raw WGSL shader"
 
-#: src/gallery.tsx:150
+#: src/gallery.tsx:151
 msgid "Raw WGSL、参数槽与时间控制。"
 msgstr "Raw WGSL, parameter slots, and time controls."
 
 #: src/pages/input.tsx:134
 msgid "readOnly：允许聚焦，不允许输入"
 msgstr "readOnly: allows focus but not input"
+
+#: src/pages/live2d.tsx:804
+msgid "ready 元数据不含部件列表，这里用样例模型的已知部件 id。"
+msgstr "The ready metadata carries no part list, so this uses known part ids of the sample models."
 
 #: src/pages/controls.tsx:218
 msgid "ScrollView 滚动视图"
@@ -205,7 +221,7 @@ msgstr "ScrollView"
 msgid "Select 下拉选择"
 msgstr "Select"
 
-#: src/gallery.tsx:143
+#: src/gallery.tsx:144
 msgid "Shader 转场"
 msgstr "Shader transition"
 
@@ -221,7 +237,7 @@ msgstr "Slider"
 msgid "space-between：间隔相等且不小于 gap = 20。"
 msgstr "space-between: spacing is equal and no less than gap = 20."
 
-#: src/gallery.tsx:137
+#: src/gallery.tsx:138
 msgid "Spring 动画"
 msgstr "Spring animation"
 
@@ -233,11 +249,11 @@ msgstr "Sprite pixel hit testing"
 msgid "Sprite 精灵"
 msgstr "Sprite"
 
-#: src/gallery.tsx:107
+#: src/gallery.tsx:108
 msgid "Sprite、Text、Clip、Animation 与通用节点属性。"
 msgstr "Sprite, Text, Clip, Animation, and common node properties."
 
-#: src/gallery.tsx:155
+#: src/gallery.tsx:162
 msgid "Steam（仅桌面端）"
 msgstr "Steam (desktop only)"
 
@@ -257,7 +273,7 @@ msgstr "gold tint"
 msgid "useSpring 属性动画"
 msgstr "useSpring property animation"
 
-#: src/gallery.tsx:138
+#: src/gallery.tsx:139
 msgid "useSpring 属性动画与 useTransition 进出场动画。"
 msgstr "useSpring property animation and useTransition enter/exit animation."
 
@@ -265,7 +281,7 @@ msgstr "useSpring property animation and useTransition enter/exit animation."
 msgid "useTransition 进出场"
 msgstr "useTransition enter/exit"
 
-#: src/gallery.tsx:110
+#: src/gallery.tsx:111
 msgid "VBox、HBox、测量、对齐与动态重排。"
 msgstr "VBox, HBox, measurement, alignment, and dynamic reordering."
 
@@ -286,6 +302,10 @@ msgstr "Next state: {0}"
 msgid "下拉列表展开时会覆盖下方内容（zIndex）。"
 msgstr "When expanded, the dropdown list overlays content below it (zIndex)."
 
+#: src/pages/live2d.tsx:963
+msgid "中心"
+msgstr "center"
+
 #: src/pages/primitives.tsx:222
 msgid "九宫格：圆角与描边不随拉伸变形，线条不模糊"
 msgstr "Nine-slice: rounded corners and borders do not distort or blur when stretched"
@@ -293,6 +313,10 @@ msgstr "Nine-slice: rounded corners and borders do not distort or blur when stre
 #: src/pages/primitives.tsx:243
 msgid "九宫格填充模式"
 msgstr "Nine-slice fill modes"
+
+#: src/pages/live2d.tsx:854
+msgid "事件日志"
+msgstr "Event log"
 
 #: src/pages/filters.tsx:39
 msgid "亮度 Brightness"
@@ -306,9 +330,25 @@ msgstr "to see the interaction state change."
 msgid "使用 Microsoft 拼音输入时，候选窗应跟随缩放、旋转后的文字末尾，并保持在 caret 附近。"
 msgstr "When using Microsoft Pinyin, the candidate window should follow the end of scaled and rotated text, staying near the caret."
 
+#: src/pages/live2d.tsx:869
+msgid "保留最近 {LOG_LIMIT} 条。"
+msgstr "Keeps the last {LOG_LIMIT} entries."
+
 #: src/pages/raw-shaders.tsx:173
 msgid "停止"
 msgstr "Stop"
+
+#: src/pages/live2d.tsx:664
+msgid "停止全部动作"
+msgstr "Stop all motions"
+
+#: src/pages/live2d.tsx:697
+msgid "停止表情"
+msgstr "Stop expression"
+
+#: src/pages/live2d.tsx:693
+msgid "停止表情后回到默认表情，动作不受影响。"
+msgstr "Stopping an expression returns to the default one and leaves motions alone."
 
 #: src/pages/controls.tsx:166
 msgid "全屏"
@@ -363,6 +403,19 @@ msgstr "Remove and reorder B"
 msgid "前景内容"
 msgstr "Foreground content"
 
+#: src/pages/live2d.tsx:617
+msgid "加载模型后列出动作组。"
+msgstr "Motion groups appear once a model is loaded."
+
+#: src/pages/live2d.tsx:727
+msgid "加载模型后列出模型实际定义的常用参数。"
+msgstr "The common parameters the model actually defines appear once it is loaded."
+
+#: src/pages/live2d.tsx:615
+#: src/pages/live2d.tsx:842
+msgid "动作"
+msgstr "Motions"
+
 #: src/pages/layouts.tsx:272
 msgid "动态重排"
 msgstr "Dynamic reordering"
@@ -379,11 +432,16 @@ msgstr "Original"
 msgid "原色"
 msgstr "Original color"
 
+#: src/pages/live2d.tsx:714
+#: src/pages/live2d.tsx:844
+msgid "参数"
+msgstr "Parameters"
+
 #: src/pages/raw-shaders.tsx:233
 msgid "参数槽 · 通道采样 · builtins.time"
 msgstr "Parameter slots · channel sampling · builtins.time"
 
-#: src/gallery.tsx:144
+#: src/gallery.tsx:145
 msgid "双通道画面的 GPU 转场状态机。"
 msgstr "A GPU transition state machine for dual-channel images."
 
@@ -460,6 +518,14 @@ msgstr "Enable backdrop filter"
 msgid "启用输入框"
 msgstr "Enable input"
 
+#: src/pages/live2d.tsx:975
+msgid "命中"
+msgstr "hit"
+
+#: src/pages/live2d.tsx:846
+msgid "命中区"
+msgstr "Hit areas"
+
 #: src/pages/primitives.tsx:48
 msgid "固定宽度文本框：设定 boxWidth 后，这段文字会在到达宽度上限时自动换行，并可通过 lineHeight 控制行距。"
 msgstr "Fixed-width text box: after setting boxWidth, this text wraps automatically at the width limit, and lineHeight controls line spacing."
@@ -484,7 +550,7 @@ msgstr "Reference C"
 msgid "基础与嵌套"
 msgstr "Basics and nesting"
 
-#: src/gallery.tsx:106
+#: src/gallery.tsx:107
 msgid "基础组件"
 msgstr "Primitives"
 
@@ -496,7 +562,7 @@ msgstr "Basic input and IME"
 msgid "填充"
 msgstr "Fill"
 
-#: src/gallery.tsx:132
+#: src/gallery.tsx:133
 msgid "处理节点背后已经绘制的画面，之后绘制的内容保持清晰。"
 msgstr "Processes content already drawn behind the node; content drawn after it remains sharp."
 
@@ -520,7 +586,7 @@ msgstr "Full source image 250x240"
 msgid "对比度 Contrast"
 msgstr "Contrast"
 
-#: src/gallery.tsx:126
+#: src/gallery.tsx:127
 msgid "对节点自身子树的离屏渲染结果应用滤镜链。"
 msgstr "Applies a filter chain to the offscreen rendering of the node's own subtree."
 
@@ -528,9 +594,17 @@ msgstr "Applies a filter chain to the offscreen rendering of the node's own subt
 msgid "对齐交互"
 msgstr "Alignment interaction"
 
-#: src/gallery.tsx:113
+#: src/gallery.tsx:114
 msgid "封装组件"
 msgstr "Components"
+
+#: src/pages/live2d.tsx:986
+msgid "尚未执行命中测试；点击右侧画面或上面的按钮。"
+msgstr "No hit test yet; click the view on the right or a button above."
+
+#: src/pages/live2d.tsx:851
+msgid "尚未收到 ready 事件。"
+msgstr "No ready event yet."
 
 #: src/pages/steam.tsx:38
 msgid "尚未调用"
@@ -560,7 +634,7 @@ msgstr "Complete"
 msgid "已点击 {pressCount} 次"
 msgstr "Clicked {pressCount} times"
 
-#: src/gallery.tsx:110
+#: src/gallery.tsx:111
 msgid "布局"
 msgstr "Layout"
 
@@ -634,6 +708,10 @@ msgstr "Manual time control"
 msgid "按钮只发送 prepare；perform 由 onPrepared 触发，onFinished 解锁下一次播放。"
 msgstr "The button only sends prepare; onPrepared triggers perform, and onFinished enables the next playback."
 
+#: src/pages/live2d.tsx:590
+msgid "接入诊断"
+msgstr "Diagnostics"
+
 #: src/pages/backdrops.tsx:29
 #: src/pages/raw-shaders.tsx:126
 #: src/pages/shader-transitions.tsx:73
@@ -643,6 +721,14 @@ msgstr "Controls"
 #: src/pages/primitives.tsx:29
 msgid "描边与阴影 Stroke & Shadow"
 msgstr "Stroke & Shadow"
+
+#: src/pages/live2d.tsx:827
+msgid "插件"
+msgstr "Plugin"
+
+#: src/pages/live2d.tsx:818
+msgid "插件状态"
+msgstr "Plugin status"
 
 #: src/pages/shader-transitions.tsx:51
 #: src/pages/shader-transitions.tsx:96
@@ -669,6 +755,18 @@ msgstr "Duration: {duration} ms"
 msgid "显示实际提交的 subCommand 与同步返回值或错误。"
 msgstr "Shows the submitted subCommand and its synchronous return value or error."
 
+#: src/pages/live2d.tsx:561
+msgid "未加载"
+msgstr "Not loaded"
+
+#: src/pages/live2d.tsx:975
+msgid "未命中"
+msgstr "miss"
+
+#: src/pages/live2d.tsx:928
+msgid "未命中任何区域"
+msgstr "no hit area matched"
+
 #: src/pages/steam.tsx:199
 msgid "未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。"
 msgstr "No test buttons are provided for DLC, overlayActivateToStore, or overlayActivateToWebPage because App 480 has no confirmed parameters."
@@ -677,9 +775,26 @@ msgstr "No test buttons are provided for DLC, overlayActivateToStore, or overlay
 msgid "未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。"
 msgstr "No test button is provided for workshopGetSubscribedItemPath because there is no confirmed item ID."
 
-#: src/gallery.tsx:232
+#: src/gallery.tsx:239
 msgid "末语 Gallery"
 msgstr "Moyu Gallery"
+
+#: src/pages/live2d.tsx:547
+#: src/pages/live2d.tsx:826
+msgid "模型"
+msgstr "Model"
+
+#: src/pages/live2d.tsx:829
+msgid "模型元信息"
+msgstr "Model metadata"
+
+#: src/pages/live2d.tsx:576
+msgid "模型已就绪；右侧画面与官方样例一致即通过。"
+msgstr "The model is ready; the view on the right passes when it matches the official sample."
+
+#: src/pages/live2d.tsx:825
+msgid "模型放置"
+msgstr "Model placement"
 
 #: src/pages/filters.tsx:38
 msgid "模糊 Blur"
@@ -700,6 +815,14 @@ msgstr "Blur radius"
 #: src/pages/layouts.tsx:172
 msgid "正常"
 msgstr "Normal"
+
+#: src/pages/live2d.tsx:821
+msgid "正常：插件已加载，模型已就绪。"
+msgstr "OK: the plugin is loaded and the model is ready."
+
+#: src/pages/live2d.tsx:841
+msgid "每单位像素"
+msgstr "Pixels per unit"
 
 #: src/pages/spring-transitions.tsx:150
 msgid "淡入 FADE IN"
@@ -725,10 +848,15 @@ msgstr "Add"
 msgid "添加 / 移除 keyed 项目，from → enter → leave 自动补间。"
 msgstr "Add or remove keyed items; from → enter → leave is tweened automatically."
 
+#: src/pages/live2d.tsx:873
+msgid "清空日志"
+msgstr "Clear log"
+
 #: src/pages/backdrops.tsx:92
 msgid "渲染管线"
 msgstr "Render pipeline"
 
+#: src/pages/live2d.tsx:888
 #: src/pages/raw-shaders.tsx:211
 msgid "渲染结果"
 msgstr "Rendered result"
@@ -744,6 +872,14 @@ msgstr "Filtered text Aa123"
 #: src/pages/controls.tsx:218
 msgid "滚轮或拖拽滚动。"
 msgstr "Scroll with the wheel or by dragging."
+
+#: src/pages/live2d.tsx:891
+msgid "滚轮缩放，拖拽平移；点击画面做命中测试。"
+msgstr "Wheel to zoom, drag to pan; click the view to run a hit test."
+
+#: src/pages/live2d.tsx:588
+msgid "演出验证"
+msgstr "Playback"
 
 #: src/pages/backdrops.tsx:88
 msgid "演示场景"
@@ -767,6 +903,10 @@ msgstr "Click SPRING to toggle the target state.\n"
 msgid "点击切换变换"
 msgstr "Click to toggle transforms"
 
+#: src/pages/live2d.tsx:956
+msgid "点击反馈"
+msgstr "Click feedback"
+
 #: src/pages/primitives.tsx:305
 msgid "点击圆环四角的透明区域：左侧 alphaHitTest 命中底板，右侧默认只按矩形判定，始终命中圆环。"
 msgstr "Click the transparent corners of the ring: on the left alphaHitTest hits the plate underneath, while the default rectangle test always hits the ring."
@@ -782,6 +922,10 @@ msgstr "Click the button to cycle through states; both areas update together."
 #: src/pages/controls.tsx:29
 msgid "点击计数、禁用态与文本对齐方式。"
 msgstr "Click counting, disabled state, and text alignment."
+
+#: src/pages/live2d.tsx:820
+msgid "状态"
+msgstr "Status"
 
 #. placeholder {0}: statusLabels[status] ?? status
 #: src/pages/shader-transitions.tsx:101
@@ -803,6 +947,14 @@ msgstr "Distorts the input image horizontally with a moving sine wave."
 #: src/pages/input.tsx:124
 msgid "由外部状态设置"
 msgstr "Set by external state"
+
+#: src/pages/live2d.tsx:833
+msgid "画布"
+msgstr "Canvas"
+
+#: src/pages/live2d.tsx:838
+msgid "画布原点"
+msgstr "Canvas origin"
 
 #: src/pages/input.tsx:153
 msgid "禁用内容"
@@ -852,6 +1004,14 @@ msgstr "Second input (for switching focus)"
 msgid "第二行 Second line"
 msgstr "Second line"
 
+#: src/pages/live2d.tsx:577
+msgid "等待 ready 事件；无响应时到「接入诊断」查看错误与放置说明。"
+msgstr "Waiting for the ready event; check Diagnostics for errors and setup notes if nothing happens."
+
+#: src/pages/live2d.tsx:856
+msgid "等待事件。"
+msgstr "Waiting for events."
+
 #: src/pages/layouts.tsx:141
 msgid "等待测量"
 msgstr "Waiting for measurement"
@@ -859,6 +1019,14 @@ msgstr "Waiting for measurement"
 #: src/pages/input.tsx:26
 msgid "等待输入事件"
 msgstr "Waiting for input events"
+
+#: src/pages/live2d.tsx:589
+msgid "精细调校"
+msgstr "Tuning"
+
+#: src/pages/live2d.tsx:660
+msgid "编号即 motion3.json 索引；优先级 Normal。"
+msgstr "The number is the index in motion3.json; priority stays Normal."
 
 #: src/pages/backdrops.tsx:93
 msgid "背景捕获区域"
@@ -872,13 +1040,18 @@ msgstr "BACKDROP target"
 msgid "自动时间"
 msgstr "Automatic time"
 
-#: src/gallery.tsx:149
+#: src/gallery.tsx:150
 msgid "自定义 Shader"
 msgstr "Custom Shader"
 
 #: src/pages/filters.tsx:42
 msgid "色相旋转 Hue Rotate"
 msgstr "Hue Rotate"
+
+#: src/pages/live2d.tsx:672
+#: src/pages/live2d.tsx:843
+msgid "表情"
+msgstr "Expressions"
 
 #: src/pages/primitives.tsx:340
 msgid "被裁剪的内容"
@@ -888,9 +1061,17 @@ msgstr "Clipped content"
 msgid "褐调 Sepia"
 msgstr "Sepia"
 
+#: src/pages/live2d.tsx:749
+msgid "覆盖值每帧在效果链之后重放，动作运行时也保持生效。"
+msgstr "Overrides are replayed after the effect chain every frame, so they hold while a motion plays."
+
 #: src/pages/primitives.tsx:55
 msgid "试试移入或点击"
 msgstr "Hover over or click"
+
+#: src/pages/live2d.tsx:674
+msgid "该模型没有表情，或模型尚未就绪。"
+msgstr "The model has no expressions, or it is not ready yet."
 
 #: src/pages/input.tsx:44
 msgid "请输入内容"
@@ -928,6 +1109,10 @@ msgstr "Channel 0 · captured by prepare"
 msgid "通道 1 · 稳定显示"
 msgstr "Channel 1 · displayed continuously"
 
+#: src/pages/live2d.tsx:715
+msgid "部件不透明度"
+msgstr "Part opacity"
+
 #: src/pages/spring-transitions.tsx:125
 msgid "重播"
 msgstr "Replay"
@@ -936,9 +1121,23 @@ msgstr "Replay"
 msgid "重置"
 msgstr "Reset"
 
+#: src/pages/live2d.tsx:754
+msgid "重置参数"
+msgstr "Reset parameters"
+
+#: src/pages/live2d.tsx:948
+msgid "重置视角"
+msgstr "Reset view"
+
 #: src/pages/controls.tsx:46
 msgid "锁定悬停与左右对齐"
 msgstr "Locked hover and left/right alignment"
+
+#. placeholder {0}: event.code
+#. placeholder {1}: event.message
+#: src/pages/live2d.tsx:939
+msgid "错误 {0}：{1}"
+msgstr "Error {0}: {1}"
 
 #. placeholder {0}: error instanceof Error ? error.message : String(error)
 #: src/pages/steam.tsx:373

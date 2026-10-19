@@ -17,6 +17,7 @@ import { ControlsPage } from './pages/controls';
 import { FiltersPage } from './pages/filters';
 import { LayoutsPage } from './pages/layouts';
 import { InputPage } from './pages/input';
+import { Live2dPage } from './pages/live2d';
 import { PrimitivesPage } from './pages/primitives';
 import { RawShadersPage } from './pages/raw-shaders';
 import { ShaderTransitionsPage } from './pages/shader-transitions';
@@ -149,6 +150,12 @@ export function Gallery() {
       title: t`自定义 Shader`,
       description: t`Raw WGSL、参数槽与时间控制。`,
       component: RawShadersPage,
+    },
+    {
+      key: 'live2d',
+      title: t`Live2D（仅桌面端）`,
+      description: t`Live2D 模型、动作、表情、参数与遮罩渲染。`,
+      component: Live2dPage,
     },
     {
       key: 'steam',
