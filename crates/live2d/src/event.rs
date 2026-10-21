@@ -86,6 +86,12 @@ pub enum Live2dEvent {
     /// A drawable uses a blend mode outside the supported set; reported once
     /// when it first appears.
     BlendModeUnsupported { value: i32 },
+    /// The pointer pressed on a named hit area of the model.
+    ///
+    /// `x` / `y` are canvas pixel coordinates. A press that lands on several
+    /// overlapping areas reports each of them.
+    #[serde(rename_all = "camelCase")]
+    Hit { area: String, x: f32, y: f32 },
     /// The plugin is unavailable, a model failed to load, or a runtime call
     /// failed.
     Error { code: i32, message: String },
@@ -98,6 +104,7 @@ impl Event for Live2dEvent {
             Live2dEvent::MotionFinished { .. } => "motionFinished",
             Live2dEvent::MotionEvent { .. } => "motionEvent",
             Live2dEvent::BlendModeUnsupported { .. } => "blendModeUnsupported",
+            Live2dEvent::Hit { .. } => "hit",
             Live2dEvent::Error { .. } => "error",
         }
     }

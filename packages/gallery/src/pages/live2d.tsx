@@ -914,6 +914,14 @@ export function Live2dPage() {
                 breath={options.breath}
                 look={options.look}
                 idle={options.idle}
+                hitTest
+                onHit={(event) => {
+                  setHitResult(
+                    t`内置命中：${event.area} @ 画布坐标 (${Math.round(event.x)}, ${Math.round(
+                      event.y,
+                    )})`,
+                  );
+                }}
                 onClick={(event) => {
                   if (!metadata || dragMovedRef.current) return;
                   const x = event.offsetX;
@@ -923,11 +931,11 @@ export function Live2dPage() {
                       live2dRef.current?.executeCommand({ subCommand: 'hitTest', area, x, y }) ===
                       true,
                   );
-                  setHitResult(
-                    `画布坐标 (${Math.round(x)}, ${Math.round(y)}) → ${
-                      matched.length > 0 ? matched.join(', ') : t`未命中任何区域`
-                    }`,
-                  );
+                  if (matched.length === 0) {
+                    setHitResult(
+                      t`画布坐标 (${Math.round(x)}, ${Math.round(y)}) → 未命中任何区域`,
+                    );
+                  }
                 }}
                 onReady={handleReady}
                 onMotionFinished={(event) =>

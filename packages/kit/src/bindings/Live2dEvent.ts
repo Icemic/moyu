@@ -9,4 +9,5 @@ export type Live2dEvent =
   | { type: 'motionFinished'; group: string; index: number }
   | { type: 'motionEvent'; value: string }
   | { type: 'blendModeUnsupported'; value: number }
+  | { type: 'hit'; area: string; x: number; y: number }
   | { type: 'error'; code: number; message: string };

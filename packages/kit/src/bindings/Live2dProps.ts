@@ -8,4 +8,5 @@ export type Live2dProps = {
   breath?: boolean;
   look?: boolean;
   idle?: boolean;
+  hitTest?: boolean;
 };

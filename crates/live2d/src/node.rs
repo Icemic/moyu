@@ -38,6 +38,8 @@ pub struct Live2dNode {
     pub breath: bool,
     pub look: bool,
     pub idle: bool,
+    /// Runs a hit test on every pointer press and reports `hit` events.
+    pub hit_test: bool,
 
     /// State shared with the plugin driver and the renderer.
     pub job: Arc<NodeJob>,
@@ -61,6 +63,7 @@ impl Live2dNode {
             breath: true,
             look: false,
             idle: true,
+            hit_test: false,
             job,
             gpu: None,
             node_base,
@@ -123,6 +126,7 @@ pub struct Live2dProps {
     pub breath: Patch<bool>,
     pub look: Patch<bool>,
     pub idle: Patch<bool>,
+    pub hit_test: Patch<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -194,6 +198,7 @@ impl Node for Live2dNode {
         apply_patch!(props.breath => |v| self.breath = v, true);
         apply_patch!(props.look => |v| self.look = v, false);
         apply_patch!(props.idle => |v| self.idle = v, true);
+        apply_patch!(props.hit_test => |v| self.hit_test = v, false);
 
         self.sync_state();
         // The model change takes effect now, so a command in the same script tick
@@ -221,26 +226,75 @@ impl NodeEventSource for Live2dNode {
 
 impl Focusable for Live2dNode {
     /// Tracks the pointer over the node as the look target, so the model can
-    /// follow it while the `look` option is on.
+    /// follow it while the `look` option is on, and runs the built-in hit test
+    /// on a press when `hitTest` is on.
     fn pointer_event(&self, x: f32, y: f32, kind: PointerEventKind) {
-        if !self.look {
-            return;
+        if self.look {
+            self.update_look_target(x, y, kind);
         }
+
+        if self.hit_test && kind == PointerEventKind::Down {
+            self.report_hits(x, y);
+        }
+    }
+}
+
+impl Live2dNode {
+    /// Feeds the pointer position to the look target in view space.
+    fn update_look_target(&self, x: f32, y: f32, kind: PointerEventKind) {
         let (width, height) = self.base().layout_size();
         if width <= 0.0 || height <= 0.0 {
             return;
         }
 
         let target = match kind {
-            PointerEventKind::Over => [
-                (x / width) * 2.0 - 1.0,
-                1.0 - (y / height) * 2.0,
-            ],
+            PointerEventKind::Over => [(x / width) * 2.0 - 1.0, 1.0 - (y / height) * 2.0],
             PointerEventKind::Leave => [LOOK_CENTER.0, LOOK_CENTER.1],
             _ => return,
         };
 
         self.job.state.lock().look_target = (target[0], target[1]);
+    }
+
+    /// Tests the pointer position against every hit area and reports each match.
+    ///
+    /// Runs on the plugin thread, so the plugin can be called directly. The
+    /// state lock is released before the plugin call, since the call and the
+    /// event dispatch must not interleave with it.
+    fn report_hits(&self, x: f32, y: f32) {
+        #[cfg(web)]
+        {
+            let _ = (x, y);
+            return;
+        }
+
+        #[cfg(native)]
+        {
+            let Some(context) = crate::plugin::context() else {
+                return;
+            };
+            let model = self.job.model();
+            if model == 0 {
+                return;
+            }
+            let Some(areas) = self
+                .job
+                .state
+                .lock()
+                .model_info
+                .as_ref()
+                .map(|info| info.hit_areas.clone())
+            else {
+                return;
+            };
+
+            let node_id = *self.base().id();
+            for area in areas {
+                if context.hit_test(model, &area, x, y).unwrap_or(false) {
+                    job::send_event(node_id, Live2dEvent::Hit { area, x, y });
+                }
+            }
+        }
     }
 }
 

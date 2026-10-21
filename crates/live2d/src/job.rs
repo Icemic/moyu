@@ -82,6 +82,8 @@ pub struct ModelInfo {
     pub textures: Vec<String>,
     /// Canvas size in pixels.
     pub canvas_size: [f32; 2],
+    /// Hit area names, used by the built-in hit test.
+    pub hit_areas: Vec<String>,
 }
 
 /// What the node wants and what the plugin currently has.
@@ -404,6 +406,7 @@ fn apply_src(context: &PluginContext, job: &NodeJob, state: &mut JobState) {
                         epoch,
                         textures,
                         canvas_size: [metadata.canvas.width, metadata.canvas.height],
+                        hit_areas: metadata.hit_areas.clone(),
                     };
                     state.model_info = Some(Arc::new(info));
                     if let Err(err) = context.set_options(model, state.options) {

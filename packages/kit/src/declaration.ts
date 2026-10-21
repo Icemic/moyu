@@ -99,6 +99,11 @@ export type MoyuLive2dAttributes = Live2dProps &
     onMotionFinished?: (event: Extract<Live2dEvent, { type: 'motionFinished' }>) => void;
     onMotionEvent?: (event: Extract<Live2dEvent, { type: 'motionEvent' }>) => void;
     onBlendModeUnsupported?: (event: Extract<Live2dEvent, { type: 'blendModeUnsupported' }>) => void;
+    /**
+     * A press landed on a hit area, reported per area when several overlap.
+     * Requires the `hitTest` prop.
+     */
+    onHit?: (event: Extract<Live2dEvent, { type: 'hit' }>) => void;
     onError?: (event: Extract<Live2dEvent, { type: 'error' }>) => void;
   };
 export type MoyuSpriteAttributes = SpriteProps & MoyuNodeAttributes;
