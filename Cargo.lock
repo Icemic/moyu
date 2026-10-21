@@ -2456,6 +2456,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "moyu_spine_abi"
+version = "0.21.0"
+
+[[package]]
 name = "moyu_steam"
 version = "0.21.0"
 dependencies = [

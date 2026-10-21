@@ -20,6 +20,7 @@ members = [
   "crates/debugger",
   "crates/live2d",
   "crates/live2d-abi",
+  "crates/spine-abi",
 ]
 resolver = "2"
 
@@ -78,6 +79,7 @@ moyu_pal = {path = "crates/platform"}
 moyu_resource = {path = "crates/resource"}
 moyu_runtime = {path = "crates/runtime"}
 moyu_scenario = {path = "crates/scenario"}
+moyu_spine_abi = {path = "crates/spine-abi"}
 moyu_steam = {path = "crates/steam"}
 moyu_video = {path = "crates/video"}
 
