@@ -924,15 +924,16 @@ fn mask_correction(mask: (u32, u32), surface: (f32, f32)) -> [f32; 4] {
 /// Applies a mask correction to a canvas-to-mask-clip transform.
 ///
 /// Both matrices are row-major with the row-vector convention, so the correction
-/// composes on the right: `v * matrix * correction`. With `correction` nonzero
-/// only on its diagonal and translation row, the product reduces to a scale of
-/// the first two columns plus a translation along the fourth.
+/// composes on the right: `v * matrix * correction`, where `correction` maps
+/// `x' = scale_x * x + offset_x` and likewise for y. In a row-major matrix the
+/// output component selects the row, so the correction scales the first two rows
+/// and adds the fourth row scaled by the offsets.
 fn corrected_matrix(matrix: &Matrix4, correction: [f32; 4]) -> [[f32; 4]; 4] {
     let [scale_x, scale_y, offset_x, offset_y] = correction;
     let mut out = *matrix;
-    for row in &mut out {
-        row[0] = row[0] * scale_x + row[3] * offset_x;
-        row[1] = row[1] * scale_y + row[3] * offset_y;
+    for column in 0..4 {
+        out[0][column] = matrix[0][column] * scale_x + matrix[3][column] * offset_x;
+        out[1][column] = matrix[1][column] * scale_y + matrix[3][column] * offset_y;
     }
     out
 }
