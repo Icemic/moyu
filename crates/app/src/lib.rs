@@ -17,6 +17,7 @@ use moyu_audio::AudioManager;
 use moyu_core::core::Core;
 use moyu_core::events::GameEvent;
 use moyu_core::utils::dispatch_event::dispatch_event;
+#[cfg(any(desktop, web))]
 use moyu_gamepad::GamepadPlugin;
 #[cfg(feature = "text")]
 use moyu_nodes::nodes::Text;
