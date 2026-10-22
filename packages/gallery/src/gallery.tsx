@@ -18,6 +18,7 @@ import { FiltersPage } from './pages/filters';
 import { LayoutsPage } from './pages/layouts';
 import { InputPage } from './pages/input';
 import { Live2dPage } from './pages/live2d';
+import { SpinePage } from './pages/spine';
 import { PrimitivesPage } from './pages/primitives';
 import { RawShadersPage } from './pages/raw-shaders';
 import { ShaderTransitionsPage } from './pages/shader-transitions';
@@ -156,6 +157,12 @@ export function Gallery() {
       title: t`Live2D（仅桌面端）`,
       description: t`Live2D 模型、动作、表情、参数与遮罩渲染。`,
       component: Live2dPage,
+    },
+    {
+      key: 'spine',
+      title: t`Spine（仅桌面端）`,
+      description: t`Spine 骨骼动画、多轨播放、双色染色与混合模式。`,
+      component: SpinePage,
     },
     {
       key: 'steam',

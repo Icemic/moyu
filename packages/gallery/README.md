@@ -53,7 +53,14 @@ Live2D 页面依赖两份不入库的本地内容，需要自行准备：
 2. 插件：把 `moyu_live2d_plugin`（Windows 为 `.dll`，macOS 为 `.dylib`，其它为 `.so`）与 `Live2DCubismCore` 一起放到引擎可执行文件旁边；也可以用 `MOYU_LIVE2D_PLUGIN` 环境变量指向插件路径。
 
 两者都已被 `packages/gallery/.gitignore` 排除。未准备时页面不崩溃，而是显示错误信息与这份放置说明；Web 引擎没有动态库，同样按降级处理。
+### Spine（本机放置）
 
+Spine 页面同样依赖两份不入库的本地内容：
+
+1. 模型：在 `assets/spine/` 下按 `<名字>/<文件>` 放置骨架（`.json` 或 `.skel`）与图集（`.atlas` 及其页图）。页面内置条目使用 Spine 官方示例导出，例如 `assets/spine/spineboy/spineboy-pro.json` 与 `assets/spine/spineboy/spineboy.atlas`。
+2. 插件：把 `moyu_spine_plugin`（Windows 为 `.dll`，macOS 为 `.dylib`，其它为 `.so`）放到引擎可执行文件旁边，或用 `MOYU_SPINE_PLUGIN` 环境变量指向插件路径。
+
+插件由 `moyu-spine` 仓库自行构建，官方示例素材带有自己的许可，两者都已被 `.gitignore` 排除。未准备时页面显示错误与放置说明，Web 引擎按降级处理。
 ## 许可
 
 MPL-2.0，见 `LICENSE.txt`。
