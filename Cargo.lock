@@ -2186,6 +2186,7 @@ dependencies = [
  "moyu_resource",
  "moyu_runtime",
  "moyu_scenario",
+ "moyu_spine",
 ]
 
 [[package]]
@@ -2453,6 +2454,26 @@ dependencies = [
  "tokio",
  "ts-rs",
  "zip",
+]
+
+[[package]]
+name = "moyu_spine"
+version = "0.21.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "cfg_aliases",
+ "glam",
+ "libloading 0.9.0",
+ "log",
+ "moyu_core",
+ "moyu_macros",
+ "moyu_pal",
+ "moyu_resource",
+ "moyu_spine_abi",
+ "serde",
+ "ts-rs",
+ "wgpu",
 ]
 
 [[package]]
