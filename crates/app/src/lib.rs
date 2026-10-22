@@ -25,6 +25,10 @@ use moyu_live2d::Live2dNode;
 use moyu_live2d::renderer::Live2dRenderer;
 #[cfg(native)]
 use moyu_live2d::Live2dPlugin;
+use moyu_spine::SpineNode;
+use moyu_spine::renderer::SpineRenderer;
+#[cfg(native)]
+use moyu_spine::SpinePlugin;
 use moyu_nodes::nodes::{
     Animation, Backdrop, Clip, Editable, Filter, HBox, Shader, ShaderSlot, Sprite, VBox, Video,
 };
@@ -68,6 +72,7 @@ pub fn register_builtins(core: &Arc<Core>) {
     core.register_node_type::<ShaderSlot>("shader-slot");
     core.register_node_type::<Video>("video");
     core.register_node_type::<Live2dNode>("live2d");
+    core.register_node_type::<SpineNode>("spine");
 
     let Some(graphics) = core.graphics() else {
         log::warn!("graphics is not initialized, built-in nodes have no renderers");
@@ -108,6 +113,10 @@ pub fn register_builtins(core: &Arc<Core>) {
         "live2d",
         Box::new(Live2dRenderer::new(device, format, sample_count)),
     );
+    graphics.register_renderer(
+        "spine",
+        Box::new(SpineRenderer::new(device, format, sample_count)),
+    );
 
     #[cfg(feature = "text")]
     {
@@ -143,6 +152,9 @@ pub async fn register_plugins(core: &Arc<Core>) {
     // plugin to register and its live2d nodes report the plugin as unavailable.
     #[cfg(native)]
     core.register_plugin("live2d", Arc::new(Mutex::new(Live2dPlugin)));
+
+    #[cfg(native)]
+    core.register_plugin("spine", Arc::new(Mutex::new(SpinePlugin)));
 
     #[cfg(any(desktop, web))]
     if get_engine_config().enable_gamepads {
