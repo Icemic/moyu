@@ -4,6 +4,7 @@ import type { GamepadCommand } from './bindings/GamepadCommand';
 import type { Live2dCommand } from './bindings/Live2dCommand';
 import type { ScenarioCommand } from './bindings/ScenarioCommand';
 import type { ShaderCommand } from './bindings/ShaderCommand';
+import type { SpineCommand } from './bindings/SpineCommand';
 import type { SteamCommand } from './bindings/SteamCommand';
 import type { SystemCommand } from './bindings/SystemCommand';
 import type { TextCommand } from './bindings/TextCommand';
@@ -18,6 +19,7 @@ type _Command =
   | Live2dCommand
   | ScenarioCommand
   | ShaderCommand
+  | SpineCommand
   | SteamCommand
   | SystemCommand
   | VideoCommand;
@@ -35,6 +37,10 @@ export * from './bindings/GamepadCommand';
 export * from './bindings/Live2dCommand';
 export * from './bindings/Live2dEvent';
 export * from './bindings/Live2dMetadata';
+export * from './bindings/SpineCommand';
+export * from './bindings/SpineEvent';
+export * from './bindings/SpineMetadata';
+export * from './bindings/EntryIdentity';
 export * from './bindings/ScenarioCommand';
 export * from './bindings/SystemCommand';
 export * from './bindings/TextCommand';
