@@ -24,6 +24,7 @@
 //! - All calls happen on the engine main thread; the plugin needs no internal
 //!   locking, and the host must not reenter the plugin from `read_file`.
 
+pub mod control;
 pub mod error;
 pub mod event;
 pub mod frame;
@@ -34,6 +35,9 @@ pub mod query;
 pub mod types;
 pub mod version;
 
+pub use control::{
+    PHYSICS_NONE, PHYSICS_POSE, PHYSICS_UPDATE, HitDesc, TrackDesc, UpdateDesc,
+};
 pub use event::EventDesc;
 pub use frame::{BLEND_ADDITIVE, BLEND_MULTIPLY, BLEND_NORMAL, BLEND_SCREEN, BatchDesc, FrameDesc, pack_color};
 pub use init::{PluginInit, ReadFileFn};
