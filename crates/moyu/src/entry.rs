@@ -50,15 +50,13 @@ pub async fn main_entry(
     event_loop.run_app(&mut app).ok();
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ApplicationInitEvent {
-    #[default]
-    Start,
+    /// The window system is ready: assemble the shared runtime and load the script.
+    Init,
+    /// The entry script has loaded; the window can be shown and the frame loop starts.
+    InitFinished,
     VmWake,
-    Graphic,
-    Plugin,
-    LoadUserScript,
-    ShowAndStart,
     Quit,
 }
 
@@ -162,6 +160,33 @@ impl WinitApplication {
 
         self.next_redraw_at = Some(next);
     }
+
+    /// Show the window and start the frame loop. Runs once the entry script has loaded,
+    /// which is when the project's own content exists and a frame can be drawn.
+    fn finish_start(&mut self) {
+        let core = get_core();
+
+        #[cfg(desktop)]
+        core.move_to_center();
+
+        // A native window already has its configured size here, while a web canvas
+        // follows the box the page gives it, which is only known once layout has run.
+        // Size changes after this point arrive as resize events.
+        core.sync_surface_size_with_window(false);
+
+        self.window_system().set_visible(true);
+        self.window_system().request_redraw();
+
+        #[cfg(native)]
+        {
+            let now = Instant::now();
+            self.schedule_next_redraw(now);
+        }
+
+        moyu_app::announce_ready(core.clone());
+
+        self.initialized = true;
+    }
 }
 
 impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
@@ -182,9 +207,6 @@ impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: ApplicationInitEvent) {
         match event {
-            ApplicationInitEvent::Start => {
-                // do nothing
-            }
             ApplicationInitEvent::VmWake =>
             {
                 #[cfg(native)]
@@ -192,88 +214,54 @@ impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
                     vm.tick();
                 }
             }
-            ApplicationInitEvent::Graphic => {
+            ApplicationInitEvent::Init => {
                 let core = get_core().clone();
 
                 #[cfg(native)]
                 {
-                    core.init_graphics();
-                    self.event_proxy
-                        .send_event(ApplicationInitEvent::Plugin)
-                        .unwrap();
+                    // Poll on this thread so the plugin set and the script VM below share
+                    // one thread: the VM is created here and ticked here by VmWake.
+                    moyu_pal::task::block_on_without_runtime(moyu_app::prepare(&core));
+
+                    // Steam stays with the host: its SDK has to be initialized before the
+                    // window is created, and the plugin handle belongs to this runtime.
+                    #[cfg(desktop)]
+                    if let Some(plugin) = self.steam_plugin.take() {
+                        core.register_plugin("steam", Arc::new(Mutex::new(plugin)));
+                    }
+
+                    let event_proxy = self.event_proxy.clone();
+                    let vm_handle = match moyu_app::load_user_script(&core, move || {
+                        log::info!("User script loaded.");
+                        let _ = event_proxy.send_event(ApplicationInitEvent::InitFinished);
+                    }) {
+                        Ok(handle) => handle,
+                        Err(err) => {
+                            log::error!("{}", err);
+                            platform::show_fatal_error_and_exit(err.to_string().as_str());
+                        }
+                    };
+                    self._vm_handle.lock().replace(vm_handle);
                 }
 
                 #[cfg(web)]
                 {
                     let event_proxy = self.event_proxy.clone();
                     moyu_pal::task::spawn(async move {
-                        core.init_graphics().await;
-                        event_proxy
-                            .send_event(ApplicationInitEvent::Plugin)
-                            .unwrap();
+                        moyu_app::prepare(&core).await;
+
+                        if let Err(err) = moyu_app::load_user_script(&core, move || {
+                            log::info!("User script loaded.");
+                            let _ = event_proxy.send_event(ApplicationInitEvent::InitFinished);
+                        }) {
+                            log::error!("{}", err);
+                            platform::show_fatal_error_and_exit(err.to_string().as_str());
+                        }
                     });
                 }
             }
-            ApplicationInitEvent::Plugin => {
-                let core = get_core();
-
-                moyu_app::register_builtins(core);
-
-                #[cfg(desktop)]
-                if let Some(plugin) = self.steam_plugin.take() {
-                    core.register_plugin("steam", Arc::new(Mutex::new(plugin)));
-                }
-
-                let core = get_core().clone();
-                let event_proxy = self.event_proxy.clone();
-                moyu_pal::task::spawn(async move {
-                    moyu_app::register_plugins(&core).await;
-                    event_proxy
-                        .send_event(ApplicationInitEvent::LoadUserScript)
-                        .unwrap();
-                });
-            }
-            ApplicationInitEvent::LoadUserScript => {
-                let core = get_core();
-                let event_proxy = self.event_proxy.clone();
-                // All plugins are ready, now we can spawn the runtime and execute scripts
-                let _vm_handle = match moyu_app::load_user_script(core, move || {
-                    log::info!("User script loaded.");
-                    event_proxy
-                        .send_event(ApplicationInitEvent::ShowAndStart)
-                        .unwrap();
-                }) {
-                    Ok(v) => v,
-                    Err(err) => {
-                        log::error!("{}", err);
-                        platform::show_fatal_error_and_exit(err.to_string().as_str());
-                    }
-                };
-                self._vm_handle.lock().replace(_vm_handle);
-            }
-            ApplicationInitEvent::ShowAndStart => {
-                let core = get_core();
-
-                #[cfg(desktop)]
-                core.move_to_center();
-
-                // A native window already has its configured size here, while a web canvas
-                // follows the box the page gives it, which is only known once layout has run.
-                // Size changes after this point arrive as resize events.
-                core.sync_surface_size_with_window(false);
-
-                self.window_system().set_visible(true);
-                self.window_system().request_redraw();
-
-                #[cfg(native)]
-                {
-                    let now = Instant::now();
-                    self.schedule_next_redraw(now);
-                }
-
-                moyu_app::announce_ready(core.clone());
-
-                self.initialized = true;
+            ApplicationInitEvent::InitFinished => {
+                self.finish_start();
             }
             ApplicationInitEvent::Quit => {
                 event_loop.exit();
@@ -326,7 +314,7 @@ impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
         moyu_debugger::start();
 
         self.event_proxy
-            .send_event(ApplicationInitEvent::Graphic)
+            .send_event(ApplicationInitEvent::Init)
             .unwrap();
     }
 

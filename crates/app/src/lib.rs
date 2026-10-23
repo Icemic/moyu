@@ -164,6 +164,28 @@ pub async fn register_plugins(core: &Arc<Core>) {
     }
 }
 
+/// Assemble everything a runtime needs before the project script runs: graphics, the
+/// built-in nodes with their renderers, then the plugin set.
+///
+/// Only covers the engine's own graphics path. A host that supplies its own device
+/// calls [`Core::init_graphics_on_device`] and does not use this function.
+///
+/// The plugin set is registered on the thread that polls this future. A native host
+/// that creates the script VM with [`load_user_script`] should poll it on that same
+/// thread, so the assembly and the VM share one thread; `moyu_pal::task::spawn` runs
+/// it on a worker there. On the web `task::spawn` is local to the page thread and is
+/// fine.
+pub async fn prepare(core: &Arc<Core>) {
+    #[cfg(native)]
+    core.init_graphics();
+
+    #[cfg(web)]
+    core.init_graphics().await;
+
+    register_builtins(core);
+    register_plugins(core).await;
+}
+
 /// Load the project entry script. `on_load` runs once the script has loaded, which is
 /// when the project's own content exists and the first frame can be drawn.
 pub fn load_user_script<F>(core: &Arc<Core>, on_load: F) -> anyhow::Result<ScriptRuntime>
