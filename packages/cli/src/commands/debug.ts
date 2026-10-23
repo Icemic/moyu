@@ -41,6 +41,12 @@ const sessionArgs = {
     type: 'string',
     description: 'Entry file passed to a native engine',
   },
+  headless: {
+    type: 'boolean',
+    description: 'Run the native engine without a window',
+    default: true,
+    negativeDescription: 'Show the engine window',
+  },
   attach: {
     type: 'boolean',
     description: 'Attach to an engine started by hand instead of starting one',
@@ -292,6 +298,11 @@ type SessionArgs = {
   web?: boolean;
   port: string;
   entry?: string;
+  /**
+   * `--headless` is a boolean, but citty hands `--headless=false` over as the string
+   * "false" rather than the boolean, so both shapes have to be read.
+   */
+  headless?: boolean | string;
   attach?: boolean;
   listen: string;
   timeout: string;
@@ -302,9 +313,11 @@ type SessionArgs = {
  * A task that needs the session to stay open simply does not return until it is done.
  */
 async function runSession(args: SessionArgs, task: (host: DebugHost) => Promise<void>) {
+  const headless = args.headless !== false && args.headless !== 'false';
+
   const options: SessionOptions = args.attach
     ? { attachPort: Number(args.listen) }
-    : { web: args.web, port: Number(args.port), entry: args.entry };
+    : { web: args.web, port: Number(args.port), entry: args.entry, headless };
 
   let session: Awaited<ReturnType<typeof startDebugSession>> | null = null;
   let exitCode = 0;

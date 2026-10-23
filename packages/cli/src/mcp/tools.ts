@@ -51,11 +51,11 @@ const startTool: ToolDefinition = {
   title: 'Start a debug session',
   description:
     'Start the project engine with the debug bridge and wait until it is running. Call this before any ' +
-    'other moyu tool. Starting a session stops the previous one. Native sessions open a window; web ' +
-    'sessions serve the project and report a page URL that has to be opened in a browser. With attach, ' +
-    'the session only listens on a port and reports the MOYU_ENGINE_DEBUG_WS value an engine must be ' +
-    'started with; nothing is launched or waited for, which is how a locally built or packaged engine ' +
-    'gets inspected.',
+    'other moyu tool. Starting a session stops the previous one. Native sessions run without a window ' +
+    'by default; set headless to false to see it. Web sessions serve the project and report a page URL ' +
+    'that has to be opened in a browser. With attach, the session only listens on a port and reports the ' +
+    'MOYU_ENGINE_DEBUG_WS value an engine must be started with; nothing is launched or waited for, which ' +
+    'is how a locally built or packaged engine gets inspected.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -71,6 +71,12 @@ const startTool: ToolDefinition = {
       entry: {
         type: 'string',
         description: 'Entry file for a native engine; defaults to the project dev server',
+      },
+      headless: {
+        type: 'boolean',
+        description:
+          'Run the native engine without a window (default); ignored by web and attach sessions',
+        default: true,
       },
       projectRoot: {
         type: 'string',
@@ -116,6 +122,7 @@ const startTool: ToolDefinition = {
       web,
       port: typeof args.port === 'number' ? args.port : undefined,
       entry: typeof args.entry === 'string' ? args.entry : undefined,
+      headless: args.headless !== false,
     });
 
     await session.host.waitForEngine(DEFAULT_CONNECT_TIMEOUT_MS);
@@ -130,7 +137,7 @@ const startTool: ToolDefinition = {
     }
 
     const lines = [
-      `Engine started (${session.mode}).`,
+      `Engine started (${session.mode}${session.headless ? ', headless' : ''}).`,
       session.url === undefined ? '' : `Open this page to run it: ${session.url}`,
       ready ? '' : 'The engine has not finished starting up yet; engine logs may explain why.',
     ];

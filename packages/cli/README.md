@@ -52,6 +52,12 @@ moyu debug screenshot shot.webp --max-width 1280 --max-height 720
 
 `state` / `eval` / `tree` / `props` / `screenshot` 会等引擎启动完成再发请求，因此读到的是已经跑完项目脚本的状态；引擎还在初始化时，这类命令会一直等到它完成。
 
+native 会话默认不打开窗口，画面留在引擎自己的纹理里，调试命令照常工作。需要看着窗口调试时加 `--no-headless`：
+
+```bash
+moyu debug state --no-headless
+```
+
 要检查手动启动的引擎（例如打包好的成品），加上 `--attach`。这时不会启动任何东西，命令只监听一个端口，并打印引擎需要设置的环境变量：
 
 ```bash
@@ -85,7 +91,7 @@ moyu debug tree | grep sprite
 
 | 工具 | 用途 |
 | --- | --- |
-| `debug_start` | 带着调试桥启动引擎并等它就绪；会先停掉上一个会话。传 `attach: true` 改为只监听端口，返回需要设置的 `MOYU_ENGINE_DEBUG_WS`。 |
+| `debug_start` | 带着调试桥启动引擎并等它就绪；会先停掉上一个会话。native 会话默认无窗口，传 `headless: false` 可显示窗口。传 `attach: true` 改为只监听端口，返回需要设置的 `MOYU_ENGINE_DEBUG_WS`。 |
 | `debug_stop` | 停止 `debug_start` 启动的引擎与监听。 |
 | `debug_state` | 引擎状态快照。 |
 | `debug_eval` | 在引擎里执行 JavaScript。 |

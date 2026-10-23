@@ -50,6 +50,11 @@ export interface DebugSession {
   host: DebugHost;
   /** How the engine was started; a `web` session needs a browser to be opened. */
   mode: 'native' | 'web' | 'attach';
+  /**
+   * Whether this session asked the engine to run without a window. Only native
+   * sessions can be headless; `attach` launches nothing, so it always reports false.
+   */
+  headless: boolean;
   /** Page to open for a `web` session. */
   url?: string;
   /**
@@ -70,6 +75,11 @@ export interface SessionOptions {
   port?: number;
   /** Entry file for a native engine. */
   entry?: string;
+  /**
+   * Run a native engine without a window. Defaults to true; ignored by web and
+   * attach sessions.
+   */
+  headless?: boolean;
   /**
    * Wait for an engine someone else started, listening on this fixed port.
    *
@@ -102,6 +112,9 @@ export async function startDebugSession(options: SessionOptions = {}): Promise<D
   const host = await startHost(sessionId);
   const endpoint = `ws://127.0.0.1:${host.port}/debug/ws?sessionId=${sessionId}&role=engine`;
 
+  // A native debug engine runs without a window unless the caller asks to see it.
+  const headless = options.web !== true && options.headless !== false;
+
   log.info(`Debug endpoint listening on port ${host.port}`);
 
   try {
@@ -113,11 +126,19 @@ export async function startDebugSession(options: SessionOptions = {}): Promise<D
           sessionId,
           options.port ?? DEFAULT_WEB_PORT,
         )
-      : launchNativeEngine(projectRoot, meta.active.version, endpoint, sessionId, options.entry);
+      : launchNativeEngine(
+          projectRoot,
+          meta.active.version,
+          endpoint,
+          sessionId,
+          options.entry,
+          headless,
+        );
 
     return {
       host,
       mode: options.web ? 'web' : 'native',
+      headless,
       url: engine.url,
       stop: () => {
         engine.stop();
@@ -147,6 +168,7 @@ async function startAttachSession(port: number): Promise<DebugSession> {
   return {
     host,
     mode: 'attach',
+    headless: false,
     attachEndpoint: endpoint,
     stop: () => host.close(),
   };
@@ -325,6 +347,7 @@ function launchNativeEngine(
   endpoint: string,
   sessionId: string,
   entry: string | undefined,
+  headless: boolean,
 ): LaunchedEngine {
   const exeName = process.platform === 'win32' ? 'moyu.exe' : 'moyu';
   const enginePath = join(platformDir(projectRoot, version, detectPlatform()), exeName);
@@ -337,12 +360,17 @@ function launchNativeEngine(
   }
 
   const params = JSON.stringify({ engineDebugWsUrl: endpoint, engineDebugSessionId: sessionId });
+  const args = ['--entry', entry ?? DEFAULT_NATIVE_ENTRY, '--params', params];
+
+  if (headless) {
+    args.push('--headless');
+  }
 
   log.info(`Starting native engine: ${enginePath}`);
 
   // The engine logs to its own stdout, which is forwarded to our stderr: our stdout is
   // reserved for command results, and for the MCP server it carries the protocol.
-  const child = spawn(enginePath, ['--entry', entry ?? DEFAULT_NATIVE_ENTRY, '--params', params], {
+  const child = spawn(enginePath, args, {
     cwd: projectRoot,
     stdio: ['ignore', process.stderr, 'inherit'],
   });
