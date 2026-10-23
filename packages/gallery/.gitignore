@@ -7,3 +7,10 @@ libmoyu_live2d_plugin.dylib
 Live2DCubismCore.dll
 libLive2DCubismCore.so
 libLive2DCubismCore.dylib
+
+# Spine assets are local-only: the sample models carry their own license and the
+# plugin ships outside this repository. See README.md for placement instructions.
+/assets/spine/
+moyu_spine_plugin.dll
+libmoyu_spine_plugin.so
+libmoyu_spine_plugin.dylib

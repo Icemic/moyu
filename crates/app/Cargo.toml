@@ -20,6 +20,7 @@ moyu_core = {workspace = true, features = ["js_runtime"]}
 moyu_debugger = {workspace = true}
 moyu_gamepad = {workspace = true}
 moyu_live2d = {workspace = true}
+moyu_spine = {workspace = true}
 moyu_nodes = {workspace = true}
 moyu_ops = {workspace = true}
 moyu_pal = {workspace = true}

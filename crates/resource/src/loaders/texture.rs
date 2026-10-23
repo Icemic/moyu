@@ -12,11 +12,13 @@ use crate::variant;
 /// display ratio.
 ///
 /// `src` is the logical asset path the project references, relative to the assets
-/// directory.
+/// directory. `premultiplied` tells whether the source alpha is already
+/// premultiplied; the GPU copy is always premultiplied either way.
 pub(crate) fn load_texture(
     device: &Device,
     queue: &Queue,
     src: &str,
+    premultiplied: bool,
     mipmap_generator: Option<Arc<MipmapGenerator>>,
 ) -> Arc<Texture> {
     let texture = Arc::new(Texture::new());
@@ -42,6 +44,7 @@ pub(crate) fn load_texture(
                 &device,
                 &queue,
                 image,
+                premultiplied,
                 Some(url.as_str()),
                 mipmap_generator.as_deref(),
             ) {
@@ -64,26 +67,42 @@ pub(crate) fn load_image_to_texture(
     device: &Device,
     queue: &Queue,
     bytes: &[u8],
+    premultiplied: bool,
     label: Option<&str>,
     mipmap_generator: Option<&MipmapGenerator>,
 ) -> anyhow::Result<()> {
     let image = decode(bytes)?;
 
-    upload_image(texture, device, queue, image, label, mipmap_generator)
+    upload_image(
+        texture,
+        device,
+        queue,
+        image,
+        premultiplied,
+        label,
+        mipmap_generator,
+    )
 }
 
 /// Upload an already decoded image into the texture.
+///
+/// `premultiplied` says whether `image` already carries premultiplied alpha;
+/// when it does not, the channels are scaled once here. Mipmaps are generated
+/// after normalization, so every level averages premultiplied pixels.
 pub(crate) fn upload_image(
     texture: &Arc<Texture>,
     device: &Device,
     queue: &Queue,
     mut image: Rgba8Image,
+    premultiplied: bool,
     label: Option<&str>,
     mipmap_generator: Option<&MipmapGenerator>,
 ) -> anyhow::Result<()> {
     let dimensions = (image.width(), image.height());
 
-    image.premultiply_alpha_in_place();
+    if !premultiplied {
+        image.premultiply_alpha_in_place();
+    }
     let alpha_mask = image.extract_alpha_mask();
     let rgba = image.into_data();
 

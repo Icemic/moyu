@@ -1,0 +1,8 @@
+[package]
+authors = ["Icemic <bingfeng.web@gmail.com>"]
+description = "C ABI contract between the Moyu engine and the Spine plugin."
+edition = "2024"
+license = "MPL-2.0"
+name = "moyu_spine_abi"
+repository = "https://github.com/DeepSpaceMill/moyu"
+version.workspace = true

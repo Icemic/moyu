@@ -50,11 +50,28 @@ impl AssetId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AssetKind {
+    /// Straight (non-premultiplied) alpha source, premultiplied on upload.
     Texture,
+    /// Already premultiplied alpha source, uploaded as-is.
+    ///
+    /// Kept as a separate kind so the same path requested both ways does not
+    /// share one cached texture: the two inputs would produce different pixels.
+    TexturePremultiplied,
     Audio,
     Video,
     Font,
     Plain,
+}
+
+impl AssetKind {
+    /// Maps a texture kind to whether its source alpha is already premultiplied.
+    pub fn premultiplied(self) -> Option<bool> {
+        match self {
+            Self::Texture => Some(false),
+            Self::TexturePremultiplied => Some(true),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -30,8 +30,19 @@ msgid "· 删除 B 并重排：B 从树中移除，C 移动到 A 之前。"
 msgstr "· Remove and reorder B: B is removed from the tree, and C moves before A."
 
 #: src/pages/live2d.tsx:847
+#: src/pages/spine.tsx:504
+#: src/pages/spine.tsx:601
+#: src/pages/spine.tsx:608
+#: src/pages/spine.tsx:611
+#: src/pages/spine.tsx:614
+#: src/pages/spine.tsx:621
+#: src/pages/spine.tsx:624
 msgid "（无）"
 msgstr "(none)"
+
+#: src/pages/spine.tsx:574
+msgid "（默认）"
+msgstr "(default)"
 
 #: src/pages/layouts.tsx:26
 msgid "1. 自动 VBox"
@@ -73,7 +84,7 @@ msgstr "9. Dynamic sizing / hiding / removal / reordering"
 msgid "ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet"
 msgstr "ACH_TRAVEL_FAR_ACCUM · Accumulated Stat, can only increase; 2640 / 5280 feet"
 
-#: src/gallery.tsx:163
+#: src/gallery.tsx:170
 msgid "Achievement 与 Steamworks API 手动测试。"
 msgstr "Manual tests for Achievements and the Steamworks API."
 
@@ -125,7 +136,7 @@ msgstr "Content drawn after the backdrop remains sharp"
 msgid "Backdrop 捕获其身后已绘制的画面并应用滤镜；在它之后绘制的内容不受影响。"
 msgstr "Backdrop captures what has already been drawn behind it and applies a filter; content drawn after it is unaffected."
 
-#: src/gallery.tsx:132
+#: src/gallery.tsx:133
 msgid "Backdrop 背景滤镜"
 msgstr "Backdrop filter"
 
@@ -133,7 +144,7 @@ msgstr "Backdrop filter"
 msgid "Button 按钮"
 msgstr "Button"
 
-#: src/gallery.tsx:115
+#: src/gallery.tsx:116
 msgid "Button、Checkbox、Radio、Select、Slider 与 ScrollView。"
 msgstr "Button, Checkbox, Radio, Select, Slider, and ScrollView."
 
@@ -153,11 +164,29 @@ msgstr "Container transforms"
 msgid "disabled：点击后不获得焦点"
 msgstr "disabled: does not receive focus when clicked"
 
-#: src/gallery.tsx:121
+#. placeholder {0}: event.animation || '-'
+#. placeholder {1}: event.id.entry
+#. placeholder {2}: event.id.epoch
+#: src/pages/spine.tsx:314
+msgid "dispose {0} (entry {1} · epoch {2})"
+msgstr "dispose {0} (entry {1} · epoch {2})"
+
+#: src/gallery.tsx:122
 msgid "Editable 节点、末尾输入、IME、焦点与受控状态。"
 msgstr "Editable nodes, end-of-text input, IME, focus, and controlled state."
 
-#: src/gallery.tsx:126
+#. placeholder {0}: event.message
+#: src/pages/spine.tsx:291
+msgid "error: {0}"
+msgstr "error: {0}"
+
+#. placeholder {0}: event.name
+#. placeholder {1}: event.track
+#: src/pages/spine.tsx:306
+msgid "event {0} on track {1}"
+msgstr "event {0} on track {1}"
+
+#: src/gallery.tsx:127
 msgid "Filter 滤镜"
 msgstr "Filter"
 
@@ -165,15 +194,24 @@ msgstr "Filter"
 msgid "HBox onLayout：{measured}"
 msgstr "HBox onLayout: {measured}"
 
-#: src/gallery.tsx:120
+#. placeholder {0}: event.name
+#: src/pages/spine.tsx:299
+msgid "hit: {0}"
+msgstr "hit: {0}"
+
+#: src/pages/spine.tsx:590
+msgid "hitArea 属性（按下即上报命中）"
+msgstr "hitArea prop (reports a hit on press)"
+
+#: src/gallery.tsx:121
 msgid "Input 输入框"
 msgstr "Input"
 
-#: src/gallery.tsx:157
+#: src/gallery.tsx:158
 msgid "Live2D 模型、动作、表情、参数与遮罩渲染。"
 msgstr "Live2D models, motions, expressions, parameters and masked rendering."
 
-#: src/gallery.tsx:156
+#: src/gallery.tsx:157
 msgid "Live2D（仅桌面端）"
 msgstr "Live2D (desktop only)"
 
@@ -201,7 +239,7 @@ msgstr "RadioGroup manages mutually exclusive selections within a group."
 msgid "Raw WGSL 着色器"
 msgstr "Raw WGSL shader"
 
-#: src/gallery.tsx:151
+#: src/gallery.tsx:152
 msgid "Raw WGSL、参数槽与时间控制。"
 msgstr "Raw WGSL, parameter slots, and time controls."
 
@@ -213,6 +251,12 @@ msgstr "readOnly: allows focus but not input"
 msgid "ready 元数据不含部件列表，这里用样例模型的已知部件 id。"
 msgstr "The ready metadata carries no part list, so this uses known part ids of the sample models."
 
+#. placeholder {0}: event.dataVersion
+#. placeholder {1}: event.animations.length
+#: src/pages/spine.tsx:281
+msgid "ready: {0} · {1} animations · "
+msgstr "ready: {0} · {1} animations · "
+
 #: src/pages/controls.tsx:218
 msgid "ScrollView 滚动视图"
 msgstr "ScrollView"
@@ -221,7 +265,7 @@ msgstr "ScrollView"
 msgid "Select 下拉选择"
 msgstr "Select"
 
-#: src/gallery.tsx:144
+#: src/gallery.tsx:145
 msgid "Shader 转场"
 msgstr "Shader transition"
 
@@ -237,7 +281,15 @@ msgstr "Slider"
 msgid "space-between：间隔相等且不小于 gap = 20。"
 msgstr "space-between: spacing is equal and no less than gap = 20."
 
-#: src/gallery.tsx:138
+#: src/gallery.tsx:164
+msgid "Spine 骨骼动画、多轨播放、双色染色与混合模式。"
+msgstr "Spine skeletal animation, multi-track playback, two-color tinting and blend modes."
+
+#: src/gallery.tsx:163
+msgid "Spine（仅桌面端）"
+msgstr "Spine (desktop only)"
+
+#: src/gallery.tsx:139
 msgid "Spring 动画"
 msgstr "Spring animation"
 
@@ -249,11 +301,11 @@ msgstr "Sprite pixel hit testing"
 msgid "Sprite 精灵"
 msgstr "Sprite"
 
-#: src/gallery.tsx:108
+#: src/gallery.tsx:109
 msgid "Sprite、Text、Clip、Animation 与通用节点属性。"
 msgstr "Sprite, Text, Clip, Animation, and common node properties."
 
-#: src/gallery.tsx:162
+#: src/gallery.tsx:169
 msgid "Steam（仅桌面端）"
 msgstr "Steam (desktop only)"
 
@@ -273,7 +325,7 @@ msgstr "gold tint"
 msgid "useSpring 属性动画"
 msgstr "useSpring property animation"
 
-#: src/gallery.tsx:139
+#: src/gallery.tsx:140
 msgid "useSpring 属性动画与 useTransition 进出场动画。"
 msgstr "useSpring property animation and useTransition enter/exit animation."
 
@@ -281,7 +333,7 @@ msgstr "useSpring property animation and useTransition enter/exit animation."
 msgid "useTransition 进出场"
 msgstr "useTransition enter/exit"
 
-#: src/gallery.tsx:111
+#: src/gallery.tsx:112
 msgid "VBox、HBox、测量、对齐与动态重排。"
 msgstr "VBox, HBox, measurement, alignment, and dynamic reordering."
 
@@ -293,6 +345,10 @@ msgstr "x / scale / rotation apply to the entire subtree; click the color block 
 msgid "一道明亮的扫描带扫过输入画面。"
 msgstr "A bright scan band sweeps across the input image."
 
+#: src/pages/spine.tsx:425
+msgid "上层叠加当前动画"
+msgstr "Overlay the current animation on an upper track"
+
 #. placeholder {0}: dynamicLabels[(mode + 1) % dynamicLabels.length]
 #: src/pages/layouts.tsx:227
 msgid "下一状态：{0}"
@@ -302,7 +358,7 @@ msgstr "Next state: {0}"
 msgid "下拉列表展开时会覆盖下方内容（zIndex）。"
 msgstr "When expanded, the dropdown list overlays content below it (zIndex)."
 
-#: src/pages/live2d.tsx:963
+#: src/pages/live2d.tsx:971
 msgid "中心"
 msgstr "center"
 
@@ -313,6 +369,10 @@ msgstr "Nine-slice: rounded corners and borders do not distort or blur when stre
 #: src/pages/primitives.tsx:243
 msgid "九宫格填充模式"
 msgstr "Nine-slice fill modes"
+
+#: src/pages/spine.tsx:626
+msgid "事件"
+msgstr "Events"
 
 #: src/pages/live2d.tsx:854
 msgid "事件日志"
@@ -362,6 +422,13 @@ msgstr "Inner VBox A"
 msgid "内 VBox B"
 msgstr "Inner VBox B"
 
+#. placeholder {0}: event.area
+#. placeholder {1}: Math.round(event.x)
+#. placeholder {2}: Math.round( event.y, )
+#: src/pages/live2d.tsx:920
+msgid "内置命中：{0} @ 画布坐标 ({1}, {2})"
+msgstr "Built-in hit: {0} @ canvas ({1}, {2})"
+
 #: src/pages/controls.tsx:170
 msgid "内部维护当前值"
 msgstr "Internally managed value"
@@ -369,6 +436,10 @@ msgstr "Internally managed value"
 #: src/pages/controls.tsx:93
 msgid "内部维护状态"
 msgstr "Internally managed state"
+
+#: src/pages/spine.tsx:675
+msgid "最新事件"
+msgstr "Latest events"
 
 #: src/pages/steam.tsx:36
 msgid "最近一次调用"
@@ -407,6 +478,10 @@ msgstr "Foreground content"
 msgid "加载模型后列出动作组。"
 msgstr "Motion groups appear once a model is loaded."
 
+#: src/pages/spine.tsx:396
+msgid "加载模型后列出动画。"
+msgstr "Load a model to list its animations."
+
 #: src/pages/live2d.tsx:727
 msgid "加载模型后列出模型实际定义的常用参数。"
 msgstr "The common parameters the model actually defines appear once it is loaded."
@@ -420,9 +495,21 @@ msgstr "Motions"
 msgid "动态重排"
 msgstr "Dynamic reordering"
 
+#: src/pages/spine.tsx:394
+msgid "动画"
+msgstr "Animations"
+
 #: src/pages/controls.tsx:185
 msgid "动画 / Shader 方案"
 msgstr "Animation / Shader approach"
+
+#: src/pages/spine.tsx:380
+msgid "动画与事件"
+msgstr "Animation and events"
+
+#: src/pages/spine.tsx:613
+msgid "包围盒"
+msgstr "Bounding boxes"
 
 #: src/pages/filters.tsx:37
 msgid "原始对照 Original"
@@ -441,7 +528,11 @@ msgstr "Parameters"
 msgid "参数槽 · 通道采样 · builtins.time"
 msgstr "Parameter slots · channel sampling · builtins.time"
 
-#: src/gallery.tsx:145
+#: src/pages/spine.tsx:603
+msgid "参考包围盒"
+msgstr "Reference bounds"
+
+#: src/gallery.tsx:146
 msgid "双通道画面的 GPU 转场状态机。"
 msgstr "A GPU transition state machine for dual-channel images."
 
@@ -510,6 +601,10 @@ msgstr "One source image at targetWidth 300 / targetHeight 150: repeat and mirro
 msgid "启动"
 msgstr "Start"
 
+#: src/pages/spine.tsx:484
+msgid "启用 spineboy 命中区"
+msgstr "Enable the spineboy hit area"
+
 #: src/pages/backdrops.tsx:34
 msgid "启用背景滤镜"
 msgstr "Enable backdrop filter"
@@ -518,13 +613,18 @@ msgstr "Enable backdrop filter"
 msgid "启用输入框"
 msgstr "Enable input"
 
-#: src/pages/live2d.tsx:975
+#: src/pages/live2d.tsx:983
+#: src/pages/spine.tsx:480
 msgid "命中"
 msgstr "hit"
 
 #: src/pages/live2d.tsx:846
 msgid "命中区"
 msgstr "Hit areas"
+
+#: src/pages/spine.tsx:510
+msgid "命中只统计当前启用的包围盒：多数模型默认不启用任何命中区，需要先用 setAttachment 打开某个槽位（spineboy 为 head-bb / head）。"
+msgstr "Hit tests only count bounding boxes that are currently enabled: most models enable none by default, so a slot has to be switched on with setAttachment first (spineboy uses head-bb / head)."
 
 #: src/pages/primitives.tsx:48
 msgid "固定宽度文本框：设定 boxWidth 后，这段文字会在到达宽度上限时自动换行，并可通过 lineHeight 控制行距。"
@@ -550,7 +650,7 @@ msgstr "Reference C"
 msgid "基础与嵌套"
 msgstr "Basics and nesting"
 
-#: src/gallery.tsx:107
+#: src/gallery.tsx:108
 msgid "基础组件"
 msgstr "Primitives"
 
@@ -562,13 +662,21 @@ msgstr "Basic input and IME"
 msgid "填充"
 msgstr "Fill"
 
-#: src/gallery.tsx:133
+#: src/gallery.tsx:134
 msgid "处理节点背后已经绘制的画面，之后绘制的内容保持清晰。"
 msgstr "Processes content already drawn behind the node; content drawn after it remains sharp."
+
+#: src/pages/spine.tsx:458
+msgid "复位到 setup pose"
+msgstr "Reset to setup pose"
 
 #: src/pages/layouts.tsx:65
 msgid "外层 VBox"
 msgstr "Outer VBox"
+
+#: src/pages/spine.tsx:381
+msgid "外观与播放"
+msgstr "Appearance and playback"
 
 #: src/pages/primitives.tsx:42
 msgid "多彩"
@@ -586,7 +694,7 @@ msgstr "Full source image 250x240"
 msgid "对比度 Contrast"
 msgstr "Contrast"
 
-#: src/gallery.tsx:127
+#: src/gallery.tsx:128
 msgid "对节点自身子树的离屏渲染结果应用滤镜链。"
 msgstr "Applies a filter chain to the offscreen rendering of the node's own subtree."
 
@@ -594,11 +702,15 @@ msgstr "Applies a filter chain to the offscreen rendering of the node's own subt
 msgid "对齐交互"
 msgstr "Alignment interaction"
 
-#: src/gallery.tsx:114
+#: src/gallery.tsx:115
 msgid "封装组件"
 msgstr "Components"
 
-#: src/pages/live2d.tsx:986
+#: src/pages/spine.tsx:628
+msgid "尚无事件。"
+msgstr "No events yet."
+
+#: src/pages/live2d.tsx:994
 msgid "尚未执行命中测试；点击右侧画面或上面的按钮。"
 msgstr "No hit test yet; click the view on the right or a button above."
 
@@ -634,7 +746,7 @@ msgstr "Complete"
 msgid "已点击 {pressCount} 次"
 msgstr "Clicked {pressCount} times"
 
-#: src/gallery.tsx:111
+#: src/gallery.tsx:112
 msgid "布局"
 msgstr "Layout"
 
@@ -688,6 +800,10 @@ msgstr "Current target: x={0} · scale={1} · rotation={2}"
 msgid "当前选中：{selected}"
 msgstr "Selected: {selected}"
 
+#: src/pages/spine.tsx:624
+msgid "当前错误"
+msgstr "Current error"
+
 #: src/pages/input.tsx:38
 msgid "悬停和按住输入框应切换背景；聚焦后应显示 focused 背景。再验证焦点切换、末尾输入、Backspace 与中文输入法候选窗位置。"
 msgstr "Hovering over or pressing the input should change its background; when focused, it should show the focused background. Then verify focus switching, typing at the end, Backspace, and the Chinese IME candidate window position."
@@ -704,11 +820,20 @@ msgstr "Manual time"
 msgid "手动时间控制"
 msgstr "Manual time control"
 
+#: src/pages/spine.tsx:641
+msgid "把骨架与图集放到 assets/spine/（如 spineboy.json、spineboy.atlas 与页图），把插件二进制放到引擎可执行文件旁或设置 MOYU_SPINE_PLUGIN。素材与插件都不进仓库。"
+msgstr "Put the skeleton and atlas under assets/spine/ (for example spineboy.json, spineboy.atlas and the page images), then put the plugin binary next to the engine executable or set MOYU_SPINE_PLUGIN. Neither the samples nor the plugin are committed."
+
+#: src/pages/spine.tsx:582
+msgid "指针"
+msgstr "Pointer"
+
 #: src/pages/shader-transitions.tsx:109
 msgid "按钮只发送 prepare；perform 由 onPrepared 触发，onFinished 解锁下一次播放。"
 msgstr "The button only sends prepare; onPrepared triggers perform, and onFinished enables the next playback."
 
 #: src/pages/live2d.tsx:590
+#: src/pages/spine.tsx:382
 msgid "接入诊断"
 msgstr "Diagnostics"
 
@@ -730,6 +855,10 @@ msgstr "Plugin"
 msgid "插件状态"
 msgstr "Plugin status"
 
+#: src/pages/spine.tsx:520
+msgid "播放"
+msgstr "Playback"
+
 #: src/pages/shader-transitions.tsx:51
 #: src/pages/shader-transitions.tsx:96
 msgid "播放中"
@@ -738,6 +867,14 @@ msgstr "Playing"
 #: src/pages/shader-transitions.tsx:96
 msgid "播放转场"
 msgstr "Play transition"
+
+#: src/pages/spine.tsx:636
+msgid "放置说明"
+msgstr "Asset placement"
+
+#: src/pages/spine.tsx:601
+msgid "数据版本"
+msgstr "Data version"
 
 #: src/pages/layouts.tsx:50
 msgid "文字固有尺寸"
@@ -751,21 +888,30 @@ msgstr "No filter; used as the reference."
 msgid "时长 {duration} ms"
 msgstr "Duration: {duration} ms"
 
+#: src/pages/spine.tsx:533
+msgid "时间缩放"
+msgstr "Time scale"
+
 #: src/pages/steam.tsx:36
 msgid "显示实际提交的 subCommand 与同步返回值或错误。"
 msgstr "Shows the submitted subCommand and its synchronous return value or error."
 
+#: src/pages/spine.tsx:528
+msgid "暂停"
+msgstr "Paused"
+
+#: src/pages/spine.tsx:529
+msgid "暂停时求值照常进行，切换皮肤与附件立即可见。"
+msgstr "Evaluation keeps running while paused, so skin and attachment changes show up at once."
+
 #: src/pages/live2d.tsx:561
+#: src/pages/spine.tsx:352
 msgid "未加载"
 msgstr "Not loaded"
 
-#: src/pages/live2d.tsx:975
+#: src/pages/live2d.tsx:983
 msgid "未命中"
 msgstr "miss"
-
-#: src/pages/live2d.tsx:928
-msgid "未命中任何区域"
-msgstr "no hit area matched"
 
 #: src/pages/steam.tsx:199
 msgid "未提供测试按钮：DLC、overlayActivateToStore、overlayActivateToWebPage（App 480 无已确认参数）。"
@@ -775,18 +921,23 @@ msgstr "No test buttons are provided for DLC, overlayActivateToStore, or overlay
 msgid "未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。"
 msgstr "No test button is provided for workshopGetSubscribedItemPath because there is no confirmed item ID."
 
-#: src/gallery.tsx:239
+#: src/gallery.tsx:246
 msgid "末语 Gallery"
 msgstr "Moyu Gallery"
 
 #: src/pages/live2d.tsx:547
 #: src/pages/live2d.tsx:826
+#: src/pages/spine.tsx:335
 msgid "模型"
 msgstr "Model"
 
 #: src/pages/live2d.tsx:829
 msgid "模型元信息"
 msgstr "Model metadata"
+
+#: src/pages/spine.tsx:368
+msgid "模型已就绪；参考包围盒即布局尺寸，动画不会改变它。"
+msgstr "Model ready; the reference bounds are the layout size and animations do not change it."
 
 #: src/pages/live2d.tsx:576
 msgid "模型已就绪；右侧画面与官方样例一致即通过。"
@@ -836,6 +987,10 @@ msgstr "Fade helpers"
 msgid "淡出 FADE OUT"
 msgstr "FADE OUT"
 
+#: src/pages/spine.tsx:444
+msgid "淡出轨道 0"
+msgstr "Fade out track 0"
+
 #: src/pages/layouts.tsx:107
 msgid "深色区域为容器的固定尺寸。"
 msgstr "The dark area shows the container's fixed size."
@@ -847,6 +1002,10 @@ msgstr "Add"
 #: src/pages/spring-transitions.tsx:66
 msgid "添加 / 移除 keyed 项目，from → enter → leave 自动补间。"
 msgstr "Add or remove keyed items; from → enter → leave is tweened automatically."
+
+#: src/pages/spine.tsx:452
+msgid "清空全部轨道"
+msgstr "Clear all tracks"
 
 #: src/pages/live2d.tsx:873
 msgid "清空日志"
@@ -903,7 +1062,11 @@ msgstr "Click SPRING to toggle the target state.\n"
 msgid "点击切换变换"
 msgstr "Click to toggle transforms"
 
-#: src/pages/live2d.tsx:956
+#: src/pages/spine.tsx:417
+msgid "点击即在本轨替换；需要排队时用下方按钮。"
+msgstr "A click replaces whatever runs on the track; use the buttons below to queue instead."
+
+#: src/pages/live2d.tsx:964
 msgid "点击反馈"
 msgstr "Click feedback"
 
@@ -919,9 +1082,17 @@ msgstr "Click a button to start a test."
 msgid "点击按钮循环切换；两块区域同步变化。"
 msgstr "Click the button to cycle through states; both areas update together."
 
+#: src/pages/spine.tsx:495
+msgid "点击模型测试命中"
+msgstr "Click the model to test a hit"
+
 #: src/pages/controls.tsx:29
 msgid "点击计数、禁用态与文本对齐方式。"
 msgstr "Click counting, disabled state, and text alignment."
+
+#: src/pages/spine.tsx:546
+msgid "物理"
+msgstr "Physics"
 
 #: src/pages/live2d.tsx:820
 msgid "状态"
@@ -955,6 +1126,17 @@ msgstr "Canvas"
 #: src/pages/live2d.tsx:838
 msgid "画布原点"
 msgstr "Canvas origin"
+
+#. placeholder {0}: Math.round(x)
+#. placeholder {1}: Math.round(y)
+#: src/pages/live2d.tsx:936
+msgid "画布坐标 ({0}, {1}) → 未命中任何区域"
+msgstr "canvas ({0}, {1}) → no area hit"
+
+#: src/pages/spine.tsx:564
+#: src/pages/spine.tsx:611
+msgid "皮肤"
+msgstr "Skin"
 
 #: src/pages/input.tsx:153
 msgid "禁用内容"
@@ -1005,6 +1187,7 @@ msgid "第二行 Second line"
 msgstr "Second line"
 
 #: src/pages/live2d.tsx:577
+#: src/pages/spine.tsx:369
 msgid "等待 ready 事件；无响应时到「接入诊断」查看错误与放置说明。"
 msgstr "Waiting for the ready event; check Diagnostics for errors and setup notes if nothing happens."
 
@@ -1040,7 +1223,7 @@ msgstr "BACKDROP target"
 msgid "自动时间"
 msgstr "Automatic time"
 
-#: src/gallery.tsx:150
+#: src/gallery.tsx:151
 msgid "自定义 Shader"
 msgstr "Custom Shader"
 
@@ -1069,6 +1252,10 @@ msgstr "Overrides are replayed after the effect chain every frame, so they hold 
 msgid "试试移入或点击"
 msgstr "Hover over or click"
 
+#: src/pages/spine.tsx:566
+msgid "该模型没有命名皮肤，或尚未就绪。"
+msgstr "This model has no named skin, or is not ready yet."
+
 #: src/pages/live2d.tsx:674
 msgid "该模型没有表情，或模型尚未就绪。"
 msgstr "The model has no expressions, or it is not ready yet."
@@ -1077,6 +1264,10 @@ msgstr "The model has no expressions, or it is not ready yet."
 msgid "请输入内容"
 msgstr "Enter text"
 
+#: src/pages/spine.tsx:421
+msgid "轨道"
+msgstr "Tracks"
+
 #: src/pages/controls.tsx:105
 msgid "轨道宽度可随面板收窄。"
 msgstr "The track can shrink with the panel."
@@ -1084,6 +1275,10 @@ msgstr "The track can shrink with the panel."
 #: src/pages/shader-transitions.tsx:106
 msgid "转场画面"
 msgstr "Transition image"
+
+#: src/pages/spine.tsx:464
+msgid "过渡"
+msgstr "Transitions"
 
 #: src/pages/primitives.tsx:57
 msgid "这段交互文本"
@@ -1125,7 +1320,11 @@ msgstr "Reset"
 msgid "重置参数"
 msgstr "Reset parameters"
 
-#: src/pages/live2d.tsx:948
+#: src/pages/spine.tsx:558
+msgid "重置物理"
+msgstr "Reset physics"
+
+#: src/pages/live2d.tsx:956
 msgid "重置视角"
 msgstr "Reset view"
 
@@ -1135,7 +1334,7 @@ msgstr "Locked hover and left/right alignment"
 
 #. placeholder {0}: event.code
 #. placeholder {1}: event.message
-#: src/pages/live2d.tsx:939
+#: src/pages/live2d.tsx:947
 msgid "错误 {0}：{1}"
 msgstr "Error {0}: {1}"
 
@@ -1160,6 +1359,10 @@ msgstr "Uncontrolled component"
 #: src/pages/input.tsx:41
 msgid "非受控输入（autoFocus）"
 msgstr "Uncontrolled input (autoFocus)"
+
+#: src/pages/spine.tsx:617
+msgid "页"
+msgstr "Pages"
 
 #: src/pages/spring-transitions.tsx:88
 msgid "项目 {item}"
@@ -1193,6 +1396,10 @@ msgstr "Expected: left-aligned; the widest item determines the width; spacing is
 msgid "预期：每次点击同帧完成重排；visible = false 仍占位；删除后兄弟项递补到最前。"
 msgstr "Expected: each click completes reordering in the same frame; visible = false still occupies space; after removal, siblings move forward."
 
+#: src/pages/spine.tsx:649
+msgid "预览"
+msgstr "Preview"
+
 #: src/pages/primitives.tsx:44
 msgid "颜色"
 msgstr "Color"
@@ -1207,6 +1414,10 @@ msgstr "Saturation: {0}"
 msgid "饱和度 Saturation"
 msgstr "Saturation"
 
+#: src/pages/spine.tsx:600
+msgid "骨架"
+msgstr "Skeleton"
+
 #: src/pages/primitives.tsx:309
 msgid "默认（矩形判定）"
 msgstr "Default (rectangle test)"
@@ -1218,3 +1429,11 @@ msgstr "Default value: 0.35; state is managed internally"
 #: src/pages/primitives.tsx:27
 msgid "默认文本样式 Default 30px"
 msgstr "Default text style · 30px"
+
+#: src/pages/spine.tsx:468
+msgid "默认混合 0.2s"
+msgstr "Default mix 0.2s"
+
+#: src/pages/spine.tsx:474
+msgid "默认混合 0s"
+msgstr "Default mix 0s"

@@ -25,6 +25,8 @@ import type { AnimationProps } from './bindings/AnimationProps';
 import type { VideoProps } from './bindings/VideoProps';
 import type { Live2dEvent } from './bindings/Live2dEvent';
 import type { Live2dProps } from './bindings/Live2dProps';
+import type { SpineEvent } from './bindings/SpineEvent';
+import type { SpineProps } from './bindings/SpineProps';
 
 export type Tuple2 = [number, number];
 export type Tuple3 = [number, number, number];
@@ -106,8 +108,24 @@ export type MoyuLive2dAttributes = Live2dProps &
     onHit?: (event: Extract<Live2dEvent, { type: 'hit' }>) => void;
     onError?: (event: Extract<Live2dEvent, { type: 'error' }>) => void;
   };
-export type MoyuSpriteAttributes = SpriteProps & MoyuNodeAttributes;
-export type MoyuTextAttributes = TextProps &
+export type MoyuSpineAttributes = SpineProps &
+  MoyuNodeAttributes & {
+    /** The model finished parsing; the payload holds its full metadata. */
+    onReady?: (event: Extract<SpineEvent, { type: 'ready' }>) => void;
+    onTrackStart?: (event: Extract<SpineEvent, { type: 'trackStart' }>) => void;
+    onTrackComplete?: (event: Extract<SpineEvent, { type: 'trackComplete' }>) => void;
+    onTrackEnd?: (event: Extract<SpineEvent, { type: 'trackEnd' }>) => void;
+    /**
+     * The terminal signal for a playback: it fires for completion,
+     * interruption and cancellation alike, so waiting on it always returns.
+     */
+    onTrackDispose?: (event: Extract<SpineEvent, { type: 'trackDispose' }>) => void;
+    onTrackEvent?: (event: Extract<SpineEvent, { type: 'trackEvent' }>) => void;
+    /** A press landed inside a named bounding box; requires the `hitArea` prop. */
+    onHit?: (event: Extract<SpineEvent, { type: 'hit' }>) => void;
+    onError?: (event: Extract<SpineEvent, { type: 'error' }>) => void;
+  };
+export type MoyuSpriteAttributes = SpriteProps & MoyuNodeAttributes;export type MoyuTextAttributes = TextProps &
   MoyuNodeAttributes & {
     onStart?: () => void;
     onFinish?: () => void;
@@ -148,5 +166,6 @@ export declare namespace JSX {
     'shader-slot': DetailedMoyuProps<MoyuShaderSlotAttributes>;
     video: DetailedMoyuProps<MoyuVideoAttributes>;
     live2d: DetailedMoyuProps<MoyuLive2dAttributes>;
+    spine: DetailedMoyuProps<MoyuSpineAttributes>;
   }
 }

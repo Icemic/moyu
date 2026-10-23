@@ -76,11 +76,12 @@ impl ResourceManager {
         }
 
         match kind {
-            AssetKind::Texture => {
+            AssetKind::Texture | AssetKind::TexturePremultiplied => {
                 let texture = load_texture(
                     &self.device,
                     &self.queue,
                     src,
+                    kind.premultiplied().unwrap_or(false),
                     self.mipmap_generator.clone(),
                 );
                 let asset = Arc::new(Asset::Texture(texture));
@@ -108,13 +109,14 @@ impl ResourceManager {
         let mut asset_id = create_asset_id(kind, url);
 
         let asset = match kind {
-            AssetKind::Texture => {
+            AssetKind::Texture | AssetKind::TexturePremultiplied => {
                 let texture = Arc::new(Texture::new());
                 if let Err(err) = load_image_to_texture(
                     &texture,
                     &self.device,
                     &self.queue,
                     &data,
+                    kind.premultiplied().unwrap_or(false),
                     None,
                     self.mipmap_generator.as_deref(),
                 ) {
