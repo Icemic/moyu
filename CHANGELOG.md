@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 1. Add alpha-based hit testing for sprite nodes.
 2. Add `hitTestSelf` property to `Node` to control whether the node itself participates in hit testing.
+3. Add `live2d` node with motions, expressions, parameters, physics, look-at following and hit areas, evaluated by a plugin loaded at runtime.
+4. Add `spine` node with animation tracks, skins, physics, events and hit tests, evaluated by a plugin loaded at runtime.
+5. Add `--headless` to run a project without a window, with screenshots and the debug bridge still available.
+6. Support `repeat`, `mirror` and `blank` fill modes for nine-slice sprites.
+7. Support premultiplied-alpha texture sources.
+8. Add `addStoryFromContent` scenario command to register a story from Sixu text without replacing an existing one.
+
+### Changed
+
+1. Decouple `moyu_core` and `moyu_nodes` from winit; window, event loop and surface handling now go through the window system interface implemented by the default runtime.
+2. Extract shared engine assembly into the `moyu_app` crate, so a host can render on its own device and read frames from an engine-owned texture.
+
+### Fixed
+
+1. Play animations according to their frame delays instead of the refresh rate.
+2. Exclude clipped-out content from the ancestor bounds used for hit testing.
+3. Avoid busy-waiting when blocking on futures inside the Tokio runtime.
 
 ## [0.21.0] - 2026-10-03
 
