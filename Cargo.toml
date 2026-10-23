@@ -59,7 +59,7 @@ winit = {version = "0.30", default-features = false, features = [
   "x11",
   "rwh_06",
 ]}
-zip = {version = "8.5.1", default-features = false, features = ["zstd"]}
+zip = {version = "9.0.5", default-features = false, features = ["zstd"]}
 
 kira = {version = "0.12", git = "https://github.com/Icemic/kira", branch = "stopped_callback"}
 opus = {version = "0.3", git = "https://github.com/Icemic/opus-rs", branch = "dev"}
