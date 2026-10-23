@@ -2179,6 +2179,7 @@ dependencies = [
  "moyu_core",
  "moyu_debugger",
  "moyu_gamepad",
+ "moyu_live2d",
  "moyu_nodes",
  "moyu_ops",
  "moyu_pal",
@@ -2288,6 +2289,30 @@ dependencies = [
  "zune-core",
  "zune-jpeg",
 ]
+
+[[package]]
+name = "moyu_live2d"
+version = "0.21.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "cfg_aliases",
+ "glam",
+ "libloading 0.9.0",
+ "log",
+ "moyu_core",
+ "moyu_live2d_abi",
+ "moyu_macros",
+ "moyu_pal",
+ "moyu_resource",
+ "serde",
+ "ts-rs",
+ "wgpu",
+]
+
+[[package]]
+name = "moyu_live2d_abi"
+version = "0.21.0"
 
 [[package]]
 name = "moyu_macros"

@@ -39,10 +39,20 @@ Gallery 使用 Lingui 6，主语言为中文，同时维护 `zh`、`en` 和 `ja`
 - 06 Spring 动画 — useSpring 与 useTransition
 - 07 Shader 转场 — 双通道 GPU 转场状态机
 - 08 自定义 Shader — Raw WGSL 与参数槽
+- Live2D（仅桌面端）— 模型、动作、表情、参数、部件不透明度、命中测试与遮罩渲染
 
 ## 资产
 
 `assets/images/` 下几乎所有 PNG 都由 `scripts/generate-assets.mjs`（零依赖）生成，请勿手工编辑。其中中性灰度资产（包括 `slider_*`）在运行时通过 `tint` 上色；仅 `dropdown_list` 因 kit props 不含 tint 而为预烘焙色。
+
+### Live2D（本机放置）
+
+Live2D 页面依赖两份不入库的本地内容，需要自行准备：
+
+1. 模型：在 `assets/live2d/` 下按 `<名字>/<名字>.model3.json` 放置，页面内置的条目为 `Hiyori`、`Hiyori2`、`Mao`、`Haru`（即 `assets/live2d/Hiyori/Hiyori.model3.json` 等）。
+2. 插件：把 `moyu_live2d_plugin`（Windows 为 `.dll`，macOS 为 `.dylib`，其它为 `.so`）与 `Live2DCubismCore` 一起放到引擎可执行文件旁边；也可以用 `MOYU_LIVE2D_PLUGIN` 环境变量指向插件路径。
+
+两者都已被 `packages/gallery/.gitignore` 排除。未准备时页面不崩溃，而是显示错误信息与这份放置说明；Web 引擎没有动态库，同样按降级处理。
 
 ## 许可
 
