@@ -183,7 +183,7 @@ impl WinitApplication {
             self.schedule_next_redraw(now);
         }
 
-        moyu_app::announce_ready(core.clone());
+        moyu_app::announce_ready(core.clone(), true);
 
         self.initialized = true;
     }

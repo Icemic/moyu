@@ -9,9 +9,20 @@ mod mimalloc;
 mod winit_window_system;
 
 #[cfg(desktop)]
+mod headless;
+
+#[cfg(desktop)]
 #[tokio::main]
 async fn main() {
     moyu_pal::logger::setup(moyu_debugger::create_logger);
+
+    // Checked before the configuration is read, so a broken entry cannot block a
+    // session with no window on a modal dialog.
+    if std::env::args().any(|arg| arg == "--headless") {
+        headless::run().await;
+        return;
+    }
+
     moyu_pal::config::setup().await;
 
     let steam_plugin = if let Some(steam) = &moyu_pal::config::get_engine_config().steam {

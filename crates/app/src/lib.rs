@@ -199,13 +199,15 @@ where
 ///
 /// The splash screen runs first unless the project skips it, and the `ready` event is
 /// dispatched only after it is gone, so a project may draw over it from `ready` on.
-pub fn announce_ready(core: Arc<Core>) {
+/// A runtime that captures frames itself passes `show_splash = false`, because the
+/// splash would cover the first two seconds it is likely to capture.
+pub fn announce_ready(core: Arc<Core>, show_splash: bool) {
     // The project script has run and the first frame has been asked for, so the
     // runtime is ready for inspection. The splash screen is cosmetic and does not
     // hold this back.
     moyu_debugger::mark_ready();
 
-    if !get_engine_config().skip_splash {
+    if show_splash && !get_engine_config().skip_splash {
         moyu_pal::task::spawn(async move {
             show_splash_screen(core).await;
             dispatch_event(GameEvent::Ready);

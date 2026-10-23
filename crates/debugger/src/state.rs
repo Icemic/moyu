@@ -20,6 +20,8 @@ pub struct EngineStateSnapshot {
     pub uptime_ms: u64,
     /// Whether the engine has finished starting up.
     pub ready: bool,
+    /// Whether the host started this engine without a window.
+    pub headless: bool,
     pub logs: LogStats,
 }
 
@@ -36,6 +38,7 @@ impl EngineStateSnapshot {
             node_count: core.node_map().len(),
             uptime_ms: session.started_at.elapsed().as_millis() as u64,
             ready: super::is_ready(),
+            headless: moyu_pal::platform::is_headless(),
             logs: logs::stats(),
         })
     }
