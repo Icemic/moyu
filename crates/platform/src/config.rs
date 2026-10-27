@@ -22,8 +22,9 @@ static MOYU_ENV: OnceCell<MoyuConfig> = OnceCell::new();
 ///
 /// `hotspot` is in image pixels and defaults to the top-left corner, which is the
 /// tip of an arrow-shaped pointer.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(untagged)]
+#[ts(export)]
 pub enum CursorSource {
     Path(String),
     File {
@@ -55,10 +56,11 @@ impl CursorSource {
 ///
 /// State names are the ones a node's `cursor` property accepts, plus `default`,
 /// which is also the fallback for any state without an entry. A `null` value means
-/// the state is not configured. The names are checked by the window system that
-/// creates the cursors, so this type stays free of any platform dependency.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// the state is not configured. Names are parsed when the images are loaded, so this
+/// type stays free of any dependency.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(untagged)]
+#[ts(export)]
 pub enum CursorConfig {
     /// One image for every state; equivalent to configuring only `default`.
     All(String),

@@ -137,6 +137,9 @@ pub struct WinitWindowSystem {
     pending_cursors: Mutex<Option<HashMap<CursorIcon, Arc<CursorImage>>>>,
     /// Platform cursors, one per state the project configured.
     cursors: Mutex<HashMap<CursorIcon, CustomCursor>>,
+    /// The state the engine last asked for, kept so a new image set can be applied
+    /// without waiting for the pointer to move.
+    last_cursor: Mutex<MoyuCursor>,
 }
 
 impl WinitWindowSystem {
@@ -147,6 +150,7 @@ impl WinitWindowSystem {
             modifiers: Mutex::new(KeyboardModifiers::default()),
             pending_cursors: Mutex::new(None),
             cursors: Mutex::new(HashMap::new()),
+            last_cursor: Mutex::new(MoyuCursor::default()),
         }
     }
 
@@ -155,6 +159,9 @@ impl WinitWindowSystem {
     /// Called from an event callback, which is where an [`ActiveEventLoop`] is available.
     /// The pixels are dropped afterwards: every configured state keeps a platform cursor
     /// instead, and a state without one falls back to `default` at lookup time.
+    ///
+    /// The current state is applied again once the new set is in place, so replacing the
+    /// images takes effect on the next frame rather than on the next pointer move.
     pub fn prepare_cursors(&self, event_loop: &ActiveEventLoop) {
         let Some(images) = self.pending_cursors.lock().take() else {
             return;
@@ -177,6 +184,30 @@ impl WinitWindowSystem {
 
         log::info!("{} custom cursor(s) ready", cursors.len());
         *self.cursors.lock() = cursors;
+
+        let cursor = self.last_cursor.lock().clone();
+        self.apply_cursor(&cursor);
+    }
+
+    /// Show the pointer for one state, using a project image when there is one.
+    fn apply_cursor(&self, cursor: &MoyuCursor) {
+        let icon = match cursor {
+            MoyuCursor::Hidden => return self.window.set_cursor_visible(false),
+            MoyuCursor::Visible(icon) => *icon,
+        };
+
+        // `default` is what every state without an image of its own falls back to, so a
+        // single configured image covers all of them.
+        let cursors = self.cursors.lock();
+        match cursors
+            .get(&icon)
+            .or_else(|| cursors.get(&CursorIcon::Default))
+        {
+            Some(custom) => self.window.set_cursor(custom.clone()),
+            None => self.window.set_cursor(icon),
+        }
+
+        self.window.set_cursor_visible(true);
     }
 
     /// The native window, for the runtime's own needs.
@@ -436,23 +467,8 @@ impl WindowSystem for WinitWindowSystem {
     }
 
     fn set_cursor(&self, cursor: MoyuCursor) {
-        let icon = match cursor {
-            MoyuCursor::Hidden => return self.window.set_cursor_visible(false),
-            MoyuCursor::Visible(icon) => icon,
-        };
-
-        // `default` is what every state without an image of its own falls back to, so a
-        // single configured image covers all of them.
-        let cursors = self.cursors.lock();
-        match cursors
-            .get(&icon)
-            .or_else(|| cursors.get(&CursorIcon::Default))
-        {
-            Some(custom) => self.window.set_cursor(custom.clone()),
-            None => self.window.set_cursor(icon),
-        }
-
-        self.window.set_cursor_visible(true);
+        *self.last_cursor.lock() = cursor;
+        self.apply_cursor(&cursor);
     }
 
     fn set_ime_allowed(&self, allowed: bool) -> WindowSystemResult<()> {

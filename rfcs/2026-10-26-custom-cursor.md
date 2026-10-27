@@ -9,7 +9,9 @@
 
 ## 摘要
 
-`index.json` 增加一个可选的 `cursor` 字段，用资源路径把鼠标指针状态映射到自定义图片。配置可以是一张图（所有状态共用）或一个按状态名索引的字典（支持 `default` 兜底）。引擎在启动时异步读取、解码并校验，把「状态 → 图片」的表交给窗口系统；窗口系统在第一次事件回调里把它们转成平台光标，之后不再变。
+`index.json` 增加一个可选的 `cursor` 字段，用资源路径把鼠标指针状态映射到自定义图片。配置可以是一张图（所有状态共用）或一个按状态名索引的字典（支持 `default` 兜底）。引擎异步读取、解码并校验，把「状态 → 图片」的表交给窗口系统；窗口系统在事件回调里把它们转成平台光标。
+
+同一份配置也可以通过 `system` 插件的 `setCustomCursors` 命令在运行期整体替换，包括用空对象清空。
 
 能力完全来自 winit 的 `CustomCursor`：只支持静态图片，热点由配置给出，不做按 DPI 或舞台倍率缩放。加载期间沿用系统指针，加载失败按 `状态 → default → 系统指针` 逐级回退。
 
@@ -20,6 +22,7 @@
 - `MoyuCursor`（`crates/core/src/base/cursor.rs`）只有两种形态：`Visible(cursor_icon::CursorIcon)` 与 `Hidden`。它的字符串表示与 `CursorIcon::name()` 完全一致（`pointer`、`move`、`no-drop` 等 kebab-case 名字），因此节点上的 `cursor` 属性已经能表达全部系统指针状态。
 - 指针命中节点变化时，`Core::set_cursor`（`crates/core/src/core.rs`）用 `ArcSwap` 去重，值变化才调用 `WindowSystem::set_cursor`；指针离开所有节点时回落到 `Visible(CursorIcon::Default)`（`crates/core/src/core/pointer_events.rs`）。
 - 默认 runtime 的实现（`crates/moyu/src/winit_window_system.rs`）直接调用 `window.set_cursor(icon)` 与 `window.set_cursor_visible(false)`，不做任何转换。
+- `system` 插件（`crates/core/src/plugins/system.rs`）已经承载窗口相关命令：改尺寸、改标题、读取平台信息、截图等。运行期替换指针也属于这一类。
 - `MoyuConfig`（`crates/platform/src/config.rs`）已有 `fontFile`，用 `#[serde(untagged)]` 同时接受单个路径与列表，路径以 `assets_dir()` 为基准。`cursor` 沿用同一套路径语义。
 
 ### 现状不足
@@ -30,14 +33,15 @@
 
 - 用 `index.json` 的单个字段为任意指针状态指定自定义图片；
 - 支持「一张图通吃」与「逐状态配置 + `default` 兜底」两种写法；
-- 启动时一次性加载与转换，运行期间不再涉及解码或平台对象创建；
+- 启动时一次性加载与转换，之后指针变化只做查表，不涉及解码或平台对象创建；
+- 允许脚本用同一份配置在运行期整体替换指针，包括清空回系统指针；
 - 未配置、配置非法或加载失败时，行为与不带 `cursor` 字段时完全一致；
 - 不引入 winit 之外的平台代码，不引入动图依赖。
 
 ## 非目标
 
 - **动图光标**：`CustomCursorExtWebSys::from_animation` 只有 web 有，且用户已明确不需要。APNG / 动态 WebP 只取首帧。
-- **运行期修改**：不提供脚本命令重新加载或替换光标。配置改了就重启。
+- **增量修改**：替换总是整体覆盖，不提供「只改 pointer」或「再添加一个状态」的命令。需要混合时把完整配置重发一次。
 - **按 DPI 缩放**：winit 不缩放，本文也不缩放。作者要适配高分屏就直接提供更大的图。
 - **参与多倍图变体**：`multiResAssets` 只作用于纹理资源，光标按配置路径原样读取。
 - **移动端**：winit 在 Android / iOS 上把 `create_custom_cursor` 实现为空操作，本文不为其补平台代码；指针保持系统图标。
@@ -115,6 +119,22 @@ nwse-resize col-resize row-resize all-scroll zoom-in zoom-out dnd-ask all-resize
 
 `hidden` 不是状态名，而是 `MoyuCursor::Hidden`。配置里出现 `hidden` 时 `warn` 并忽略，提示用节点的 `cursor="hidden"` 控制隐藏。未知键同样 `warn` 并忽略，这样引擎升级后新增的状态名不会让旧项目启动失败。
 
+### 运行期替换
+
+`system` 插件提供一个命令，payload 就是 `index.json` 里那份配置，不需要第二套格式：
+
+```ts
+await executePluginCommand('system', {
+  subCommand: 'setCustomCursors',
+  cursors: { pointer: { src: 'cursors/hand.png', hotspot: [14, 3] } },
+});
+```
+
+- `cursors` 的类型是 `CursorConfig`，即 `string | { [state]: CursorSource | null }`。
+- 替换是整体覆盖：命令里没写的状态在本次生效后回到系统指针，不会保留上一次配置。这也是动态开关功能的方式：传 `{}` 就清空。
+- 返回 `Promise`：读取与解码是异步的，`await` 到它时表已经交给窗口系统，但平台光标要到下一个事件回调才建好（见下节）。
+- 启动时若不配 `cursor`，用这个命令也能开启功能，两条路径共用 `load_cursors` 与 `set_custom_cursors`。
+
 ### 分层
 
 自定义指针涉及三件事，它们的归属必须明确：
@@ -168,23 +188,26 @@ MoyuCursor::Visible(icon)
 
 ```mermaid
 sequenceDiagram
-    participant App as moyu_app::prepare
+    participant Src as 调用方
     participant Core as Core
     participant WS as WindowSystem
     participant EL as ActiveEventLoop
 
-    App->>App: load_cursors(config)
-    Note over App: read → decode → 校验尺寸与热点<br/>失败的条目已丢弃
-    App->>Core: set_custom_cursors(images)
+    Note over Src: 启动：moyu_app::prepare<br/>运行期：setCustomCursors 命令
+    Src->>Src: load_cursors(config)
+    Note over Src: read → decode → 校验尺寸与热点<br/>失败的条目已丢弃
+    Src->>Core: set_custom_cursors(images)
     Core->>WS: set_custom_cursors(images)
     Note over WS: 存为 pending，等待事件回调
     EL->>WS: about_to_wait → prepare_cursors()
     WS->>WS: from_rgba + create_custom_cursor<br/>消费掉 images，像素释放
+    WS->>WS: 用 last_cursor 重新应用当前状态
 ```
 
 要点：
 
-- **加载位置**：`moyu_app::prepare` 与字体加载同一处，在项目脚本运行前完成。
+- **加载位置**：启动时在 `moyu_app::prepare`，与字体加载同一处，在项目脚本运行前完成；运行期在命令的异步任务里，两条路径共用 `load_cursors`。
+- **替换后立即生效**：窗口系统记住最后一次 `set_cursor` 的状态，装上新表后主动重新应用一次。否则换了图得等指针动一下才会有变化。
 - **解码输出**：`moyu_image::decode` 返回非预乘 RGBA8，正是 `from_rgba` 要求的格式；`to_compact()` 消除 stride 差异。
 - **共享同一张图**：多个状态指向同一个 `src` 且热点相同时复用同一份解码结果。
 - **热点参与去重**：同一 `src` 但热点不同的条目会分开解码，因为热点是图像的一部分。
@@ -193,15 +216,17 @@ sequenceDiagram
 
 ### 平台对象的创建时机
 
-`ActiveEventLoop::create_custom_cursor` 只存在于事件回调中，而 `set_custom_cursors` 拿到表的时机没有事件循环可用。所以表先存进一个 `pending` 槽，`about_to_wait` 每轮调用 `prepare_cursors(&event_loop)`：
+`ActiveEventLoop::create_custom_cursor` 只存在于事件回调中，而 `set_custom_cursors` 拿到表的时机没有事件循环可用（启动时在脚本运行前，运行期在异步任务里）。所以表先存进一个 `pending` 槽，`about_to_wait` 每轮调用 `prepare_cursors(&event_loop)`：
 
 1. 取出 pending 的图片表（`take()`，之后槽里为空）；
 2. 逐个 `CustomCursor::from_rgba` + `create_custom_cursor`，按状态建好平台光标；
-3. 表按值消费，循环结束后图片像素全部释放。
+3. 整表替换掉旧的平台光标（`HashMap` 赋值），旧对象随之销毁；
+4. 表按值消费，循环结束后图片像素全部释放；
+5. 用记住的当前状态重新应用，新表生效后不需要等指针移动。
 
 `from_rgba` 不需要处理失败：引擎已经按它的全部四条规则校验过（尺寸、字节数整除 4、像素数匹配、热点在图内）。
 
-**像素只有一份**：转换完成后丢弃引擎侧的 RGBA，运行期只保留平台侧那一份（Windows/macOS/X11 是句柄，Wayland 是 wl_shm buffer，Web 是 ImageBitmap/Blob）。
+**像素只有一份，且随时可重建**：转换完成后丢弃引擎侧的 RGBA，运行期只保留平台侧那一份（Windows/macOS/X11 是句柄，Wayland 是 wl_shm buffer，Web 是 ImageBitmap/Blob）。再次替换会重新读图，代价与启动时那一遍相同。
 
 ### 平台差异
 
@@ -222,6 +247,8 @@ sequenceDiagram
 - **一个状态失败不影响其他状态**：这是逐条独立加载与独立回退的结果，也意味着配置里多个笔误需要看多条 `warn` 才能全部发现。
 - **不支持按窗口大小换图**：与 `multiResAssets` 不联动，光标尺寸是作者的固定选择。
 - **首次生效有一个事件循环周期**：`create_custom_cursor` 只在事件回调里可用，所以第一张图要等到下一次 `about_to_wait`（持续渲染时 ≤16 ms）。这期间显示系统指针。
+- **替换是整体覆盖**：命令里没写的状态在本次生效后回到系统指针。想保留部分状态就在每次调用里写全，不存在「只改一个状态」的增量语义。
+- **重复替换会重新读图**：引擎不留图片缓存，每次命令都会重新读取与解码。这个命令用于切换主题或开关功能，不在每帧调用。
 - **移动端会多读一遍图片**：引擎侧不根据平台能力跳过加载，Android / iOS 读完图片后由 winit 的空实现丢弃。这几个文件很小，不为此加一条能力查询。
 
 ## 被否决的方案
@@ -255,7 +282,9 @@ sequenceDiagram
 5. 路径不存在、格式不支持、热点越界、尺寸超过 2048：各自 `warn`，对应状态回退，其余状态正常。
 6. 载入完成的瞬间：指针从系统指针切换为自定义图，不需要移动鼠标。
 7. Web 与 desktop 各跑一遍。Web 额外确认：超过浏览器限制（常见 128×128）的图只会让指针停留在上一个，不会崩溃；这个限制引擎感知不到，属于作者自控范围。
-8. Android / iOS 只确认指针为系统图标且无崩溃。
+8. 运行期调用 `setCustomCursors`：换一份配置后指针立即变化，不需要移动鼠标。
+9. 运行期传空对象：所有状态回到系统指针。
+10. Android / iOS 只确认指针为系统图标且无崩溃。
 
 ## 决策记录
 
@@ -272,8 +301,10 @@ sequenceDiagram
 | 查找顺序 | 状态 → `default` → 系统指针 |
 | 加载失败 | 该状态回退 `default`，再回退系统指针，记 `warn` |
 | 同图多状态 | 同 `src` 且同热点复用解码结果；热点不同则分开解码 |
-| 加载时机 | 启动时一次性，`moyu_app::prepare` 内异步；加载期间用系统指针 |
-| 加载后刷新 | 引擎不参与；窗口系统在拿到表后自行生效 |
+| 加载时机 | 启动时在 `moyu_app::prepare`，运行期在 `setCustomCursors` 命令里，两处共用 `load_cursors` |
+| 运行期入口 | `system` 插件的 `setCustomCursors` 命令，payload 与 `index.json` 同形 |
+| 替换语义 | 整体覆盖；`{}` 清空自定义指针 |
+| 替换后的刷新 | 窗口系统记住当前状态，装上新表后立即重新应用 |
 | 解码归属 | `moyu_core::load_cursors` |
 | 回退归属 | 窗口系统的 `set_cursor`（`default` 兜底） |
 | 平台对象创建 | backend：表先存 pending，`about_to_wait` 中一次性建完并释放像素 |

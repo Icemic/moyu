@@ -99,9 +99,13 @@ pub trait WindowSystem: Send + Sync + 'static {
     /// [`Self::set_custom_cursors`]) and picks the one for this state itself; the
     /// engine does not resolve the state for it.
     fn set_cursor(&self, cursor: MoyuCursor);
-    /// Hand the project's cursor images to the window system.
+    /// Hand the project's cursor images to the window system, replacing the current
+    /// set.
     ///
-    /// Called once, after loading and before the project script runs.
+    /// Called after loading at startup, and again whenever a script hands over a new
+    /// set. An empty map removes every custom cursor. The window system installs the
+    /// images at its next event callback and keeps them from then on; the engine
+    /// re-applies the current cursor once that happened.
     fn set_custom_cursors(&self, cursors: HashMap<CursorIcon, Arc<CursorImage>>);
 
     /// Allow or forbid the platform input method.

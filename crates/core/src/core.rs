@@ -497,7 +497,7 @@ impl Core {
 
     #[inline]
     fn set_cursor(&self, cursor: MoyuCursor) {
-        let prev_cursor = self.cursor_state.swap(Arc::new(cursor.clone()));
+        let prev_cursor = self.cursor_state.swap(Arc::new(cursor));
 
         if *prev_cursor != cursor {
             debug!("set cursor to {}", cursor.name());
@@ -505,11 +505,11 @@ impl Core {
         }
     }
 
-    /// Hand the project's cursor images to the window system.
+    /// Hand the project's cursor images to the window system, replacing the current set.
     ///
-    /// Called once after loading. The window system keeps them from then on, so the
-    /// engine does not need to stay in the path between a node's `cursor` property and
-    /// the platform call.
+    /// Called after loading at startup and by the `setCustomCursors` system command. The
+    /// window system keeps them from then on, so the engine does not need to stay in the
+    /// path between a node's `cursor` property and the platform call.
     pub fn set_custom_cursors(&self, cursors: HashMap<CursorIcon, Arc<CursorImage>>) {
         self.window_system.set_custom_cursors(cursors);
     }

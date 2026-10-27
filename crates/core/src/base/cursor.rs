@@ -9,7 +9,7 @@ use ts_rs::TS;
 
 pub use cursor_icon::{CursorIcon, ParseError};
 
-#[derive(Debug, Clone, PartialEq, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, TS)]
 #[ts(
     export,
     type = "'hidden' | 'default' | 'context-menu' | 'help' | 'pointer' | 'progress' | 'wait' | 'cell' | 'crosshair' | 'text' | 'vertical-text' | 'alias' | 'copy' | 'move' | 'no-drop' | 'not-allowed' | 'grab' | 'grabbing' | 'e-resize' | 'n-resize' | 'ne-resize' | 'nw-resize' | 's-resize' | 'se-resize' | 'sw-resize' | 'w-resize' | 'ew-resize' | 'ns-resize' | 'nesw-resize' | 'nwse-resize' | 'col-resize' | 'row-resize' | 'all-scroll' | 'zoom-in' | 'zoom-out' | 'dnd-ask' | 'all-resize'"

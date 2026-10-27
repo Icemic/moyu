@@ -3,12 +3,12 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use arc_swap::ArcSwapOption;
 use moyu_macros::Plugin;
-use moyu_pal::config::{WindowState, get_engine_config};
+use moyu_pal::config::{CursorConfig, WindowState, get_engine_config};
 use moyu_pal::url::Url;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::base::Snapshot;
+use crate::base::{Snapshot, load_cursors};
 use crate::core::Core;
 use crate::traits::PluginBaseTrait;
 use crate::traits::{Command, Plugin};
@@ -115,6 +115,14 @@ pub enum SystemCommand {
     SetTitle {
         title: String,
     },
+    /// Replace the project's custom mouse pointers.
+    ///
+    /// `cursors` takes the same shape as the `cursor` field of `index.json`, so any
+    /// configuration is also a valid payload. An empty object clears every custom
+    /// pointer and returns to the platform ones.
+    SetCustomCursors {
+        cursors: CursorConfig,
+    },
     GetWindowState,
     GetWindowInnerPosition,
     GetWindowInnerSize,
@@ -166,6 +174,17 @@ impl Command for SystemPlugin {
             }
             SystemCommand::SetTitle { title } => {
                 self.core.window_system().set_title(&title)?;
+            }
+            SystemCommand::SetCustomCursors { cursors } => {
+                let core = self.core.clone();
+                let fut = async move {
+                    let images = load_cursors(&cursors).await;
+                    core.set_custom_cursors(images);
+                    Ok::<(), anyhow::Error>(())
+                };
+
+                let promise = create_promise(fut)?;
+                return Ok(Some(promise));
             }
             SystemCommand::GetWindowState => {
                 let state = self.core.get_window_state();
