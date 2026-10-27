@@ -8,12 +8,12 @@
 //!
 //! See `rfcs/2026-10-22-headless-runtime.md`.
 
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use moyu_core::base::MoyuCursor;
-use moyu_core::core::{
-    SurfaceMetrics, WindowSystem, WindowSystemError, WindowSystemResult,
-};
+use moyu_core::base::{CursorIcon, CursorImage, MoyuCursor};
+use moyu_core::core::{SurfaceMetrics, WindowSystem, WindowSystemError, WindowSystemResult};
 use moyu_pal::config::WindowState;
 
 /// A window system that has no window, no input method and no surface.
@@ -92,7 +92,10 @@ impl WindowSystem for HeadlessWindowSystem {
 
     fn focus_window(&self) {}
 
+    /// There is no pointer to show.
     fn set_cursor(&self, _cursor: MoyuCursor) {}
+
+    fn set_custom_cursors(&self, _cursors: HashMap<CursorIcon, Arc<CursorImage>>) {}
 
     fn set_ime_allowed(&self, _allowed: bool) -> WindowSystemResult<()> {
         Err(WindowSystemError::Unsupported)

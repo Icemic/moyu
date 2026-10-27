@@ -6,10 +6,11 @@
 //! platform extras (Windows icon, Web canvas, Android activity). `moyu_core` and
 //! `moyu_nodes` never see a winit type.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::anyhow;
-use moyu_core::base::MoyuCursor;
+use moyu_core::base::{CursorImage, MoyuCursor};
 use moyu_core::core::{
     ImeEvent, KeyInput, KeyboardModifiers, PointerButton, SurfaceMetrics, TouchPhase, WindowSystem,
     WindowSystemError, WindowSystemEvent, WindowSystemResult,
@@ -26,7 +27,7 @@ use winit::event::{
 };
 use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 use winit::keyboard::{Key, ModifiersState, NamedKey};
-use winit::window::{Fullscreen, Window};
+use winit::window::{CursorIcon, CustomCursor, Fullscreen, Window};
 
 use crate::entry::ApplicationInitEvent;
 
@@ -128,6 +129,14 @@ pub struct WinitWindowSystem {
     /// Modifier keys currently down. Kept here so a keyboard event carries a snapshot
     /// without asking the core.
     modifiers: Mutex<KeyboardModifiers>,
+    /// The project's cursor images, handed over once by the engine.
+    ///
+    /// `create_custom_cursor` needs an [`ActiveEventLoop`], which the hand-over has no
+    /// access to, so the images wait here until the next event callback turns them into
+    /// platform cursors and drops the pixels.
+    pending_cursors: Mutex<Option<HashMap<CursorIcon, Arc<CursorImage>>>>,
+    /// Platform cursors, one per state the project configured.
+    cursors: Mutex<HashMap<CursorIcon, CustomCursor>>,
 }
 
 impl WinitWindowSystem {
@@ -136,7 +145,38 @@ impl WinitWindowSystem {
             window,
             event_proxy,
             modifiers: Mutex::new(KeyboardModifiers::default()),
+            pending_cursors: Mutex::new(None),
+            cursors: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Turn the images the engine handed over into platform cursors.
+    ///
+    /// Called from an event callback, which is where an [`ActiveEventLoop`] is available.
+    /// The pixels are dropped afterwards: every configured state keeps a platform cursor
+    /// instead, and a state without one falls back to `default` at lookup time.
+    pub fn prepare_cursors(&self, event_loop: &ActiveEventLoop) {
+        let Some(images) = self.pending_cursors.lock().take() else {
+            return;
+        };
+
+        let mut cursors = HashMap::with_capacity(images.len());
+
+        for (icon, image) in images {
+            let source = CustomCursor::from_rgba(
+                image.rgba.clone(),
+                image.width,
+                image.height,
+                image.hotspot_x,
+                image.hotspot_y,
+            )
+            .expect("the engine validated every from_rgba requirement");
+
+            cursors.insert(icon, event_loop.create_custom_cursor(source));
+        }
+
+        log::info!("{} custom cursor(s) ready", cursors.len());
+        *self.cursors.lock() = cursors;
     }
 
     /// The native window, for the runtime's own needs.
@@ -391,16 +431,28 @@ impl WindowSystem for WinitWindowSystem {
         self.window.focus_window();
     }
 
+    fn set_custom_cursors(&self, cursors: HashMap<CursorIcon, Arc<CursorImage>>) {
+        *self.pending_cursors.lock() = Some(cursors);
+    }
+
     fn set_cursor(&self, cursor: MoyuCursor) {
-        match cursor {
-            MoyuCursor::Visible(cursor) => {
-                self.window.set_cursor(cursor);
-                self.window.set_cursor_visible(true);
-            }
-            MoyuCursor::Hidden => {
-                self.window.set_cursor_visible(false);
-            }
+        let icon = match cursor {
+            MoyuCursor::Hidden => return self.window.set_cursor_visible(false),
+            MoyuCursor::Visible(icon) => icon,
+        };
+
+        // `default` is what every state without an image of its own falls back to, so a
+        // single configured image covers all of them.
+        let cursors = self.cursors.lock();
+        match cursors
+            .get(&icon)
+            .or_else(|| cursors.get(&CursorIcon::Default))
+        {
+            Some(custom) => self.window.set_cursor(custom.clone()),
+            None => self.window.set_cursor(icon),
         }
+
+        self.window.set_cursor_visible(true);
     }
 
     fn set_ime_allowed(&self, allowed: bool) -> WindowSystemResult<()> {

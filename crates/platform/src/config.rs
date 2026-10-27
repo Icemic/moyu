@@ -2,6 +2,8 @@ mod backend;
 mod logical_size;
 mod present_mode;
 
+use std::collections::HashMap;
+
 use csscolorparser::Color;
 use once_cell::sync::OnceCell;
 use serde::de::Visitor;
@@ -16,6 +18,53 @@ use self::logical_size::MoyuLogicalSize;
 pub use self::present_mode::RenderingPresentMode;
 
 static MOYU_ENV: OnceCell<MoyuConfig> = OnceCell::new();
+/// One cursor image: either a bare path, or a path with an explicit hotspot.
+///
+/// `hotspot` is in image pixels and defaults to the top-left corner, which is the
+/// tip of an arrow-shaped pointer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum CursorSource {
+    Path(String),
+    File {
+        src: String,
+        hotspot: Option<(u16, u16)>,
+    },
+}
+
+impl CursorSource {
+    /// Asset path of the image, relative to the assets directory.
+    pub fn src(&self) -> &str {
+        match self {
+            Self::Path(path) => path,
+            Self::File { src, .. } => src,
+        }
+    }
+
+    /// Hotspot inside the image, in image pixels.
+    pub fn hotspot(&self) -> (u16, u16) {
+        match self {
+            Self::Path(_) => (0, 0),
+            Self::File { hotspot, .. } => hotspot.unwrap_or((0, 0)),
+        }
+    }
+}
+
+/// Custom mouse pointers, written as one image for every state or as a map from
+/// state name to image.
+///
+/// State names are the ones a node's `cursor` property accepts, plus `default`,
+/// which is also the fallback for any state without an entry. A `null` value means
+/// the state is not configured. The names are checked by the window system that
+/// creates the cursors, so this type stays free of any platform dependency.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum CursorConfig {
+    /// One image for every state; equivalent to configuring only `default`.
+    All(String),
+    /// Per-state images. Keys left out fall back to `default`.
+    States(HashMap<String, Option<CursorSource>>),
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -176,6 +225,8 @@ pub struct MoyuConfig {
     pub multi_res_asset_policy: MultiResAssetPolicy,
     pub enable_gamepads: bool,
     pub skip_splash: bool,
+    /// Custom mouse pointers. `None` keeps every platform cursor.
+    pub cursor: Option<CursorConfig>,
     pub steam: Option<SteamConfig>,
     /// Custom parameters that can be accessed in the engine.
     /// The content is not interpreted by the platform, it's just passed to the engine as-is.
@@ -207,6 +258,7 @@ impl Default for MoyuConfig {
             multi_res_asset_policy: MultiResAssetPolicy::Quality,
             enable_gamepads: false,
             skip_splash: false,
+            cursor: None,
             steam: None,
             params: String::new(),
         }

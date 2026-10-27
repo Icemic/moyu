@@ -10,11 +10,15 @@
 //! Core and nodes only use the types in this module, so neither depends on a specific
 //! windowing library. The default `moyu` runtime implements this boundary with winit.
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use anyhow::Error;
+use cursor_icon::CursorIcon;
 use moyu_pal::config::WindowState;
 use wgpu::{Instance, Surface};
 
-use crate::base::MoyuCursor;
+use crate::base::{CursorImage, MoyuCursor};
 use crate::core::input::{KeyInput, KeyboardModifiers, PointerButton, TouchPhase};
 use crate::events::WheelEventDeltaMode;
 
@@ -89,8 +93,16 @@ pub trait WindowSystem: Send + Sync + 'static {
     fn move_to_center(&self) -> WindowSystemResult<()>;
     /// Give the window input focus.
     fn focus_window(&self);
-    /// Show or hide the mouse cursor.
+    /// Show the cursor for the current state.
+    ///
+    /// The window system holds the project's images (from
+    /// [`Self::set_custom_cursors`]) and picks the one for this state itself; the
+    /// engine does not resolve the state for it.
     fn set_cursor(&self, cursor: MoyuCursor);
+    /// Hand the project's cursor images to the window system.
+    ///
+    /// Called once, after loading and before the project script runs.
+    fn set_custom_cursors(&self, cursors: HashMap<CursorIcon, Arc<CursorImage>>);
 
     /// Allow or forbid the platform input method.
     fn set_ime_allowed(&self, allowed: bool) -> WindowSystemResult<()>;

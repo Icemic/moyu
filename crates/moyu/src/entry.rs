@@ -331,6 +331,10 @@ impl ApplicationHandler<ApplicationInitEvent> for WinitApplication {
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        if self.initialized {
+            self.window_system().prepare_cursors(event_loop);
+        }
+
         if let Some(core) = self.core() {
             core.handle_window_system_event(WindowSystemEvent::Idle);
         }

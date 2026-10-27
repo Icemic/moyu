@@ -14,21 +14,18 @@ pub use splash::show_splash_screen;
 use std::sync::Arc;
 
 use moyu_audio::AudioManager;
+use moyu_core::base::load_cursors;
 use moyu_core::core::Core;
 use moyu_core::events::GameEvent;
 use moyu_core::utils::dispatch_event::dispatch_event;
 #[cfg(any(desktop, web))]
 use moyu_gamepad::GamepadPlugin;
-#[cfg(feature = "text")]
-use moyu_nodes::nodes::Text;
 use moyu_live2d::Live2dNode;
-use moyu_live2d::renderer::Live2dRenderer;
 #[cfg(native)]
 use moyu_live2d::Live2dPlugin;
-use moyu_spine::SpineNode;
-use moyu_spine::renderer::SpineRenderer;
-#[cfg(native)]
-use moyu_spine::SpinePlugin;
+use moyu_live2d::renderer::Live2dRenderer;
+#[cfg(feature = "text")]
+use moyu_nodes::nodes::Text;
 use moyu_nodes::nodes::{
     Animation, Backdrop, Clip, Editable, Filter, HBox, Shader, ShaderSlot, Sprite, VBox, Video,
 };
@@ -41,6 +38,10 @@ use moyu_nodes::renderer::{
 use moyu_pal::config::get_engine_config;
 use moyu_pal::sync::Mutex;
 use moyu_scenario::ScenarioPlugin;
+use moyu_spine::SpineNode;
+#[cfg(native)]
+use moyu_spine::SpinePlugin;
+use moyu_spine::renderer::SpineRenderer;
 
 #[cfg(native)]
 pub use moyu_pal::visible_hand::VisibleHand;
@@ -184,6 +185,19 @@ pub async fn prepare(core: &Arc<Core>) {
 
     register_builtins(core);
     register_plugins(core).await;
+    load_custom_cursors(core).await;
+}
+
+/// Read the project's cursor images and hand them to the window system.
+///
+/// Loading is async and happens before the project script runs, so the pointers are
+/// ready before anything can hover a node.
+async fn load_custom_cursors(core: &Arc<Core>) {
+    let Some(config) = &get_engine_config().cursor else {
+        return;
+    };
+
+    core.set_custom_cursors(load_cursors(config).await);
 }
 
 /// Load the project entry script. `on_load` runs once the script has loaded, which is

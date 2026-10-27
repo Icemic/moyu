@@ -13,6 +13,7 @@ mod window_system;
 
 use anyhow::Result;
 use arc_swap::{ArcSwap, ArcSwapOption};
+use cursor_icon::CursorIcon;
 use dashmap::DashMap;
 use dashmap::mapref::one::Ref;
 use editable::EditableManager;
@@ -21,6 +22,7 @@ use moyu_pal::config::{WindowState, get_engine_config};
 use moyu_pal::sync::{Mutex, RwLock};
 use moyu_pal::time::Instant;
 use render::Graphics;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -501,6 +503,15 @@ impl Core {
             debug!("set cursor to {}", cursor.name());
             self.window_system.set_cursor(cursor);
         }
+    }
+
+    /// Hand the project's cursor images to the window system.
+    ///
+    /// Called once after loading. The window system keeps them from then on, so the
+    /// engine does not need to stay in the path between a node's `cursor` property and
+    /// the platform call.
+    pub fn set_custom_cursors(&self, cursors: HashMap<CursorIcon, Arc<CursorImage>>) {
+        self.window_system.set_custom_cursors(cursors);
     }
 
     /// Ask the window system to end the session.
