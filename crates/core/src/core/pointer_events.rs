@@ -380,7 +380,7 @@ impl Core {
                     record.push("MouseEnter");
                 }
 
-                self.set_cursor(node.node.read().base().cursor().clone());
+                self.set_cursor(node.cursor);
 
                 // record last focused node
                 *last_hover_node = Some(node);

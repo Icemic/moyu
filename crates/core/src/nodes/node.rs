@@ -58,8 +58,10 @@ pub struct NodeBase {
     interactive: bool,
     /// if this node itself can be a hit test target, children are unaffected
     hit_test_self: bool,
-    /// cursor style
-    cursor: MoyuCursor,
+    /// cursor style, or `None` to inherit the one from the closest ancestor that sets
+    /// it. Resolved during hit testing, not stored as a separate painted value the way
+    /// `global_opacity` is, because only the node under the pointer ever needs it.
+    cursor: Option<MoyuCursor>,
     /// Paint order among direct siblings.
     z_index: i32,
     /// AABB bounds of the node, relative to itself
@@ -108,7 +110,7 @@ impl NodeBase {
             global_opacity: 1.0,
             interactive: true,
             hit_test_self: true,
-            cursor: MoyuCursor::default(),
+            cursor: None,
             z_index: 0,
             content_bounds: Bound::default(),
             global_content_bounds: Bound::default(),
@@ -258,8 +260,8 @@ impl NodeBase {
         self.hit_test_self
     }
     #[inline]
-    pub fn cursor(&self) -> &MoyuCursor {
-        &self.cursor
+    pub fn cursor(&self) -> Option<MoyuCursor> {
+        self.cursor
     }
     #[inline]
     pub fn z_index(&self) -> i32 {
@@ -427,7 +429,7 @@ impl NodeBase {
         self.hit_test_self = hit_test_self;
     }
     #[inline]
-    pub fn set_cursor(&mut self, cursor: MoyuCursor) {
+    pub fn set_cursor(&mut self, cursor: Option<MoyuCursor>) {
         self.cursor = cursor;
     }
     #[inline]
@@ -490,7 +492,7 @@ impl NodeBase {
         apply_patch!(props.opacity => |v| self.set_opacity(v), 1.0);
         apply_patch!(props.interactive => |v| self.set_interactive(v), true);
         apply_patch!(props.hit_test_self => |v| self.set_hit_test_self(v), true);
-        apply_patch!(props.cursor => |v| self.set_cursor(v), MoyuCursor::default());
+        apply_patch!(props.cursor => |v| self.set_cursor(v), None);
         apply_patch!(props.z_index => |v| self.set_z_index(v), 0);
         apply_patch!(props.exclude_from_layout => |v| self.set_exclude_from_layout(v), false);
     }
@@ -648,7 +650,7 @@ pub struct NodeProps {
     pub opacity: Patch<f32>,
     pub interactive: Patch<bool>,
     pub hit_test_self: Patch<bool>,
-    pub cursor: Patch<MoyuCursor>,
+    pub cursor: Patch<Option<MoyuCursor>>,
     pub z_index: Patch<i32>,
     pub exclude_from_layout: Patch<bool>,
 }

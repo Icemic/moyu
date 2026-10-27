@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use glam::vec3a;
 
+use crate::base::MoyuCursor;
 use crate::core::NodeLock;
 use crate::traits::{FocusablePayload, Node};
 
@@ -9,6 +10,9 @@ use crate::traits::{FocusablePayload, Node};
 pub struct HitTestTarget {
     pub node: NodeLock,
     pub parent_ids: Vec<u32>,
+    /// The cursor in effect for this target: its own, or the one inherited from the
+    /// closest ancestor that sets one.
+    pub cursor: MoyuCursor,
 }
 
 impl PartialEq for HitTestTarget {
@@ -24,12 +28,14 @@ pub fn hit_test<'a>(
     upload_payload: &FocusablePayload,
 ) -> Option<HitTestTarget> {
     let root_node = _root_node.read();
+    let root_cursor = root_node.base().cursor().unwrap_or_default();
     let focused_node = hit_test_children(
         root_node.as_ref(),
         global_logical_x,
         global_logical_y,
         upload_payload,
         &[],
+        root_cursor,
     );
 
     // at least hit the root node
@@ -37,6 +43,7 @@ pub fn hit_test<'a>(
         Some(HitTestTarget {
             node: _root_node.clone(),
             parent_ids: vec![],
+            cursor: root_cursor,
         })
     })
 }
@@ -47,6 +54,7 @@ fn hit_test_children(
     global_logical_y: f32,
     payload: &FocusablePayload,
     current_parent_ids: &[u32],
+    inherited_cursor: MoyuCursor,
 ) -> Option<HitTestTarget> {
     for child in parent.base().children_in_paint_order().iter().rev() {
         let child_ref = child.read();
@@ -54,6 +62,13 @@ fn hit_test_children(
         if !child_ref.base().interactive() || !child_ref.base().visible() {
             continue;
         }
+
+        // A child that sets no cursor lets the closest ancestor's cursor apply, the
+        // same way an element without a CSS `cursor` follows its parent.
+        let cursor = child_ref
+            .base()
+            .cursor()
+            .unwrap_or_else(|| inherited_cursor.to_owned());
 
         let (local_logical_x, local_logical_y) =
             get_local_logical_position(child_ref.as_ref(), global_logical_x, global_logical_y);
@@ -76,6 +91,7 @@ fn hit_test_children(
                 global_logical_y,
                 payload,
                 &parent_ids,
+                cursor,
             ) {
                 return Some(target);
             }
@@ -89,6 +105,7 @@ fn hit_test_children(
             return Some(HitTestTarget {
                 node: child.clone(),
                 parent_ids: current_parent_ids.to_vec(),
+                cursor,
             });
         }
     }
