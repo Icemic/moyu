@@ -7,7 +7,8 @@ import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, ITEM_COLORS, chipSprite } from
 /** The `cursor` values a node accepts. */
 type MoyuCursor = NonNullable<MoyuNodeAttributes['cursor']>;
 
-const CHIP_WIDTH = 355;
+// Panel content starts at x = 20 and is 1504 wide, leaving 1464 for the grid.
+const CHIP_WIDTH = 354;
 const CHIP_HEIGHT = 120;
 const CHIP_GAP = 16;
 const ROW_LENGTH = 4;
@@ -63,6 +64,27 @@ function CursorChip({
   );
 }
 
+/**
+ * Shows inheritance and override in one chip: the outer container sets
+ * `crosshair`, its unset child follows it, and a deeper container sets `pointer`.
+ */
+function NestedCursorChip({ color }: { color: string }) {
+  const { t } = useLingui();
+
+  return (
+    <sprite {...chipSprite(color)} targetWidth={CHIP_WIDTH} targetHeight={CHIP_HEIGHT} interactive>
+      <container x={18} y={16} cursor="crosshair">
+        <vbox gap={4}>
+          <text text={t`外层容器：crosshair`} fontSize={22} fillColor="#ffffff" />
+          <container cursor="pointer">
+            <text text={t`内层设为 pointer`} fontSize={18} fillColor="#dbe4f3" />
+          </container>
+        </vbox>
+      </container>
+    </sprite>
+  );
+}
+
 export function CursorPage() {
   const { t } = useLingui();
   const [preset, setPreset] = useState<PresetValue>('none');
@@ -94,8 +116,10 @@ export function CursorPage() {
     { cursor: 'hidden', label: 'hidden', note: t`隐藏指针，不经过图片` },
   ];
 
-  const rows = Array.from({ length: Math.ceil(states.length / ROW_LENGTH) }, (_, index) =>
-    states.slice(index * ROW_LENGTH, (index + 1) * ROW_LENGTH),
+  // The states fill whole rows; the leftover slots carry the nested case.
+  const cells = Array.from({ length: states.length + 1 }, (_, index) => states[index] ?? null);
+  const rows = Array.from({ length: Math.ceil(cells.length / ROW_LENGTH) }, (_, index) =>
+    cells.slice(index * ROW_LENGTH, (index + 1) * ROW_LENGTH),
   );
 
   return (
@@ -131,21 +155,27 @@ export function CursorPage() {
       <Panel
         title={t`鼠标指针`}
         width={1504}
-        height={440}
-        note={t`节点的 cursor 属性按状态选用图片，未单独配置的状态使用 default；hotspot 是图片中响应指针的位置，按图片像素指定，箭头为 (1, 1)，手势 (14, 3)，其余均为 (16, 16)。`}
+        height={560}
+        note={t`节点的 cursor 属性按状态选用图片，未单独配置的状态使用 default；hotspot 是图片中响应指针的位置，按图片像素指定，箭头为 (1, 1)，手势 (14, 3)，其余均为 (16, 16)。最后一格演示子节点继承父容器的指针。`}
       >
         <vbox gap={CHIP_GAP}>
           {rows.map((row, rowIndex) => (
             <hbox key={rowIndex} gap={CHIP_GAP}>
-              {row.map((state, index) => (
-                <CursorChip
-                  key={state.cursor}
-                  cursor={state.cursor}
-                  label={state.label}
-                  note={state.note}
-                  color={ITEM_COLORS[(rowIndex * ROW_LENGTH + index) % ITEM_COLORS.length]}
-                />
-              ))}
+              {row.map((state, index) => {
+                const color = ITEM_COLORS[(rowIndex * ROW_LENGTH + index) % ITEM_COLORS.length];
+
+                return state === null ? (
+                  <NestedCursorChip key="nested" color={color} />
+                ) : (
+                  <CursorChip
+                    key={state.cursor}
+                    cursor={state.cursor}
+                    label={state.label}
+                    note={state.note}
+                    color={color}
+                  />
+                );
+              })}
             </hbox>
           ))}
         </vbox>

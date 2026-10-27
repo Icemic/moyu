@@ -313,7 +313,7 @@ msgstr "Sprite、Text、Clip、Animation、および共通ノードプロパテ�
 msgid "Steam（仅桌面端）"
 msgstr "Steam（デスクトップ版のみ）"
 
-#: src/pages/cursor.tsx:107
+#: src/pages/cursor.tsx:131
 msgid "system 命令 setCustomCursors 接受与 index.json 相同的定义；传入空对象即清空，离开本页也会自动清空。下方色块展示当前配置下各状态的指针效果。"
 msgstr "setCustomCursors システムコマンドは index.json と同じ定義を受け取ります。空のオブジェクトを渡すとクリアされ、このページを離れたときもクリアされます。下のチップは現在の設定での各状態を示します。"
 
@@ -349,7 +349,7 @@ msgstr "VBox、HBox、計測、配置、動的な並べ替え。"
 msgid "x / scale / rotation 作用于整个子树；点击色块切换两组目标值。"
 msgstr "x / scale / rotation はサブツリー全体に適用されます。カラーブロックをクリックすると、2 組の目標値が切り替わります。"
 
-#: src/pages/cursor.tsx:82
+#: src/pages/cursor.tsx:104
 msgid "一张图通吃"
 msgstr "全状態で同じ画像"
 
@@ -433,6 +433,10 @@ msgstr "内側 VBox A"
 #: src/pages/layouts.tsx:70
 msgid "内 VBox B"
 msgstr "内側 VBox B"
+
+#: src/pages/cursor.tsx:80
+msgid "内层设为 pointer"
+msgstr "内側は pointer を設定"
 
 #. placeholder {0}: event.area
 #. placeholder {1}: Math.round(event.x)
@@ -597,15 +601,15 @@ msgstr "440×260 のビューポート内にある内容だけが描画されま
 msgid "只读内容"
 msgstr "読み取り専用の内容"
 
-#: src/pages/cursor.tsx:83
+#: src/pages/cursor.tsx:105
 msgid "只配 pointer"
 msgstr "pointer のみ"
 
-#: src/pages/cursor.tsx:91
+#: src/pages/cursor.tsx:113
 msgid "可拖动对象"
 msgstr "ドラッグ可能な要素"
 
-#: src/pages/cursor.tsx:88
+#: src/pages/cursor.tsx:110
 msgid "可点击对象"
 msgstr "クリック可能な要素"
 
@@ -697,6 +701,10 @@ msgstr "セットアップポーズに戻す"
 #: src/pages/layouts.tsx:65
 msgid "外层 VBox"
 msgstr "外側 VBox"
+
+#: src/pages/cursor.tsx:78
+msgid "外层容器：crosshair"
+msgstr "外側コンテナ：crosshair"
 
 #: src/pages/spine.tsx:381
 msgid "外观与播放"
@@ -904,7 +912,7 @@ msgstr "データバージョン"
 msgid "文字固有尺寸"
 msgstr "テキストの固有サイズ"
 
-#: src/pages/cursor.tsx:89
+#: src/pages/cursor.tsx:111
 msgid "文本选择"
 msgstr "テキスト選択"
 
@@ -949,12 +957,12 @@ msgstr "テストボタンなし：DLC、overlayActivateToStore、overlayActivat
 msgid "未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。"
 msgstr "テストボタンなし：workshopGetSubscribedItemPath（確認済みの item ID がないため）。"
 
-#: src/pages/cursor.tsx:92
-#: src/pages/cursor.tsx:93
+#: src/pages/cursor.tsx:114
+#: src/pages/cursor.tsx:115
 msgid "未配置，落到 default"
 msgstr "未設定のため default に従う"
 
-#: src/pages/cursor.tsx:87
+#: src/pages/cursor.tsx:109
 msgid "未配置状态的回退"
 msgstr "未設定状態のフォールバック"
 
@@ -1175,7 +1183,7 @@ msgstr "キャンバス ({0}, {1}) → どの領域にもヒットしません"
 msgid "皮肤"
 msgstr "スキン"
 
-#: src/pages/cursor.tsx:81
+#: src/pages/cursor.tsx:103
 msgid "示例图片"
 msgstr "サンプル画像"
 
@@ -1244,7 +1252,7 @@ msgstr "計測待ち"
 msgid "等待输入事件"
 msgstr "入力イベント待ち"
 
-#: src/pages/cursor.tsx:90
+#: src/pages/cursor.tsx:112
 msgid "精确取点"
 msgstr "精密な位置指定"
 
@@ -1252,7 +1260,7 @@ msgstr "精密な位置指定"
 msgid "精细调校"
 msgstr "詳細調整"
 
-#: src/pages/cursor.tsx:80
+#: src/pages/cursor.tsx:102
 msgid "系统指针"
 msgstr "システムポインタ"
 
@@ -1284,9 +1292,9 @@ msgstr "カスタムマウスポインタ"
 msgid "色相旋转 Hue Rotate"
 msgstr "色相回転 Hue Rotate"
 
-#: src/pages/cursor.tsx:135
-msgid "节点的 cursor 属性按状态选用图片，未单独配置的状态使用 default；hotspot 是图片中响应指针的位置，按图片像素指定，箭头为 (1, 1)，手势 (14, 3)，其余均为 (16, 16)。"
-msgstr "ノードの cursor プロパティは状態ごとに画像を選び、個別に設定されていない状態は default を使います。hotspot はポインタに反応する画像内の位置で、画像ピクセル単位です。矢印は (1, 1)、ハンドは (14, 3)、それ以外は (16, 16) です。"
+#: src/pages/cursor.tsx:159
+msgid "节点的 cursor 属性按状态选用图片，未单独配置的状态使用 default；hotspot 是图片中响应指针的位置，按图片像素指定，箭头为 (1, 1)，手势 (14, 3)，其余均为 (16, 16)。最后一格演示子节点继承父容器的指针。"
+msgstr "ノードの cursor プロパティは状態ごとに画像を選び、個別に設定されていない状態は default を使います。hotspot はポインタに反応する画像内の位置で、画像ピクセル単位です。矢印は (1, 1)、ハンドは (14, 3)、それ以外は (16, 16) です。最後のチップは子ノードがコンテナのポインタを継承する例です。"
 
 #: src/pages/live2d.tsx:672
 #: src/pages/live2d.tsx:843
@@ -1337,7 +1345,7 @@ msgstr "トランジション画面"
 msgid "过渡"
 msgstr "トランジション"
 
-#: src/pages/cursor.tsx:104
+#: src/pages/cursor.tsx:128
 msgid "运行期切换"
 msgstr "実行時の切り替え"
 
@@ -1404,7 +1412,7 @@ msgstr "エラー {0}：{1}"
 msgid "错误：{0}"
 msgstr "エラー：{0}"
 
-#: src/pages/cursor.tsx:94
+#: src/pages/cursor.tsx:116
 msgid "隐藏指针，不经过图片"
 msgstr "画像を使わずポインタを隠す"
 
@@ -1503,6 +1511,6 @@ msgstr "デフォルトミックス 0.2s"
 msgid "默认混合 0s"
 msgstr "デフォルトミックス 0s"
 
-#: src/pages/cursor.tsx:132
+#: src/pages/cursor.tsx:156
 msgid "鼠标指针"
 msgstr "マウスポインタ"
