@@ -4,7 +4,7 @@
 - **日期**：2026-10-26
 - **作者**：末语项目组
 - **适用范围**：`moyu_pal`（配置）、`moyu`（默认 runtime 的 window system）、`packages/gallery`
-- **相关实现**：`crates/platform/src/config.rs`、`crates/core/src/base/cursor.rs`、`crates/core/src/core/window_system.rs`、`crates/core/src/core.rs`、`crates/core/src/core/pointer_events.rs`、`crates/app/src/lib.rs`、`crates/moyu/src/winit_window_system.rs`、`crates/moyu/src/entry.rs`、`crates/moyu/src/headless/window_system.rs`、`packages/gallery/index.json`、`packages/gallery/src/pages/cursor.tsx`、`packages/gallery/scripts/generate-assets.mjs`
+- **相关实现**：`crates/platform/src/config.rs`、`crates/core/src/base/cursor.rs`、`crates/core/src/core/window_system.rs`、`crates/core/src/core.rs`、`crates/core/src/core/pointer_events.rs`、`crates/core/src/plugins/system.rs`、`crates/app/src/lib.rs`、`crates/moyu/src/winit_window_system.rs`、`crates/moyu/src/entry.rs`、`crates/moyu/src/headless/window_system.rs`、`packages/gallery/src/pages/cursor.tsx`、`packages/gallery/scripts/generate-assets.mjs`
 - **相关 RFC**：[窗口系统抽象](./2026-09-06-window-system-abstraction.md)
 
 ## 摘要
@@ -284,7 +284,8 @@ sequenceDiagram
 7. Web 与 desktop 各跑一遍。Web 额外确认：超过浏览器限制（常见 128×128）的图只会让指针停留在上一个，不会崩溃；这个限制引擎感知不到，属于作者自控范围。
 8. 运行期调用 `setCustomCursors`：换一份配置后指针立即变化，不需要移动鼠标。
 9. 运行期传空对象：所有状态回到系统指针。
-10. Android / iOS 只确认指针为系统图标且无崩溃。
+10. Gallery 的光标页：`index.json` 不配 `cursor`，启动后为系统指针；在页内开启后生效，切到其他页时自动清空。
+11. Android / iOS 只确认指针为系统图标且无崩溃。
 
 ## 决策记录
 

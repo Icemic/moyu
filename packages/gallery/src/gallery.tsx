@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType }
 import { activateLocale, DEFAULT_LOCALE, type Locale } from './i18n';
 import { BackdropsPage } from './pages/backdrops';
 import { ControlsPage } from './pages/controls';
+import { CursorPage } from './pages/cursor';
 import { FiltersPage } from './pages/filters';
 import { LayoutsPage } from './pages/layouts';
 import { InputPage } from './pages/input';
@@ -121,6 +122,12 @@ export function Gallery() {
       title: t`Input 输入框`,
       description: t`Editable 节点、末尾输入、IME、焦点与受控状态。`,
       component: InputPage,
+    },
+    {
+      key: 'cursor',
+      title: t`自定义鼠标指针`,
+      description: t`cursor 配置、状态查表、default 回退、热点与运行期开启切换。`,
+      component: CursorPage,
     },
     {
       key: 'filters',

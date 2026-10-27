@@ -84,7 +84,7 @@ msgstr "9. Dynamic sizing / hiding / removal / reordering"
 msgid "ACH_TRAVEL_FAR_ACCUM · 累计 Stat，只能推进；2640 / 5280 feet"
 msgstr "ACH_TRAVEL_FAR_ACCUM · Accumulated Stat, can only increase; 2640 / 5280 feet"
 
-#: src/gallery.tsx:170
+#: src/gallery.tsx:177
 msgid "Achievement 与 Steamworks API 手动测试。"
 msgstr "Manual tests for Achievements and the Steamworks API."
 
@@ -136,7 +136,7 @@ msgstr "Content drawn after the backdrop remains sharp"
 msgid "Backdrop 捕获其身后已绘制的画面并应用滤镜；在它之后绘制的内容不受影响。"
 msgstr "Backdrop captures what has already been drawn behind it and applies a filter; content drawn after it is unaffected."
 
-#: src/gallery.tsx:133
+#: src/gallery.tsx:140
 msgid "Backdrop 背景滤镜"
 msgstr "Backdrop filter"
 
@@ -144,7 +144,7 @@ msgstr "Backdrop filter"
 msgid "Button 按钮"
 msgstr "Button"
 
-#: src/gallery.tsx:116
+#: src/gallery.tsx:117
 msgid "Button、Checkbox、Radio、Select、Slider 与 ScrollView。"
 msgstr "Button, Checkbox, Radio, Select, Slider, and ScrollView."
 
@@ -160,6 +160,10 @@ msgstr "Clip"
 msgid "Container 变换"
 msgstr "Container transforms"
 
+#: src/gallery.tsx:129
+msgid "cursor 配置、状态查表、default 回退、热点与运行期开启切换。"
+msgstr "cursor configuration, state lookup, default fallback, hotspots and enabling at runtime."
+
 #: src/pages/input.tsx:151
 msgid "disabled：点击后不获得焦点"
 msgstr "disabled: does not receive focus when clicked"
@@ -171,7 +175,7 @@ msgstr "disabled: does not receive focus when clicked"
 msgid "dispose {0} (entry {1} · epoch {2})"
 msgstr "dispose {0} (entry {1} · epoch {2})"
 
-#: src/gallery.tsx:122
+#: src/gallery.tsx:123
 msgid "Editable 节点、末尾输入、IME、焦点与受控状态。"
 msgstr "Editable nodes, end-of-text input, IME, focus, and controlled state."
 
@@ -186,7 +190,7 @@ msgstr "error: {0}"
 msgid "event {0} on track {1}"
 msgstr "event {0} on track {1}"
 
-#: src/gallery.tsx:127
+#: src/gallery.tsx:134
 msgid "Filter 滤镜"
 msgstr "Filter"
 
@@ -203,15 +207,15 @@ msgstr "hit: {0}"
 msgid "hitArea 属性（按下即上报命中）"
 msgstr "hitArea prop (reports a hit on press)"
 
-#: src/gallery.tsx:121
+#: src/gallery.tsx:122
 msgid "Input 输入框"
 msgstr "Input"
 
-#: src/gallery.tsx:158
+#: src/gallery.tsx:165
 msgid "Live2D 模型、动作、表情、参数与遮罩渲染。"
 msgstr "Live2D models, motions, expressions, parameters and masked rendering."
 
-#: src/gallery.tsx:157
+#: src/gallery.tsx:164
 msgid "Live2D（仅桌面端）"
 msgstr "Live2D (desktop only)"
 
@@ -239,7 +243,7 @@ msgstr "RadioGroup manages mutually exclusive selections within a group."
 msgid "Raw WGSL 着色器"
 msgstr "Raw WGSL shader"
 
-#: src/gallery.tsx:152
+#: src/gallery.tsx:159
 msgid "Raw WGSL、参数槽与时间控制。"
 msgstr "Raw WGSL, parameter slots, and time controls."
 
@@ -265,7 +269,7 @@ msgstr "ScrollView"
 msgid "Select 下拉选择"
 msgstr "Select"
 
-#: src/gallery.tsx:145
+#: src/gallery.tsx:152
 msgid "Shader 转场"
 msgstr "Shader transition"
 
@@ -281,15 +285,15 @@ msgstr "Slider"
 msgid "space-between：间隔相等且不小于 gap = 20。"
 msgstr "space-between: spacing is equal and no less than gap = 20."
 
-#: src/gallery.tsx:164
+#: src/gallery.tsx:171
 msgid "Spine 骨骼动画、多轨播放、双色染色与混合模式。"
 msgstr "Spine skeletal animation, multi-track playback, two-color tinting and blend modes."
 
-#: src/gallery.tsx:163
+#: src/gallery.tsx:170
 msgid "Spine（仅桌面端）"
 msgstr "Spine (desktop only)"
 
-#: src/gallery.tsx:139
+#: src/gallery.tsx:146
 msgid "Spring 动画"
 msgstr "Spring animation"
 
@@ -301,13 +305,17 @@ msgstr "Sprite pixel hit testing"
 msgid "Sprite 精灵"
 msgstr "Sprite"
 
-#: src/gallery.tsx:109
+#: src/gallery.tsx:110
 msgid "Sprite、Text、Clip、Animation 与通用节点属性。"
 msgstr "Sprite, Text, Clip, Animation, and common node properties."
 
-#: src/gallery.tsx:169
+#: src/gallery.tsx:176
 msgid "Steam（仅桌面端）"
 msgstr "Steam (desktop only)"
+
+#: src/pages/cursor.tsx:107
+msgid "system 命令 setCustomCursors 接受与 index.json 相同的定义；传入空对象即清空，离开本页也会自动清空。下方色块展示当前配置下各状态的指针效果。"
+msgstr "The setCustomCursors system command takes the same definition as index.json. An empty object clears it, and leaving this page clears it too. The chips below show each state under the current configuration."
 
 #: src/pages/primitives.tsx:133
 msgid "Text 文本打印"
@@ -325,7 +333,7 @@ msgstr "gold tint"
 msgid "useSpring 属性动画"
 msgstr "useSpring property animation"
 
-#: src/gallery.tsx:140
+#: src/gallery.tsx:147
 msgid "useSpring 属性动画与 useTransition 进出场动画。"
 msgstr "useSpring property animation and useTransition enter/exit animation."
 
@@ -333,13 +341,17 @@ msgstr "useSpring property animation and useTransition enter/exit animation."
 msgid "useTransition 进出场"
 msgstr "useTransition enter/exit"
 
-#: src/gallery.tsx:112
+#: src/gallery.tsx:113
 msgid "VBox、HBox、测量、对齐与动态重排。"
 msgstr "VBox, HBox, measurement, alignment, and dynamic reordering."
 
 #: src/pages/primitives.tsx:91
 msgid "x / scale / rotation 作用于整个子树；点击色块切换两组目标值。"
 msgstr "x / scale / rotation apply to the entire subtree; click the color block to switch between two target values."
+
+#: src/pages/cursor.tsx:82
+msgid "一张图通吃"
+msgstr "One image for all"
 
 #: src/pages/raw-shaders.tsx:204
 msgid "一道明亮的扫描带扫过输入画面。"
@@ -532,7 +544,7 @@ msgstr "Parameter slots · channel sampling · builtins.time"
 msgid "参考包围盒"
 msgstr "Reference bounds"
 
-#: src/gallery.tsx:146
+#: src/gallery.tsx:153
 msgid "双通道画面的 GPU 转场状态机。"
 msgstr "A GPU transition state machine for dual-channel images."
 
@@ -584,6 +596,18 @@ msgstr "Only content within the 440×260 viewport is drawn."
 #: src/pages/input.tsx:136
 msgid "只读内容"
 msgstr "Read-only content"
+
+#: src/pages/cursor.tsx:83
+msgid "只配 pointer"
+msgstr "pointer only"
+
+#: src/pages/cursor.tsx:91
+msgid "可拖动对象"
+msgstr "draggable objects"
+
+#: src/pages/cursor.tsx:88
+msgid "可点击对象"
+msgstr "clickable objects"
 
 #: src/pages/layouts.tsx:72
 msgid "右"
@@ -650,7 +674,7 @@ msgstr "Reference C"
 msgid "基础与嵌套"
 msgstr "Basics and nesting"
 
-#: src/gallery.tsx:108
+#: src/gallery.tsx:109
 msgid "基础组件"
 msgstr "Primitives"
 
@@ -662,7 +686,7 @@ msgstr "Basic input and IME"
 msgid "填充"
 msgstr "Fill"
 
-#: src/gallery.tsx:134
+#: src/gallery.tsx:141
 msgid "处理节点背后已经绘制的画面，之后绘制的内容保持清晰。"
 msgstr "Processes content already drawn behind the node; content drawn after it remains sharp."
 
@@ -694,7 +718,7 @@ msgstr "Full source image 250x240"
 msgid "对比度 Contrast"
 msgstr "Contrast"
 
-#: src/gallery.tsx:128
+#: src/gallery.tsx:135
 msgid "对节点自身子树的离屏渲染结果应用滤镜链。"
 msgstr "Applies a filter chain to the offscreen rendering of the node's own subtree."
 
@@ -702,7 +726,7 @@ msgstr "Applies a filter chain to the offscreen rendering of the node's own subt
 msgid "对齐交互"
 msgstr "Alignment interaction"
 
-#: src/gallery.tsx:115
+#: src/gallery.tsx:116
 msgid "封装组件"
 msgstr "Components"
 
@@ -746,7 +770,7 @@ msgstr "Complete"
 msgid "已点击 {pressCount} 次"
 msgstr "Clicked {pressCount} times"
 
-#: src/gallery.tsx:112
+#: src/gallery.tsx:113
 msgid "布局"
 msgstr "Layout"
 
@@ -880,6 +904,10 @@ msgstr "Data version"
 msgid "文字固有尺寸"
 msgstr "Intrinsic text size"
 
+#: src/pages/cursor.tsx:89
+msgid "文本选择"
+msgstr "text selection"
+
 #: src/pages/filters.tsx:37
 msgid "无滤镜，作为对照基准。"
 msgstr "No filter; used as the reference."
@@ -921,7 +949,16 @@ msgstr "No test buttons are provided for DLC, overlayActivateToStore, or overlay
 msgid "未提供测试按钮：workshopGetSubscribedItemPath（没有已确认的 item ID）。"
 msgstr "No test button is provided for workshopGetSubscribedItemPath because there is no confirmed item ID."
 
-#: src/gallery.tsx:246
+#: src/pages/cursor.tsx:92
+#: src/pages/cursor.tsx:93
+msgid "未配置，落到 default"
+msgstr "not configured, falls to default"
+
+#: src/pages/cursor.tsx:87
+msgid "未配置状态的回退"
+msgstr "fallback for unconfigured states"
+
+#: src/gallery.tsx:253
 msgid "末语 Gallery"
 msgstr "Moyu Gallery"
 
@@ -1138,6 +1175,10 @@ msgstr "canvas ({0}, {1}) → no area hit"
 msgid "皮肤"
 msgstr "Skin"
 
+#: src/pages/cursor.tsx:81
+msgid "示例图片"
+msgstr "Demo images"
+
 #: src/pages/input.tsx:153
 msgid "禁用内容"
 msgstr "Disabled content"
@@ -1203,9 +1244,17 @@ msgstr "Waiting for measurement"
 msgid "等待输入事件"
 msgstr "Waiting for input events"
 
+#: src/pages/cursor.tsx:90
+msgid "精确取点"
+msgstr "precise picking"
+
 #: src/pages/live2d.tsx:589
 msgid "精细调校"
 msgstr "Tuning"
+
+#: src/pages/cursor.tsx:80
+msgid "系统指针"
+msgstr "System pointers"
 
 #: src/pages/live2d.tsx:660
 msgid "编号即 motion3.json 索引；优先级 Normal。"
@@ -1223,13 +1272,21 @@ msgstr "BACKDROP target"
 msgid "自动时间"
 msgstr "Automatic time"
 
-#: src/gallery.tsx:151
+#: src/gallery.tsx:158
 msgid "自定义 Shader"
 msgstr "Custom Shader"
+
+#: src/gallery.tsx:128
+msgid "自定义鼠标指针"
+msgstr "Custom mouse pointers"
 
 #: src/pages/filters.tsx:42
 msgid "色相旋转 Hue Rotate"
 msgstr "Hue Rotate"
+
+#: src/pages/cursor.tsx:135
+msgid "节点的 cursor 属性按状态选用图片，未单独配置的状态使用 default；hotspot 是图片中响应指针的位置，按图片像素指定，箭头为 (1, 1)，手势 (14, 3)，其余均为 (16, 16)。"
+msgstr "The cursor property of a node selects an image per state, and any state without its own image uses default. hotspot is the pixel in the image that responds to the pointer, given in image pixels: (1, 1) for the arrow, (14, 3) for the hand, (16, 16) for the rest."
 
 #: src/pages/live2d.tsx:672
 #: src/pages/live2d.tsx:843
@@ -1279,6 +1336,10 @@ msgstr "Transition image"
 #: src/pages/spine.tsx:464
 msgid "过渡"
 msgstr "Transitions"
+
+#: src/pages/cursor.tsx:104
+msgid "运行期切换"
+msgstr "Switch at runtime"
 
 #: src/pages/primitives.tsx:57
 msgid "这段交互文本"
@@ -1342,6 +1403,10 @@ msgstr "Error {0}: {1}"
 #: src/pages/steam.tsx:373
 msgid "错误：{0}"
 msgstr "Error: {0}"
+
+#: src/pages/cursor.tsx:94
+msgid "隐藏指针，不经过图片"
+msgstr "hides the pointer, without an image"
 
 #: src/pages/raw-shaders.tsx:201
 msgid "随时间偏移红蓝通道采样。"
@@ -1437,3 +1502,7 @@ msgstr "Default mix 0.2s"
 #: src/pages/spine.tsx:474
 msgid "默认混合 0s"
 msgstr "Default mix 0s"
+
+#: src/pages/cursor.tsx:132
+msgid "鼠标指针"
+msgstr "Mouse pointers"

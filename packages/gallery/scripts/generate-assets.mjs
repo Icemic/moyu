@@ -432,6 +432,171 @@ function backgroundImage() {
 }
 
 // ---------------------------------------------------------------------------
+// Cursor images
+//
+// These are not sprites: the engine hands the pixels straight to the windowing
+// library, so they are drawn at their final size. They are deliberately
+// stylized — a saturated fill with a thick dark outline — so a custom pointer is
+// never mistaken for the platform one while testing. The hotspot of each one is
+// configured in index.json, in image pixels.
+// ---------------------------------------------------------------------------
+
+/** Outline color, the gallery's darkest tone. */
+const CURSOR_INK = [13, 19, 34, 255];
+const CURSOR_GOLD = [245, 197, 66, 255];
+const CURSOR_CYAN = [79, 209, 197, 255];
+const CURSOR_GREEN = [110, 231, 168, 255];
+const CURSOR_PINK = [244, 114, 182, 255];
+const CURSOR_ORANGE = [251, 146, 60, 255];
+
+/** Arrow pointer: hotspot is the tip, near the top-left corner. */
+function cursorArrow() {
+  const c = createCanvas(32, 32);
+  const points = [
+    [3, 2],
+    [3, 25],
+    [10, 19],
+    [14, 30],
+    [20, 27],
+    [16, 17],
+    [26, 17],
+  ];
+  fillPolygon(c, points, CURSOR_GOLD);
+  strokePolygon(c, points, 2.4, CURSOR_INK);
+  return c;
+}
+
+/** Pointing hand: hotspot is the fingertip, at the top center. */
+function cursorHand() {
+  const c = createCanvas(32, 32);
+  const parts = [
+    [13, 3, 19, 26, 3], // index finger
+    [18, 8, 24, 26, 2.5], // middle finger
+    [7, 13, 13, 26, 2.5], // ring finger
+    [2, 16, 8, 23, 3], // thumb
+    [5, 20, 26, 30, 5], // palm
+  ];
+  for (const [x0, y0, x1, y1, radius] of parts) {
+    fillRoundRect(c, x0, y0, x1, y1, radius, CURSOR_CYAN);
+  }
+  for (const [x0, y0, x1, y1, radius] of parts) {
+    strokeRoundRect(c, x0, y0, x1, y1, radius, 1.6, CURSOR_INK);
+  }
+  return c;
+}
+
+/** I-beam with serifs: hotspot is the center of the stem. */
+function cursorIBeam() {
+  const c = createCanvas(32, 32);
+  fillRect(c, 13, 4, 19, 28, CURSOR_GREEN);
+  fillRect(c, 6, 4, 26, 8, CURSOR_GREEN);
+  fillRect(c, 6, 24, 26, 28, CURSOR_GREEN);
+  // Outline last, so the colored shape keeps the thick serifs while the dark
+  // line only widens the silhouette.
+  strokeRoundRect(c, 12, 3, 20, 29, 1, 2, CURSOR_INK);
+  strokeRoundRect(c, 6, 4, 26, 8, 1, 2, CURSOR_INK);
+  strokeRoundRect(c, 6, 24, 26, 28, 1, 2, CURSOR_INK);
+  fillRect(c, 14, 4, 18, 28, CURSOR_GREEN);
+  fillRect(c, 7, 5, 25, 7, CURSOR_GREEN);
+  fillRect(c, 7, 25, 25, 27, CURSOR_GREEN);
+  return c;
+}
+
+/** Crosshair ring with four ticks: hotspot is the center. */
+function cursorCrosshair() {
+  const c = createCanvas(32, 32);
+  const mid = 16;
+  strokeCircle(c, mid, mid, 7, 2.6, CURSOR_PINK);
+  strokeSegment(c, mid, 1, mid, 8, 2.6, CURSOR_PINK);
+  strokeSegment(c, mid, 24, mid, 31, 2.6, CURSOR_PINK);
+  strokeSegment(c, 1, mid, 8, mid, 2.6, CURSOR_PINK);
+  strokeSegment(c, 24, mid, 31, mid, 2.6, CURSOR_PINK);
+
+  strokeCircle(c, mid, mid, 7, 4.4, CURSOR_INK);
+  strokeSegment(c, mid, 1, mid, 8, 4.4, CURSOR_INK);
+  strokeSegment(c, mid, 24, mid, 31, 4.4, CURSOR_INK);
+  strokeSegment(c, 1, mid, 8, mid, 4.4, CURSOR_INK);
+  strokeSegment(c, 24, mid, 31, mid, 4.4, CURSOR_INK);
+
+  // Redraw the fill on top so the outline only widens the silhouette.
+  strokeCircle(c, mid, mid, 7, 2.6, CURSOR_PINK);
+  strokeSegment(c, mid, 1, mid, 8, 2.6, CURSOR_PINK);
+  strokeSegment(c, mid, 24, mid, 31, 2.6, CURSOR_PINK);
+  strokeSegment(c, 1, mid, 8, mid, 2.6, CURSOR_PINK);
+  strokeSegment(c, 24, mid, 31, mid, 2.6, CURSOR_PINK);
+  return c;
+}
+
+/** Four-way move arrows: hotspot is the center. */
+function cursorMove() {
+  const c = createCanvas(32, 32);
+  const mid = 16;
+  const heads = [
+    [[mid, 1], [10, 10], [22, 10]],
+    [[mid, 31], [10, 22], [22, 22]],
+    [[1, mid], [10, 10], [10, 22]],
+    [[31, mid], [22, 10], [22, 22]],
+  ];
+  fillRect(c, 14, 6, 18, 26, CURSOR_ORANGE);
+  fillRect(c, 6, 14, 26, 18, CURSOR_ORANGE);
+  for (const head of heads) fillPolygon(c, head, CURSOR_ORANGE);
+
+  strokeRoundRect(c, 14, 6, 18, 26, 1, 1.8, CURSOR_INK);
+  strokeRoundRect(c, 6, 14, 26, 18, 1, 1.8, CURSOR_INK);
+  for (const head of heads) strokePolygon(c, head, 1.8, CURSOR_INK);
+
+  fillRect(c, 14.9, 7, 17.1, 25, CURSOR_ORANGE);
+  fillRect(c, 7, 14.9, 25, 17.1, CURSOR_ORANGE);
+  for (const head of heads) {
+    const [[ax, ay], [bx, by], [cx, cy]] = head;
+    fillPolygon(
+      c,
+      [
+        [ax + (bx - ax) * 0.22, ay + (by - ay) * 0.22],
+        [bx + (cx - bx) * 0.12, by + (cy - by) * 0.12],
+        [cx + (bx - cx) * 0.12, cy + (by - cy) * 0.12],
+      ],
+      CURSOR_ORANGE,
+    );
+  }
+  return c;
+}
+
+function fillPolygon(canvas, points, color) {
+  const [r, g, b, a] = color;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const [, y] of points) {
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  }
+  for (let y = Math.max(0, Math.floor(minY)); y < Math.min(canvas.height, Math.ceil(maxY)); y += 1) {
+    const row = y + 0.5;
+    const crossings = [];
+    for (let i = 0; i < points.length; i += 1) {
+      const [x0, y0] = points[i];
+      const [x1, y1] = points[(i + 1) % points.length];
+      if (y0 === y1) continue;
+      if (row >= Math.min(y0, y1) && row < Math.max(y0, y1)) {
+        crossings.push(x0 + ((row - y0) / (y1 - y0)) * (x1 - x0));
+      }
+    }
+    crossings.sort((p, q) => p - q);
+    for (let i = 0; i + 1 < crossings.length; i += 2) {
+      fillRect(canvas, crossings[i], y, crossings[i + 1], y + 1, [r, g, b, a]);
+    }
+  }
+}
+
+function strokePolygon(canvas, points, width, color) {
+  for (let i = 0; i < points.length; i += 1) {
+    const [x0, y0] = points[i];
+    const [x1, y1] = points[(i + 1) % points.length];
+    strokeSegment(canvas, x0, y0, x1, y1, width, color);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -497,6 +662,25 @@ save(sliderHandleSprite(170), 'slider_handle_press.png');
 
 save(sampleImage(), 'sample.png', { supersampled: false });
 save(ninesliceModeSample(), 'nineslice_modes.png');
+
+// Cursor images live outside `assets/images` because they are not sprites.
+{
+  const CURSORS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets', 'cursors');
+  mkdirSync(CURSORS_DIR, { recursive: true });
+
+  const cursors = {
+    'arrow.png': cursorArrow(),
+    'hand.png': cursorHand(),
+    'ibeam.png': cursorIBeam(),
+    'crosshair.png': cursorCrosshair(),
+    'move.png': cursorMove(),
+  };
+
+  for (const [filename, canvas] of Object.entries(cursors)) {
+    writeFileSync(join(CURSORS_DIR, filename), encodePng(canvas.width, canvas.height, Buffer.from(canvas.data.buffer)));
+    console.log(`generated cursors/${filename} (${canvas.width}x${canvas.height})`);
+  }
+}
 
 // 8x8 pure white pixel: tint and stretch for divider lines and accent bars.
 {

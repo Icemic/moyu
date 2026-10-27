@@ -33,6 +33,7 @@ packages/gallery/
 │   └── generate-assets.mjs      # 零依赖 PNG 资产生成脚本
 ├── assets/
 │   ├── images/                  # 脚本生成的 UI 与展示贴图
+│   ├── cursors/                 # 脚本生成的鼠标指针图片
 │   ├── generated/               # 其它生成资源
 │   └── fonts/                   # Gallery 字体
 ├── docs/                        # Gallery 迭代与设计记录
