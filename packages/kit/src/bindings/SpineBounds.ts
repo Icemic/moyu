@@ -3,4 +3,4 @@
 /**
  * A rectangle in world units with y up.
  */
-export type SpineBounds = { x: number, y: number, width: number, height: number, };
+export type SpineBounds = { x: number; y: number; width: number; height: number };

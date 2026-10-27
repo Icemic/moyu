@@ -3,4 +3,4 @@
 /**
  * How the runtime advances physics constraints.
  */
-export type PhysicsMode = "none" | "pose" | "update";
+export type PhysicsMode = 'none' | 'pose' | 'update';

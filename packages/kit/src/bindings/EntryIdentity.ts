@@ -8,4 +8,4 @@
  * reload: an entry id is reused after the plugin drops the old model, so a
  * waiter that only compared `entry` would match the wrong playback.
  */
-export type EntryIdentity = { entry: bigint, epoch: bigint, };
+export type EntryIdentity = { entry: bigint; epoch: bigint };

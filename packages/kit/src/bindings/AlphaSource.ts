@@ -3,4 +3,4 @@
 /**
  * Where the `premultiplied` flag came from.
  */
-export type AlphaSource = "atlas" | "image";
+export type AlphaSource = 'atlas' | 'image';

@@ -3,8 +3,10 @@
 /**
  * One animation of the model.
  */
-export type SpineAnimation = { name: string, 
-/**
- * Length in seconds; zero for animations that only hold a pose.
- */
-duration: number, };
+export type SpineAnimation = {
+  name: string;
+  /**
+   * Length in seconds; zero for animations that only hold a pose.
+   */
+  duration: number;
+};
