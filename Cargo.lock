@@ -1342,9 +1342,9 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.33.12"
+version = "0.34.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37bfe73dc8ec21f54d181e5a60554327ec3f1c600c455a75ccbfc65d2106a6c4"
+checksum = "54af5066834d6c2d404eb26ea036a15b15d9ff80db510b9a73ff95ab07f30831"
 dependencies = [
  "bytemuck",
  "mint",
@@ -1897,8 +1897,8 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "kira"
-version = "0.12.5"
-source = "git+https://github.com/Icemic/kira?branch=stopped_callback#87a03e55eae1265544da4ba02ea317aa369fa0a5"
+version = "0.12.6"
+source = "git+https://github.com/Icemic/kira?branch=stopped_callback#cc8811f78598910c51ac0969170c7e4f4f30f927"
 dependencies = [
  "atomic-arena",
  "cpal",
