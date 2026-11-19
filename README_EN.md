@@ -23,6 +23,7 @@ For a complete introduction, tutorials, and documentation, visit the official si
 - **Highly customizable interfaces**: Use React to build any UI and system, reusing the mature ecosystem's resources and tooling.
 - **Progressive and flexible**: From the standard framework to deep extensions in the Rust layer, complexity is unlocked step by step.
 - **Open source and business-friendly**: Licensed under MPL-2.0 — free to use, including for commercial projects.
+- **AI Native**: Built-in MCP and headless support for AI-driven automation of development and testing.
 
 ### Layered Architecture
 
