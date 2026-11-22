@@ -38,7 +38,7 @@ cpal = "0.18"
 csscolorparser = {version = "0.9", features = ["serde"]}
 dashmap = "6.1.0"
 glam = {version = "0.34", features = ["bytemuck"]}
-huozi = "0.26"
+huozi = "0.27"
 libloading = "0.9"
 log = "0.4"
 quickjs-rusty = {version = "0.14", features = ["truncate-float-to-int"]}

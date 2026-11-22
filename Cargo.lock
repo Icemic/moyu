@@ -1476,9 +1476,9 @@ checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
 name = "huozi"
-version = "0.26.1"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f6511056fcd9f101070f3220c0846c6dfb3100e8a00d3c5cdef0cd5302cb61e"
+checksum = "d12a53f20d081933e6eb61550050450e840fb0750cdc3de6fca997722b5319d1"
 dependencies = [
  "ab_glyph_rasterizer",
  "anyhow",
