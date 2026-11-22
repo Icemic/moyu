@@ -3,7 +3,10 @@ use std::borrow::Cow;
 use anyhow::Result;
 use csscolorparser::Color;
 use huozi::glyph_vertices::UnitVertices;
-use huozi::layout::{Interaction, LayoutStyle, SegmentGlyphSpan};
+use huozi::layout::{
+    FirstLineIndent, Interaction, LayoutStyle, MeasureAdaptiveFirstLineIndent, ParagraphAlignment,
+    RubyLineHeightMode, SegmentGlyphSpan, TabSize, TextWrapMode, WhiteSpaceMode, WritingMode,
+};
 use huozi::parser::{Segment, SegmentId, ShadowStyle, StrokeStyle, TextStyle};
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
@@ -197,6 +200,29 @@ impl Focusable for Text {
     }
 }
 
+/// Placement of the width left over by line-length quantization.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineLengthGridBodyAlignment {
+    /// Follow the last-line alignment.
+    #[default]
+    Default,
+    Start,
+    Center,
+    End,
+}
+
+impl LineLengthGridBodyAlignment {
+    fn to_alignment(self) -> Option<ParagraphAlignment> {
+        match self {
+            Self::Default => None,
+            Self::Start => Some(ParagraphAlignment::Start),
+            Self::Center => Some(ParagraphAlignment::Center),
+            Self::End => Some(ParagraphAlignment::End),
+        }
+    }
+}
+
 /**
  * To be compatible with react-spring inside JS runtime, we have to flatten the struct.
  * FIXME: But `#[serde(flatten)]` works not quite well when there are more than one `#[serde(flatten)]` in a struct.
@@ -218,12 +244,53 @@ pub struct TextProps {
     /// the height of box.
     #[ts(type = "number", optional)]
     pub box_height: Patch<f64>,
+
+    /* paragraph styles */
+    /// alignment of the last line; only effective with a finite `boxWidth`.
+    #[ts(type = "'start' | 'center' | 'end'", optional)]
+    pub align: Patch<ParagraphAlignment>,
+    /// indent applied to the start edge of every line, measured in character widths.
+    pub block_indent: Patch<f64>,
+    /// first-line indent: a character count, or `auto` to follow the policy below.
+    #[ts(type = "number | 'auto'", optional)]
+    pub indent: Patch<FirstLineIndent>,
+    /// adaptive first-line indent policy; only used when `indent` is `auto`.
+    #[ts(
+        type = "{ shortBelowEm: number, shortEm: number, longEm: number }",
+        optional
+    )]
+    pub first_line_indent_policy: Patch<MeasureAdaptiveFirstLineIndent>,
+    /// how source white space is processed.
+    #[ts(
+        type = "'collapse' | 'preserve-breaks' | 'preserve' | 'break-spaces'",
+        optional
+    )]
+    pub white_space: Patch<WhiteSpaceMode>,
+    /// whether soft wrapping is allowed.
+    #[ts(type = "'wrap' | 'no-wrap'", optional)]
+    pub text_wrap: Patch<TextWrapMode>,
+    /// tab stop interval as a multiple of the space advance.
+    pub tab_size: Patch<f64>,
+    /// writing mode; currently passed through without affecting layout.
+    #[ts(type = "'horizontal-tb' | 'vertical-rl'", optional)]
+    pub writing_mode: Patch<WritingMode>,
+    /// whether line length is quantized to whole multiples of the font size.
+    pub line_length_grid: Patch<bool>,
+    /// placement of the leftover width after quantization; `default` follows `align`.
+    pub line_length_grid_body_alignment: Patch<LineLengthGridBodyAlignment>,
+    /// how ruby expands line height when space is insufficient.
+    #[ts(type = "'per-line' | 'uniform-paragraph'", optional)]
+    pub ruby_line_height_mode: Patch<RubyLineHeightMode>,
+    /// minimum clearance between inline objects and adjacent lines, in em.
+    pub inline_object_minimum_clearance: Patch<f64>,
+    /// clearance between emphasis dots and the marked glyphs, in em.
+    pub emphasis_dot_gap: Patch<f64>,
+
     /* text styles */
     pub font_size: Patch<f64>,
     #[ts(type = "string", optional)]
     pub fill_color: Patch<Color>,
     pub line_height: Patch<f64>,
-    pub indent: Patch<f64>,
 
     pub stroke: Patch<bool>,
     pub shadow: Patch<bool>,
@@ -290,7 +357,23 @@ impl Node for Text {
         apply_patch!(props.font_size => self.text_style.font_size, TextStyle::default().font_size);
         apply_patch!(props.fill_color => self.text_style.fill_color, TextStyle::default().fill_color);
         apply_patch!(props.line_height => self.layout_style.line_height, LayoutStyle::default().line_height);
+        apply_patch!(props.align => self.layout_style.align, LayoutStyle::default().align);
+        apply_patch!(props.block_indent => self.layout_style.block_indent, LayoutStyle::default().block_indent);
         apply_patch!(props.indent => self.layout_style.indent, LayoutStyle::default().indent);
+        apply_patch!(props.first_line_indent_policy => self.layout_style.first_line_indent_policy, LayoutStyle::default().first_line_indent_policy);
+        apply_patch!(props.white_space => self.layout_style.white_space, LayoutStyle::default().white_space);
+        apply_patch!(props.text_wrap => self.layout_style.text_wrap, LayoutStyle::default().text_wrap);
+        apply_patch!(props.tab_size => |v| {
+            self.layout_style.tab_size = TabSize::SpaceAdvanceMultiple(v);
+        }, 8.0);
+        apply_patch!(props.writing_mode => self.layout_style.writing_mode, LayoutStyle::default().writing_mode);
+        apply_patch!(props.line_length_grid => self.layout_style.line_length_grid.enabled, LayoutStyle::default().line_length_grid.enabled);
+        apply_patch!(props.line_length_grid_body_alignment => |v| {
+            self.layout_style.line_length_grid.body_alignment = v.to_alignment();
+        }, LineLengthGridBodyAlignment::Default);
+        apply_patch!(props.ruby_line_height_mode => self.layout_style.ruby_line_height_mode, LayoutStyle::default().ruby_line_height_mode);
+        apply_patch!(props.inline_object_minimum_clearance => self.layout_style.inline_object_minimum_clearance, LayoutStyle::default().inline_object_minimum_clearance);
+        apply_patch!(props.emphasis_dot_gap => self.layout_style.emphasis_dot_gap, LayoutStyle::default().emphasis_dot_gap);
 
         // stroke and shadow style must be updated after switch turn on, otherwise it will be default value.
 
