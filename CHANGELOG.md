@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-11-23
+
 ### Added
 
 1. Support custom mouse pointers through the `cursor` field of `index.json`.
 2. Add `setCustomCursors` command to System plugin for changing custom mouse pointers at runtime.
+3. Expose text layout options in TextProps
 
 ### Fixed
 
