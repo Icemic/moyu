@@ -73,6 +73,34 @@ export type TextProps = {
    */
   emphasisDotGap?: number;
   fontSize?: number;
+  /**
+   * preferred font families, first one wins when available.
+   */
+  fontFamilies?: string[];
+  /**
+   * OpenType weight axis, 400 for regular and 700 for bold.
+   */
+  fontWeight?: number;
+  /**
+   * use an italic or oblique typeface when the family offers one.
+   */
+  italic?: boolean;
+  /**
+   * whether software synthesis may fake a missing weight or slant.
+   */
+  fontSynthesis?: 'none' | 'weight' | 'style' | 'all';
+  /**
+   * explicit baseline offset in pixels; positive values move the text down.
+   */
+  baselineShift?: number;
+  /**
+   * how the run attaches to the preceding text boundary.
+   */
+  inlineAttachment?: 'none' | 'previous';
+  /**
+   * BCP 47 language tag used for shaping and line breaking.
+   */
+  locale?: string;
   fillColor?: string;
   lineHeight?: number;
   stroke?: boolean;

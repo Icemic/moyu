@@ -7,7 +7,9 @@ use huozi::layout::{
     FirstLineIndent, Interaction, LayoutStyle, MeasureAdaptiveFirstLineIndent, ParagraphAlignment,
     RubyLineHeightMode, SegmentGlyphSpan, TabSize, TextWrapMode, WhiteSpaceMode, WritingMode,
 };
-use huozi::parser::{Segment, SegmentId, ShadowStyle, StrokeStyle, TextStyle};
+use huozi::parser::{
+    FontSynthesis, InlineAttachment, Segment, SegmentId, ShadowStyle, StrokeStyle, TextStyle,
+};
 use moyu_macros::Node;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -288,6 +290,23 @@ pub struct TextProps {
 
     /* text styles */
     pub font_size: Patch<f64>,
+    /// preferred font families, first one wins when available.
+    #[ts(type = "string[]", optional)]
+    pub font_families: Patch<Vec<String>>,
+    /// OpenType weight axis, 400 for regular and 700 for bold.
+    pub font_weight: Patch<i32>,
+    /// use an italic or oblique typeface when the family offers one.
+    pub italic: Patch<bool>,
+    /// whether software synthesis may fake a missing weight or slant.
+    #[ts(type = "'none' | 'weight' | 'style' | 'all'", optional)]
+    pub font_synthesis: Patch<FontSynthesis>,
+    /// explicit baseline offset in pixels; positive values move the text down.
+    pub baseline_shift: Patch<f32>,
+    /// how the run attaches to the preceding text boundary.
+    #[ts(type = "'none' | 'previous'", optional)]
+    pub inline_attachment: Patch<InlineAttachment>,
+    /// BCP 47 language tag used for shaping and line breaking.
+    pub locale: Patch<String>,
     #[ts(type = "string", optional)]
     pub fill_color: Patch<Color>,
     pub line_height: Patch<f64>,
@@ -355,6 +374,13 @@ impl Node for Text {
         apply_patch_optional!(props.box_height => self.layout_style.box_height, None);
 
         apply_patch!(props.font_size => self.text_style.font_size, TextStyle::default().font_size);
+        apply_patch!(props.font_families => self.text_style.font_families, TextStyle::default().font_families);
+        apply_patch!(props.font_weight => self.text_style.font_weight, TextStyle::default().font_weight);
+        apply_patch!(props.italic => self.text_style.italic, TextStyle::default().italic);
+        apply_patch!(props.font_synthesis => self.text_style.font_synthesis, TextStyle::default().font_synthesis);
+        apply_patch!(props.baseline_shift => self.text_style.baseline_shift, TextStyle::default().baseline_shift);
+        apply_patch!(props.inline_attachment => self.text_style.inline_attachment, TextStyle::default().inline_attachment);
+        apply_patch!(props.locale => self.text_style.locale, TextStyle::default().locale);
         apply_patch!(props.fill_color => self.text_style.fill_color, TextStyle::default().fill_color);
         apply_patch!(props.line_height => self.layout_style.line_height, LayoutStyle::default().line_height);
         apply_patch!(props.align => self.layout_style.align, LayoutStyle::default().align);

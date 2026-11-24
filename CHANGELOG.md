@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+1. Add missing text style options in TextProps
+
 ## [0.22.1] - 2026-11-23
 
 ### Added
