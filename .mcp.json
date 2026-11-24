@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "moyu-dev": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["packages/cli/dist/index.js", "mcp"]
+    }
+  }
+}
