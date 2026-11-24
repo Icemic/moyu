@@ -3,9 +3,54 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0d1322" />
+    <!-- Matches src/theme/tokens.json: the start screen follows the browser appearance. -->
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ECEFF0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
     <title>Moyu Gallery</title>
     <style>
+      /*
+       * Start screen. Colours mirror the gallery theme (src/theme/tokens.json): a grey page
+       * with a 32px grid, borderless white cards, small radii and one green accent. Light and
+       * dark come from the browser preference.
+       */
+      :root {
+        color-scheme: light dark;
+
+        --page: #eceff0;
+        --surface: #ffffff;
+        --control-idle: #f0f3f3;
+        --text: #1e2826;
+        --text-secondary: #4f5d5b;
+        --text-tertiary: #8b9694;
+        --accent: #1e6d65;
+        --accent-hover: #175d57;
+        --accent-press: #124e49;
+        --on-accent: #fafcfc;
+        --grid: rgb(30 40 38 / 5%);
+        --grid-major: rgb(30 40 38 / 9%);
+
+        --radius-surface: 8px;
+        --radius-control: 6px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page: #121212;
+          --surface: #1f1f1f;
+          --control-idle: #2c2c2c;
+          --text: #ededed;
+          --text-secondary: #b0b0b0;
+          --text-tertiary: #7c7c7c;
+          --accent: #8ac9c1;
+          --accent-hover: #9ed6ce;
+          --accent-press: #74b4ac;
+          --on-accent: #13211f;
+          --grid: rgb(237 237 237 / 4%);
+          --grid-major: rgb(237 237 237 / 7%);
+        }
+      }
+
       * {
         box-sizing: border-box;
       }
@@ -16,9 +61,19 @@
         height: 100%;
         margin: 0;
         overflow: hidden;
-        background: #0d1322;
-        color: #dbe4f3;
-        font-family: system-ui, sans-serif;
+        background-color: var(--page);
+        color: var(--text);
+        font-family:
+          system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      }
+
+      /* 32px ruling with a heavier line every 160px, as in the engine's page background. */
+      body {
+        background-image:
+          repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 32px),
+          repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 32px),
+          repeating-linear-gradient(to right, var(--grid-major) 0 1px, transparent 1px 160px),
+          repeating-linear-gradient(to bottom, var(--grid-major) 0 1px, transparent 1px 160px);
       }
 
       #wrapper {
@@ -54,9 +109,6 @@
         z-index: 1;
         display: grid;
         place-items: center;
-        background:
-          radial-gradient(circle at 50% 35%, rgb(61 90 128 / 35%), transparent 40%),
-          #0d1322;
         transition: opacity 180ms ease;
       }
 
@@ -68,38 +120,62 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 16px;
+        gap: 20px;
+        min-width: min(380px, calc(100vw - 48px));
+        padding: 44px 52px 36px;
+        border-radius: var(--radius-surface);
+        background: var(--surface);
         text-align: center;
       }
 
       h1 {
         margin: 0;
-        color: #f4f7ff;
-        font-size: clamp(36px, 7vw, 64px);
-        font-weight: 500;
-        letter-spacing: 0.04em;
+        color: var(--text);
+        font-size: clamp(28px, 4.4vw, 40px);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
       }
 
       p {
         min-height: 1.5em;
         margin: 0;
-        color: #8fa0bd;
+        color: var(--text-secondary);
+        font-size: 16px;
+        line-height: 1.5;
       }
 
       button {
         min-width: 180px;
         padding: 12px 24px;
-        border: 1px solid #6079a3;
-        border-radius: 8px;
-        background: #3d5a80;
-        color: #fff;
+        border: 0;
+        border-radius: var(--radius-control);
+        background: var(--accent);
+        color: var(--on-accent);
         font: inherit;
+        font-size: 16px;
+        font-weight: 500;
         cursor: pointer;
+        transition: background-color 160ms ease;
+      }
+
+      button:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+
+      button:active:not(:disabled) {
+        background: var(--accent-press);
+      }
+
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
       }
 
       button:disabled {
+        background: var(--control-idle);
+        color: var(--text-tertiary);
         cursor: default;
-        opacity: 0.65;
       }
     </style>
   </head>
@@ -109,7 +185,7 @@
     </div>
     <div id="start-screen">
       <div class="start-panel">
-        <h1>Moyu Gallery</h1>
+        <h1>末语 Gallery</h1>
         <p id="status">正在加载引擎…</p>
         <button id="start-button" type="button" disabled>启动 Gallery</button>
       </div>
