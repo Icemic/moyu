@@ -1,16 +1,24 @@
-import { Button, type EditableChangeSource, type EditableState, Input } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
+import { Button, type EditableChangeSource, type EditableState, Input } from '@momoyu-ink/kit';
 import { useState } from 'react';
 import { Panel } from '../components/chrome';
 import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, INPUT_BACKGROUND, INPUT_CARET, TEXT } from '../theme';
 
+// Getters keep these live across appearance mode switches.
 const INPUT_TEXT_STYLE = {
   fontSize: 28,
-  fillColor: COLOR.text,
+  // Typed spaces are content, so keep them instead of collapsing them away.
+  whiteSpace: 'preserve',
+  get fillColor() {
+    return COLOR.text;
+  },
 } as const;
 
 const PLACEHOLDER_STYLE = {
-  fillColor: COLOR.dim,
+  whiteSpace: 'preserve',
+  get fillColor() {
+    return COLOR.dim;
+  },
 } as const;
 
 function stateSummary(state: EditableState): string {

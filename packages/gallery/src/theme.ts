@@ -1,3 +1,10 @@
+/**
+ * Gallery design system — "Blueprint".
+ *
+ * Colours live in `theme/tokens.json`, the palette and sprite builders in `theme/themes.ts`;
+ * this module is the public entry every page imports (`../theme`), so those imports keep
+ * working unchanged while the configuration moved into its own files.
+ */
 import type {
   ControlSpriteProps,
   ControlTextStyle,
@@ -8,210 +15,196 @@ import type {
   SliderThumbProps,
   SliderTrackProps,
 } from '@momoyu-ink/kit';
+import {
+  controlTextStyle,
+  type GalleryMode,
+  type GalleryPalette,
+  ITEM_COLORS,
+  type NineSliceSprite,
+  TYPOGRAPHY,
+  themeOf,
+} from './theme/themes';
 
 /**
- * Gallery design system — "Midnight Console".
+ * Gallery design system — "Blueprint".
  *
- * All sprite assets are neutral grayscale (see scripts/generate-assets.mjs);
- * the engine multiplies texel color with `tint`, so white pixels render the
- * tint color exactly and gray pixels become darker shades of the same hue.
- * Every color decision lives here so pages stay consistent.
+ * Small radii, hairline cards and one green accent, in a light and a dark appearance.
+ * Colours come from `tokens.json`; sprites are baked per mode by
+ * `scripts/generate-assets.mjs` and only neutral assets (`pixel`, `chip`) are tinted at
+ * runtime.
+ *
+ * The exports below are live singletons: `applyGalleryMode()` rewrites them in place, so
+ * a page reads the current mode's values whenever it renders. Anything that captures a
+ * value at module scope must use a getter (see `GROUP_LABEL` in the pages), otherwise it
+ * would freeze the mode that happened to be active at import time.
  */
 
-export const COLOR = {
-  /** Page title text. */
-  pageTitle: '#f4f7ff',
-  /** Page header description. */
-  pageDescription: '#8fa0bd',
-  /** Panel title gold. */
-  panelTitle: '#e8c97a',
-  /** Primary body text. */
-  text: '#dbe4f3',
-  /** Secondary captions and expectation notes. */
-  caption: '#8fa0bd',
-  /** Tertiary hints. */
-  dim: '#5c6a84',
-  /** Gold accent for selected states and highlights. */
-  accent: '#e8c97a',
-  /** Tint for panel chrome (border renders exactly this; fill is a darker shade). */
-  panelTint: '#2c3a52',
-  /** Tint for interactive controls in idle state. */
-  controlTint: '#54688c',
-  /** Tint for hovered controls. */
-  controlTintHover: '#6079a3',
-  /** Tint for pressed controls. */
-  controlTintPress: '#405475',
-  /** Tint for selected/active controls. */
-  controlTintActive: '#3d5a80',
-  /** Navigation item text. */
-  navText: '#aab6cc',
-  /** Solid dark zone used to visualize fixed-size layout areas. */
-  zone: '#0d1322',
-} as const;
+export { type GalleryMode, ITEM_COLORS };
 
-/** Demo item colors, inherited from the original layout-test page. */
-export const ITEM_COLORS = ['#4f75c9', '#5f9b72', '#a66b75', '#7d68b5', '#b18448'] as const;
-
-export const TEXT = {
-  pageTitle: { fontSize: 40, fillColor: COLOR.pageTitle },
-  pageDescription: { fontSize: 20, fillColor: COLOR.pageDescription },
-  panelTitle: { fontSize: 24, fillColor: COLOR.panelTitle },
-  body: { fontSize: 22, fillColor: COLOR.text },
-  caption: { fontSize: 19, fillColor: COLOR.caption },
-} as const;
-
-const IMAGES = 'images/';
-
-interface NineSliceSprite {
-  mode: 'nineslice';
-  bounds: [number, number, number, number];
+interface ColorTokens {
+  pageTitle: string;
+  pageDescription: string;
+  panelTitle: string;
+  text: string;
+  caption: string;
+  dim: string;
+  accent: string;
+  /** Card surface: the sidebar column and any surface that sits on the page. */
+  surface: string;
+  /** Muted surface, for tinted blocks that sit next to cards. */
+  panelTint: string;
+  /** Neutral chip tint, for scrollbars and stand-in surfaces. */
+  controlTint: string;
+  navText: string;
+  zone: string;
 }
 
-const NINE_SLICE: NineSliceSprite = { mode: 'nineslice', bounds: [0.25, 0.25, 0.25, 0.25] };
-const DROPDOWN_NINE_SLICE: NineSliceSprite = { mode: 'nineslice', bounds: [0.48, 0.1, 0.48, 0.1] };
-const CHIP_NINE_SLICE: NineSliceSprite = { mode: 'nineslice', bounds: [0.3, 0.3, 0.3, 0.3] };
+interface TextTokens {
+  pageTitle: ControlTextStyle;
+  pageDescription: ControlTextStyle;
+  panelTitle: ControlTextStyle;
+  body: ControlTextStyle;
+  caption: ControlTextStyle;
+}
 
-/** Panel chrome. Sized by the caller via targetWidth/targetHeight. */
-export const PANEL_SPRITE = {
-  src: `${IMAGES}panel.png`,
-  ...NINE_SLICE,
-  tint: COLOR.panelTint,
-};
+function colorTokens(palette: GalleryPalette): ColorTokens {
+  return {
+    pageTitle: palette.text,
+    pageDescription: palette.textSecondary,
+    panelTitle: palette.text,
+    text: palette.text,
+    caption: palette.textSecondary,
+    dim: palette.textTertiary,
+    accent: palette.accent,
+    surface: palette.surface,
+    panelTint: palette.surfaceMuted,
+    controlTint: palette.textTertiary,
+    navText: palette.textSecondary,
+    zone: palette.zone,
+  };
+}
 
-/** 1x1 white pixel; tint and stretch for divider lines and accent bars. */
-export const PIXEL_SPRITE = `${IMAGES}pixel.png`;
+function textTokens(palette: GalleryPalette): TextTokens {
+  return {
+    pageTitle: { fontSize: TYPOGRAPHY.pageTitle, fontWeight: 600, fillColor: palette.text },
+    pageDescription: { fontSize: TYPOGRAPHY.pageDescription, fillColor: palette.textSecondary },
+    panelTitle: { fontSize: TYPOGRAPHY.panelTitle, fontWeight: 600, fillColor: palette.text },
+    body: { fontSize: TYPOGRAPHY.body, fillColor: palette.text },
+    caption: { fontSize: TYPOGRAPHY.caption, fillColor: palette.textSecondary },
+  };
+}
 
-/** Colored demo block (dark fill + border of the given hue). */
+let activeMode: GalleryMode = 'light';
+let theme = themeOf(activeMode);
+
+/** 1x1 white pixel; tint and stretch for dividers, accent bars and solid fills. */
+export const PIXEL_SPRITE = 'images/pixel.png';
+
+/** Neutral chip (flat, tintable) for demo blocks that carry an arbitrary colour. */
 export function chipSprite(color: string) {
   return {
-    src: `${IMAGES}chip.png`,
-    ...CHIP_NINE_SLICE,
+    src: 'images/chip.png',
+    mode: 'nineslice' as const,
+    bounds: [0.3, 0.3, 0.3, 0.3] as [number, number, number, number],
     tint: color,
   };
 }
 
-export const BUTTON_SPRITE: ControlSpriteProps = {
-  src: [`${IMAGES}button.png`, `${IMAGES}button_hover.png`, `${IMAGES}button_press.png`],
-  ...NINE_SLICE,
-  tint: COLOR.controlTint,
-  targetWidth: 280,
-  targetHeight: 56,
-};
+export const COLOR: ColorTokens = colorTokens(theme.palette);
+export const TEXT: TextTokens = textTokens(theme.palette);
 
-export const BUTTON_TEXT_STYLE: ControlTextStyle = {
-  fontSize: 22,
-  fillColor: '#ffffff',
-};
-
-export const CHECKBOX_UNCHECKED_SPRITE: ControlSpriteProps = {
-  src: [`${IMAGES}unchecked.png`, `${IMAGES}unchecked_hover.png`, `${IMAGES}unchecked_press.png`],
-  tint: COLOR.controlTint,
-};
-
-export const CHECKBOX_CHECKED_SPRITE: ControlSpriteProps = {
-  src: [`${IMAGES}checked.png`, `${IMAGES}checked_hover.png`, `${IMAGES}checked_press.png`],
-  tint: COLOR.controlTint,
-};
-
-export const RADIO_UNCHECKED_SPRITE: ControlSpriteProps = {
-  src: [`${IMAGES}radio_unchecked.png`, `${IMAGES}radio_unchecked_hover.png`, `${IMAGES}radio_unchecked_press.png`],
-  tint: COLOR.controlTint,
-};
-
-export const RADIO_CHECKED_SPRITE: ControlSpriteProps = {
-  src: [`${IMAGES}radio_checked.png`, `${IMAGES}radio_checked_hover.png`, `${IMAGES}radio_checked_press.png`],
-  tint: COLOR.controlTint,
-};
-
+export const PANEL_SPRITE: NineSliceSprite = { ...theme.sprites.panel };
+export const BUTTON_SPRITE: ControlSpriteProps = { ...theme.sprites.button };
+export const TAB_SPRITE: ControlSpriteProps = { ...theme.sprites.tab };
+export const BUTTON_SELECTED_SPRITE: ControlSpriteProps = { ...theme.sprites.buttonSelected };
+export const PRIMARY_BUTTON_SPRITE: ControlSpriteProps = { ...theme.sprites.primaryButton };
+export const CHECKBOX_UNCHECKED_SPRITE: ControlSpriteProps = { ...theme.sprites.checkboxUnchecked };
+export const CHECKBOX_CHECKED_SPRITE: ControlSpriteProps = { ...theme.sprites.checkboxChecked };
+export const RADIO_UNCHECKED_SPRITE: ControlSpriteProps = { ...theme.sprites.radioUnchecked };
+export const RADIO_CHECKED_SPRITE: ControlSpriteProps = { ...theme.sprites.radioChecked };
 export const SELECT_TRIGGER: ControlSpriteProps = {
-  src: [`${IMAGES}dropdown.png`, `${IMAGES}dropdown_hover.png`, `${IMAGES}dropdown_press.png`],
-  ...DROPDOWN_NINE_SLICE,
-  tint: COLOR.controlTint,
+  ...theme.sprites.selectTrigger,
   targetWidth: 360,
   targetHeight: 56,
 };
-
-// SelectListProps still extends plain SpriteProps, so this asset remains
-// pre-colored by the generator instead of using a runtime tint.
-
-export const SELECT_LIST: SelectListProps = {
-  src: `${IMAGES}dropdown_list.png`,
-  ...NINE_SLICE,
-  targetWidth: 360,
-  paddingX: 4,
-  paddingY: 4,
-};
-
+export const SELECT_LIST: SelectListProps = { ...theme.sprites.selectList, targetWidth: 360 };
 export const SELECT_OPTION: SelectOptionSpriteProps = {
-  src: [
-    `${IMAGES}dropdown_listitem.png`,
-    `${IMAGES}dropdown_listitem_hover.png`,
-    `${IMAGES}dropdown_listitem_press.png`,
-  ],
-  ...NINE_SLICE,
-  tint: COLOR.controlTint,
+  ...theme.sprites.selectOption,
   targetWidth: 352,
   targetHeight: 50,
 };
-
 export const SLIDER_TRACK: SliderTrackProps = {
-  src: [`${IMAGES}slider_track.png`, `${IMAGES}slider_track_hover.png`, `${IMAGES}slider_track_press.png`],
-  ...NINE_SLICE,
-  tint: COLOR.controlTint,
+  ...theme.sprites.sliderTrack,
   targetWidth: 360,
   targetHeight: 40,
 };
+export const SLIDER_THUMB: SliderThumbProps = { ...theme.sprites.sliderThumb, targetWidth: 40, targetHeight: 40 };
+export const INPUT_BACKGROUND: InputBackground = { ...theme.sprites.input };
+export const INPUT_CARET: InputCaretStyle = { ...theme.sprites.caret };
+export const ZONE_SPRITE: { src: string; tint: string } = { src: PIXEL_SPRITE, tint: COLOR.zone };
 
-export const SLIDER_THUMB: SliderThumbProps = {
-  src: [`${IMAGES}slider_handle.png`, `${IMAGES}slider_handle_hover.png`, `${IMAGES}slider_handle_press.png`],
-  tint: COLOR.controlTint,
-  targetWidth: 28,
-  targetHeight: 40,
-};
+export const BUTTON_TEXT_STYLE: ControlTextStyle = controlTextStyle(theme.palette);
 
-export const INPUT_BACKGROUND: InputBackground = {
-  idle: {
-    src: `${IMAGES}panel.png`,
-    ...NINE_SLICE,
-    tint: COLOR.controlTint,
-  },
-  hover: {
-    src: `${IMAGES}panel.png`,
-    ...NINE_SLICE,
-    tint: COLOR.controlTintHover,
-  },
-  press: {
-    src: `${IMAGES}panel.png`,
-    ...NINE_SLICE,
-    tint: COLOR.controlTintPress,
-  },
-  focused: {
-    src: `${IMAGES}panel.png`,
-    ...NINE_SLICE,
-    tint: COLOR.controlTintActive,
-  },
-  readOnly: {
-    src: `${IMAGES}panel.png`,
-    ...NINE_SLICE,
-    tint: COLOR.panelTint,
-  },
-  disabled: {
-    src: `${IMAGES}panel.png`,
-    ...NINE_SLICE,
-    tint: COLOR.dim,
-  },
-};
+/**
+ * A live view of the default button at a fixed size.
+ *
+ * Pages keep these at module scope, so the fields must read through to the singletons
+ * instead of copying them; otherwise the size survives a mode switch but the sprite does
+ * not.
+ */
+export function sizedButton(targetWidth: number, targetHeight: number): ControlSpriteProps {
+  return {
+    get src() {
+      return BUTTON_SPRITE.src;
+    },
+    get mode() {
+      return BUTTON_SPRITE.mode;
+    },
+    get bounds() {
+      return BUTTON_SPRITE.bounds;
+    },
+    targetWidth,
+    targetHeight,
+  };
+}
 
-export const INPUT_CARET: InputCaretStyle = {
-  src: PIXEL_SPRITE,
-  tint: COLOR.accent,
-  width: 3,
-  height: 36,
-  blinkInterval: 500,
-};
+/** Mode the gallery is currently rendered in. */
+export function currentGalleryMode(): GalleryMode {
+  return activeMode;
+}
 
-/** Solid dark rectangle for visualizing fixed-size layout zones. */
-export const ZONE_SPRITE: { src: string; tint: string } = {
-  src: PIXEL_SPRITE,
-  tint: COLOR.zone,
-};
+/** Page background for a mode. */
+export function backgroundSprite(mode: GalleryMode = activeMode) {
+  return `images/${mode}/bg.png`;
+}
+
+/**
+ * Switch appearance. Rewrites the exported singletons in place so pages see the new
+ * values on their next render; callers must re-render afterwards.
+ */
+export function applyGalleryMode(mode: GalleryMode) {
+  activeMode = mode;
+  theme = themeOf(mode);
+
+  Object.assign(COLOR, colorTokens(theme.palette));
+  Object.assign(TEXT, textTokens(theme.palette));
+  Object.assign(BUTTON_TEXT_STYLE, controlTextStyle(theme.palette));
+  Object.assign(ZONE_SPRITE, { tint: COLOR.zone });
+
+  Object.assign(PANEL_SPRITE, theme.sprites.panel);
+  Object.assign(BUTTON_SPRITE, theme.sprites.button);
+  Object.assign(TAB_SPRITE, theme.sprites.tab);
+  Object.assign(BUTTON_SELECTED_SPRITE, theme.sprites.buttonSelected);
+  Object.assign(PRIMARY_BUTTON_SPRITE, theme.sprites.primaryButton);
+  Object.assign(CHECKBOX_UNCHECKED_SPRITE, theme.sprites.checkboxUnchecked);
+  Object.assign(CHECKBOX_CHECKED_SPRITE, theme.sprites.checkboxChecked);
+  Object.assign(RADIO_UNCHECKED_SPRITE, theme.sprites.radioUnchecked);
+  Object.assign(RADIO_CHECKED_SPRITE, theme.sprites.radioChecked);
+  Object.assign(SELECT_TRIGGER, { ...theme.sprites.selectTrigger, targetWidth: 360, targetHeight: 56 });
+  Object.assign(SELECT_LIST, { ...theme.sprites.selectList, targetWidth: 360 });
+  Object.assign(SELECT_OPTION, { ...theme.sprites.selectOption, targetWidth: 352, targetHeight: 50 });
+  Object.assign(SLIDER_TRACK, { ...theme.sprites.sliderTrack, targetWidth: 360, targetHeight: 40 });
+  Object.assign(SLIDER_THUMB, { ...theme.sprites.sliderThumb, targetWidth: 40, targetHeight: 40 });
+  Object.assign(INPUT_BACKGROUND, theme.sprites.input);
+  Object.assign(INPUT_CARET, theme.sprites.caret);
+}

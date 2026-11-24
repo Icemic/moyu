@@ -1,8 +1,8 @@
-import { Button, executePluginCommand, Select, type SteamCommand } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
+import { Button, executePluginCommand, Select, type SteamCommand } from '@momoyu-ink/kit';
 import { useState } from 'react';
 import { Panel, SectionTabs } from '../components/chrome';
-import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, SELECT_LIST, SELECT_OPTION, SELECT_TRIGGER, TEXT } from '../theme';
+import { BUTTON_TEXT_STYLE, COLOR, SELECT_LIST, SELECT_OPTION, SELECT_TRIGGER, sizedButton, TEXT } from '../theme';
 
 const APP_ID = 480;
 const PROGRESS_ACHIEVEMENT = 'ACH_WIN_100_GAMES';
@@ -23,11 +23,7 @@ const TABS = [
 
 type SteamTab = (typeof TABS)[number]['value'];
 
-const SMALL_BUTTON = {
-  ...BUTTON_SPRITE,
-  targetWidth: 300,
-  targetHeight: 52,
-};
+const SMALL_BUTTON = sizedButton(300, 52);
 
 function ResultPanel({ command, result }: { command: string; result: string }) {
   const { t } = useLingui();
@@ -36,7 +32,7 @@ function ResultPanel({ command, result }: { command: string; result: string }) {
     <Panel title={t`最近一次调用`} width={1460} height={200} note={t`显示实际提交的 subCommand 与同步返回值或错误。`}>
       <vbox gap={10}>
         <text {...TEXT.body} text={command || t`尚未调用`} />
-        <text {...TEXT.caption} text={result || t`点击按钮开始测试。`} boxWidth={1400} lineHeight={28} />
+        <text {...TEXT.caption} text={result || t`点击按钮开始测试。`} boxWidth={1400} lineHeight={1.5} />
       </vbox>
     </Panel>
   );

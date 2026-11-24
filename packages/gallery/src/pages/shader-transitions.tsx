@@ -1,5 +1,5 @@
-import { Button, Select, Slider, type MoyuShaderAttributes, type Node } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
+import { Button, type MoyuShaderAttributes, type Node, Select, Slider } from '@momoyu-ink/kit';
 import { useRef, useState } from 'react';
 import { Panel } from '../components/chrome';
 import {
@@ -92,7 +92,7 @@ export function ShaderTransitionsPage() {
             />
             <text {...TEXT.body} text={t`时长 ${duration} ms`} fillColor={COLOR.accent} />
             <Button
-              sprite={{ ...BUTTON_SPRITE, targetWidth: 240 }}
+              sprite={{ ...BUTTON_SPRITE, targetWidth: 240, targetHeight: 56 }}
               text={running ? t`播放中` : t`播放转场`}
               textStyle={BUTTON_TEXT_STYLE}
               disabled={running}

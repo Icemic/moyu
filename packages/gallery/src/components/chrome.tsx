@@ -1,6 +1,15 @@
 import { Button } from '@momoyu-ink/kit';
 import type { ReactNode } from 'react';
-import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, PANEL_SPRITE, TEXT, chipSprite } from '../theme';
+import {
+  BUTTON_SELECTED_SPRITE,
+  BUTTON_SPRITE,
+  BUTTON_TEXT_STYLE,
+  COLOR,
+  chipSprite,
+  PANEL_SPRITE,
+  TAB_SPRITE,
+  TEXT,
+} from '../theme';
 
 /**
  * Titled panel — the basic framing unit of every gallery page.
@@ -65,12 +74,17 @@ export function DemoChip({
 
 /**
  * Segmented tab row for switching sub-sections inside a page.
+ *
+ * `variant` picks the resting fill: `surface` for a row on the page background (white
+ * pills over the grey page), `control` for a row inside a card, where a surface-filled
+ * pill would merge with the card.
  */
 export function SectionTabs<T extends string>({
   value,
   onChange,
   options,
   tabWidth = 220,
+  variant = 'surface',
   x,
   y,
   zIndex,
@@ -79,6 +93,7 @@ export function SectionTabs<T extends string>({
   onChange: (value: T) => void;
   options: ReadonlyArray<{ value: T; label: string }>;
   tabWidth?: number;
+  variant?: 'surface' | 'control';
   x?: number;
   y?: number;
   zIndex?: number;
@@ -91,10 +106,9 @@ export function SectionTabs<T extends string>({
           <Button
             key={option.value}
             sprite={{
-              ...BUTTON_SPRITE,
+              ...(active ? BUTTON_SELECTED_SPRITE : variant === 'surface' ? TAB_SPRITE : BUTTON_SPRITE),
               targetWidth: tabWidth,
               targetHeight: 48,
-              tint: active ? COLOR.controlTintActive : COLOR.panelTint,
             }}
             text={option.label}
             textStyle={{

@@ -1,5 +1,5 @@
-import { Button, Checkbox, Radio, RadioGroup, ScrollView, Select, Slider, useScrollView } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
+import { Button, Checkbox, Radio, RadioGroup, ScrollView, Select, Slider, useScrollView } from '@momoyu-ink/kit';
 import { useState } from 'react';
 import { DemoChip, Panel } from '../components/chrome';
 import {
@@ -19,7 +19,13 @@ import {
   TEXT,
 } from '../theme';
 
-const GROUP_LABEL = { fontSize: 18, fillColor: COLOR.dim } as const;
+// Getter keeps the muted colour live across appearance mode switches.
+const GROUP_LABEL = {
+  fontSize: 18,
+  get fillColor() {
+    return COLOR.dim;
+  },
+};
 
 function ButtonPanel() {
   const { t } = useLingui();
@@ -58,7 +64,10 @@ function ButtonPanel() {
             text={t`右对齐`}
             textStyle={{ ...BUTTON_TEXT_STYLE, fontSize: 20 }}
             textAlign="right"
-            textOffsetX={258}
+            // Right alignment measures the offset from the right edge the other way round:
+            // the resulting inset is about (18 - textOffsetX), so 4 matches the 14px the
+            // left-aligned button above uses.
+            textOffsetX={-14}
           />
         </hbox>
       </vbox>
@@ -202,7 +211,7 @@ function SelectPanel() {
             {...TEXT.caption}
             text={t`选项取自动画与 Shader 渲染管线；展开的列表会浮在下方的状态文字之上。`}
             boxWidth={640}
-            lineHeight={30}
+            lineHeight={1.5}
           />
         </vbox>
       </container>

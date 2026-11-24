@@ -1,3 +1,4 @@
+import { useLingui } from '@lingui/react/macro';
 import {
   addEventListener,
   animated,
@@ -9,27 +10,30 @@ import {
   type TouchEvent,
   useScrollView,
 } from '@momoyu-ink/kit';
-import { useLingui } from '@lingui/react/macro';
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { activateLocale, DEFAULT_LOCALE, type Locale } from './i18n';
 import { BackdropsPage } from './pages/backdrops';
 import { ControlsPage } from './pages/controls';
 import { CursorPage } from './pages/cursor';
 import { FiltersPage } from './pages/filters';
-import { LayoutsPage } from './pages/layouts';
 import { InputPage } from './pages/input';
+import { LayoutsPage } from './pages/layouts';
 import { Live2dPage } from './pages/live2d';
-import { SpinePage } from './pages/spine';
 import { PrimitivesPage } from './pages/primitives';
 import { RawShadersPage } from './pages/raw-shaders';
 import { ShaderTransitionsPage } from './pages/shader-transitions';
+import { SpinePage } from './pages/spine';
 import { SpringTransitionsPage } from './pages/spring-transitions';
 import { SteamPage } from './pages/steam';
 import {
+  applyGalleryMode,
+  BUTTON_SELECTED_SPRITE,
   BUTTON_SPRITE,
   BUTTON_TEXT_STYLE,
+  backgroundSprite,
   COLOR,
-  PANEL_SPRITE,
+  currentGalleryMode,
+  type GalleryMode,
   PIXEL_SPRITE,
   SELECT_LIST,
   SELECT_OPTION,
@@ -43,13 +47,24 @@ const STAGE_HEIGHT = 1080;
 export const CONTENT_WIDTH = 1504;
 export const CONTENT_HEIGHT = 912;
 
-const CONTENT_SCROLLBAR_WIDTH = 20;
+const CONTENT_SCROLLBAR_WIDTH = 15;
 const CONTENT_SCROLLBAR_X = CONTENT_WIDTH + 8;
 const MIN_CONTENT_SCROLLBAR_HEIGHT = 56;
 const CONTENT_SCROLLBAR_BOUNDS: [number, number, number, number] = [0.1, 0.1, 0.1, 0.1];
 
-const SIDEBAR_X = 44;
-const SIDEBAR_WIDTH = 292;
+/**
+ * Sidebar column, nav list and content share one gutter of `SIDEBAR_PAD` on the left and
+ * right: the grid background starts where the column ends, so the content column keeps
+ * the same padding on both sides (44px).
+ */
+const SIDEBAR_PAD = 28;
+const SIDEBAR_WIDTH = 272;
+const SIDEBAR_X = SIDEBAR_PAD;
+/** Content starts at 372 and ends at 1876, so the column stops 44px before it. */
+const SIDEBAR_COLUMN_WIDTH = 328;
+/** Locale and appearance controls share the row under the brand mark. */
+const LOCALE_SELECT_WIDTH = 152;
+const APPEARANCE_BUTTON_WIDTH = SIDEBAR_WIDTH - LOCALE_SELECT_WIDTH - 12;
 const NAV_PANEL_Y = 164;
 const NAV_PANEL_HEIGHT = 812;
 const NAV_SCROLL_HEIGHT = NAV_PANEL_HEIGHT - 24;
@@ -76,10 +91,9 @@ function NavItem({
     <container>
       <Button
         sprite={{
-          ...BUTTON_SPRITE,
-          targetWidth: 268,
+          ...(selected ? BUTTON_SELECTED_SPRITE : BUTTON_SPRITE),
+          targetWidth: SIDEBAR_WIDTH,
           targetHeight: 56,
-          tint: selected ? COLOR.controlTintActive : COLOR.panelTint,
         }}
         text={`${String(index + 1).padStart(2, '0')}  ${title}`}
         textStyle={{
@@ -90,9 +104,6 @@ function NavItem({
         textOffsetX={selected ? 30 : 18}
         onPress={onPress}
       />
-      {selected ? (
-        <sprite src={PIXEL_SPRITE} tint={COLOR.accent} targetWidth={4} targetHeight={28} x={12} y={14} />
-      ) : null}
     </container>
   );
 }
@@ -102,6 +113,7 @@ export function Gallery() {
   const stageSize = getStageSize();
   const scale = Math.min(stageSize.width / STAGE_WIDTH, stageSize.height / STAGE_HEIGHT);
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
+  const [mode, setMode] = useState<GalleryMode>(currentGalleryMode);
   const [currentPageKey, setCurrentPageKey] = useState<string>('primitives');
   const pages: readonly GalleryPageDefinition[] = [
     {
@@ -246,11 +258,20 @@ export function Gallery() {
 
   return (
     <container label="Moyu Gallery" x={stageSize.width / 2} y={stageSize.height / 2} scale={scale}>
-      <sprite src="images/bg.png" pivot={[0.5, 0.5]} />
+      <sprite src={backgroundSprite(mode)} pivot={[0.5, 0.5]} />
       <container x={-STAGE_WIDTH / 2} y={-STAGE_HEIGHT / 2}>
-        {/* Sidebar: locale selector sits above the scrollable navigation list. */}
+        {/* Sidebar: a full-height surface column holding the brand, the two selectors and
+            the scrollable navigation list. */}
+        <sprite
+          src={PIXEL_SPRITE}
+          mode="nineslice"
+          bounds={[0, 0, 0, 0]}
+          tint={COLOR.surface}
+          targetWidth={SIDEBAR_COLUMN_WIDTH}
+          targetHeight={STAGE_HEIGHT}
+        />
         <container x={SIDEBAR_X} y={40}>
-          <text text={t`末语 Gallery`} fontSize={46} fillColor={COLOR.pageTitle} />
+          <text text={t`末语 Gallery`} fontSize={46} fontWeight={600} fillColor={COLOR.pageTitle} />
 
           <Select
             zIndex={2}
@@ -261,9 +282,9 @@ export function Gallery() {
               { value: 'en', text: 'English' },
               { value: 'ja', text: '日本語' },
             ]}
-            trigger={{ ...SELECT_TRIGGER, targetWidth: SIDEBAR_WIDTH }}
-            list={{ ...SELECT_LIST, targetWidth: SIDEBAR_WIDTH }}
-            option={{ ...SELECT_OPTION, targetWidth: SIDEBAR_WIDTH - 8 }}
+            trigger={{ ...SELECT_TRIGGER, targetWidth: LOCALE_SELECT_WIDTH }}
+            list={{ ...SELECT_LIST, targetWidth: LOCALE_SELECT_WIDTH }}
+            option={{ ...SELECT_OPTION, targetWidth: LOCALE_SELECT_WIDTH - 8 }}
             textStyle={BUTTON_TEXT_STYLE}
             textAlign="left"
             textOffsetX={18}
@@ -274,43 +295,54 @@ export function Gallery() {
             }}
           />
 
-          <sprite {...PANEL_SPRITE} targetWidth={SIDEBAR_WIDTH} targetHeight={NAV_PANEL_HEIGHT} y={NAV_PANEL_Y}>
-            <container x={12} y={12}>
-              <ScrollView
-                width={SIDEBAR_WIDTH - 24}
-                height={NAV_SCROLL_HEIGHT}
-                controller={navigationScroll}
-                contentProps={{ gap: 8 }}
-              >
-                {pages.map((page, index) => (
-                  <NavItem
-                    key={page.key}
-                    index={index}
-                    title={page.title}
-                    selected={page.key === currentPage.key}
-                    onPress={() => {
-                      scrollTo(0, true);
-                      setCurrentPageKey(page.key);
-                    }}
-                  />
-                ))}
-              </ScrollView>
-            </container>
-          </sprite>
+          <Button
+            x={LOCALE_SELECT_WIDTH + 12}
+            y={96}
+            sprite={{ ...BUTTON_SPRITE, targetWidth: APPEARANCE_BUTTON_WIDTH, targetHeight: 56 }}
+            text={mode === 'light' ? t`浅色` : t`深色`}
+            textStyle={BUTTON_TEXT_STYLE}
+            onPress={() => {
+              const next = mode === 'light' ? 'dark' : 'light';
+              applyGalleryMode(next);
+              setMode(next);
+            }}
+          />
+
+          <container y={NAV_PANEL_Y}>
+            <ScrollView
+              width={SIDEBAR_WIDTH}
+              height={NAV_SCROLL_HEIGHT}
+              controller={navigationScroll}
+              contentProps={{ gap: 8 }}
+            >
+              {pages.map((page, index) => (
+                <NavItem
+                  key={page.key}
+                  index={index}
+                  title={page.title}
+                  selected={page.key === currentPage.key}
+                  onPress={() => {
+                    scrollTo(0, true);
+                    setCurrentPageKey(page.key);
+                  }}
+                />
+              ))}
+            </ScrollView>
+          </container>
 
           <text text="MPL-2.0 · @momoyu-ink/kit" fontSize={16} fillColor={COLOR.dim} y={992} />
         </container>
 
         {/* Page header: title + description + divider, content starts below. */}
         <container x={372} y={40}>
-          <text text={currentPage.title} fontSize={40} fillColor={COLOR.pageTitle} />
+          <text text={currentPage.title} fontSize={40} fontWeight={600} fillColor={COLOR.pageTitle} />
           <text text={currentPage.description} fontSize={20} fillColor={COLOR.pageDescription} y={56} />
         </container>
 
         {/* Page content: 1504x912, ending 32px above the stage bottom. */}
         <container x={372} y={136}>
           <ScrollView width={CONTENT_WIDTH} height={CONTENT_HEIGHT} controller={contentScroll}>
-            <CurrentPage />
+            <CurrentPage key={mode} />
           </ScrollView>
           {showContentScrollbar ? (
             <animated.sprite

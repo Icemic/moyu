@@ -1,10 +1,16 @@
-import { animated, Button, Slider, useSpring } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
+import { animated, Button, Slider, useSpring } from '@momoyu-ink/kit';
 import { useState } from 'react';
 import { DemoChip, Panel } from '../components/chrome';
 import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, ITEM_COLORS, SLIDER_THUMB, SLIDER_TRACK, TEXT } from '../theme';
 
-const GROUP_LABEL = { fontSize: 18, fillColor: COLOR.dim } as const;
+// Getter keeps the muted colour live across appearance mode switches.
+const GROUP_LABEL = {
+  fontSize: 18,
+  get fillColor() {
+    return COLOR.dim;
+  },
+};
 
 function ConsolePanel({
   blurred,
@@ -55,7 +61,7 @@ function ConsolePanel({
           {...TEXT.caption}
           text={t`Backdrop 捕获其身后已绘制的画面并应用滤镜；在它之后绘制的内容不受影响。`}
           boxWidth={360}
-          lineHeight={28}
+          lineHeight={1.5}
         />
       </vbox>
     </Panel>

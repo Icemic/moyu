@@ -2,7 +2,7 @@ import { useLingui } from '@lingui/react/macro';
 import { Button, executePluginCommand, type MoyuNodeAttributes } from '@momoyu-ink/kit';
 import { useEffect, useState } from 'react';
 import { Panel } from '../components/chrome';
-import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, ITEM_COLORS, chipSprite } from '../theme';
+import { BUTTON_SELECTED_SPRITE, BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, chipSprite, ITEM_COLORS } from '../theme';
 
 /** The `cursor` values a node accepts. */
 type MoyuCursor = NonNullable<MoyuNodeAttributes['cursor']>;
@@ -135,10 +135,9 @@ export function CursorPage() {
             <Button
               key={item.value}
               sprite={{
-                ...BUTTON_SPRITE,
+                ...(item.value === preset ? BUTTON_SELECTED_SPRITE : BUTTON_SPRITE),
                 targetWidth: 340,
                 targetHeight: 56,
-                tint: item.value === preset ? COLOR.controlTintActive : COLOR.panelTint,
               }}
               text={item.label}
               textStyle={{

@@ -1,20 +1,19 @@
+import { useLingui } from '@lingui/react/macro';
 import {
   Button,
   Checkbox,
+  type Node,
   ScrollView,
   Select,
   Slider,
-  useScrollView,
   type SpineCommand,
   type SpineEvent,
   type SpineMetadata,
-  type Node,
+  useScrollView,
 } from '@momoyu-ink/kit';
-import { useLingui } from '@lingui/react/macro';
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { Panel, SectionTabs } from '../components/chrome';
 import {
-  BUTTON_SPRITE,
   BUTTON_TEXT_STYLE,
   CHECKBOX_CHECKED_SPRITE,
   CHECKBOX_UNCHECKED_SPRITE,
@@ -24,6 +23,7 @@ import {
   SELECT_TRIGGER,
   SLIDER_THUMB,
   SLIDER_TRACK,
+  sizedButton,
   TEXT,
 } from '../theme';
 
@@ -42,8 +42,7 @@ const CONTENT_HEIGHT = 912;
 const MODEL_BAR_HEIGHT = 174;
 const MAIN_TAB_GAP = 12;
 const MAIN_TABS_HEIGHT = 48;
-const MAIN_TAB_HEIGHT =
-  CONTENT_HEIGHT - MODEL_BAR_HEIGHT - COLUMN_GAP - MAIN_TABS_HEIGHT - MAIN_TAB_GAP;
+const MAIN_TAB_HEIGHT = CONTENT_HEIGHT - MODEL_BAR_HEIGHT - COLUMN_GAP - MAIN_TABS_HEIGHT - MAIN_TAB_GAP;
 /** Usable height inside a tab panel: panel height minus the content inset. */
 const TAB_BODY_HEIGHT = MAIN_TAB_HEIGHT - 40;
 
@@ -62,10 +61,16 @@ const BUTTONS_PER_ROW = 3;
 const MIN_TIME_SCALE = 0;
 const MAX_TIME_SCALE = 3;
 
-const GROUP_LABEL = { fontSize: 18, fillColor: COLOR.dim } as const;
-const SMALL_BUTTON = { ...BUTTON_SPRITE, targetWidth: 200, targetHeight: 48 };
-const WIDE_BUTTON = { ...BUTTON_SPRITE, targetWidth: 300, targetHeight: 48 };
-const PAGE_BUTTON = { ...BUTTON_SPRITE, targetWidth: 110, targetHeight: 48 };
+// Getter keeps the muted colour live across appearance mode switches.
+const GROUP_LABEL = {
+  fontSize: 18,
+  get fillColor() {
+    return COLOR.dim;
+  },
+};
+const SMALL_BUTTON = sizedButton(200, 48);
+const WIDE_BUTTON = sizedButton(300, 48);
+const PAGE_BUTTON = sizedButton(110, 48);
 
 /**
  * Models the page loads from `assets/spine/`. The samples and the plugin binary
@@ -169,15 +174,7 @@ function ItemRows({
 }
 
 /** Paging controls on their own row; renders nothing for a single page. */
-function Pager({
-  page,
-  pages,
-  onChange,
-}: {
-  page: number;
-  pages: number;
-  onChange: (page: number) => void;
-}) {
+function Pager({ page, pages, onChange }: { page: number; pages: number; onChange: (page: number) => void }) {
   if (pages <= 1) return null;
 
   return (
@@ -310,9 +307,7 @@ export function SpinePage() {
 
   const handleTrackDispose = useCallback(
     (event: Extract<SpineEvent, { type: 'trackDispose' }>) => {
-      pushLog(
-        t`dispose ${event.animation || '-'} (entry ${event.id.entry} · epoch ${event.id.epoch})`,
-      );
+      pushLog(t`dispose ${event.animation || '-'} (entry ${event.id.entry} · epoch ${event.id.epoch})`);
     },
     [pushLog, t],
   );
@@ -346,11 +341,7 @@ export function SpinePage() {
               />
               <text
                 {...TEXT.body}
-                text={
-                  bounds
-                    ? `${bounds.width.toFixed(0)} × ${bounds.height.toFixed(0)}`
-                    : t`未加载`
-                }
+                text={bounds ? `${bounds.width.toFixed(0)} × ${bounds.height.toFixed(0)}` : t`未加载`}
                 fillColor={metadata ? COLOR.accent : COLOR.dim}
               />
             </hbox>
@@ -375,7 +366,7 @@ export function SpinePage() {
         <SectionTabs
           value={mainTab}
           onChange={setMainTab}
-          tabWidth={244}
+          tabWidth={226}
           options={[
             { value: 'animate', label: t`动画与事件` },
             { value: 'settings', label: t`外观与播放` },
@@ -484,10 +475,7 @@ export function SpinePage() {
                   text={t`启用 spineboy 命中区`}
                   textStyle={BUTTON_TEXT_STYLE}
                   onPress={() =>
-                    run(
-                      { subCommand: 'setAttachment', slot: 'head-bb', name: 'head' },
-                      'setAttachment(head-bb, head)',
-                    )
+                    run({ subCommand: 'setAttachment', slot: 'head-bb', name: 'head' }, 'setAttachment(head-bb, head)')
                   }
                 />
                 <Button
@@ -495,10 +483,7 @@ export function SpinePage() {
                   text={t`点击模型测试命中`}
                   textStyle={BUTTON_TEXT_STYLE}
                   onPress={() =>
-                    run(
-                      { subCommand: 'hitTest', x: modelWidth / 2, y: modelHeight / 2 },
-                      'hitTest(center)',
-                    )
+                    run({ subCommand: 'hitTest', x: modelWidth / 2, y: modelHeight / 2 }, 'hitTest(center)')
                   }
                 />
                 <text {...TEXT.body} text={hitResult ?? t`（无）`} fillColor={COLOR.accent} />
@@ -533,9 +518,7 @@ export function SpinePage() {
                 <text {...TEXT.body} text={t`时间缩放`} />
                 <Slider
                   value={(timeScale - MIN_TIME_SCALE) / (MAX_TIME_SCALE - MIN_TIME_SCALE)}
-                  onValueChange={(value) =>
-                    setTimeScale(MIN_TIME_SCALE + value * (MAX_TIME_SCALE - MIN_TIME_SCALE))
-                  }
+                  onValueChange={(value) => setTimeScale(MIN_TIME_SCALE + value * (MAX_TIME_SCALE - MIN_TIME_SCALE))}
                   track={SLIDER_TRACK}
                   thumb={SLIDER_THUMB}
                 />
@@ -609,10 +592,7 @@ export function SpinePage() {
                 }
               />
               <InfoRow label={t`皮肤`} value={skins.join('、') || t`（无）`} />
-              <InfoRow
-                label={t`包围盒`}
-                value={(metadata?.boundingBoxes ?? []).join('、') || t`（无）`}
-              />
+              <InfoRow label={t`包围盒`} value={(metadata?.boundingBoxes ?? []).join('、') || t`（无）`} />
               <InfoRow
                 label={t`页`}
                 value={
@@ -627,9 +607,7 @@ export function SpinePage() {
               {logSlice.length === 0 ? (
                 <text {...TEXT.caption} text={t`尚无事件。`} />
               ) : (
-                logSlice.map((entry, index) => (
-                  <text key={`${index}-${entry}`} {...TEXT.caption} text={entry} />
-                ))
+                logSlice.map((entry, index) => <text key={`${index}-${entry}`} {...TEXT.caption} text={entry} />)
               )}
               <Pager page={logPage} pages={logPages} onChange={setLogPage} />
 

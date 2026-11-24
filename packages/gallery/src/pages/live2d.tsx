@@ -1,21 +1,21 @@
+import { useLingui } from '@lingui/react/macro';
 import {
   addEventListener,
   Button,
   Checkbox,
-  ScrollView,
-  Select,
-  Slider,
-  useScrollView,
   type Live2dCommand,
   type Live2dEvent,
   type Live2dMetadata,
   type MouseEvent as MoyuMouseEvent,
-  type Node,
   type TouchEvent as MoyuTouchEvent,
   type WheelEvent as MoyuWheelEvent,
+  type Node,
+  ScrollView,
+  Select,
+  Slider,
+  useScrollView,
 } from '@momoyu-ink/kit';
-import { useLingui } from '@lingui/react/macro';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, SectionTabs } from '../components/chrome';
 import {
   BUTTON_SPRITE,
@@ -28,6 +28,7 @@ import {
   SELECT_TRIGGER,
   SLIDER_THUMB,
   SLIDER_TRACK,
+  sizedButton,
   TEXT,
 } from '../theme';
 
@@ -50,8 +51,7 @@ const CONTENT_HEIGHT = 912;
 const MODEL_BAR_HEIGHT = 174;
 const MAIN_TABS_HEIGHT = 48;
 const MAIN_TAB_GAP = 12;
-const MAIN_TAB_HEIGHT =
-  CONTENT_HEIGHT - MODEL_BAR_HEIGHT - COLUMN_GAP - MAIN_TABS_HEIGHT - MAIN_TAB_GAP;
+const MAIN_TAB_HEIGHT = CONTENT_HEIGHT - MODEL_BAR_HEIGHT - COLUMN_GAP - MAIN_TABS_HEIGHT - MAIN_TAB_GAP;
 /** Usable height inside a tab panel: panel height minus the content inset. */
 const TAB_BODY_HEIGHT = MAIN_TAB_HEIGHT - 40;
 
@@ -83,11 +83,17 @@ const MOTION_PAGE_SIZE = 8;
 /** Expression buttons per page, three per row over two rows. */
 const EXPRESSION_PAGE_SIZE = 6;
 
-const GROUP_LABEL = { fontSize: 18, fillColor: COLOR.dim } as const;
-const SMALL_BUTTON = { ...BUTTON_SPRITE, targetWidth: 150, targetHeight: 48 };
-const WIDE_BUTTON = { ...BUTTON_SPRITE, targetWidth: 240, targetHeight: 48 };
-const EXPRESSION_BUTTON = { ...BUTTON_SPRITE, targetWidth: 226, targetHeight: 48 };
-const PAGE_BUTTON = { ...BUTTON_SPRITE, targetWidth: 110, targetHeight: 48 };
+// Getter keeps the muted colour live across appearance mode switches.
+const GROUP_LABEL = {
+  fontSize: 18,
+  get fillColor() {
+    return COLOR.dim;
+  },
+};
+const SMALL_BUTTON = sizedButton(150, 48);
+const WIDE_BUTTON = sizedButton(240, 48);
+const EXPRESSION_BUTTON = sizedButton(226, 48);
+const PAGE_BUTTON = sizedButton(110, 48);
 
 /**
  * Models the page loads from `assets/live2d/`. The models and the plugin binary
@@ -166,10 +172,7 @@ function normalize(value: number, min: number, max: number): number {
   return Math.max(0, Math.min(1, (value - min) / (max - min)));
 }
 
-function formatParameter(
-  parameter: Live2dMetadata['parameters'][number],
-  normalized: number,
-): string {
+function formatParameter(parameter: Live2dMetadata['parameters'][number], normalized: number): string {
   const value = parameter.min + normalized * (parameter.max - parameter.min);
 
   return `${value.toFixed(1)} / [${parameter.min}, ${parameter.max}]`;
@@ -238,15 +241,7 @@ function ItemRows({
 }
 
 /** Paging controls on their own row; renders nothing for a single page. */
-function Pager({
-  page,
-  pages,
-  onChange,
-}: {
-  page: number;
-  pages: number;
-  onChange: (page: number) => void;
-}) {
+function Pager({ page, pages, onChange }: { page: number; pages: number; onChange: (page: number) => void }) {
   if (pages <= 1) return null;
 
   return (
@@ -305,9 +300,7 @@ export function Live2dPage() {
   /** Last pointer position in viewport coordinates, `null` before the first move. */
   const pointerRef = useRef<{ x: number; y: number } | null>(null);
   /** Press that may turn into a pan, held until the pointer moves or is released. */
-  const dragRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(
-    null,
-  );
+  const dragRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number } | null>(null);
   /** Whether the current press has travelled far enough to be a pan and not a click. */
   const dragMovedRef = useRef(false);
 
@@ -473,10 +466,7 @@ export function Live2dPage() {
         Object.fromEntries(
           event.parameters
             .filter((parameter) => PARAMETER_IDS.includes(parameter.id))
-            .map((parameter) => [
-              parameter.id,
-              normalize(parameter.default, parameter.min, parameter.max),
-            ]),
+            .map((parameter) => [parameter.id, normalize(parameter.default, parameter.min, parameter.max)]),
         ),
       );
       setPartId(PART_IDS[modelKey(src)]?.[0] ?? '');
@@ -526,9 +516,7 @@ export function Live2dPage() {
   );
 
   const currentGroup = motionGroups[Math.min(motionGroup, motionGroups.length - 1)];
-  const motionPages = currentGroup
-    ? Math.max(1, Math.ceil(currentGroup.indices.length / MOTION_PAGE_SIZE))
-    : 1;
+  const motionPages = currentGroup ? Math.max(1, Math.ceil(currentGroup.indices.length / MOTION_PAGE_SIZE)) : 1;
   const motionSlice = currentGroup
     ? currentGroup.indices.slice(motionPage * MOTION_PAGE_SIZE, (motionPage + 1) * MOTION_PAGE_SIZE)
     : [];
@@ -538,8 +526,7 @@ export function Live2dPage() {
     (expressionPage + 1) * EXPRESSION_PAGE_SIZE,
   );
   const logSlice = log.slice(logPage * LOG_PAGE_SIZE, (logPage + 1) * LOG_PAGE_SIZE);
-  const motionSummary =
-    motionGroups.map((group) => `${group.group} ×${group.indices.length}`).join('、') || '无';
+  const motionSummary = motionGroups.map((group) => `${group.group} ×${group.indices.length}`).join('、') || '无';
 
   return (
     <hbox gap={COLUMN_GAP} alignItems="start">
@@ -583,7 +570,7 @@ export function Live2dPage() {
         <SectionTabs
           value={mainTab}
           onChange={setMainTab}
-          tabWidth={244}
+          tabWidth={226}
           options={[
             { value: 'show', label: t`演出验证` },
             { value: 'tune', label: t`精细调校` },
@@ -593,7 +580,12 @@ export function Live2dPage() {
 
         <Panel width={COLUMN_WIDTH} height={MAIN_TAB_HEIGHT}>
           {mainTab === 'show' ? (
-            <ScrollView width={SCROLL_WIDTH} height={TAB_BODY_HEIGHT} controller={showScroll} contentProps={{ gap: 12 }}>
+            <ScrollView
+              width={SCROLL_WIDTH}
+              height={TAB_BODY_HEIGHT}
+              controller={showScroll}
+              contentProps={{ gap: 12 }}
+            >
               <vbox gap={10}>
                 {chunk(OPTIONS, 3).map((row, index) => (
                   <hbox key={index} gap={28} alignItems="center">
@@ -683,9 +675,7 @@ export function Live2dPage() {
                         sprite={EXPRESSION_BUTTON}
                         text={name}
                         textStyle={BUTTON_TEXT_STYLE}
-                        onPress={() =>
-                          run({ subCommand: 'setExpression', name }, `setExpression ${name}`)
-                        }
+                        onPress={() => run({ subCommand: 'setExpression', name }, `setExpression ${name}`)}
                       />
                     )}
                   />
@@ -710,6 +700,7 @@ export function Live2dPage() {
                 value={tuneTab}
                 onChange={setTuneTab}
                 tabWidth={180}
+                variant="control"
                 options={[
                   { value: 'parameters', label: t`参数` },
                   { value: 'parts', label: t`部件不透明度` },
@@ -744,10 +735,7 @@ export function Live2dPage() {
                       </hbox>
                     ))
                   )}
-                  <text
-                    {...TEXT.caption}
-                    text={t`覆盖值每帧在效果链之后重放，动作运行时也保持生效。`}
-                  />
+                  <text {...TEXT.caption} text={t`覆盖值每帧在效果链之后重放，动作运行时也保持生效。`} />
                   <hbox gap={10}>
                     <Button
                       sprite={WIDE_BUTTON}
@@ -799,10 +787,7 @@ export function Live2dPage() {
                     />
                     <text {...TEXT.body} text={partOpacity.toFixed(2)} fillColor={COLOR.accent} />
                   </hbox>
-                  <text
-                    {...TEXT.caption}
-                    text={t`ready 元数据不含部件列表，这里用样例模型的已知部件 id。`}
-                  />
+                  <text {...TEXT.caption} text={t`ready 元数据不含部件列表，这里用样例模型的已知部件 id。`} />
                 </vbox>
               ) : null}
             </vbox>
@@ -816,11 +801,7 @@ export function Live2dPage() {
               contentProps={{ gap: 12 }}
             >
               <text {...GROUP_LABEL} text={t`插件状态`} />
-              <InfoRow
-                label={t`状态`}
-                value={error ?? t`正常：插件已加载，模型已就绪。`}
-                accent={error !== null}
-              />
+              <InfoRow label={t`状态`} value={error ?? t`正常：插件已加载，模型已就绪。`} accent={error !== null} />
 
               <text {...GROUP_LABEL} text={t`模型放置`} />
               <InfoRow label={t`模型`} value="assets/live2d/<名称>/<名称>.model3.json" />
@@ -829,23 +810,13 @@ export function Live2dPage() {
               <text {...GROUP_LABEL} text={t`模型元信息`} />
               {metadata ? (
                 <vbox gap={10}>
-                  <InfoRow
-                    label={t`画布`}
-                    value={`${canvasWidth} × ${canvasHeight} px`}
-                    accent
-                  />
-                  <InfoRow
-                    label={t`画布原点`}
-                    value={`(${metadata.canvas.originX}, ${metadata.canvas.originY})`}
-                  />
+                  <InfoRow label={t`画布`} value={`${canvasWidth} × ${canvasHeight} px`} accent />
+                  <InfoRow label={t`画布原点`} value={`(${metadata.canvas.originX}, ${metadata.canvas.originY})`} />
                   <InfoRow label={t`每单位像素`} value={String(metadata.canvas.pixelsPerUnit)} />
                   <InfoRow label={t`动作`} value={`${metadata.motions.length} 个：${motionSummary}`} />
                   <InfoRow label={t`表情`} value={`${expressions.length} 个`} />
                   <InfoRow label={t`参数`} value={`${metadata.parameters.length} 个`} />
-                  <InfoRow
-                    label={t`命中区`}
-                    value={metadata.hitAreas.join('、') || t`（无）`}
-                  />
+                  <InfoRow label={t`命中区`} value={metadata.hitAreas.join('、') || t`（无）`} />
                 </vbox>
               ) : (
                 <text {...TEXT.caption} text={t`尚未收到 ready 事件。`} />
@@ -916,31 +887,21 @@ export function Live2dPage() {
                 idle={options.idle}
                 hitTest
                 onHit={(event) => {
-                  setHitResult(
-                    t`内置命中：${event.area} @ 画布坐标 (${Math.round(event.x)}, ${Math.round(
-                      event.y,
-                    )})`,
-                  );
+                  setHitResult(t`内置命中：${event.area} @ 画布坐标 (${Math.round(event.x)}, ${Math.round(event.y)})`);
                 }}
                 onClick={(event) => {
                   if (!metadata || dragMovedRef.current) return;
                   const x = event.offsetX;
                   const y = event.offsetY;
                   const matched = metadata.hitAreas.filter(
-                    (area) =>
-                      live2dRef.current?.executeCommand({ subCommand: 'hitTest', area, x, y }) ===
-                      true,
+                    (area) => live2dRef.current?.executeCommand({ subCommand: 'hitTest', area, x, y }) === true,
                   );
                   if (matched.length === 0) {
-                    setHitResult(
-                      t`画布坐标 (${Math.round(x)}, ${Math.round(y)}) → 未命中任何区域`,
-                    );
+                    setHitResult(t`画布坐标 (${Math.round(x)}, ${Math.round(y)}) → 未命中任何区域`);
                   }
                 }}
                 onReady={handleReady}
-                onMotionFinished={(event) =>
-                  pushLog(`motionFinished ${event.group} #${event.index}`)
-                }
+                onMotionFinished={(event) => pushLog(`motionFinished ${event.group} #${event.index}`)}
                 onMotionEvent={(event) => pushLog(`motionEvent ${event.value}`)}
                 onBlendModeUnsupported={(event) => pushLog(`blendModeUnsupported ${event.value}`)}
                 onError={(event) => {

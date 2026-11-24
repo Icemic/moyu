@@ -1,10 +1,11 @@
-import { Select, Slider } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
+import { Select, Slider } from '@momoyu-ink/kit';
 import { useState } from 'react';
 import { DemoChip, Panel } from '../components/chrome';
 import {
   BUTTON_TEXT_STYLE,
   COLOR,
+  chipSprite,
   ITEM_COLORS,
   SELECT_LIST,
   SELECT_OPTION,
@@ -12,7 +13,6 @@ import {
   SLIDER_THUMB,
   SLIDER_TRACK,
   TEXT,
-  chipSprite,
 } from '../theme';
 
 type TextPrintMode = 'instant' | 'typewriter' | 'printer';
@@ -277,7 +277,7 @@ function AlphaHitTestPanel() {
       <text {...TEXT.caption} text={title} />
       <container>
         <sprite
-          {...chipSprite(ITEM_COLORS[1])}
+          {...chipSprite(ITEM_COLORS[0])}
           label={`${labelPrefix}-plate`}
           targetWidth={100}
           targetHeight={100}
@@ -286,9 +286,8 @@ function AlphaHitTestPanel() {
         />
         <sprite
           label={`${labelPrefix}-ring`}
-          src="images/radio_unchecked.png"
+          src="images/ring.png"
           scale={2}
-          tint={ITEM_COLORS[2]}
           interactive
           cursor="pointer"
           alphaHitTest={alphaHitTest}
@@ -319,11 +318,15 @@ function AnimationPanel() {
     <Panel title={t`Animation 帧动画`} width={480} height={320} note={t`APNG 格式帧动画；tint 同样作用于动画帧。`}>
       <hbox gap={100} y={32} width={480} justifyContent="center">
         <vbox gap={32} alignItems="center">
-          <animation src="images/cursor.png" format="apng" pivot={[0.5, 0.5]} scale={2} />
-          <text {...TEXT.caption} text={t`原色`} />
+          {/* The frames are white, which disappears on the light appearance; both samples
+              tint the same asset, so they start from one visible grey. */}
+          <animation src="images/cursor.png" format="apng" tint="#A8B0AE" pivot={[0.5, 0.5]} scale={2} />
+          <text {...TEXT.caption} text={t`浅灰`} />
         </vbox>
         <vbox gap={32} alignItems="center">
-          <animation src="images/cursor.png" format="apng" tint={COLOR.accent} pivot={[0.5, 0.5]} scale={2} />
+          {/* Fixed gold: this sample demonstrates the tint itself, so it must not follow
+              the theme accent. A light-grey base keeps the result close to gold. */}
+          <animation src="images/cursor.png" format="apng" tint="#C9A24A" pivot={[0.5, 0.5]} scale={2} />
           <text {...TEXT.caption} text={t`tint 金色`} />
         </vbox>
       </hbox>

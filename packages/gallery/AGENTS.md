@@ -24,8 +24,9 @@ Gallery 使用 React + TypeScript + Vite，运行于 Moyu 自定义 React Reconc
 packages/gallery/
 ├── src/
 │   ├── index.tsx                # ready 事件与应用入口
-│   ├── gallery.tsx              # 应用骨架、导航、舞台缩放与内容滚动
-│   ├── theme.ts                 # 颜色、文字与 sprite 设计令牌
+│   ├── gallery.tsx              # 应用骨架、导航、外观切换、舞台缩放与内容滚动
+│   ├── theme.ts                 # 主题公共入口（活单例 + applyGalleryMode）
+│   ├── theme/                   # 主题配置：tokens.json + 调色板/sprite 构造
 │   ├── components/
 │   │   └── chrome.tsx           # Panel、DemoChip、SectionTabs 等共享展示组件
 │   └── pages/                   # 各能力展示页
@@ -63,11 +64,11 @@ packages/gallery/
 
 ### 主题与资产
 
-- `src/theme.ts` 是 Gallery 颜色、文字样式和 sprite 配置的唯一来源；页面中避免重复硬编码控件主题。
-- `assets/images/` 下由 `scripts/generate-assets.mjs` 生成的文件禁止手工修改。修改生成逻辑后重新运行资产生成命令，并检查生成图片。
-- 引擎 `tint` 使用乘法着色。可运行时 tint 的 UI 资产应保持中性灰度，由 `theme.ts` 设置颜色。
+- 颜色只在 `src/theme/tokens.json` 写一次：运行时主题与 `scripts/generate-assets.mjs` 共用它，新增颜色或圆角先改这里。页面中不要硬编码控件颜色。
+- `src/theme.ts` 是主题公共入口（页面统一 `import ... from '../theme'`），`src/theme/` 放 tokens 与调色板/sprite 构造。它导出的 `COLOR` / `TEXT` / 各 sprite 是**活单例**，`applyGalleryMode()` 就地改写它们以切换浅色/深色。页面模块顶层的常量若复制了其中的值，切换后会冻结在旧外观上，必须用 getter 或 `sizedButton()` 这类实时视图。
+- 控件与面板资产按明暗两套烘焙在 `assets/images/light/` 与 `assets/images/dark/`。主题不使用描边，层级由"页面底 → 卡片面 → 控件填充"三级明度差表达，单张中性纹理乘一个 tint 表达不了两套外观。只有 `pixel.png` / `chip.png` / `ring.png` 保持中性并在运行时 `tint`。
+- `assets/images/` 下由 `scripts/generate-assets.mjs` 生成的文件禁止手工修改。修改生成逻辑后重新运行 `generate:assets`，并检查生成图片。
 - 九宫格资产必须在主题配置中同时提供 `mode: 'nineslice'` 与正确的 `bounds`；拉伸后的目标尺寸由调用方或主题提供。
-- 当前 `dropdown_list.png` 因 `SelectListProps` 不支持 tint 而使用预烘焙颜色；其余可 tint 控件资产保持中性灰度。相关类型变化后应同步清理生成脚本、主题和文档中的限制说明。
 
 ---
 

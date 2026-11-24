@@ -1,5 +1,5 @@
-import { animated, Button, useFadeIn, useFadeOut, useSpring, useTransition } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
+import { animated, Button, useFadeIn, useFadeOut, useSpring, useTransition } from '@momoyu-ink/kit';
 import { useEffect, useState } from 'react';
 import { DemoChip, Panel } from '../components/chrome';
 import { BUTTON_SPRITE, BUTTON_TEXT_STYLE, COLOR, ITEM_COLORS, TEXT } from '../theme';
@@ -147,9 +147,14 @@ function FadeHelpersPanel() {
             targetHeight={110}
             opacity={fadeInStyle.opacity}
           >
-            <text text={t`淡入 FADE IN`} fontSize={24} fillColor={COLOR.caption} x={40} y={30} />
+            <text text={t`淡入 FADE IN`} fontSize={24} fillColor="#FFFFFF" x={40} y={30} />
           </animated.sprite>
-          <animated.text text={t`淡出 FADE OUT`} fontSize={34} fillColor={COLOR.accent} opacity={fadeOutStyle.opacity} />
+          <animated.text
+            text={t`淡出 FADE OUT`}
+            fontSize={34}
+            fillColor={COLOR.accent}
+            opacity={fadeOutStyle.opacity}
+          />
           <container>
             <text text={t`背景目标 BACKDROP`} fontSize={48} fillColor={ITEM_COLORS[3]} />
             <animated.backdrop

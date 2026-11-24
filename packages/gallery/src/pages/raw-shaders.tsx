@@ -1,5 +1,5 @@
-import { Button, Select, Slider, type MoyuShaderAttributes, type Node } from '@momoyu-ink/kit';
 import { useLingui } from '@lingui/react/macro';
+import { Button, type MoyuShaderAttributes, type Node, Select, Slider } from '@momoyu-ink/kit';
 import { useRef, useState } from 'react';
 import { Panel } from '../components/chrome';
 import {
@@ -16,9 +16,7 @@ import {
 } from '../theme';
 
 type ShaderSource = NonNullable<MoyuShaderAttributes['shader']>;
-type CustomShaderSource =
-  | Extract<ShaderSource, { type: 'raw' }>
-  | Extract<ShaderSource, { type: 'file' }>;
+type CustomShaderSource = Extract<ShaderSource, { type: 'raw' }> | Extract<ShaderSource, { type: 'file' }>;
 type RawTimeControl = Exclude<NonNullable<MoyuShaderAttributes['timeControl']>, 'transition'>;
 
 const RAW_SHADER_HEADER = `
@@ -116,9 +114,7 @@ export function RawShadersPage() {
     { name: 'speed', type: 'float' as const, value: 1.4 },
   ];
   const shader: CustomShaderSource =
-    sourceType === 'raw'
-      ? { type: 'raw', content: preset.content, params }
-      : { type: 'file', src: preset.src, params };
+    sourceType === 'raw' ? { type: 'raw', content: preset.content, params } : { type: 'file', src: preset.src, params };
 
   return (
     <container>
@@ -169,7 +165,7 @@ export function RawShadersPage() {
 
             <hbox gap={16} alignItems="center">
               <Button
-                sprite={{ ...BUTTON_SPRITE, targetWidth: 180 }}
+                sprite={{ ...BUTTON_SPRITE, targetWidth: 180, targetHeight: 56 }}
                 text={playing ? t`停止` : t`启动`}
                 textStyle={BUTTON_TEXT_STYLE}
                 disabled={timeControl === 'auto'}
@@ -184,7 +180,7 @@ export function RawShadersPage() {
                 }}
               />
               <Button
-                sprite={{ ...BUTTON_SPRITE, targetWidth: 180 }}
+                sprite={{ ...BUTTON_SPRITE, targetWidth: 180, targetHeight: 56 }}
                 text={t`重置`}
                 textStyle={BUTTON_TEXT_STYLE}
                 disabled={timeControl === 'auto'}
@@ -228,7 +224,14 @@ export function RawShadersPage() {
                   x={150}
                   y={100}
                 />
-                <text text={t`手动时间控制`} fontSize={50} fillColor={ITEM_COLORS[2]} x={480} y={300} rotation={-0.06} />
+                <text
+                  text={t`手动时间控制`}
+                  fontSize={50}
+                  fillColor={ITEM_COLORS[2]}
+                  x={480}
+                  y={300}
+                  rotation={-0.06}
+                />
                 <text
                   text={t`参数槽 · 通道采样 · builtins.time`}
                   fontSize={30}

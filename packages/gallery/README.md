@@ -29,6 +29,18 @@ Gallery 使用 Lingui 6，主语言为中文，同时维护 `zh`、`en` 和 `ja`
 
 仓库需要在 GitHub Settings 中启用 Actions 作为 Pages source，并创建名为 `github-pages` 的 environment。tag 发布不会覆盖 Gallery Pages。
 
+## 主题
+
+```
+src/
+├── theme.ts      # 公共入口：导出 COLOR / TEXT / 各 sprite 单例，applyGalleryMode 就地切换
+└── theme/
+    ├── tokens.json   # 唯一配色来源：明暗两套色板、圆角、字阶、演示色
+    └── themes.ts     # 由 tokens 构造每套外观的调色板与 sprite 配置
+```
+
+侧栏的「外观」按钮在浅色与深色之间切换。`theme.ts` 导出的是**活单例**：`applyGalleryMode()` 就地改写这些对象，页面下次渲染就读到新值；因此模块顶层的常量必须用 getter 或 `sizedButton()` 之类的实时视图，直接复制 `COLOR.x` 会把切换前的外观冻结住。
+
 ## 页面
 
 - 01 基础组件 — Sprite、Text、Clip、Animation 与通用节点属性
@@ -44,7 +56,9 @@ Gallery 使用 Lingui 6，主语言为中文，同时维护 `zh`、`en` 和 `ja`
 
 ## 资产
 
-`assets/images/` 下几乎所有 PNG 都由 `scripts/generate-assets.mjs`（零依赖）生成，请勿手工编辑。其中中性灰度资产（包括 `slider_*`）在运行时通过 `tint` 上色；仅 `dropdown_list` 因 kit props 不含 tint 而为预烘焙色。
+`assets/images/` 下几乎所有 PNG 都由 `scripts/generate-assets.mjs`（零依赖）生成，请勿手工编辑。控件与面板资产按明暗两套分别烘焙到 `assets/images/light/` 与 `assets/images/dark/`。当前方案不使用描边，层级完全由"页面底 → 卡片面 → 控件填充"的三级明度差表达，因此同一张中性纹理乘一个 tint 无法同时满足两种模式。只有 `pixel.png`、`chip.png`、`ring.png` 保持中性，在运行时用 `tint` 上色。
+
+颜色只在 `src/theme/tokens.json` 里写一次：运行时主题（`src/theme.ts`）与资产生成脚本读同一份文件，因此烘焙的贴图和页面画的颜色不会走样。改配色改这个文件，然后运行 `generate:assets`。
 
 `assets/cursors/` 由同一脚本生成，但不是 sprite：它们直接交给窗口系统作为鼠标指针，因此按最终尺寸绘制并带可见描边。
 
