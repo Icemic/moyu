@@ -154,10 +154,36 @@ pub fn find_jiti_entry(project_root: &Path) -> Option<PathBuf> {
     None
 }
 
+fn is_pm_available(pm: PackageManager) -> bool {
+    let mut cmd = if cfg!(windows) {
+        let mut c = Command::new("cmd.exe");
+        c.args(["/c", &format!("{}.cmd", pm.binary_name()), "--version"]);
+        c
+    } else {
+        let mut c = Command::new(pm.binary_name());
+        c.arg("--version");
+        c
+    };
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
 /// Run the project's `build` script using the detected package manager.
 pub async fn run_project_build(project_root: &Path) -> Result<()> {
     let root = project_root.to_path_buf();
-    let pm = detect_package_manager(&root);
+    let detected_pm = detect_package_manager(&root);
+    let pm = if detected_pm != PackageManager::Npm && !is_pm_available(detected_pm) {
+        eprintln!(
+            "warn: {} was not found in PATH; falling back to npm.",
+            detected_pm.binary_name()
+        );
+        PackageManager::Npm
+    } else {
+        detected_pm
+    };
     let node_info = require_node()?;
 
     tokio::task::spawn_blocking(move || -> Result<()> {

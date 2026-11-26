@@ -12,7 +12,9 @@ mod service;
 use clap::Parser;
 
 fn should_launch_gui(args: &[std::ffi::OsString]) -> bool {
-    args.len() <= 1 || (args.len() == 2 && args[1] == "--gui")
+    // Until Phase 3 GUI lands, only `--gui` enters the GUI placeholder so bare
+    // `moyu` / `moyu-devtool` prints CLI help instead of exiting silently.
+    args.len() == 2 && args[1] == "--gui"
 }
 
 fn main() {

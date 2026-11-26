@@ -101,7 +101,12 @@ pub enum Commands {
         output: Option<PathBuf>,
         #[arg(long = "android-format")]
         android_format: Option<String>,
-        #[arg(long)]
+        #[arg(
+            long,
+            num_args = 0..=1,
+            default_missing_value = "true",
+            require_equals = true
+        )]
         video_decoder: Option<bool>,
     },
     /// Generate JSON Schema from Zod command definitions.
@@ -138,6 +143,7 @@ pub struct DebugSessionArgs {
         default_value_t = true,
         num_args = 0..=1,
         default_missing_value = "true",
+        require_equals = true,
         action = clap::ArgAction::Set
     )]
     pub headless: bool,

@@ -187,8 +187,15 @@ pub async fn pack_project(project_root: &Path, options: PackOptions) -> Result<(
 
             let target = options.target.as_deref().unwrap();
             let engine_dir = target_path.as_deref().unwrap();
-            let video_lib = if options.include_video_decoder && supports_video_decoder(target) {
-                Some(ensure_video_decoder_library(project_root, target).await?)
+            let video_lib = if options.include_video_decoder {
+                if supports_video_decoder(target) {
+                    Some(ensure_video_decoder_library(project_root, target).await?)
+                } else {
+                    eprintln!(
+                        "warn: Video playback plugin is not supported for target \"{target}\"; ignoring --video-decoder."
+                    );
+                    None
+                }
             } else {
                 None
             };

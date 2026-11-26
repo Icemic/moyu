@@ -90,7 +90,7 @@ pub async fn start_static_file_server(
 async fn bind_with_retry(base_port: u16, attempts: u16) -> Result<TcpListener> {
     let mut port = base_port;
     for attempt in 0..=attempts {
-        match TcpListener::bind(("127.0.0.1", port)).await {
+        match TcpListener::bind(("0.0.0.0", port)).await {
             Ok(listener) => return Ok(listener),
             Err(err) if err.kind() == std::io::ErrorKind::AddrInUse && attempt < attempts => {
                 eprintln!("warn: Port {port} in use, trying {}...", port + 1);

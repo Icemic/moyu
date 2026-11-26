@@ -134,17 +134,17 @@ pub async fn download_to_file_verified(
     .await?
 }
 
-/// Recursively copy a directory tree.
+/// Recursively copy a directory tree, following directory symlinks.
 pub fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
     fs::create_dir_all(dst)?;
     for entry in fs::read_dir(src)? {
         let entry = entry?;
-        let file_type = entry.file_type()?;
+        let path = entry.path();
         let target = dst.join(entry.file_name());
-        if file_type.is_dir() {
-            copy_dir_all(&entry.path(), &target)?;
+        if fs::metadata(&path)?.is_dir() {
+            copy_dir_all(&path, &target)?;
         } else {
-            fs::copy(entry.path(), &target)?;
+            fs::copy(&path, &target)?;
         }
     }
     Ok(())

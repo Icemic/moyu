@@ -478,24 +478,49 @@ fn tool_definitions() -> Value {
         {
             "name": "debug_start",
             "title": "Start a debug session",
-            "description": "Start the project engine with the debug bridge and wait until it is running. Call this before any other moyu tool. Starting a session stops the previous one.",
+            "description": "Start the project engine with the debug bridge and wait until it is running. Call this before any other moyu tool. Starting a session stops the previous one. Native sessions run without a window by default; set headless to false to see it. Web sessions serve the project and report a page URL that has to be opened in a browser. With attach, the session only listens on a port and reports the MOYU_ENGINE_DEBUG_WS value an engine must be started with; nothing is launched or waited for, which is how a locally built or packaged engine gets inspected.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "web": { "type": "boolean", "default": false },
-                    "port": { "type": "number" },
-                    "entry": { "type": "string" },
-                    "headless": { "type": "boolean", "default": true },
-                    "projectRoot": { "type": "string" },
-                    "attach": { "type": "boolean", "default": false },
-                    "listen": { "type": "number", "default": DEFAULT_ATTACH_PORT }
+                    "web": {
+                        "type": "boolean",
+                        "description": "Serve the project for a browser instead of opening a native window",
+                        "default": false
+                    },
+                    "port": {
+                        "type": "number",
+                        "description": "Port for the web server; ignored by native sessions"
+                    },
+                    "entry": {
+                        "type": "string",
+                        "description": "Entry file for a native engine; defaults to the project dev server"
+                    },
+                    "headless": {
+                        "type": "boolean",
+                        "description": "Run the native engine without a window (default); ignored by web and attach sessions",
+                        "default": true
+                    },
+                    "projectRoot": {
+                        "type": "string",
+                        "description": "Project directory to run; defaults to the directory the server was started in"
+                    },
+                    "attach": {
+                        "type": "boolean",
+                        "description": "Only listen for an engine started by hand and report the MOYU_ENGINE_DEBUG_WS value it must be started with; nothing is launched or waited for",
+                        "default": false
+                    },
+                    "listen": {
+                        "type": "number",
+                        "description": "Port an attach session listens on; defaults to 6321",
+                        "default": DEFAULT_ATTACH_PORT
+                    }
                 }
             }
         },
         {
             "name": "debug_stop",
             "title": "Stop the debug session",
-            "description": "Stop the debug session started by debug_start.",
+            "description": "Stop the debug session started by debug_start. An attach session only closes the listener; the engine keeps running.",
             "inputSchema": { "type": "object", "properties": {} }
         },
         {
@@ -507,12 +532,16 @@ fn tool_definitions() -> Value {
         {
             "name": "debug_eval",
             "title": "Evaluate JavaScript",
-            "description": "Run JavaScript in the engine and return the result.",
+            "description": "Run JavaScript in the engine and return the result. Native engines share one global scope across calls, so values kept on globalThis persist between calls. An object literal needs parentheses. Use this to reach anything the other tools do not cover.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "code": { "type": "string" },
-                    "timeoutMs": { "type": "number", "default": 5000 }
+                    "code": { "type": "string", "description": "JavaScript to evaluate" },
+                    "timeoutMs": {
+                        "type": "number",
+                        "description": "Milliseconds the engine may spend on the evaluation",
+                        "default": 5000
+                    }
                 },
                 "required": ["code"]
             }
@@ -520,65 +549,83 @@ fn tool_definitions() -> Value {
         {
             "name": "debug_logs",
             "title": "Read engine logs",
-            "description": "Read buffered engine logs, oldest first.",
+            "description": "Read buffered engine logs, oldest first. Use sinceSeq with the returned nextSeq to fetch only what is new since the last call.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "level": { "type": "string", "enum": ["error", "warn", "info", "debug", "trace"] },
-                    "limit": { "type": "number" },
-                    "sinceSeq": { "type": "number" }
+                    "level": {
+                        "type": "string",
+                        "enum": ["error", "warn", "info", "debug", "trace"],
+                        "description": "Only entries at this level or more severe"
+                    },
+                    "limit": { "type": "number", "description": "Maximum number of entries to return" },
+                    "sinceSeq": { "type": "number", "description": "Only entries newer than this sequence number" }
                 }
             }
         },
         {
             "name": "debug_tree",
             "title": "Read the node tree",
-            "description": "List nodes and their children, starting from the root unless a nodeId is given.",
+            "description": "List nodes and their children, starting from the root unless a nodeId is given. Each line shows the node id, its type, and its label; use debug_props to inspect one node.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "nodeId": { "type": "number" },
-                    "depth": { "type": "number", "default": 4 }
+                    "nodeId": { "type": "number", "description": "Node to start from; defaults to the root node" },
+                    "depth": { "type": "number", "description": "Levels of children to include", "default": 4 }
                 }
             }
         },
         {
             "name": "debug_props",
             "title": "Read node properties",
-            "description": "Read what JavaScript asked of one node, next to the values the engine derived from it.",
+            "description": "Read what JavaScript asked of one node, next to the values the engine derived from it. Comparing the two shows whether an intended change took effect; the derived size and bounds are in stage pixels.",
             "inputSchema": {
                 "type": "object",
-                "properties": { "nodeId": { "type": "number" } },
+                "properties": {
+                    "nodeId": { "type": "number", "description": "Node id, as listed by debug_tree" }
+                },
                 "required": ["nodeId"]
             }
         },
         {
             "name": "debug_screenshot",
             "title": "Capture the stage",
-            "description": "Capture the next rendered frame as an image.",
+            "description": "Capture the next rendered frame. Returns the image itself, so it shows what the game currently looks like; use maxWidth and maxHeight to scale a large stage down.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "maxWidth": { "type": "number" },
-                    "maxHeight": { "type": "number" }
+                    "maxWidth": { "type": "number", "description": "Largest width to return; needs maxHeight as well" },
+                    "maxHeight": { "type": "number", "description": "Largest height to return; needs maxWidth as well" }
                 }
             }
         },
         {
             "name": "debug_mouse",
             "title": "Send a mouse action",
-            "description": "Simulate a mouse action (move, down, up, click or wheel) at a stage position or at a node.",
+            "description": "Simulate a mouse action (move, down, up, click or wheel) at a stage position or at a node. The action goes through the real input pipeline, so hover, pointer pairing and gestures behave as they do for a user. Give x and y in stage logical coordinates, or a nodeId to aim at the center of a node. Returns the node that was hit, the bubble chain, and the events dispatched.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "action": { "type": "string", "enum": ["move", "down", "up", "click", "wheel"] },
-                    "x": { "type": "number" },
-                    "y": { "type": "number" },
-                    "nodeId": { "type": "number" },
-                    "button": { "type": "string", "enum": ["left", "right", "middle", "back", "forward"] },
-                    "deltaX": { "type": "number" },
-                    "deltaY": { "type": "number" },
-                    "mode": { "type": "string", "enum": ["line", "pixel"] }
+                    "action": {
+                        "type": "string",
+                        "enum": ["move", "down", "up", "click", "wheel"],
+                        "description": "Mouse action to perform"
+                    },
+                    "x": { "type": "number", "description": "Stage logical X coordinate; use with y, or use nodeId instead" },
+                    "y": { "type": "number", "description": "Stage logical Y coordinate; use with x, or use nodeId instead" },
+                    "nodeId": { "type": "number", "description": "Target node id; the action lands at the center of its bounds" },
+                    "button": {
+                        "type": "string",
+                        "enum": ["left", "right", "middle", "back", "forward"],
+                        "description": "Mouse button for down, up and click; defaults to left"
+                    },
+                    "deltaX": { "type": "number", "description": "Horizontal scroll amount for wheel; defaults to 0" },
+                    "deltaY": { "type": "number", "description": "Vertical scroll amount for wheel; defaults to 0" },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["line", "pixel"],
+                        "description": "Unit of the wheel deltas; defaults to line"
+                    }
                 },
                 "required": ["action"]
             }
@@ -586,15 +633,19 @@ fn tool_definitions() -> Value {
         {
             "name": "debug_touch",
             "title": "Send a touch phase",
-            "description": "Simulate one touch phase (start, move, end or cancel).",
+            "description": "Simulate one touch phase (start, move, end or cancel). A touch is a session: start comes first and later phases may omit the position to keep the touch where it is. Give x and y in stage logical coordinates, or a nodeId to aim at the center of a node. Returns the node that was hit, the bubble chain, and the events dispatched.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "action": { "type": "string", "enum": ["start", "move", "end", "cancel"] },
-                    "x": { "type": "number" },
-                    "y": { "type": "number" },
-                    "nodeId": { "type": "number" },
-                    "identifier": { "type": "number" }
+                    "action": {
+                        "type": "string",
+                        "enum": ["start", "move", "end", "cancel"],
+                        "description": "Touch phase to perform"
+                    },
+                    "x": { "type": "number", "description": "Stage logical X coordinate; required for start, optional afterwards" },
+                    "y": { "type": "number", "description": "Stage logical Y coordinate; required for start, optional afterwards" },
+                    "nodeId": { "type": "number", "description": "Target node id; the touch starts at the center of its bounds" },
+                    "identifier": { "type": "number", "description": "Touch point identifier; defaults to 0" }
                 },
                 "required": ["action"]
             }
@@ -602,18 +653,22 @@ fn tool_definitions() -> Value {
         {
             "name": "debug_key",
             "title": "Send a keyboard event",
-            "description": "Simulate a keyboard event (down, up or press).",
+            "description": "Simulate a keyboard event (down, up or press). Keyboard events go to the engine as a whole, like real key presses. key is the event.key value such as Escape, Enter or a; code defaults to the same value.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
-                    "action": { "type": "string", "enum": ["down", "up", "press"] },
-                    "key": { "type": "string" },
-                    "code": { "type": "string" },
-                    "repeat": { "type": "boolean" },
-                    "ctrlKey": { "type": "boolean" },
-                    "shiftKey": { "type": "boolean" },
-                    "altKey": { "type": "boolean" },
-                    "metaKey": { "type": "boolean" }
+                    "action": {
+                        "type": "string",
+                        "enum": ["down", "up", "press"],
+                        "description": "Keyboard action to perform"
+                    },
+                    "key": { "type": "string", "description": "The event.key value, such as Escape, Enter or a" },
+                    "code": { "type": "string", "description": "Physical key name; defaults to key" },
+                    "repeat": { "type": "boolean", "description": "Whether this is a key repeat; defaults to false" },
+                    "ctrlKey": { "type": "boolean", "description": "Whether Ctrl is held; defaults to false" },
+                    "shiftKey": { "type": "boolean", "description": "Whether Shift is held; defaults to false" },
+                    "altKey": { "type": "boolean", "description": "Whether Alt is held; defaults to false" },
+                    "metaKey": { "type": "boolean", "description": "Whether Meta is held; defaults to false" }
                 },
                 "required": ["action", "key"]
             }
