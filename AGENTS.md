@@ -105,6 +105,7 @@ crates/
 ├── scenario/      # 剧情脚本执行器（Sixu 运行时）
 ├── gamepad/       # 手柄输入
 ├── macros/        # 过程宏（Node、Plugin derive 等）
+├── devtool/       # 统一 Rust CLI / GUI 开发工具链（moyu-devtool）
 └── run_wasm/      # WASM 构建与开发服务器
 ```
 
