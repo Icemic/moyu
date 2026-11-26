@@ -1,0 +1,125 @@
+# moyu-devtool
+
+[末语](https://momoyu.ink)视觉小说引擎的统一开发工具链（Rust 主体，提供 CLI 与未来的 GUI 模式）：项目脚手架、引擎下载与切换、运行项目、打包、Schema 生成，以及运行时调试与 MCP 服务。
+
+## 使用
+
+### 独立二进制
+
+从 GitHub Releases 下载对应平台的 `moyu-devtool`（Windows 为 `moyu-devtool.exe`）后直接运行：
+
+```bash
+moyu-devtool <command>
+```
+
+每个命令都有自己的帮助，例如 `moyu-devtool debug --help`。
+
+- 传入子命令或 `--no-gui` 进入 CLI 模式。
+- 传入 `--gui` 进入 GUI 模式（GPUI 界面将在后续阶段接入；当前阶段无参数默认打印 CLI 帮助）。
+
+### 通过 npm（`@momoyu-ink/cli`）
+
+不必安装，直接在项目目录里运行（内部自动解析对应平台的 `moyu-devtool` 二进制并透传）：
+
+```bash
+npx @momoyu-ink/cli <command>
+```
+
+也可以装为项目开发依赖，可执行文件名是 `moyu`：
+
+```bash
+npm install --save-dev @momoyu-ink/cli
+npx moyu <command>
+```
+
+如需本地调试或指定自定义构建的二进制，可设置环境变量 `MOYU_DEVTOOL_BIN`。
+
+## 命令
+
+| 命令 | 用途 |
+| --- | --- |
+| `init` | 创建新项目（交互向导与最小项目骨架）。 |
+| `download` | 下载指定引擎版本与平台。 |
+| `update` | 在当前 channel 内升级到最新引擎版本（非交互模式需传 `-y` / `--yes`）。 |
+| `switch` | 在已下载的引擎版本之间切换当前版本。 |
+| `run` | 运行引擎：native 模式（`--native`）或为浏览器提供本地服务（`--web`）。 |
+| `debug` | 通过调试桥查看运行中的引擎。 |
+| `mcp` | 把调试桥作为 [MCP](https://modelcontextprotocol.io) 工具提供在 stdio 上。 |
+| `pack` | 打包游戏用于分发（支持桌面原生、Web、Android、Framework 模式与 ZIP 归档）。 |
+| `schema` | 从项目的 Zod 命令定义生成 `commands.schema.json`（依赖本机 Node 与项目 `node_modules` 中的 `jiti`）。 |
+| `ui-schema` | 从项目的 Zod UI 定义生成 `ui.schema.json`。 |
+
+需要项目的命令会在当前目录及其上层查找 `index.json` 来确定项目根。下载的引擎存放在项目的 `.moyu/engine/` 下。
+
+## 调试运行中的引擎
+
+`debug` 与引擎之间通过 WebSocket 通信，协议见 [rfcs/2026-09-25-runtime-debug-bridge.md](../../rfcs/2026-09-25-runtime-debug-bridge.md)。每个子命令都是一次完整会话：先监听引擎端点，再启动引擎，问一个问题，然后收尾。
+
+```bash
+moyu-devtool debug state                              # entry、平台、surface 尺寸、节点数、已运行时长
+moyu-devtool debug eval "globalThis.__gameState"      # 在引擎里执行 JavaScript
+moyu-devtool debug logs --level warn --limit 50       # 读取引擎日志缓冲
+moyu-devtool debug logs --follow                      # 持续打印新日志
+moyu-devtool debug tree --depth 8                     # 打印节点树
+moyu-devtool debug props 12                           # 单个节点：JS 设置的属性与引擎算出的值
+moyu-devtool debug screenshot shot.webp --max-width 1280 --max-height 720
+```
+
+`state` / `eval` / `tree` / `props` / `screenshot` 会等引擎启动完成再发请求，因此读到的是已经跑完项目脚本的状态；引擎还在初始化时，这类命令会一直等到它完成。
+
+native 会话默认不打开窗口，画面留在引擎自己的纹理里，调试命令照常工作。需要看着窗口调试时加 `--no-headless`（或 `--headless=false`）：
+
+```bash
+moyu-devtool debug state --no-headless
+```
+
+要检查手动启动的引擎（例如打包好的成品），加上 `--attach`。这时不会启动任何东西，命令只监听一个端口，并打印引擎需要设置的环境变量：
+
+```bash
+moyu-devtool debug state --attach --listen 6321
+# info: Waiting for an engine on port 6321. Start it with:
+# info:   MOYU_ENGINE_DEBUG_WS=ws://127.0.0.1:6321/debug/ws?sessionId=...&role=engine
+```
+
+命令结果写 stdout，可直接管道；进度与错误写 stderr：
+
+```bash
+moyu-devtool debug tree | grep sprite
+```
+
+## 从 AI 宿主调试
+
+`mcp` 把同样的能力作为 [Model Context Protocol](https://modelcontextprotocol.io) 工具提供，AI 宿主可以直接启动引擎并查看它。它在 stdio 上说 JSON-RPC，stdout 只承载协议帧。
+
+```jsonc
+// .vscode/mcp.json
+{
+  "servers": {
+    "moyu": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@momoyu-ink/cli", "mcp"]
+    }
+  }
+}
+```
+
+| 工具 | 用途 |
+| --- | --- |
+| `debug_start` | 带着调试桥启动引擎并等它就绪；会先停掉上一个会话。native 会话默认无窗口，传 `headless: false` 可显示窗口。传 `attach: true` 改为只监听端口，返回需要设置的 `MOYU_ENGINE_DEBUG_WS`。 |
+| `debug_stop` | 停止 `debug_start` 启动的引擎与监听。 |
+| `debug_state` | 引擎状态快照。 |
+| `debug_eval` | 在引擎里执行 JavaScript。 |
+| `debug_logs` | 读取日志缓冲，可用序号续读。 |
+| `debug_tree` | 列出节点树。 |
+| `debug_props` | 单个节点的属性与派生值。 |
+| `debug_screenshot` | 截图，以图像形式返回。 |
+| `debug_mouse` | 模拟鼠标动作（`move` / `down` / `up` / `click` / `wheel`），目标用舞台坐标或节点 id。 |
+| `debug_touch` | 模拟触摸相位（`start` / `move` / `end` / `cancel`）。 |
+| `debug_key` | 模拟键盘事件（`down` / `up` / `press`），`key` 为 `event.key` 值。 |
+
+会话在工具调用之间保持存活，因此可以启动一次引擎、反复查询。默认的 native 会话以无窗口方式启动；传 `headless: false` 可显示窗口；传 `web: true` 改为提供项目页面，并返回一个需要在浏览器里打开的地址。
+
+## 许可
+
+MPL-2.0

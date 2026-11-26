@@ -1,6 +1,6 @@
 [package]
 name = "moyu_devtool"
-version.workspace = true
+version = "0.10.0"
 edition = "2024"
 license = "MPL-2.0"
 description = "Unified Rust CLI and GUI devtool for the Moyu Visual Novel Engine."

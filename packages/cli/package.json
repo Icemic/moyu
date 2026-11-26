@@ -1,37 +1,23 @@
 {
   "name": "@momoyu-ink/cli",
-  "version": "0.9.3",
-  "description": "CLI toolchain for the Moyu Visual Novel Engine",
+  "version": "0.10.0",
+  "description": "CLI wrapper for moyu-devtool (Moyu Visual Novel Engine toolchain)",
   "type": "module",
   "license": "MPL-2.0",
   "bin": {
-    "moyu": "./dist/index.js"
+    "moyu": "./bin/moyu.js"
   },
   "files": [
-    "dist"
+    "bin"
   ],
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "prepublishOnly": "tsup"
+    "build": "node --check ./bin/moyu.js"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "@zip.js/zip.js": "^2.8.23",
-    "citty": "^0.2.1",
-    "consola": "^3.4.2",
-    "jiti": "^2.4.2",
-    "picocolors": "^1.1.1",
-    "tar": "^7.4.3",
-    "ws": "^8.18.0"
-  },
-  "devDependencies": {
-    "@types/node": ">=24",
-    "@types/ws": "^8.5.12",
-    "tsup": "^8.4.0",
-    "typescript": "^5.9.3"
+    "jiti": "^2.4.2"
   },
   "publishConfig": {
     "access": "public"
