@@ -133,7 +133,13 @@ pub struct DebugSessionArgs {
     #[arg(long)]
     pub entry: Option<String>,
     /// Run the native engine without a window.
-    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    #[arg(
+        long,
+        default_value_t = true,
+        num_args = 0..=1,
+        default_missing_value = "true",
+        action = clap::ArgAction::Set
+    )]
     pub headless: bool,
     /// Show the engine window.
     #[arg(long = "no-headless", overrides_with = "headless")]
@@ -242,7 +248,7 @@ pub async fn run(cli: Cli) -> i32 {
     match dispatch(command).await {
         Ok(code) => code,
         Err(err) => {
-            eprintln!("error: {err}");
+            eprintln!("error: {err:#}");
             1
         }
     }
@@ -299,6 +305,16 @@ async fn dispatch(command: Commands) -> Result<i32> {
                 }
                 None => false,
             };
+            let signing_password = if !framework
+                && target.as_deref() == Some("android-aarch64")
+                && matches!(
+                    android_format.as_deref(),
+                    Some("release-apk" | "release-aab")
+                ) {
+                Some(prompt_hidden("Android signing password: ")?)
+            } else {
+                None
+            };
             pack_project(
                 &project_root,
                 PackOptions {
@@ -308,6 +324,7 @@ async fn dispatch(command: Commands) -> Result<i32> {
                     output,
                     android_format,
                     include_video_decoder,
+                    signing_password,
                 },
             )
             .await?;
@@ -575,20 +592,24 @@ async fn cmd_update(skip_confirm: bool) -> Result<()> {
         .as_ref()
         .map(|a| a.version.as_str())
         .unwrap_or("(none)");
-    if !skip_confirm
-        && io::stdin().is_terminal()
-        && !prompt_confirm(
+    if !skip_confirm {
+        if !io::stdin().is_terminal() {
+            bail!("Confirmation required. Re-run with --yes (-y) in non-interactive mode.");
+        }
+        if !prompt_confirm(
             &format!(
                 "Update engine: {current_ver} -> {target_version}?\n  Platforms: {}",
                 target_platforms.join(", ")
             ),
             false,
-        )?
-    {
-        eprintln!("info: Update cancelled.");
-        return Ok(());
+        )? {
+            eprintln!("info: Update cancelled.");
+            return Ok(());
+        }
     }
 
+    let (tx, rx) = async_channel::unbounded();
+    let printer = spawn_progress_printer(rx);
     download_platforms(
         &project_root,
         &current_channel,
@@ -596,9 +617,11 @@ async fn cmd_update(skip_confirm: bool) -> Result<()> {
         &manifest,
         &target_platforms,
         true,
-        None,
+        Some(&tx),
     )
     .await?;
+    drop(tx);
+    let _ = printer.await;
 
     eprintln!("success: Engine updated to {target_version}!");
     for p in &target_platforms {
@@ -709,8 +732,8 @@ async fn run_debug_task(
                 )
                 .await?;
             let out = match val.get("value") {
-                Some(v) if !v.is_null() => serde_json::to_string_pretty(v)?,
-                _ => val
+                Some(v) => serde_json::to_string_pretty(v)?,
+                None => val
                     .get("repr")
                     .and_then(|v| v.as_str())
                     .unwrap_or("undefined")
@@ -916,6 +939,75 @@ fn prompt_confirm(label: &str, default: bool) -> Result<bool> {
     } else {
         Ok(matches!(trimmed.as_str(), "y" | "yes"))
     }
+}
+
+fn prompt_hidden(message: &str) -> Result<String> {
+    if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+        bail!("Android release signing password must be entered in an interactive terminal.");
+    }
+    print!("{message}");
+    io::stdout().flush()?;
+
+    #[cfg(target_os = "windows")]
+    let password = {
+        use windows::Win32::System::Console::{
+            CONSOLE_MODE, ENABLE_ECHO_INPUT, GetConsoleMode, GetStdHandle, STD_INPUT_HANDLE,
+            SetConsoleMode,
+        };
+        struct ModeGuard {
+            handle: windows::Win32::Foundation::HANDLE,
+            old_mode: CONSOLE_MODE,
+        }
+        impl Drop for ModeGuard {
+            fn drop(&mut self) {
+                unsafe {
+                    let _ = SetConsoleMode(self.handle, self.old_mode);
+                }
+            }
+        }
+        let handle = unsafe { GetStdHandle(STD_INPUT_HANDLE)? };
+        let mut old_mode = CONSOLE_MODE(0);
+        unsafe { GetConsoleMode(handle, &mut old_mode)? };
+        let _guard = ModeGuard { handle, old_mode };
+        unsafe {
+            SetConsoleMode(
+                handle,
+                CONSOLE_MODE(old_mode.0 & !ENABLE_ECHO_INPUT.0),
+            )?;
+        }
+        let mut line = String::new();
+        io::stdin().read_line(&mut line)?;
+        println!();
+        line.trim_end_matches(&['\r', '\n'][..]).to_string()
+    };
+
+    #[cfg(not(target_os = "windows"))]
+    let password = {
+        use std::process::{Command, Stdio};
+        struct EchoGuard;
+        impl Drop for EchoGuard {
+            fn drop(&mut self) {
+                let _ = Command::new("stty")
+                    .arg("echo")
+                    .stdin(Stdio::inherit())
+                    .status();
+            }
+        }
+        let status = Command::new("stty")
+            .arg("-echo")
+            .stdin(Stdio::inherit())
+            .status()?;
+        if !status.success() {
+            bail!("Failed to disable terminal echo via stty.");
+        }
+        let _guard = EchoGuard;
+        let mut line = String::new();
+        io::stdin().read_line(&mut line)?;
+        println!();
+        line.trim_end_matches(&['\r', '\n'][..]).to_string()
+    };
+
+    Ok(password)
 }
 
 fn prompt_select(label: &str, options: &[String], default_idx: usize) -> Result<usize> {

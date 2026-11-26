@@ -59,6 +59,7 @@ pub struct DebugHost {
     outbound_tx: Mutex<Option<mpsc::UnboundedSender<String>>>,
     message_tx: broadcast::Sender<Value>,
     shutdown_tx: watch::Sender<bool>,
+    server_task: Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
 impl DebugHost {
@@ -147,6 +148,13 @@ impl DebugHost {
     pub fn close(&self) {
         let _ = self.shutdown_tx.send(true);
     }
+
+    pub async fn close_and_wait(&self) {
+        let _ = self.shutdown_tx.send(true);
+        if let Some(handle) = self.server_task.lock().await.take() {
+            let _ = handle.await;
+        }
+    }
 }
 
 pub struct DebugSession {
@@ -168,7 +176,7 @@ impl DebugSession {
         if let Some(server) = self.static_server.take() {
             server.close();
         }
-        self.host.close();
+        self.host.close_and_wait().await;
     }
 }
 
@@ -370,10 +378,11 @@ async fn start_host(
         outbound_tx: Mutex::new(None),
         message_tx,
         shutdown_tx,
+        server_task: Mutex::new(None),
     });
 
     let host_clone = Arc::clone(&host);
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         loop {
             tokio::select! {
                 _ = shutdown_rx.changed() => {
@@ -385,8 +394,17 @@ async fn start_host(
                     let Ok((stream, _)) = accept_res else {
                         break;
                     };
-                    let Ok(ws_stream) = accept_async(stream).await else {
-                        continue;
+                    let ws_stream = tokio::select! {
+                        _ = shutdown_rx.changed() => {
+                            if *shutdown_rx.borrow() {
+                                break;
+                            }
+                            continue;
+                        }
+                        res = accept_async(stream) => match res {
+                            Ok(s) => s,
+                            Err(_) => continue,
+                        },
                     };
                     let (mut ws_write, mut ws_read) = ws_stream.split();
                     let (out_tx, mut out_rx) = mpsc::unbounded_channel::<String>();
@@ -400,7 +418,21 @@ async fn start_host(
                         }
                     });
 
-                    while let Some(Ok(msg)) = ws_read.next().await {
+                    let mut should_stop = false;
+                    loop {
+                        let next_msg = tokio::select! {
+                            _ = shutdown_rx.changed() => {
+                                if *shutdown_rx.borrow() {
+                                    should_stop = true;
+                                    break;
+                                }
+                                continue;
+                            }
+                            msg = ws_read.next() => msg,
+                        };
+                        let Some(Ok(msg)) = next_msg else {
+                            break;
+                        };
                         let text = match msg {
                             Message::Text(t) => t.to_string(),
                             Message::Close(_) => break,
@@ -472,11 +504,15 @@ async fn start_host(
                     for (_, waiter) in pending.drain() {
                         let _ = waiter.send(Err(anyhow::anyhow!("Engine disconnected before answering.")));
                     }
+                    if should_stop {
+                        break;
+                    }
                 }
             }
         }
     });
 
+    *host.server_task.lock().await = Some(handle);
     Ok(host)
 }
 

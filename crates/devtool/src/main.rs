@@ -11,32 +11,13 @@ mod service;
 
 use clap::Parser;
 
-fn should_use_cli(args: &[std::ffi::OsString]) -> bool {
-    if args.len() <= 1 {
-        return false;
-    }
-
-    let mut has_explicit_gui = false;
-    for arg in &args[1..] {
-        let s = arg.to_string_lossy();
-        if s == "--no-gui" || s == "-h" || s == "--help" || s == "-V" || s == "--version" {
-            return true;
-        }
-        if s == "--gui" {
-            has_explicit_gui = true;
-            continue;
-        }
-        if !s.starts_with('-') {
-            return true;
-        }
-    }
-
-    !has_explicit_gui
+fn should_launch_gui(args: &[std::ffi::OsString]) -> bool {
+    args.len() <= 1 || (args.len() == 2 && args[1] == "--gui")
 }
 
 fn main() {
     let raw_args: Vec<std::ffi::OsString> = std::env::args_os().collect();
-    if !should_use_cli(&raw_args) {
+    if should_launch_gui(&raw_args) {
         std::process::exit(gui::run());
     }
 

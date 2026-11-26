@@ -24,10 +24,8 @@ use crate::model::tasks::{TaskEvent, TaskId};
 
 pub type EventSink<T> = async_channel::Sender<T>;
 
-#[allow(dead_code)]
 static NEXT_TASK_ID: AtomicU64 = AtomicU64::new(1);
 
-#[allow(dead_code)]
 pub fn next_task_id() -> TaskId {
     NEXT_TASK_ID.fetch_add(1, Ordering::Relaxed)
 }

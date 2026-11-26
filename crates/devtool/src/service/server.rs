@@ -180,7 +180,9 @@ async fn handle_connection(
                 }
                 head.push_str("\r\n");
                 client.write_all(head.as_bytes()).await?;
-                client.write_all(&data).await?;
+                if !method.eq_ignore_ascii_case("HEAD") {
+                    client.write_all(&data).await?;
+                }
             }
             Err(_) => {
                 write_simple_response(&mut client, 500, "500 Internal Server Error").await?;

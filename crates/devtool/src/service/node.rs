@@ -106,18 +106,10 @@ fn probe_node_binary(executable: &Path, is_managed: bool) -> Option<NodeRuntimeI
     })
 }
 
-pub fn require_node_22() -> Result<NodeRuntimeInfo> {
-    let info = detect_node().ok_or_else(|| {
-        anyhow::anyhow!("Node.js (>= 22.0.0) was not found in PATH or ~/.moyu/node/. Please install Node.js 22+.")
-    })?;
-    if info.major < 22 {
-        bail!(
-            "Node.js {} found at {}, but >= 22.0.0 is required.",
-            info.version,
-            info.executable.display()
-        );
-    }
-    Ok(info)
+pub fn require_node() -> Result<NodeRuntimeInfo> {
+    detect_node().ok_or_else(|| {
+        anyhow::anyhow!("Node.js was not found in PATH or ~/.moyu/node/. Please install Node.js.")
+    })
 }
 
 pub fn detect_package_manager(project_root: &Path) -> PackageManager {
@@ -166,7 +158,7 @@ pub fn find_jiti_entry(project_root: &Path) -> Option<PathBuf> {
 pub async fn run_project_build(project_root: &Path) -> Result<()> {
     let root = project_root.to_path_buf();
     let pm = detect_package_manager(&root);
-    let node_info = require_node_22()?;
+    let node_info = require_node()?;
 
     tokio::task::spawn_blocking(move || -> Result<()> {
         let mut cmd = if cfg!(windows) {
@@ -224,7 +216,7 @@ pub async fn generate_json_schema(
         );
     }
 
-    let node = require_node_22()?;
+    let node = require_node()?;
     let jiti_dir = find_jiti_entry(project_root).ok_or_else(|| {
         anyhow::anyhow!(
             "Could not find \"jiti\" in node_modules under {} or its parent directories.\nPlease install project dependencies first (e.g. yarn / npm install).",

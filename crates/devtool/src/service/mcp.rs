@@ -262,26 +262,30 @@ async fn call_tool(name: &str, args: Value, state: &Arc<McpState>) -> anyhow::Re
             )
             .await?;
 
-            session
-                .host
-                .wait_for_engine(DEFAULT_CONNECT_TIMEOUT_MS)
-                .await?;
-            let ready = session
-                .host
-                .wait_for_ready(START_READY_TIMEOUT_MS)
-                .await
-                .is_ok();
+            let host = Arc::clone(&session.host);
+            let mode = session.mode;
+            let is_headless = session.headless;
+            let page_url = session.url.clone();
 
-            let mode_str = match session.mode {
+            // Register session before waiting so `debug_stop` can cancel it mid-startup.
+            *state.session.lock().await = Some(session);
+
+            if let Err(err) = host.wait_for_engine(DEFAULT_CONNECT_TIMEOUT_MS).await {
+                state.stop_session().await;
+                return Err(err);
+            }
+            let ready = host.wait_for_ready(START_READY_TIMEOUT_MS).await.is_ok();
+
+            let mode_str = match mode {
                 crate::model::debug::SessionMode::Native => "native",
                 crate::model::debug::SessionMode::Web => "web",
                 crate::model::debug::SessionMode::Attach => "attach",
             };
             let mut lines = vec![format!(
                 "Engine started ({mode_str}{}).",
-                if session.headless { ", headless" } else { "" }
+                if is_headless { ", headless" } else { "" }
             )];
-            if let Some(url) = &session.url {
+            if let Some(url) = &page_url {
                 lines.push(format!("Open this page to run it: {url}"));
             }
             if !ready {
@@ -291,7 +295,6 @@ async fn call_tool(name: &str, args: Value, state: &Arc<McpState>) -> anyhow::Re
                 );
             }
 
-            *state.session.lock().await = Some(session);
             Ok(text_result(&lines.join("\n")))
         }
         "debug_stop" => {
@@ -321,8 +324,8 @@ async fn call_tool(name: &str, args: Value, state: &Arc<McpState>) -> anyhow::Re
                 .request("engine:eval", Some(Value::Object(payload)))
                 .await?;
             let value_str = match res.get("value") {
-                Some(v) if !v.is_null() => serde_json::to_string_pretty(v)?,
-                _ => res
+                Some(v) => serde_json::to_string_pretty(v)?,
+                None => res
                     .get("repr")
                     .and_then(|v| v.as_str())
                     .unwrap_or("undefined")

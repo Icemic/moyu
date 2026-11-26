@@ -56,7 +56,7 @@ async fn run_native(project_root: &Path, native_dir: &Path, platform: &str) -> R
 
     let status = tokio::select! {
         res = child.wait() => res?,
-        _ = tokio::signal::ctrl_c() => {
+        _ = wait_shutdown_signal() => {
             let _ = child.kill().await;
             return Ok(130);
         }
@@ -74,8 +74,23 @@ async fn run_web(project_root: &Path, web_path: &Path, port: u16) -> Result<()> 
     eprintln!("info:   2. {} (project)", project_root.display());
     eprintln!("info: Press Ctrl+C to stop.\n");
 
-    let _ = tokio::signal::ctrl_c().await;
+    wait_shutdown_signal().await;
     eprintln!("\ninfo: Shutting down server...");
     server.close();
     Ok(())
+}
+
+async fn wait_shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+        if let Ok(mut sigterm) = signal(SignalKind::terminate()) {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {}
+                _ = sigterm.recv() => {}
+            }
+            return;
+        }
+    }
+    let _ = tokio::signal::ctrl_c().await;
 }

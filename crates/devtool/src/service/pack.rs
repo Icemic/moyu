@@ -30,6 +30,7 @@ pub struct PackOptions {
     pub output: Option<PathBuf>,
     pub android_format: Option<String>,
     pub include_video_decoder: bool,
+    pub signing_password: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -200,6 +201,7 @@ pub async fn pack_project(project_root: &Path, options: PackOptions) -> Result<(
                     output_dir: &output_dir,
                     format: options.android_format.as_deref().unwrap_or(""),
                     video_decoder_library: video_lib.as_deref(),
+                    signing_password: options.signing_password.as_deref(),
                 })
                 .await?;
             } else if is_web {
@@ -307,7 +309,16 @@ fn copy_framework_assets(
             continue;
         }
 
-        // Walk assets and match each relative POSIX path using `fast_glob::glob_match`.
+        // Normalize leading `./` and skip dotfiles by default to match `node:fs/promises.glob`.
+        let normalized_owned = pattern.replace('\\', "/");
+        let mut norm = normalized_owned.as_str();
+        while let Some(rest) = norm.strip_prefix("./") {
+            norm = rest;
+        }
+        let allows_hidden = norm
+            .split('/')
+            .any(|seg| seg.starts_with('.') && seg != "." && seg != "..");
+
         if assets_root.is_dir() {
             for entry in walkdir::WalkDir::new(&assets_root) {
                 let entry = entry?;
@@ -320,7 +331,10 @@ fn copy_framework_assets(
                     .unwrap_or(entry.path())
                     .to_string_lossy()
                     .replace('\\', "/");
-                if fast_glob::glob_match(pattern, &rel) {
+                if !allows_hidden && rel.split('/').any(|seg| seg.starts_with('.')) {
+                    continue;
+                }
+                if fast_glob::glob_match(norm, &rel) {
                     let dst = tmp_pack_dir
                         .join("assets")
                         .join(entry.path().strip_prefix(&assets_root)?);
@@ -519,7 +533,9 @@ async fn create_zip(tmp_pack_dir: &Path, output_dir: &Path, archive_name: &str) 
             if entry.file_type().is_dir() {
                 writer.add_directory(format!("{rel}/"), options)?;
             } else {
-                writer.start_file(&rel, options)?;
+                let file_size = fs::metadata(entry.path())?.len();
+                let file_options = options.large_file(file_size >= u32::MAX as u64);
+                writer.start_file(&rel, file_options)?;
                 let mut f = File::open(entry.path())?;
                 std::io::copy(&mut f, &mut writer)?;
             }

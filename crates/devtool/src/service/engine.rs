@@ -12,7 +12,7 @@ use crate::model::engine::{
     ActiveEngine, DownloadedVersion, EngineConfig, EngineMeta, PlatformDownload, VersionsJson,
 };
 use crate::model::tasks::{TaskEvent, TaskId};
-use crate::service::{EventSink, download_to_file_verified, http_get_bytes};
+use crate::service::{EventSink, download_to_file_verified, http_get_bytes, next_task_id};
 
 pub fn try_detect_platform() -> Option<&'static str> {
     match (std::env::consts::OS, std::env::consts::ARCH) {
@@ -199,8 +199,9 @@ pub async fn download_platforms(
         let sha = asset.sha256.clone();
         let platform_label = platform.clone();
         let tx_clone = tx.cloned();
+        let task_id = next_task_id();
         handles.push(tokio::spawn(async move {
-            download_and_extract(&url, &dest_dir, &sha, None, tx_clone.as_ref())
+            download_and_extract(&url, &dest_dir, &sha, Some(task_id), tx_clone.as_ref())
                 .await
                 .with_context(|| format!("Failed downloading {platform_label}"))
         }));

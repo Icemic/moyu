@@ -2,7 +2,6 @@
 
 use std::collections::BTreeSet;
 use std::fs::{self, File};
-use std::io::{IsTerminal, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -62,6 +61,7 @@ pub struct PackAndroidOptions<'a> {
     pub output_dir: &'a Path,
     pub format: &'a str,
     pub video_decoder_library: Option<&'a Path>,
+    pub signing_password: Option<&'a str>,
 }
 
 struct AndroidSigning {
@@ -112,7 +112,11 @@ pub async fn pack_android(options: PackAndroidOptions<'_>) -> Result<()> {
     let signing = if options.format == "debug-apk" {
         None
     } else {
-        Some(resolve_android_signing(options.project_root, &config)?)
+        Some(resolve_android_signing(
+            options.project_root,
+            &config,
+            options.signing_password,
+        )?)
     };
 
     let artifact = run_gradle_build(&workdir, options.format, signing.as_ref()).await?;
@@ -149,8 +153,14 @@ fn load_android_config(project_root: &Path) -> Result<AndroidConfig> {
     if let Some(v) = android.get("appName").and_then(|v| v.as_str()) {
         cfg.app_name = v.to_string();
     }
-    if let Some(v) = android.get("versionCode").and_then(|v| v.as_u64()) {
-        cfg.version_code = v as u32;
+    if let Some(v) = android.get("versionCode") {
+        let Some(code) = v.as_u64() else {
+            bail!("Android version code must be a positive integer.");
+        };
+        if code == 0 || code > i32::MAX as u64 {
+            bail!("Android version code must be a positive 32-bit integer.");
+        }
+        cfg.version_code = code as u32;
     }
     if let Some(v) = android.get("versionName").and_then(|v| v.as_str()) {
         cfg.version_name = v.to_string();
@@ -490,6 +500,7 @@ fn write_app_name(res_dir: &Path, app_name: &str) -> Result<()> {
 fn resolve_android_signing(
     project_root: &Path,
     config: &AndroidConfig,
+    signing_password: Option<&str>,
 ) -> Result<AndroidSigning> {
     if config.keystore_path.trim().is_empty() {
         bail!("Android keystore path is required for release builds.");
@@ -501,75 +512,14 @@ fn resolve_android_signing(
     if !keystore_path.is_file() {
         bail!("Android keystore not found: {}", keystore_path.display());
     }
-    let password = prompt_hidden("Android signing password: ")?;
-    if password.is_empty() {
-        bail!("Android signing password is required.");
-    }
+    let password = signing_password
+        .filter(|p| !p.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("Android signing password is required for release builds."))?;
     Ok(AndroidSigning {
         keystore_path,
         key_alias: config.key_alias.trim().to_string(),
-        password,
+        password: password.to_string(),
     })
-}
-
-fn prompt_hidden(message: &str) -> Result<String> {
-    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
-        bail!("Android release signing password must be entered in an interactive terminal.");
-    }
-    print!("{message}");
-    std::io::stdout().flush()?;
-
-    #[cfg(target_os = "windows")]
-    let password = {
-        use windows::Win32::System::Console::{
-            CONSOLE_MODE, ENABLE_ECHO_INPUT, GetConsoleMode, GetStdHandle, STD_INPUT_HANDLE,
-            SetConsoleMode,
-        };
-        struct ModeGuard {
-            handle: windows::Win32::Foundation::HANDLE,
-            old_mode: CONSOLE_MODE,
-        }
-        impl Drop for ModeGuard {
-            fn drop(&mut self) {
-                unsafe {
-                    let _ = SetConsoleMode(self.handle, self.old_mode);
-                }
-            }
-        }
-        let handle = unsafe { GetStdHandle(STD_INPUT_HANDLE)? };
-        let mut old_mode = CONSOLE_MODE(0);
-        unsafe { GetConsoleMode(handle, &mut old_mode)? };
-        let _guard = ModeGuard { handle, old_mode };
-        unsafe {
-            SetConsoleMode(
-                handle,
-                CONSOLE_MODE(old_mode.0 & !ENABLE_ECHO_INPUT.0),
-            )?;
-        }
-        let mut line = String::new();
-        std::io::stdin().read_line(&mut line)?;
-        println!();
-        line.trim_end_matches(&['\r', '\n'][..]).to_string()
-    };
-
-    #[cfg(not(target_os = "windows"))]
-    let password = {
-        let _ = Command::new("stty")
-            .arg("-echo")
-            .stdin(Stdio::inherit())
-            .status();
-        let mut line = String::new();
-        let read_res = std::io::stdin().read_line(&mut line);
-        let _ = Command::new("stty")
-            .arg("echo")
-            .stdin(Stdio::inherit())
-            .status();
-        println!();
-        read_res?;
-        line.trim_end_matches(&['\r', '\n'][..]).to_string()
-    };
-
-    Ok(password)
 }
 
 async fn run_gradle_build(
