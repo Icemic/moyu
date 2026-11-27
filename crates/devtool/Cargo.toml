@@ -9,7 +9,14 @@ description = "Unified Rust CLI and GUI devtool for the Moyu Visual Novel Engine
 name = "moyu-devtool"
 path = "src/main.rs"
 
+[features]
+default = ["gui"]
+gui = ["dep:gpui", "dep:gpui_platform", "dep:unicode-segmentation"]
+
 [dependencies]
+gpui = { git = "https://github.com/zed-industries/zed", rev = "350f33871e84d5ed83a403523e9490b9bf014a94", optional = true }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "350f33871e84d5ed83a403523e9490b9bf014a94", optional = true }
+unicode-segmentation = { version = "1", optional = true }
 anyhow = { workspace = true }
 async-channel = "2.5"
 base64 = { workspace = true }
