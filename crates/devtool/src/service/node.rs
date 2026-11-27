@@ -48,6 +48,11 @@ writeFileSync(outputPath, JSON.stringify(jsonSchema, null, 2) + '\n');
 #[allow(dead_code)]
 pub fn detect_env(project_root: Option<&Path>) -> EnvModel {
     let node = detect_node();
+    let path_override = node
+        .as_ref()
+        .filter(|n| n.is_managed)
+        .and_then(|n| n.executable.parent())
+        .and_then(build_augmented_path);
     let package_manager = project_root.map(detect_package_manager);
     let available_package_managers = [
         PackageManager::Yarn,
@@ -55,7 +60,7 @@ pub fn detect_env(project_root: Option<&Path>) -> EnvModel {
         PackageManager::Npm,
     ]
     .into_iter()
-    .filter(|pm| is_pm_available(*pm))
+    .filter(|pm| is_pm_available_with_path(*pm, path_override.as_deref()))
     .collect();
     let jiti_path = project_root.and_then(find_jiti_entry);
     EnvModel {
@@ -65,6 +70,48 @@ pub fn detect_env(project_root: Option<&Path>) -> EnvModel {
         jiti_path,
         checked: true,
     }
+}
+
+/// Return the bin directory of the newest installed managed Node.js under `~/.moyu/node/`, if any.
+pub fn managed_node_bin_dir() -> Option<PathBuf> {
+    let root = managed_node_root().ok()?;
+    if !root.is_dir() {
+        return None;
+    }
+    let entries = fs::read_dir(&root).ok()?;
+    let mut candidates: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| {
+            let base = e.path();
+            if cfg!(windows) {
+                base.join("node.exe")
+            } else {
+                base.join("bin").join("node")
+            }
+        })
+        .filter(|p| p.is_file())
+        .collect();
+    candidates.sort();
+    candidates.reverse();
+    candidates
+        .into_iter()
+        .next()
+        .and_then(|exe| exe.parent().map(Path::to_path_buf))
+}
+
+/// Build a `PATH` value with `bin_dir` prepended before the current process `PATH`.
+pub fn build_augmented_path(bin_dir: &Path) -> Option<std::ffi::OsString> {
+    let current_path = std::env::var_os("PATH").unwrap_or_default();
+    let mut paths = vec![bin_dir.to_path_buf()];
+    paths.extend(std::env::split_paths(&current_path));
+    std::env::join_paths(paths).ok()
+}
+
+/// Build an augmented `PATH` with the managed Node.js directory prepended, if managed Node is installed.
+#[allow(dead_code)]
+pub fn augmented_path_with_managed_node() -> Option<std::ffi::OsString> {
+    let bin_dir = managed_node_bin_dir()?;
+    build_augmented_path(&bin_dir)
 }
 
 pub fn detect_node() -> Option<NodeRuntimeInfo> {
@@ -184,7 +231,7 @@ pub fn find_jiti_entry(project_root: &Path) -> Option<PathBuf> {
     None
 }
 
-fn is_pm_available(pm: PackageManager) -> bool {
+fn is_pm_available_with_path(pm: PackageManager, path_override: Option<&std::ffi::OsStr>) -> bool {
     let mut cmd = if cfg!(windows) {
         let mut c = Command::new("cmd.exe");
         c.args(["/c", &format!("{}.cmd", pm.binary_name()), "--version"]);
@@ -194,12 +241,178 @@ fn is_pm_available(pm: PackageManager) -> bool {
         c.arg("--version");
         c
     };
+    if let Some(p) = path_override {
+        cmd.env("PATH", p);
+    }
     configure_no_window_std(&mut cmd);
     cmd.stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
         .is_ok_and(|s| s.success())
+}
+
+fn find_corepack_executable(node_info: &NodeRuntimeInfo) -> Option<PathBuf> {
+    if let Some(bin_dir) = node_info.executable.parent() {
+        let name = if cfg!(windows) {
+            "corepack.cmd"
+        } else {
+            "corepack"
+        };
+        let candidate = bin_dir.join(name);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    // Fall back to resolving `corepack` from system PATH.
+    let path_var = std::env::var_os("PATH")?;
+    for dir in std::env::split_paths(&path_var) {
+        let names: &[&str] = if cfg!(windows) {
+            &["corepack.cmd", "corepack.exe"]
+        } else {
+            &["corepack"]
+        };
+        for name in names {
+            let candidate = dir.join(name);
+            if candidate.is_file() {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
+fn try_corepack_enable_direct(
+    corepack_path: &Path,
+    path_override: Option<&std::ffi::OsStr>,
+) -> bool {
+    let mut cmd = if cfg!(windows) {
+        let mut c = Command::new("cmd.exe");
+        c.arg("/c").arg(corepack_path).arg("enable");
+        c
+    } else {
+        let mut c = Command::new(corepack_path);
+        c.arg("enable");
+        c
+    };
+    if let Some(p) = path_override {
+        cmd.env("PATH", p);
+    }
+    configure_no_window_std(&mut cmd);
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
+#[cfg(windows)]
+fn run_elevated_windows(file: &str, params: &str) -> Result<u32> {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Threading::{GetExitCodeProcess, INFINITE, WaitForSingleObject};
+    use windows::Win32::UI::Shell::{SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW};
+    use windows::Win32::UI::WindowsAndMessaging::SW_HIDE;
+    use windows::core::PCWSTR;
+
+    fn to_wide(s: &str) -> Vec<u16> {
+        OsStr::new(s)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect()
+    }
+
+    let verb = to_wide("runas");
+    let file_w = to_wide(file);
+    let params_w = to_wide(params);
+
+    let mut info = SHELLEXECUTEINFOW {
+        cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+        fMask: SEE_MASK_NOCLOSEPROCESS,
+        lpVerb: PCWSTR(verb.as_ptr()),
+        lpFile: PCWSTR(file_w.as_ptr()),
+        lpParameters: PCWSTR(params_w.as_ptr()),
+        nShow: SW_HIDE.0,
+        ..Default::default()
+    };
+
+    unsafe {
+        ShellExecuteExW(&mut info)
+            .map_err(|e| anyhow::anyhow!("UAC elevation failed or was cancelled: {e}"))?;
+        let handle = info.hProcess;
+        if handle.is_invalid() {
+            return Ok(0);
+        }
+        WaitForSingleObject(handle, INFINITE);
+        let mut exit_code: u32 = 1;
+        let _ = GetExitCodeProcess(handle, &mut exit_code);
+        let _ = CloseHandle(handle);
+        Ok(exit_code)
+    }
+}
+
+/// Ensure `detected_pm` is executable; when `yarn`/`pnpm` is missing, try `corepack enable`
+/// (with temporary Windows UAC elevation if the Node install directory requires admin rights).
+fn ensure_package_manager(
+    detected_pm: PackageManager,
+    node_info: &NodeRuntimeInfo,
+    path_override: Option<&std::ffi::OsStr>,
+    reporter: &ServiceReporter,
+) -> PackageManager {
+    if detected_pm == PackageManager::Npm || is_pm_available_with_path(detected_pm, path_override) {
+        return detected_pm;
+    }
+
+    if let Some(corepack_path) = find_corepack_executable(node_info) {
+        reporter.info(format!(
+            "{} not found; enabling via Corepack...",
+            detected_pm.binary_name()
+        ));
+
+        if try_corepack_enable_direct(&corepack_path, path_override)
+            && is_pm_available_with_path(detected_pm, path_override)
+        {
+            reporter.success(format!(
+                "Enabled {} via Corepack.",
+                detected_pm.binary_name()
+            ));
+            return detected_pm;
+        }
+
+        #[cfg(windows)]
+        if !node_info.is_managed {
+            reporter.info(
+                "Corepack enable requires administrator privileges; requesting Windows UAC elevation...",
+            );
+            let params = format!("/c \"\"{}\" enable\"", corepack_path.display());
+            match run_elevated_windows("cmd.exe", &params) {
+                Ok(0) if is_pm_available_with_path(detected_pm, path_override) => {
+                    reporter.success(format!(
+                        "Enabled {} via Corepack (elevated).",
+                        detected_pm.binary_name()
+                    ));
+                    return detected_pm;
+                }
+                Ok(code) => {
+                    reporter.warn(format!(
+                        "Elevated Corepack enable exited with code {code}; falling back to npm."
+                    ));
+                    return PackageManager::Npm;
+                }
+                Err(err) => {
+                    reporter.warn(format!("{err}; falling back to npm."));
+                    return PackageManager::Npm;
+                }
+            }
+        }
+    }
+
+    reporter.warn(format!(
+        "{} was not found in PATH; falling back to npm.",
+        detected_pm.binary_name()
+    ));
+    PackageManager::Npm
 }
 
 /// Run the project's `build` script using the detected package manager.
@@ -221,17 +434,24 @@ async fn run_pm_command(
 ) -> Result<()> {
     reporter.cancel.check()?;
     let root = project_root.to_path_buf();
-    let node_info = require_node()?;
-    let detected_pm = detect_package_manager(&root);
-    let pm = if detected_pm != PackageManager::Npm && !is_pm_available(detected_pm) {
-        reporter.warn(format!(
-            "{} was not found in PATH; falling back to npm.",
-            detected_pm.binary_name()
-        ));
-        PackageManager::Npm
+    let node_info = tokio::task::spawn_blocking(require_node).await??;
+    let path_override = if node_info.is_managed {
+        node_info
+            .executable
+            .parent()
+            .and_then(build_augmented_path)
     } else {
-        detected_pm
+        None
     };
+
+    let detected_pm = detect_package_manager(&root);
+    let node_for_pm = node_info.clone();
+    let path_for_pm = path_override.clone();
+    let rep_for_pm = reporter.clone();
+    let pm = tokio::task::spawn_blocking(move || {
+        ensure_package_manager(detected_pm, &node_for_pm, path_for_pm.as_deref(), &rep_for_pm)
+    })
+    .await?;
 
     let mut cmd = if cfg!(windows) {
         let mut c = tokio::process::Command::new("cmd.exe");
@@ -243,15 +463,8 @@ async fn run_pm_command(
         c
     };
 
-    if node_info.is_managed
-        && let Some(bin_dir) = node_info.executable.parent()
-    {
-        let current_path = std::env::var_os("PATH").unwrap_or_default();
-        let mut paths = vec![bin_dir.to_path_buf()];
-        paths.extend(std::env::split_paths(&current_path));
-        if let Ok(joined) = std::env::join_paths(paths) {
-            cmd.env("PATH", joined);
-        }
+    if let Some(joined) = path_override {
+        cmd.env("PATH", joined);
     }
 
     configure_no_window_tokio(&mut cmd);

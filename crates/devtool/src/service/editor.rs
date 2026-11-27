@@ -674,16 +674,50 @@ pub fn open_in_file_manager(dir: &Path) -> Result<()> {
     }
 }
 
+/// Escape a string for single-quoted PowerShell literals (`'` -> `''`).
+#[cfg(windows)]
+fn ps_single_quote(s: &str) -> String {
+    s.replace('\'', "''")
+}
+
+/// Prefer PowerShell 7 (`pwsh`) when installed, falling back to built-in Windows PowerShell.
+#[cfg(windows)]
+fn preferred_powershell_exe() -> String {
+    if let Some(pwsh) = find_in_path("pwsh") {
+        pwsh.to_string_lossy().into_owned()
+    } else {
+        "powershell".to_string()
+    }
+}
+
+/// Inject managed Node.js bin directory into the child process `PATH` (when installed)
+/// without modifying the user's global system environment.
+fn apply_managed_node_path(cmd: &mut Command) {
+    if let Some(path) = crate::service::node::augmented_path_with_managed_node() {
+        cmd.env("PATH", path);
+    }
+}
+
 #[allow(dead_code)]
 pub fn open_in_editor(editor: &DetectedEditor, project_root: &Path) -> Result<()> {
     match editor.strategy {
         LaunchStrategy::OpenPathArg => spawn_open_path_arg(editor, project_root),
         #[cfg(windows)]
         LaunchStrategy::WindowsTerminal => {
-            Command::new(&editor.command)
-                .arg("-d")
-                .arg(project_root)
-                .stdin(Stdio::null())
+            let mut cmd = Command::new(&editor.command);
+            cmd.arg("-d").arg(project_root);
+            // `wt.exe` is an MSIX App Execution Alias whose server discards the caller's modified
+            // `PATH`, so prepend managed Node inside the tab's shell command (without `;` so `wt`
+            // does not split subcommands).
+            if let Some(bin_dir) = crate::service::node::managed_node_bin_dir() {
+                let ps_bin = ps_single_quote(&bin_dir.display().to_string());
+                let init_cmd = format!(
+                    "$env:PATH = '{ps_bin}' + [IO.Path]::PathSeparator + $env:PATH"
+                );
+                cmd.arg(preferred_powershell_exe())
+                    .args(["-NoExit", "-Command", &init_cmd]);
+            }
+            cmd.stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn()
@@ -694,8 +728,9 @@ pub fn open_in_editor(editor: &DetectedEditor, project_root: &Path) -> Result<()
         LaunchStrategy::WindowsConsoleShell => {
             use std::os::windows::process::CommandExt;
             const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
-            Command::new(&editor.command)
-                .current_dir(project_root)
+            let mut cmd = Command::new(&editor.command);
+            apply_managed_node_path(&mut cmd);
+            cmd.current_dir(project_root)
                 .creation_flags(CREATE_NEW_CONSOLE)
                 .spawn()
                 .with_context(|| format!("Failed to launch {}", editor.name))?;
@@ -703,8 +738,9 @@ pub fn open_in_editor(editor: &DetectedEditor, project_root: &Path) -> Result<()
         }
         #[cfg(windows)]
         LaunchStrategy::GitBash => {
-            Command::new(&editor.command)
-                .arg(format!("--cd={}", project_root.display()))
+            let mut cmd = Command::new(&editor.command);
+            apply_managed_node_path(&mut cmd);
+            cmd.arg(format!("--cd={}", project_root.display()))
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -716,8 +752,9 @@ pub fn open_in_editor(editor: &DetectedEditor, project_root: &Path) -> Result<()
         LaunchStrategy::CodexApp => {
             use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-            Command::new(&editor.command)
-                .arg("app")
+            let mut cmd = Command::new(&editor.command);
+            apply_managed_node_path(&mut cmd);
+            cmd.arg("app")
                 .arg(project_root)
                 .creation_flags(CREATE_NO_WINDOW)
                 .stdin(Stdio::null())
@@ -734,8 +771,9 @@ pub fn open_in_editor(editor: &DetectedEditor, project_root: &Path) -> Result<()
             Ok(())
         }
         LaunchStrategy::WezTerm => {
-            Command::new(&editor.command)
-                .args(["start", "--cwd"])
+            let mut cmd = Command::new(&editor.command);
+            apply_managed_node_path(&mut cmd);
+            cmd.args(["start", "--cwd"])
                 .arg(project_root)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
@@ -745,8 +783,9 @@ pub fn open_in_editor(editor: &DetectedEditor, project_root: &Path) -> Result<()
             Ok(())
         }
         LaunchStrategy::Alacritty => {
-            Command::new(&editor.command)
-                .arg("--working-directory")
+            let mut cmd = Command::new(&editor.command);
+            apply_managed_node_path(&mut cmd);
+            cmd.arg("--working-directory")
                 .arg(project_root)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
@@ -757,8 +796,9 @@ pub fn open_in_editor(editor: &DetectedEditor, project_root: &Path) -> Result<()
         }
         #[cfg(target_os = "macos")]
         LaunchStrategy::MacOsOpenApp => {
-            Command::new("open")
-                .arg("-a")
+            let mut cmd = Command::new("open");
+            apply_managed_node_path(&mut cmd);
+            cmd.arg("-a")
                 .arg(&editor.command)
                 .arg(project_root)
                 .stdin(Stdio::null())
@@ -770,8 +810,9 @@ pub fn open_in_editor(editor: &DetectedEditor, project_root: &Path) -> Result<()
         }
         #[cfg(all(unix, not(target_os = "macos")))]
         LaunchStrategy::LinuxTerminalDirFlag(flag) => {
-            Command::new(&editor.command)
-                .arg(flag)
+            let mut cmd = Command::new(&editor.command);
+            apply_managed_node_path(&mut cmd);
+            cmd.arg(flag)
                 .arg(project_root)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
@@ -806,6 +847,7 @@ fn spawn_open_path_arg(editor: &DetectedEditor, project_root: &Path) -> Result<(
             c.arg(project_root);
             c
         };
+        apply_managed_node_path(&mut cmd);
         cmd.stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -822,8 +864,9 @@ fn spawn_open_path_arg(editor: &DetectedEditor, project_root: &Path) -> Result<(
 
     #[cfg(not(windows))]
     {
-        Command::new(&editor.command)
-            .arg(project_root)
+        let mut cmd = Command::new(&editor.command);
+        apply_managed_node_path(&mut cmd);
+        cmd.arg(project_root)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -847,12 +890,20 @@ fn spawn_terminal_cli(editor: &DetectedEditor, project_root: &Path) -> Result<()
         const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
 
         if let Some(wt) = find_in_path("wt") {
-            Command::new(wt)
-                .arg("-d")
-                .arg(project_root)
-                .args(["cmd", "/K"])
-                .arg(&editor.command)
-                .stdin(Stdio::null())
+            let mut cmd = Command::new(wt);
+            cmd.arg("-d").arg(project_root);
+            if let Some(bin_dir) = crate::service::node::managed_node_bin_dir() {
+                let ps_bin = ps_single_quote(&bin_dir.display().to_string());
+                let ps_cli = ps_single_quote(&editor.command.display().to_string());
+                let run_cmd = format!(
+                    "if ($env:PATH = '{ps_bin}' + [IO.Path]::PathSeparator + $env:PATH) {{ & '{ps_cli}' }}"
+                );
+                cmd.arg(preferred_powershell_exe())
+                    .args(["-NoExit", "-Command", &run_cmd]);
+            } else {
+                cmd.args(["cmd", "/K"]).arg(&editor.command);
+            }
+            cmd.stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn()
@@ -860,8 +911,9 @@ fn spawn_terminal_cli(editor: &DetectedEditor, project_root: &Path) -> Result<()
             return Ok(());
         }
 
-        Command::new("cmd")
-            .arg("/K")
+        let mut cmd = Command::new("cmd");
+        apply_managed_node_path(&mut cmd);
+        cmd.arg("/K")
             .arg(&editor.command)
             .current_dir(project_root)
             .creation_flags(CREATE_NEW_CONSOLE)
@@ -877,8 +929,9 @@ fn spawn_terminal_cli(editor: &DetectedEditor, project_root: &Path) -> Result<()
         let script = format!(
             "tell application \"Terminal\" to do script \"cd '{dir_esc}' && '{cmd_esc}'\"\ntell application \"Terminal\" to activate"
         );
-        Command::new("osascript")
-            .args(["-e", &script])
+        let mut cmd = Command::new("osascript");
+        apply_managed_node_path(&mut cmd);
+        cmd.args(["-e", &script])
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -890,8 +943,9 @@ fn spawn_terminal_cli(editor: &DetectedEditor, project_root: &Path) -> Result<()
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         if let Some(term) = find_in_path("gnome-terminal") {
-            Command::new(term)
-                .arg("--working-directory")
+            let mut cmd = Command::new(term);
+            apply_managed_node_path(&mut cmd);
+            cmd.arg("--working-directory")
                 .arg(project_root)
                 .arg("--")
                 .arg(&editor.command)
@@ -900,8 +954,9 @@ fn spawn_terminal_cli(editor: &DetectedEditor, project_root: &Path) -> Result<()
             return Ok(());
         }
         if let Some(term) = find_in_path("konsole") {
-            Command::new(term)
-                .arg("--workdir")
+            let mut cmd = Command::new(term);
+            apply_managed_node_path(&mut cmd);
+            cmd.arg("--workdir")
                 .arg(project_root)
                 .arg("-e")
                 .arg(&editor.command)
@@ -909,8 +964,9 @@ fn spawn_terminal_cli(editor: &DetectedEditor, project_root: &Path) -> Result<()
                 .with_context(|| format!("Failed to launch {} in Konsole", editor.name))?;
             return Ok(());
         }
-        Command::new("x-terminal-emulator")
-            .current_dir(project_root)
+        let mut cmd = Command::new("x-terminal-emulator");
+        apply_managed_node_path(&mut cmd);
+        cmd.current_dir(project_root)
             .arg("-e")
             .arg(&editor.command)
             .spawn()
