@@ -355,7 +355,7 @@ fn run_elevated_windows(file: &str, params: &str) -> Result<u32> {
 
 /// Ensure `detected_pm` is executable; when `yarn`/`pnpm` is missing, try `corepack enable`
 /// (with temporary Windows UAC elevation if the Node install directory requires admin rights).
-fn ensure_package_manager(
+pub(crate) fn ensure_package_manager(
     detected_pm: PackageManager,
     node_info: &NodeRuntimeInfo,
     path_override: Option<&std::ffi::OsStr>,

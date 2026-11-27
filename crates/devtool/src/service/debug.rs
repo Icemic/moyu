@@ -22,7 +22,7 @@ use crate::model::debug::{DebugEvent, LogEntry, SessionMode};
 use crate::service::engine::{detect_platform, load_meta, native_executable_name};
 use crate::service::project::require_project_root;
 use crate::service::server::{
-    StaticFileServer, require_web_engine_assets, start_static_file_server,
+    StaticFileServer, require_web_engine_assets, start_static_file_server_with_dev_port,
 };
 
 pub const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 60_000;
@@ -33,6 +33,7 @@ pub struct SessionOptions {
     pub project_root: Option<PathBuf>,
     pub web: bool,
     pub port: Option<u16>,
+    pub dev_server_port: Option<u16>,
     pub entry: Option<String>,
     pub headless: bool,
     pub attach_port: Option<u16>,
@@ -44,6 +45,7 @@ impl Default for SessionOptions {
             project_root: None,
             web: false,
             port: None,
+            dev_server_port: None,
             entry: None,
             headless: true,
             attach_port: None,
@@ -261,16 +263,21 @@ pub async fn start_debug_session(
 
     eprintln!("info: Debug endpoint listening on port {}", host.port);
 
+    let dev_port = options.dev_server_port.unwrap_or(DEV_SERVER_PORT);
+
     if options.web {
         let web_path = require_web_engine_assets(&project_root, &active.version)?;
         let port = options.port.unwrap_or(DEFAULT_WEB_PORT);
-        let server = match start_static_file_server(&project_root, &web_path, port).await {
-            Ok(s) => s,
-            Err(e) => {
-                host.close();
-                return Err(e);
-            }
-        };
+        let server =
+            match start_static_file_server_with_dev_port(&project_root, &web_path, port, dev_port)
+                .await
+            {
+                Ok(s) => s,
+                Err(e) => {
+                    host.close();
+                    return Err(e);
+                }
+            };
 
         let entry_url = format!("{}/index.json", server.url);
         let query = url_encode_query(&[
@@ -319,7 +326,7 @@ pub async fn start_debug_session(
 
     let entry = options
         .entry
-        .unwrap_or_else(|| format!("http://localhost:{DEV_SERVER_PORT}/index.json"));
+        .unwrap_or_else(|| format!("http://localhost:{dev_port}/index.json"));
     let params = serde_json::json!({
         "engineDebugWsUrl": endpoint,
         "engineDebugSessionId": session_id,

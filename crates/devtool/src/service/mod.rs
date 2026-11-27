@@ -2,6 +2,7 @@
 
 pub mod android;
 pub mod debug;
+pub mod dev_server;
 pub mod editor;
 pub mod engine;
 pub mod init;

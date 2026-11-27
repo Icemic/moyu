@@ -52,6 +52,16 @@ pub async fn start_static_file_server(
     web_path: &Path,
     requested_port: u16,
 ) -> Result<StaticFileServer> {
+    start_static_file_server_with_dev_port(project_root, web_path, requested_port, DEV_SERVER_PORT)
+        .await
+}
+
+pub async fn start_static_file_server_with_dev_port(
+    project_root: &Path,
+    web_path: &Path,
+    requested_port: u16,
+    dev_server_port: u16,
+) -> Result<StaticFileServer> {
     let listener = bind_with_retry(requested_port, 10).await?;
     let port = listener.local_addr()?.port();
     let url = format!("http://localhost:{port}");
@@ -75,7 +85,7 @@ pub async fn start_static_file_server(
                     let project_root = project_root.clone();
                     let web_path = web_path.clone();
                     tokio::spawn(async move {
-                        let _ = handle_connection(stream, &web_path, &project_root).await;
+                        let _ = handle_connection(stream, &web_path, &project_root, dev_server_port).await;
                     });
                 }
             }
@@ -108,6 +118,7 @@ async fn handle_connection(
     mut client: TcpStream,
     web_path: &Path,
     project_root: &Path,
+    dev_server_port: u16,
 ) -> Result<()> {
     let mut buf = Vec::with_capacity(8192);
     let mut tmp = [0u8; 4096];
@@ -158,7 +169,15 @@ async fn handle_connection(
             return Ok(());
         }
         let body_remainder = &buf[header_end..];
-        proxy_websocket(client, &method, &raw_target, &req_headers, body_remainder).await?;
+        proxy_websocket(
+            client,
+            &method,
+            &raw_target,
+            &req_headers,
+            body_remainder,
+            dev_server_port,
+        )
+        .await?;
         return Ok(());
     }
 
@@ -208,7 +227,15 @@ async fn handle_connection(
         body.extend_from_slice(&tmp[..n]);
     }
 
-    proxy_http(client, &method, &raw_target, &req_headers, &body).await?;
+    proxy_http(
+        client,
+        &method,
+        &raw_target,
+        &req_headers,
+        &body,
+        dev_server_port,
+    )
+    .await?;
     Ok(())
 }
 
@@ -218,17 +245,18 @@ async fn proxy_http(
     target: &str,
     headers: &[(String, String)],
     body: &[u8],
+    dev_server_port: u16,
 ) -> Result<()> {
-    let mut upstream = match TcpStream::connect(("127.0.0.1", DEV_SERVER_PORT)).await {
+    let mut upstream = match TcpStream::connect(("127.0.0.1", dev_server_port)).await {
         Ok(s) => s,
         Err(_) => {
             if !DEV_SERVER_WARNED.swap(true, Ordering::Relaxed) {
                 eprintln!(
-                    "warn: Dev server not reachable on port {DEV_SERVER_PORT}; bundler output will fail to load."
+                    "warn: Dev server not reachable on port {dev_server_port}; bundler output will fail to load."
                 );
             }
             let msg = format!(
-                "502 Bad Gateway: no dev server on port {DEV_SERVER_PORT}. Start it and reload."
+                "502 Bad Gateway: no dev server on port {dev_server_port}. Start it and reload."
             );
             write_simple_response(&mut client, 502, &msg).await?;
             return Ok(());
@@ -236,7 +264,7 @@ async fn proxy_http(
     };
 
     let mut req_head = format!("{method} {target} HTTP/1.1\r\n");
-    req_head.push_str(&format!("Host: 127.0.0.1:{DEV_SERVER_PORT}\r\n"));
+    req_head.push_str(&format!("Host: 127.0.0.1:{dev_server_port}\r\n"));
     for (k, v) in headers {
         if k.eq_ignore_ascii_case("host") || k.eq_ignore_ascii_case("connection") {
             continue;
@@ -261,13 +289,14 @@ async fn proxy_websocket(
     target: &str,
     headers: &[(String, String)],
     remainder: &[u8],
+    dev_server_port: u16,
 ) -> Result<()> {
-    let Ok(mut upstream) = TcpStream::connect(("127.0.0.1", DEV_SERVER_PORT)).await else {
+    let Ok(mut upstream) = TcpStream::connect(("127.0.0.1", dev_server_port)).await else {
         return Ok(());
     };
 
     let mut req_head = format!("{method} {target} HTTP/1.1\r\n");
-    req_head.push_str(&format!("Host: 127.0.0.1:{DEV_SERVER_PORT}\r\n"));
+    req_head.push_str(&format!("Host: 127.0.0.1:{dev_server_port}\r\n"));
     for (k, v) in headers {
         if k.eq_ignore_ascii_case("host") {
             continue;

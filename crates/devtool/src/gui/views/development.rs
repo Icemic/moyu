@@ -12,6 +12,7 @@ use crate::gui::ui::dropdown::{
 };
 use crate::gui::ui::icon::{IconName, icon};
 use crate::gui::{ActivePopover, DevtoolApp, RunMode};
+use crate::service::dev_server::DevServerStatus;
 use crate::service::editor::LauncherKind;
 
 pub fn render_development_view(
@@ -772,6 +773,12 @@ fn render_env_panel(
 
     let has_managed_node = app.env.node.as_ref().is_some_and(|n| n.is_managed);
     let jiti_found = app.env.jiti_path.is_some();
+    let dev_server_status = app.dev_server_status;
+    let (dev_dot, dev_status_text, dev_active) = match dev_server_status {
+        DevServerStatus::Stopped => (theme.meta, i18n.dev_server_stopped().to_string(), false),
+        DevServerStatus::Starting => (theme.warning, i18n.dev_server_starting().to_string(), true),
+        DevServerStatus::Running { port } => (theme.success, format!("localhost:{port}"), true),
+    };
 
     panel(theme)
         .child(section_heading(
@@ -878,6 +885,55 @@ fn render_env_panel(
                             },
                         )),
                 ),
+        )
+        .child(
+            detail_row(theme)
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(
+                            div()
+                                .text_size(px(13.0))
+                                .text_color(theme.meta)
+                                .child(i18n.dev_server_label()),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .flex_row()
+                                .items_center()
+                                .gap(px(5.0))
+                                .child(status_dot(dev_dot))
+                                .child(
+                                    div()
+                                        .text_size(px(12.0))
+                                        .text_color(theme.meta)
+                                        .child(dev_status_text),
+                                ),
+                        ),
+                )
+                .child(if dev_active {
+                    sm_button(
+                        "btn-stop-dev-server",
+                        i18n.dev_server_stop(),
+                        ButtonVariant::Danger,
+                        theme,
+                        cx.listener(|this, _, _, cx| this.stop_dev_server(cx)),
+                    )
+                    .into_any_element()
+                } else {
+                    sm_button(
+                        "btn-start-dev-server",
+                        i18n.dev_server_start(),
+                        ButtonVariant::Secondary,
+                        theme,
+                        cx.listener(|this, _, _, cx| this.start_dev_server_action(cx)),
+                    )
+                    .into_any_element()
+                }),
         )
         .child(
             div()

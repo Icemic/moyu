@@ -115,7 +115,7 @@
   - **工程配置（行内编辑）**：只读态展示窗口标题、入口脚本、窗口尺寸、舞台尺寸、引擎渠道与框架摘要；点击「编辑」在原位切换为输入控件与渠道 `SelectDropdown`；「保存」调用 `save_project_config` 写回并刷新页首与工程下拉，校验或写入失败时保留用户输入并内联报错；「取消」丢弃草稿。
   - **多分辨率资源**：展示当前工程检查结论并提供「重新检查」。
 - **右列**：
-  - **开发环境**：展示 Node.js 版本、路径、来源（本地托管优先于系统）、工程包管理器与 `jiti` 状态，提供「重新检测」、「安装/重装依赖」与「安装/卸载 Node LTS」。
+  - **开发环境**：展示 Node.js 版本、路径、来源（本地托管优先于系统）、工程包管理器、`jiti` 状态与 **Dev Server 状态及启停按钮**（运行中展示实际端口 `localhost:<port>`），底部提供「安装/重装依赖」与「安装/卸载 Node LTS」。点击「桌面运行 / 浏览器运行」时若 Dev Server 未启动，将由 devtool 自动分配空闲端口拉起并等待就绪后再启动引擎（游戏关闭时不自动关闭 Dev Server）。
   - **Schema**：提供「剧情命令（`commands.schema.json`）」与「游戏 UI（`ui.schema.json`）」两个独立生成按钮。
 
 ### 6.2 「引擎」页（`views/engine.rs`）
@@ -138,6 +138,6 @@
 
 ## 7. 退出生命周期与资源回收
 
-- 窗口创建时同时注册 `window.on_window_should_close` 与 `cx.on_app_quit`，在窗口关闭（标题栏关闭、Alt+F4、任务栏关闭）或应用退出前同步调用 `stop_debug_session_sync`：取消活动任务、终止运行中的原生引擎子进程、关闭 Web 静态服与调试 WS 宿主机，防止产生僵尸进程。
-- **游戏进程自行退出同步**：桌面引擎窗口被用户直接关闭时，`DebugSession` 后台监听捕获进程退出并推送 `DebugEvent::SessionStopped`，GUI 自动重置「开发」与「调试」两页的运行按钮与选中状态（通过会话代际号防旧事件串扰）。
-- 切换工程时自动停止当前运行中的 `DebugSession` 并退出配置编辑态，防止跨工程状态污染。
+- 窗口创建时同时注册 `window.on_window_should_close` 与 `cx.on_app_quit`，在窗口关闭（标题栏关闭、Alt+F4、任务栏关闭）或应用退出前同步调用 `stop_debug_session_sync`：取消活动任务、终止运行中的原生引擎子进程与 Dev Server 进程树、关闭 Web 静态服与调试 WS 宿主机，防止产生僵尸进程。
+- **游戏进程自行退出同步**：桌面引擎窗口被用户直接关闭时，`DebugSession` 后台监听捕获进程退出并推送 `DebugEvent::SessionStopped`，GUI 自动重置「开发」与「调试」两页的运行按钮与选中状态（通过会话代际号防旧事件串扰），同时保留 Dev Server 运行以维持热更新。
+- 切换工程时自动停止当前运行中的 `DebugSession` 与 Dev Server 并退出配置编辑态，防止跨工程状态污染。

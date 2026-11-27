@@ -106,6 +106,7 @@ crates/devtool/
     │   ├── server.rs     # 分层静态服、COOP/COEP、127.0.0.1:6020 HTTP/WS 代理
     │   ├── run.rs        # 原生引擎与 Web 预览运行
     │   ├── debug.rs      # DebugSession WS 宿主机、进程/页面拉起与生命周期回收
+    │   ├── dev_server.rs # 工程 Dev Server 常驻托管、端口解析/环境变量注入与进程树清理
     │   ├── mcp.rs        # stdio JSON-RPC 2.0 MCP 服务（11 个工具）
     │   ├── pack.rs       # 桌面/Web/Android/Framework 打包与 ZIP64 归档
     │   ├── video_decoder.rs # 视频解码插件下载校验与缓存
@@ -157,6 +158,7 @@ crates/devtool/
 - **Schema 生成（`schema` / `ui-schema` / `pack --framework`）**：通过探测到的 `node` 执行内嵌 ESM 脚本，**仅从项目及上层目录 `node_modules` 解析 `jiti`** 加载目标 `.ts` 文件并调用 Zod `.toJSONSchema({ io: 'input' })`；不做无 `jiti` 回退，缺失时直接报错提示安装项目依赖。
 - **托管 Node LTS 与依赖安装**：支持从官方分发源拉取最新 LTS 便携归档、校验 `SHASUMS256.txt` 后解压至 `~/.moyu/node/<version>/`，并支持一键卸载清除 `~/.moyu/node/`；托管 Node 仅在子进程 `PATH` 前置注入，不污染系统全局环境变量。同时提供项目依赖安装服务（`run_project_install`），使用探测到的包管理器执行 `install`。
 - **Corepack 自动启用**：当工程需要 `yarn` / `pnpm` 但当前不可用且存在 `corepack` 时，优先无权限直接执行 `corepack enable`（托管 Node 或用户可写目录无需提权）；若 Windows 系统 Node 目录受权限保护导致失败，通过原生 `ShellExecuteExW`（`runas`）临时申请 UAC 提权执行 `corepack enable`；用户取消或不可用时警告并回退至 `npm`。
+- **工程 Dev Server 托管（`service/dev_server.rs`）**：独立于一次性任务槽常驻运行 `<pm> run dev`，启动时从 `6020` 起挑选空闲端口并通过 `MOYU_DEV_PORT` / `PORT` 环境变量注入；同时剥离 ANSI 码解析 stdout/stderr 实际监听端口（兼容 rspack、Vite 与用户自定义端口）并做 TCP 连接就绪确认，将真实端口动态透传给桌面引擎 `--entry` 与 Web 静态服反代目标；停止、切换工程或退出应用时在 Windows 通过 `taskkill /PID <pid> /T /F` 清理整棵子进程树。
 
 ### 5.6 外部工具探测与启动
 

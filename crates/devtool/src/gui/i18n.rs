@@ -318,6 +318,41 @@ impl I18n {
         }
     }
 
+    pub const fn dev_server_label(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "Dev Server",
+            LocalePreference::EnUs => "Dev Server",
+        }
+    }
+
+    pub const fn dev_server_stopped(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "未运行",
+            LocalePreference::EnUs => "Stopped",
+        }
+    }
+
+    pub const fn dev_server_starting(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "启动中…",
+            LocalePreference::EnUs => "Starting...",
+        }
+    }
+
+    pub const fn dev_server_start(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "启动",
+            LocalePreference::EnUs => "Start",
+        }
+    }
+
+    pub const fn dev_server_stop(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "停止",
+            LocalePreference::EnUs => "Stop",
+        }
+    }
+
     pub const fn schema_title(&self) -> &'static str {
         match self.locale {
             LocalePreference::ZhCn => "Schema",

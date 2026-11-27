@@ -177,6 +177,7 @@ impl DebugSessionArgs {
                 project_root: None,
                 web: self.web,
                 port: Some(self.port),
+                dev_server_port: None,
                 entry: self.entry.clone(),
                 headless: self.effective_headless(),
                 attach_port: None,

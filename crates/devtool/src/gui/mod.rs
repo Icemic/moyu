@@ -57,6 +57,9 @@ mod app {
     use crate::model::project::{ProjectEvent, ProjectModel};
     use crate::model::tasks::{LogLevel, TaskEvent, TaskLogEntry, TasksModel};
     use crate::service::debug::{DebugSession, SessionOptions, start_debug_session};
+    use crate::service::dev_server::{
+        DevServerEvent, DevServerHandle, DevServerStatus, start_dev_server,
+    };
     use crate::service::editor::{
         DetectedEditor, detect_editors, open_in_editor, open_in_file_manager, open_url_in_browser,
     };
@@ -167,6 +170,10 @@ mod app {
         pub pack_video_decoder: bool,
         pub pack_android_format: String,
         pub android_password_input: Entity<TextInput>,
+        // Project Dev Server (independent from one-shot task slot)
+        pub dev_server_status: DevServerStatus,
+        dev_server_handle: Option<Arc<tokio::sync::Mutex<DevServerHandle>>>,
+        dev_server_gen: u64,
         // V2 Visual Debugger
         pub debug: DebugModel,
         pub debug_session: Option<Arc<tokio::sync::Mutex<DebugSession>>>,
@@ -260,6 +267,9 @@ mod app {
                 pack_video_decoder: false,
                 pack_android_format: "debug-apk".to_string(),
                 android_password_input,
+                dev_server_status: DevServerStatus::Stopped,
+                dev_server_handle: None,
+                dev_server_gen: 0,
                 debug: DebugModel::default(),
                 debug_session: None,
                 debug_session_gen: 0,
@@ -592,6 +602,7 @@ mod app {
             }
 
             self.stop_debug_session(cx);
+            self.stop_dev_server(cx);
             self.config_editing = false;
             self.config_save_error = None;
 
@@ -1160,7 +1171,230 @@ mod app {
             cx.notify();
         }
 
+        pub fn start_dev_server_action(&mut self, cx: &mut Context<Self>) {
+            self.start_dev_server_internal(false, cx);
+        }
+
+        fn start_dev_server_internal(&mut self, launch_debug_after: bool, cx: &mut Context<Self>) {
+            let Some(root) = self.project.root.clone() else {
+                self.push_log(LogLevel::Warn, "Open a project first.", cx);
+                return;
+            };
+            if self.dev_server_status != DevServerStatus::Stopped {
+                return;
+            }
+
+            self.dev_server_gen = self.dev_server_gen.wrapping_add(1);
+            let gen_id = self.dev_server_gen;
+            self.dev_server_status = DevServerStatus::Starting;
+            self.push_log(LogLevel::Info, "Starting dev server...", cx);
+
+            let (ev_tx, ev_rx) = async_channel::unbounded();
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+
+            cx.spawn(async move |this, cx| {
+                while let Ok(ev) = ev_rx.recv().await {
+                    let mut should_break = false;
+                    let _ = this.update(cx, |app, cx| {
+                        if app.dev_server_gen != gen_id {
+                            should_break = true;
+                            return;
+                        }
+                        match ev {
+                            DevServerEvent::Log { level, line } => {
+                                let entry = TaskLogEntry {
+                                    task_id: 0,
+                                    level,
+                                    line,
+                                };
+                                app.log_list.update(cx, |list, cx| list.push(entry, cx));
+                                cx.notify();
+                            }
+                            DevServerEvent::Ready { port } => {
+                                app.dev_server_status = DevServerStatus::Running { port };
+                                app.push_log(
+                                    LogLevel::Success,
+                                    format!("Dev server ready at http://localhost:{port}"),
+                                    cx,
+                                );
+                            }
+                            DevServerEvent::Exited { code } => {
+                                app.dev_server_handle = None;
+                                app.dev_server_status = DevServerStatus::Stopped;
+                                let msg = match code {
+                                    Some(0) => "Dev server stopped.".to_string(),
+                                    Some(c) => format!("Dev server exited with code {c}."),
+                                    None => "Dev server exited.".to_string(),
+                                };
+                                app.push_log(
+                                    if code == Some(0) {
+                                        LogLevel::Info
+                                    } else {
+                                        LogLevel::Warn
+                                    },
+                                    msg,
+                                    cx,
+                                );
+                                should_break = true;
+                            }
+                        }
+                    });
+                    if should_break {
+                        break;
+                    }
+                }
+            })
+            .detach();
+
+            let rt_clone = Arc::clone(&rt);
+            let handle = rt.spawn(async move { start_dev_server(&root, ev_tx).await });
+            cx.spawn(async move |this, cx| {
+                let res = handle.await;
+                let maybe_handle = match res {
+                    Ok(Ok(srv)) => Some(Arc::new(tokio::sync::Mutex::new(srv))),
+                    Ok(Err(err)) => {
+                        let _ = this.update(cx, |app, cx| {
+                            if app.dev_server_gen == gen_id {
+                                app.dev_server_status = DevServerStatus::Stopped;
+                                app.push_log(LogLevel::Error, format!("{err:#}"), cx);
+                            }
+                        });
+                        return;
+                    }
+                    Err(err) => {
+                        let _ = this.update(cx, |app, cx| {
+                            if app.dev_server_gen == gen_id {
+                                app.dev_server_status = DevServerStatus::Stopped;
+                                app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx);
+                            }
+                        });
+                        return;
+                    }
+                };
+
+                let Some(srv_arc) = maybe_handle else {
+                    return;
+                };
+                let mut still_active = false;
+                let _ = this.update(cx, |app, cx| {
+                    if app.dev_server_gen == gen_id {
+                        app.dev_server_handle = Some(Arc::clone(&srv_arc));
+                        still_active = true;
+                        cx.notify();
+                    }
+                });
+                if !still_active {
+                    rt_clone.spawn(async move {
+                        let mut guard = srv_arc.lock().await;
+                        guard.stop().await;
+                    });
+                    return;
+                }
+
+                if launch_debug_after {
+                    let wait_handle = rt_clone.spawn(async move {
+                        let guard = srv_arc.lock().await;
+                        guard.wait_ready(30_000).await
+                    });
+                    let ready_res = wait_handle.await;
+                    let _ = this.update(cx, |app, cx| {
+                        if app.dev_server_gen != gen_id {
+                            return;
+                        }
+                        match ready_res {
+                            Ok(Ok(port)) => {
+                                app.dev_server_status = DevServerStatus::Running { port };
+                                app.launch_debug_session_with_port(Some(port), cx);
+                            }
+                            Ok(Err(err)) => {
+                                app.push_log(LogLevel::Error, format!("{err:#}"), cx);
+                            }
+                            Err(err) => {
+                                app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx);
+                            }
+                        }
+                    });
+                }
+            })
+            .detach();
+        }
+
+        pub fn stop_dev_server(&mut self, cx: &mut Context<Self>) {
+            self.dev_server_gen = self.dev_server_gen.wrapping_add(1);
+            let was_active = self.dev_server_handle.is_some()
+                || self.dev_server_status != DevServerStatus::Stopped;
+            if let Some(handle_arc) = self.dev_server_handle.take() {
+                let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+                rt.spawn(async move {
+                    let mut guard = handle_arc.lock().await;
+                    guard.stop().await;
+                });
+            }
+            self.dev_server_status = DevServerStatus::Stopped;
+            if was_active {
+                self.push_log(LogLevel::Info, "Dev server stopped.", cx);
+            }
+            cx.notify();
+        }
+
         pub fn start_debug_session(&mut self, cx: &mut Context<Self>) {
+            if self.debug_mode == SessionMode::Attach {
+                self.launch_debug_session_with_port(None, cx);
+                return;
+            }
+            if self.project.root.is_none() {
+                self.push_log(LogLevel::Warn, "Open a project first.", cx);
+                return;
+            }
+
+            match self.dev_server_status {
+                DevServerStatus::Running { port } => {
+                    self.launch_debug_session_with_port(Some(port), cx);
+                }
+                DevServerStatus::Starting => {
+                    let Some(srv_arc) = self.dev_server_handle.clone() else {
+                        self.start_dev_server_internal(true, cx);
+                        return;
+                    };
+                    let gen_id = self.dev_server_gen;
+                    let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+                    let wait_handle = rt.spawn(async move {
+                        let guard = srv_arc.lock().await;
+                        guard.wait_ready(30_000).await
+                    });
+                    cx.spawn(async move |this, cx| {
+                        let res = wait_handle.await;
+                        let _ = this.update(cx, |app, cx| {
+                            if app.dev_server_gen != gen_id {
+                                return;
+                            }
+                            match res {
+                                Ok(Ok(port)) => {
+                                    app.dev_server_status = DevServerStatus::Running { port };
+                                    app.launch_debug_session_with_port(Some(port), cx);
+                                }
+                                Ok(Err(err)) => {
+                                    app.push_log(LogLevel::Error, format!("{err:#}"), cx);
+                                }
+                                Err(err) => {
+                                    app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx);
+                                }
+                            }
+                        });
+                    })
+                    .detach();
+                }
+                DevServerStatus::Stopped => {
+                    self.start_dev_server_internal(true, cx);
+                }
+            }
+        }
+
+        fn launch_debug_session_with_port(
+            &mut self,
+            dev_server_port: Option<u16>,
+            cx: &mut Context<Self>,
+        ) {
             self.stop_debug_session(cx);
             let opts = match self.debug_mode {
                 SessionMode::Attach => SessionOptions {
@@ -1176,6 +1410,7 @@ mod app {
                         project_root: Some(root),
                         web: true,
                         port: Some(DEFAULT_WEB_PORT),
+                        dev_server_port,
                         headless: false,
                         ..Default::default()
                     }
@@ -1188,6 +1423,7 @@ mod app {
                     SessionOptions {
                         project_root: Some(root),
                         web: false,
+                        dev_server_port,
                         headless: self.debug_headless,
                         ..Default::default()
                     }
@@ -1291,18 +1527,25 @@ mod app {
             }
         }
 
-        /// Synchronously terminate any running engine child process before window/app exit.
+        /// Synchronously terminate any running engine child process and dev server before window/app exit.
         pub fn stop_debug_session_sync(&mut self, cx: &mut Context<Self>) {
             if let Some(cancel) = self.active_cancel.take() {
                 cancel.cancel();
             }
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
             if let Some(session_arc) = self.debug_session.take() {
-                let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
                 rt.block_on(async move {
                     let mut guard = session_arc.lock().await;
                     guard.stop().await;
                 });
                 self.debug.apply(DebugEvent::SessionStopped);
+            }
+            if let Some(dev_arc) = self.dev_server_handle.take() {
+                rt.block_on(async move {
+                    let mut guard = dev_arc.lock().await;
+                    guard.stop().await;
+                });
+                self.dev_server_status = DevServerStatus::Stopped;
             }
         }
 

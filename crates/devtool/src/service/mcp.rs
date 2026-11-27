@@ -253,6 +253,7 @@ async fn call_tool(name: &str, args: Value, state: &Arc<McpState>) -> anyhow::Re
                     project_root: Some(project_root),
                     web,
                     port,
+                    dev_server_port: None,
                     entry,
                     headless,
                     attach_port: None,
