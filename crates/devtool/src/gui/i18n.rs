@@ -270,11 +270,4 @@ impl I18n {
             LocalePreference::EnUs => "Clear",
         }
     }
-
-    pub const fn debug_v2_placeholder(&self) -> &'static str {
-        match self.locale {
-            LocalePreference::ZhCn => "可视化调试器（节点树、属性检查、日志流、截图预览）将在阶段 3.3（V2）接入。",
-            LocalePreference::EnUs => "Visual Debugger (node tree, props, logs, screenshot) lands in Phase 3.3 (V2).",
-        }
-    }
 }

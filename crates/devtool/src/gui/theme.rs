@@ -4,12 +4,14 @@ use gpui::{App, Global, Hsla, WindowAppearance, rgb};
 
 use crate::config::ThemePreference;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ThemeMode {
     Light,
     Dark,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
     pub mode: ThemeMode,

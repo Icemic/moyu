@@ -48,12 +48,14 @@ mod app {
     use crate::gui::ui::log_list::LogListView;
     use crate::gui::ui::progress::progress_bar;
     use crate::gui::ui::text_input::{TextInput, register_key_bindings};
-    use crate::gui::views::{engine, project, run_pack, settings};
+    use crate::gui::views::{debug, engine, project, run_pack, settings};
     use crate::model::DomainModel;
+    use crate::model::debug::{DebugEvent, DebugModel, LogEntry, NodeSummary, SessionMode};
     use crate::model::engine::{EngineEvent, EngineModel};
     use crate::model::env::EnvModel;
     use crate::model::project::{ProjectEvent, ProjectModel};
     use crate::model::tasks::{LogLevel, TaskEvent, TaskLogEntry, TasksModel};
+    use crate::service::debug::{DebugSession, SessionOptions, start_debug_session};
     use crate::service::engine::{
         download_platforms, fetch_versions_json, load_config, load_meta, resolve_update_platforms,
         switch_active_version, try_detect_platform,
@@ -100,6 +102,19 @@ mod app {
         pub pack_video_decoder: bool,
         pub pack_android_format: String,
         pub android_password_input: Entity<TextInput>,
+        pub debug: DebugModel,
+        pub debug_session: Option<Arc<tokio::sync::Mutex<DebugSession>>>,
+        pub debug_mode: SessionMode,
+        pub debug_headless: bool,
+        pub debug_collapsed_nodes: BTreeSet<u32>,
+        pub debug_selected_node: Option<u32>,
+        pub debug_selected_props: Option<serde_json::Value>,
+        pub debug_eval_input: Entity<TextInput>,
+        pub debug_eval_output: Option<String>,
+        pub debug_log_level_filter: String,
+        pub debug_screenshot_bytes: Option<Vec<u8>>,
+        pub debug_screenshot_image: Option<Arc<gpui::Image>>,
+        pub debug_screenshot_meta: Option<String>,
         log_list: Entity<LogListView>,
         logs_collapsed: bool,
     }
@@ -114,6 +129,8 @@ mod app {
                 input.set_masked(true, cx);
                 input
             });
+            let debug_eval_input =
+                cx.new(|cx| TextInput::new("Evaluate JS (e.g. 1 + 1)", cx));
             let log_list = cx.new(|_| LogListView::new(i18n.logs_empty()));
 
             let default_platform = try_detect_platform().unwrap_or("windows-amd64").to_string();
@@ -141,6 +158,19 @@ mod app {
                 pack_video_decoder: false,
                 pack_android_format: "debug-apk".to_string(),
                 android_password_input,
+                debug: DebugModel::default(),
+                debug_session: None,
+                debug_mode: SessionMode::Native,
+                debug_headless: true,
+                debug_collapsed_nodes: BTreeSet::new(),
+                debug_selected_node: None,
+                debug_selected_props: None,
+                debug_eval_input,
+                debug_eval_output: None,
+                debug_log_level_filter: "ALL".to_string(),
+                debug_screenshot_bytes: None,
+                debug_screenshot_image: None,
+                debug_screenshot_meta: None,
                 log_list,
                 logs_collapsed: false,
             };
@@ -693,6 +723,297 @@ mod app {
                 .update(cx, |l, cx| l.set_empty_label(i18n.logs_empty(), cx));
             cx.notify();
         }
+
+        pub fn start_debug_session(&mut self, cx: &mut Context<Self>) {
+            self.stop_debug_session(cx);
+            let opts = match self.debug_mode {
+                SessionMode::Attach => SessionOptions {
+                    attach_port: Some(crate::config::DEFAULT_ATTACH_PORT),
+                    ..Default::default()
+                },
+                SessionMode::Web => {
+                    let Some(root) = self.project.root.clone() else {
+                        self.push_log(LogLevel::Warn, "Open a project first.", cx);
+                        return;
+                    };
+                    SessionOptions {
+                        project_root: Some(root),
+                        web: true,
+                        port: Some(DEFAULT_WEB_PORT),
+                        headless: false,
+                        ..Default::default()
+                    }
+                }
+                SessionMode::Native => {
+                    let Some(root) = self.project.root.clone() else {
+                        self.push_log(LogLevel::Warn, "Open a project first.", cx);
+                        return;
+                    };
+                    SessionOptions {
+                        project_root: Some(root),
+                        web: false,
+                        headless: self.debug_headless,
+                        ..Default::default()
+                    }
+                }
+            };
+
+            let (ev_tx, ev_rx) = async_channel::unbounded();
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+
+            cx.spawn(async move |this, cx| {
+                while let Ok(ev) = ev_rx.recv().await {
+                    let _ = this.update(cx, |app, cx| {
+                        if app.debug.apply(ev) {
+                            cx.notify();
+                        }
+                    });
+                }
+            })
+            .detach();
+
+            let handle = rt.spawn(async move { start_debug_session(opts, Some(ev_tx)).await });
+            cx.spawn(async move |this, cx| {
+                let res = handle.await;
+                let _ = this.update(cx, |app, cx| {
+                    match res {
+                        Ok(Ok(session)) => {
+                            app.debug_session = Some(Arc::new(tokio::sync::Mutex::new(session)));
+                            app.push_log(LogLevel::Success, "Debug session started.", cx);
+                        }
+                        Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
+                        Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
+                    }
+                    cx.notify();
+                });
+            })
+            .detach();
+        }
+
+        pub fn stop_debug_session(&mut self, cx: &mut Context<Self>) {
+            if let Some(session_arc) = self.debug_session.take() {
+                let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+                rt.spawn(async move {
+                    let mut guard = session_arc.lock().await;
+                    guard.stop().await;
+                });
+                self.debug.apply(DebugEvent::SessionStopped);
+                self.debug_selected_node = None;
+                self.debug_selected_props = None;
+                self.push_log(LogLevel::Info, "Debug session stopped.", cx);
+                cx.notify();
+            }
+        }
+
+        pub fn debug_fetch_tree(&mut self, cx: &mut Context<Self>) {
+            let Some(session_arc) = self.debug_session.clone() else {
+                return;
+            };
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+            let handle = rt.spawn(async move {
+                let host = session_arc.lock().await.host.clone();
+                let res = host
+                    .request("engine:tree", Some(serde_json::json!({ "depth": 8 })))
+                    .await?;
+                let node: NodeSummary = serde_json::from_value(
+                    res.get("node")
+                        .cloned()
+                        .ok_or_else(|| anyhow::anyhow!("Missing node in engine:tree response"))?,
+                )?;
+                Ok::<_, anyhow::Error>(node)
+            });
+
+            cx.spawn(async move |this, cx| {
+                let res = handle.await;
+                let _ = this.update(cx, |app, cx| match res {
+                    Ok(Ok(node)) => {
+                        app.debug.apply(DebugEvent::TreeUpdated(node));
+                        cx.notify();
+                    }
+                    Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
+                    Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
+                });
+            })
+            .detach();
+        }
+
+        pub fn debug_select_node(&mut self, node_id: u32, cx: &mut Context<Self>) {
+            self.debug_selected_node = Some(node_id);
+            cx.notify();
+            let Some(session_arc) = self.debug_session.clone() else {
+                return;
+            };
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+            let handle = rt.spawn(async move {
+                let host = session_arc.lock().await.host.clone();
+                host.request("engine:props", Some(serde_json::json!({ "nodeId": node_id })))
+                    .await
+            });
+            cx.spawn(async move |this, cx| {
+                let res = handle.await;
+                let _ = this.update(cx, |app, cx| match res {
+                    Ok(Ok(val)) => {
+                        app.debug_selected_props = Some(val.get("node").cloned().unwrap_or(val));
+                        cx.notify();
+                    }
+                    Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
+                    Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
+                });
+            })
+            .detach();
+        }
+
+        pub fn debug_run_eval(&mut self, cx: &mut Context<Self>) {
+            let code = self.debug_eval_input.read(cx).text().trim().to_string();
+            if code.is_empty() {
+                return;
+            }
+            let Some(session_arc) = self.debug_session.clone() else {
+                self.push_log(LogLevel::Warn, "Start a debug session first.", cx);
+                return;
+            };
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+            let handle = rt.spawn(async move {
+                let host = session_arc.lock().await.host.clone();
+                host.request(
+                    "engine:eval",
+                    Some(serde_json::json!({ "code": code, "timeoutMs": 5000 })),
+                )
+                .await
+            });
+            cx.spawn(async move |this, cx| {
+                let res = handle.await;
+                let _ = this.update(cx, |app, cx| match res {
+                    Ok(Ok(val)) => {
+                        let out = match val.get("value") {
+                            Some(v) => serde_json::to_string_pretty(v).unwrap_or_default(),
+                            None => val
+                                .get("repr")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("undefined")
+                                .to_string(),
+                        };
+                        app.debug_eval_output = Some(out);
+                        cx.notify();
+                    }
+                    Ok(Err(err)) => {
+                        app.debug_eval_output = Some(format!("Error: {err:#}"));
+                        cx.notify();
+                    }
+                    Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
+                });
+            })
+            .detach();
+        }
+
+        pub fn debug_subscribe_logs(&mut self, cx: &mut Context<Self>) {
+            let Some(session_arc) = self.debug_session.clone() else {
+                return;
+            };
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+            let handle = rt.spawn(async move {
+                let host = session_arc.lock().await.host.clone();
+                let res = host
+                    .request("engine:logs", Some(serde_json::json!({ "subscribe": true })))
+                    .await?;
+                let mut entries = Vec::new();
+                if let Some(arr) = res.get("entries").and_then(|v| v.as_array()) {
+                    for raw in arr {
+                        if let Ok(entry) = serde_json::from_value::<LogEntry>(raw.clone()) {
+                            entries.push(entry);
+                        }
+                    }
+                }
+                Ok::<_, anyhow::Error>(entries)
+            });
+            cx.spawn(async move |this, cx| {
+                let res = handle.await;
+                let _ = this.update(cx, |app, cx| match res {
+                    Ok(Ok(entries)) => {
+                        for e in entries {
+                            app.debug.apply(DebugEvent::LogReceived(e));
+                        }
+                        cx.notify();
+                    }
+                    Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
+                    Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
+                });
+            })
+            .detach();
+        }
+
+        pub fn debug_capture_screenshot(&mut self, cx: &mut Context<Self>) {
+            let Some(session_arc) = self.debug_session.clone() else {
+                return;
+            };
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+            let handle = rt.spawn(async move {
+                let host = session_arc.lock().await.host.clone();
+                let res = host
+                    .request(
+                        "engine:screenshot",
+                        Some(serde_json::json!({ "maxWidth": 1280, "maxHeight": 720 })),
+                    )
+                    .await?;
+                let b64 = res
+                    .get("data")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| anyhow::anyhow!("Missing screenshot data"))?;
+                use base64::Engine as _;
+                let bytes = base64::engine::general_purpose::STANDARD.decode(b64)?;
+                let w = res.get("width").and_then(|v| v.as_u64()).unwrap_or(0);
+                let h = res.get("height").and_then(|v| v.as_u64()).unwrap_or(0);
+                let fmt = res
+                    .get("format")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("webp")
+                    .to_string();
+                Ok::<_, anyhow::Error>((bytes, format!("{w}x{h} {fmt}")))
+            });
+            cx.spawn(async move |this, cx| {
+                let res = handle.await;
+                let _ = this.update(cx, |app, cx| match res {
+                    Ok(Ok((bytes, meta))) => {
+                        let image = Arc::new(gpui::Image::from_bytes(
+                            gpui::ImageFormat::Webp,
+                            bytes.clone(),
+                        ));
+                        app.debug_screenshot_bytes = Some(bytes);
+                        app.debug_screenshot_image = Some(image);
+                        app.debug_screenshot_meta = Some(meta);
+                        cx.notify();
+                    }
+                    Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
+                    Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
+                });
+            })
+            .detach();
+        }
+
+        pub fn debug_save_screenshot(&mut self, cx: &mut Context<Self>) {
+            let Some(bytes) = self.debug_screenshot_bytes.clone() else {
+                return;
+            };
+            let base_dir = self
+                .project
+                .root
+                .clone()
+                .unwrap_or_else(|| std::env::temp_dir());
+            let dir = base_dir.join(".moyu").join("screenshots");
+            let filename = format!(
+                "shot-{}.webp",
+                chrono::Utc::now().format("%Y%m%d%H%M%S")
+            );
+            let path = dir.join(filename);
+            match std::fs::create_dir_all(&dir).and_then(|()| std::fs::write(&path, bytes)) {
+                Ok(()) => self.push_log(
+                    LogLevel::Success,
+                    format!("Saved screenshot to {}", path.display()),
+                    cx,
+                ),
+                Err(err) => self.push_log(LogLevel::Error, format!("{err}"), cx),
+            }
+        }
     }
 
     impl Render for DevtoolApp {
@@ -833,14 +1154,7 @@ mod app {
                 NavTab::Project => project::render_project_view(self, theme, i18n, cx),
                 NavTab::Engine => engine::render_engine_view(self, theme, i18n, cx),
                 NavTab::RunPack => run_pack::render_run_pack_view(self, theme, i18n, cx),
-                NavTab::Debug => card(theme)
-                    .child(
-                        div()
-                            .text_size(px(13.0))
-                            .text_color(theme.text_secondary)
-                            .child(i18n.debug_v2_placeholder()),
-                    )
-                    .into_any_element(),
+                NavTab::Debug => debug::render_debug_view(self, theme, cx),
                 NavTab::Settings => settings::render_settings_view(self, theme, i18n, cx),
             };
 

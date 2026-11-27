@@ -327,6 +327,7 @@ pub async fn generate_json_schema(
 }
 
 /// Download and install the latest Node.js LTS portable archive into `~/.moyu/node/<version>/`.
+#[allow(dead_code)]
 pub async fn install_managed_node(reporter: &ServiceReporter) -> Result<String> {
     reporter.started(TaskKind::InstallNode, "Install Managed Node.js LTS");
     let res = install_managed_node_inner(reporter).await;
