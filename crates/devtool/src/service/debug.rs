@@ -21,7 +21,9 @@ use crate::config::{DEFAULT_WEB_PORT, DEV_SERVER_PORT, meta_file, platform_dir};
 use crate::model::debug::{DebugEvent, LogEntry, SessionMode};
 use crate::service::engine::{detect_platform, load_meta, native_executable_name};
 use crate::service::project::require_project_root;
-use crate::service::server::{StaticFileServer, require_web_engine_assets, start_static_file_server};
+use crate::service::server::{
+    StaticFileServer, require_web_engine_assets, start_static_file_server,
+};
 
 pub const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 60_000;
 pub const DEFAULT_READY_TIMEOUT_MS: u64 = 60_000;
@@ -224,9 +226,9 @@ pub async fn start_debug_session(
     };
 
     let meta = load_meta(&meta_file(&project_root));
-    let active = meta
-        .and_then(|m| m.active)
-        .ok_or_else(|| anyhow::anyhow!("No active engine version. Run \"moyu-devtool download\" first."))?;
+    let active = meta.and_then(|m| m.active).ok_or_else(|| {
+        anyhow::anyhow!("No active engine version. Run \"moyu-devtool download\" first.")
+    })?;
 
     let session_id = uuid::Uuid::new_v4().to_string();
     let host = start_host(session_id.clone(), 0, event_tx.clone()).await?;

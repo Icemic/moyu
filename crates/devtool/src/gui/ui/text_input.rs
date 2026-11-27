@@ -97,7 +97,11 @@ impl TextInput {
         cx.notify();
     }
 
-    pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>, cx: &mut Context<Self>) {
+    pub fn set_placeholder(
+        &mut self,
+        placeholder: impl Into<SharedString>,
+        cx: &mut Context<Self>,
+    ) {
         self.placeholder = placeholder.into();
         cx.notify();
     }
@@ -499,7 +503,10 @@ impl Element for TextElement {
         let (display_text, text_color) = if content.is_empty() {
             (input.placeholder.clone(), theme.text_tertiary)
         } else if input.masked {
-            (SharedString::from("•".repeat(content.chars().count())), theme.text)
+            (
+                SharedString::from("•".repeat(content.chars().count())),
+                theme.text,
+            )
         } else {
             (content, theme.text)
         };

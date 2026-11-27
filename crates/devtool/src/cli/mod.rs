@@ -283,7 +283,11 @@ async fn dispatch(command: Commands) -> Result<i32> {
             cmd_switch(version)?;
             Ok(0)
         }
-        Commands::Run { native: _, web, port } => {
+        Commands::Run {
+            native: _,
+            web,
+            port,
+        } => {
             let (reporter, printer) = create_cli_reporter();
             let res = run_project(&require_project_root(None)?, web, port, &reporter).await;
             drop(reporter);
@@ -349,16 +353,21 @@ async fn dispatch(command: Commands) -> Result<i32> {
         }
         Commands::Schema { input, output } => {
             let project_root = require_project_root(None)?;
-            let in_path = project_root.join(input.unwrap_or_else(|| PathBuf::from("src/commands/commands.ts")));
-            let out_path = project_root.join(output.unwrap_or_else(|| PathBuf::from("commands.schema.json")));
-            generate_json_schema(&project_root, &in_path, &out_path, "ScenarioCommandSchema").await?;
+            let in_path = project_root
+                .join(input.unwrap_or_else(|| PathBuf::from("src/commands/commands.ts")));
+            let out_path =
+                project_root.join(output.unwrap_or_else(|| PathBuf::from("commands.schema.json")));
+            generate_json_schema(&project_root, &in_path, &out_path, "ScenarioCommandSchema")
+                .await?;
             eprintln!("success: JSON Schema written to {}", out_path.display());
             Ok(0)
         }
         Commands::UiSchema { input, output } => {
             let project_root = require_project_root(None)?;
-            let in_path = project_root.join(input.unwrap_or_else(|| PathBuf::from("src/data/ui.ts")));
-            let out_path = project_root.join(output.unwrap_or_else(|| PathBuf::from("ui.schema.json")));
+            let in_path =
+                project_root.join(input.unwrap_or_else(|| PathBuf::from("src/data/ui.ts")));
+            let out_path =
+                project_root.join(output.unwrap_or_else(|| PathBuf::from("ui.schema.json")));
             generate_json_schema(&project_root, &in_path, &out_path, "GameUiSchema").await?;
             eprintln!("success: JSON Schema written to {}", out_path.display());
             Ok(0)
@@ -539,7 +548,10 @@ async fn cmd_download(
     };
 
     let (reporter, printer) = create_cli_reporter();
-    eprintln!("info: Downloading {selected_version} ({})...", selected_platforms.join(", "));
+    eprintln!(
+        "info: Downloading {selected_version} ({})...",
+        selected_platforms.join(", ")
+    );
     let res = download_platforms(
         &project_root,
         &selected_channel,
@@ -599,7 +611,9 @@ async fn cmd_update(skip_confirm: bool) -> Result<()> {
             .is_some_and(|a| a.version == target_version)
             && all_match
         {
-            eprintln!("success: Engine is already up to date ({target_version}). Nothing to download.");
+            eprintln!(
+                "success: Engine is already up to date ({target_version}). Nothing to download."
+            );
             return Ok(());
         }
     }
@@ -686,11 +700,7 @@ fn cmd_switch(version_arg: Option<String>) -> Result<()> {
         version_names[idx].clone()
     };
 
-    if meta
-        .active
-        .as_ref()
-        .is_some_and(|a| a.version == selected)
-    {
+    if meta.active.as_ref().is_some_and(|a| a.version == selected) {
         eprintln!("info: {selected} is already the active version.");
         return Ok(());
     }
@@ -1010,10 +1020,7 @@ fn prompt_hidden(message: &str) -> Result<String> {
         unsafe { GetConsoleMode(handle, &mut old_mode)? };
         let _guard = ModeGuard { handle, old_mode };
         unsafe {
-            SetConsoleMode(
-                handle,
-                CONSOLE_MODE(old_mode.0 & !ENABLE_ECHO_INPUT.0),
-            )?;
+            SetConsoleMode(handle, CONSOLE_MODE(old_mode.0 & !ENABLE_ECHO_INPUT.0))?;
         }
         let mut line = String::new();
         io::stdin().read_line(&mut line)?;

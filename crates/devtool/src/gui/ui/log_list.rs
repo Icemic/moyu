@@ -57,36 +57,38 @@ impl Render for LogListView {
         uniform_list(
             "devtool-log-list",
             count,
-            cx.processor(move |this, range: std::ops::Range<usize>, _window, cx: &mut Context<Self>| {
-                let theme = Theme::global(cx);
-                let mut rows = Vec::with_capacity(range.len());
-                for ix in range {
-                    let entry = &this.entries[ix];
-                    let level_color = match entry.level {
-                        LogLevel::Info => theme.text_secondary,
-                        LogLevel::Success => theme.success,
-                        LogLevel::Warn => theme.warn,
-                        LogLevel::Error => theme.danger,
-                    };
-                    rows.push(
-                        div()
-                            .id(ix)
-                            .px(px(8.0))
-                            .py(px(2.0))
-                            .flex()
-                            .flex_row()
-                            .gap(px(8.0))
-                            .text_size(px(12.0))
-                            .child(
-                                div()
-                                    .text_color(level_color)
-                                    .child(format!("[{}]", entry.level.prefix())),
-                            )
-                            .child(div().text_color(theme.text).child(entry.line.clone())),
-                    );
-                }
-                rows
-            }),
+            cx.processor(
+                move |this, range: std::ops::Range<usize>, _window, cx: &mut Context<Self>| {
+                    let theme = Theme::global(cx);
+                    let mut rows = Vec::with_capacity(range.len());
+                    for ix in range {
+                        let entry = &this.entries[ix];
+                        let level_color = match entry.level {
+                            LogLevel::Info => theme.text_secondary,
+                            LogLevel::Success => theme.success,
+                            LogLevel::Warn => theme.warn,
+                            LogLevel::Error => theme.danger,
+                        };
+                        rows.push(
+                            div()
+                                .id(ix)
+                                .px(px(8.0))
+                                .py(px(2.0))
+                                .flex()
+                                .flex_row()
+                                .gap(px(8.0))
+                                .text_size(px(12.0))
+                                .child(
+                                    div()
+                                        .text_color(level_color)
+                                        .child(format!("[{}]", entry.level.prefix())),
+                                )
+                                .child(div().text_color(theme.text).child(entry.line.clone())),
+                        );
+                    }
+                    rows
+                },
+            ),
         )
         .size_full()
         .into_any_element()

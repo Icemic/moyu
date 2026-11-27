@@ -135,32 +135,27 @@ pub fn render_run_pack_view(
                         ),
                 )
                 .when(!is_framework, |this| {
-                    this.child(
-                        muted_panel(theme).child(
-                            div()
-                                .flex()
-                                .flex_row()
-                                .flex_wrap()
-                                .gap(px(6.0))
-                                .children(PACK_TARGETS.iter().enumerate().map(|(idx, &t)| {
-                                    let sel = current_target == t;
-                                    button(
-                                        ("pack-target", idx),
-                                        t,
-                                        if sel {
-                                            ButtonVariant::Primary
-                                        } else {
-                                            ButtonVariant::Default
-                                        },
-                                        theme,
-                                        cx.listener(move |this, _, _, cx| {
-                                            this.pack_target = t.to_string();
-                                            cx.notify();
-                                        }),
-                                    )
-                                })),
+                    this.child(muted_panel(theme).child(
+                        div().flex().flex_row().flex_wrap().gap(px(6.0)).children(
+                            PACK_TARGETS.iter().enumerate().map(|(idx, &t)| {
+                                let sel = current_target == t;
+                                button(
+                                    ("pack-target", idx),
+                                    t,
+                                    if sel {
+                                        ButtonVariant::Primary
+                                    } else {
+                                        ButtonVariant::Default
+                                    },
+                                    theme,
+                                    cx.listener(move |this, _, _, cx| {
+                                        this.pack_target = t.to_string();
+                                        cx.notify();
+                                    }),
+                                )
+                            }),
                         ),
-                    )
+                    ))
                     .child(
                         div()
                             .flex()
@@ -170,7 +165,11 @@ pub fn render_run_pack_view(
                             .when(!is_android, |row| {
                                 row.child(button(
                                     "toggle-compress",
-                                    if compress { "✓ ZIP Compress" } else { "ZIP Compress" },
+                                    if compress {
+                                        "✓ ZIP Compress"
+                                    } else {
+                                        "ZIP Compress"
+                                    },
                                     if compress {
                                         ButtonVariant::Primary
                                     } else {
@@ -206,46 +205,37 @@ pub fn render_run_pack_view(
                 .when(is_android, |this| {
                     this.child(
                         muted_panel(theme)
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_row()
-                                    .flex_wrap()
-                                    .gap(px(6.0))
-                                    .children(ANDROID_FORMATS.iter().enumerate().map(
-                                        |(idx, &fmt)| {
-                                            let sel = current_android_fmt == fmt;
-                                            button(
-                                                ("android-fmt", idx),
-                                                fmt,
-                                                if sel {
-                                                    ButtonVariant::Primary
-                                                } else {
-                                                    ButtonVariant::Default
-                                                },
-                                                theme,
-                                                cx.listener(move |this, _, _, cx| {
-                                                    this.pack_android_format = fmt.to_string();
-                                                    cx.notify();
-                                                }),
-                                            )
+                            .child(div().flex().flex_row().flex_wrap().gap(px(6.0)).children(
+                                ANDROID_FORMATS.iter().enumerate().map(|(idx, &fmt)| {
+                                    let sel = current_android_fmt == fmt;
+                                    button(
+                                        ("android-fmt", idx),
+                                        fmt,
+                                        if sel {
+                                            ButtonVariant::Primary
+                                        } else {
+                                            ButtonVariant::Default
                                         },
-                                    )),
-                            )
+                                        theme,
+                                        cx.listener(move |this, _, _, cx| {
+                                            this.pack_android_format = fmt.to_string();
+                                            cx.notify();
+                                        }),
+                                    )
+                                }),
+                            ))
                             .when(needs_signing_pw, |inner| {
                                 inner.child(app.android_password_input.clone())
                             }),
                     )
                 })
-                .child(
-                    div().flex().flex_row().gap(px(8.0)).child(button(
-                        "btn-start-pack",
-                        i18n.start_pack(),
-                        ButtonVariant::Primary,
-                        theme,
-                        cx.listener(|this, _, _, cx| this.start_pack(cx)),
-                    )),
-                ),
+                .child(div().flex().flex_row().gap(px(8.0)).child(button(
+                    "btn-start-pack",
+                    i18n.start_pack(),
+                    ButtonVariant::Primary,
+                    theme,
+                    cx.listener(|this, _, _, cx| this.start_pack(cx)),
+                ))),
         )
         .into_any_element()
 }

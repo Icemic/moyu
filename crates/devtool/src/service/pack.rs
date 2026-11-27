@@ -104,7 +104,11 @@ async fn pack_project_inner(
     report_multi_res_warnings(&report, reporter);
 
     let framework_mode = options.framework;
-    let compress = if framework_mode { true } else { options.compress };
+    let compress = if framework_mode {
+        true
+    } else {
+        options.compress
+    };
     let tmp_pack_dir = project_root.join(".moyu").join("tmp-pack");
     let archive_name = if framework_mode {
         FRAMEWORK_ARCHIVE_NAME
@@ -168,7 +172,10 @@ async fn pack_project_inner(
     if framework_mode {
         reporter.info("Mode: framework");
     } else {
-        reporter.info(format!("Target: {}", options.target.as_deref().unwrap_or("")));
+        reporter.info(format!(
+            "Target: {}",
+            options.target.as_deref().unwrap_or("")
+        ));
         reporter.info(format!(
             "Engine version: {}",
             active_version.as_deref().unwrap_or("")
@@ -313,11 +320,7 @@ fn copy_bundle_js(
     Ok(())
 }
 
-fn copy_assets(
-    project_root: &Path,
-    tmp_pack_dir: &Path,
-    reporter: &ServiceReporter,
-) -> Result<()> {
+fn copy_assets(project_root: &Path, tmp_pack_dir: &Path, reporter: &ServiceReporter) -> Result<()> {
     let assets_dir = project_root.join("assets");
     if !assets_dir.is_dir() {
         bail!("Assets directory not found.");
@@ -526,7 +529,9 @@ fn copy_web_engine(
     reporter: &ServiceReporter,
 ) -> Result<()> {
     if !web_path.is_dir() {
-        bail!("Web engine directory not found. Run \"moyu-devtool download\" to download web-universal platform.");
+        bail!(
+            "Web engine directory not found. Run \"moyu-devtool download\" to download web-universal platform."
+        );
     }
     reporter.info("Copying web engine files...");
     copy_dir_all(web_path, tmp_pack_dir)?;
@@ -553,7 +558,9 @@ fn copy_construct_files(
 fn load_framework_config(project_root: &Path) -> Result<FrameworkConfig> {
     let path = project_root.join("framework.json");
     if !path.is_file() {
-        bail!("framework.json not found in project root. This file is required for --framework mode.");
+        bail!(
+            "framework.json not found in project root. This file is required for --framework mode."
+        );
     }
     let text = fs::read_to_string(&path)?;
     serde_json::from_str(&text).context("Failed to parse framework.json.")

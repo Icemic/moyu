@@ -36,7 +36,9 @@ impl Drop for StaticFileServer {
 pub fn require_web_engine_assets(project_root: &Path, version: &str) -> Result<PathBuf> {
     let web_path = platform_dir(project_root, version, "web-universal")?;
     if !web_path.is_dir() {
-        bail!("Web engine assets not found. Run \"moyu-devtool download\" to download web-universal platform.");
+        bail!(
+            "Web engine assets not found. Run \"moyu-devtool download\" to download web-universal platform."
+        );
     }
     let has_entries = fs::read_dir(&web_path)?.next().is_some();
     if !has_entries {
@@ -146,9 +148,9 @@ async fn handle_connection(
         })
         .collect();
 
-    let is_upgrade = req_headers.iter().any(|(k, v)| {
-        k.eq_ignore_ascii_case("upgrade") && v.eq_ignore_ascii_case("websocket")
-    });
+    let is_upgrade = req_headers
+        .iter()
+        .any(|(k, v)| k.eq_ignore_ascii_case("upgrade") && v.eq_ignore_ascii_case("websocket"));
 
     let pathname = raw_target.split('?').next().unwrap_or("/");
     if is_upgrade {
@@ -284,9 +286,7 @@ async fn proxy_websocket(
 }
 
 fn find_header_end(buf: &[u8]) -> Option<usize> {
-    buf.windows(4)
-        .position(|w| w == b"\r\n\r\n")
-        .map(|i| i + 4)
+    buf.windows(4).position(|w| w == b"\r\n\r\n").map(|i| i + 4)
 }
 
 async fn write_simple_response(client: &mut TcpStream, status: u16, body: &str) -> Result<()> {

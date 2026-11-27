@@ -10,9 +10,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use crate::config::managed_node_root;
 use crate::model::env::{EnvModel, NodeRuntimeInfo, PackageManager};
 use crate::model::tasks::{TaskKind, TaskStatus};
-use crate::service::{
-    ServiceReporter, copy_dir_all, download_to_file_verified, http_get_bytes,
-};
+use crate::service::{ServiceReporter, copy_dir_all, download_to_file_verified, http_get_bytes};
 
 const SCHEMA_RUNNER_JS: &str = r#"
 import { pathToFileURL } from 'node:url';
@@ -355,8 +353,8 @@ async fn install_managed_node_inner(reporter: &ServiceReporter) -> Result<String
     let index_bytes = http_get_bytes("https://nodejs.org/dist/index.json").await?;
     reporter.cancel.check()?;
 
-    let releases: Vec<serde_json::Value> = serde_json::from_slice(&index_bytes)
-        .context("Failed to parse Node.js release index")?;
+    let releases: Vec<serde_json::Value> =
+        serde_json::from_slice(&index_bytes).context("Failed to parse Node.js release index")?;
     let lts_version = releases
         .iter()
         .find(|entry| entry.get("lts").is_some_and(|v| v.is_string()))
@@ -379,12 +377,12 @@ async fn install_managed_node_inner(reporter: &ServiceReporter) -> Result<String
             let name = parts.next()?;
             (name == archive_name).then(|| hash.to_string())
         })
-        .ok_or_else(|| anyhow::anyhow!("Checksum for {archive_name} not found in SHASUMS256.txt"))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!("Checksum for {archive_name} not found in SHASUMS256.txt")
+        })?;
 
-    let tmp_archive = std::env::temp_dir().join(format!(
-        "moyu-node-{}-{archive_name}",
-        uuid::Uuid::new_v4()
-    ));
+    let tmp_archive =
+        std::env::temp_dir().join(format!("moyu-node-{}-{archive_name}", uuid::Uuid::new_v4()));
     let dest_root = managed_node_root()?.join(&lts_version);
 
     let extract_res = async {
@@ -406,10 +404,8 @@ async fn install_managed_node_inner(reporter: &ServiceReporter) -> Result<String
         let is_zip = ext == "zip";
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let tmp_extract = std::env::temp_dir().join(format!(
-                "moyu-node-extract-{}",
-                uuid::Uuid::new_v4()
-            ));
+            let tmp_extract =
+                std::env::temp_dir().join(format!("moyu-node-extract-{}", uuid::Uuid::new_v4()));
             fs::create_dir_all(&tmp_extract)?;
 
             let inner_res = (|| -> Result<()> {
@@ -426,7 +422,10 @@ async fn install_managed_node_inner(reporter: &ServiceReporter) -> Result<String
 
                 let extracted_inner = tmp_extract.join(&inner_dir_name);
                 if !extracted_inner.is_dir() {
-                    bail!("Expected extracted directory {} not found", extracted_inner.display());
+                    bail!(
+                        "Expected extracted directory {} not found",
+                        extracted_inner.display()
+                    );
                 }
                 if dest.exists() {
                     fs::remove_dir_all(&dest)?;

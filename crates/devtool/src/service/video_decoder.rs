@@ -80,10 +80,8 @@ pub async fn ensure_video_decoder_library(
         "Downloading video decoder {VIDEO_DECODER_VERSION} for {target}..."
     ));
     let url = format!("{VIDEO_DECODER_RELEASE_URL}/{}", asset.archive);
-    let tmp_zip = std::env::temp_dir().join(format!(
-        "moyu-video-decoder-{}.zip",
-        uuid::Uuid::new_v4()
-    ));
+    let tmp_zip =
+        std::env::temp_dir().join(format!("moyu-video-decoder-{}.zip", uuid::Uuid::new_v4()));
     download_to_file_verified(&url, &tmp_zip, asset.sha256, reporter).await?;
     let archive_bytes = fs::read(&tmp_zip)?;
     let _ = fs::remove_file(&tmp_zip);
@@ -135,6 +133,9 @@ pub async fn ensure_video_decoder_library(
     })
     .await??;
 
-    reporter.success(format!("Video decoder cached: {}", cached_library.display()));
+    reporter.success(format!(
+        "Video decoder cached: {}",
+        cached_library.display()
+    ));
     Ok(cached_library)
 }

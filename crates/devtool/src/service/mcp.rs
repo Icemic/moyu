@@ -112,11 +112,7 @@ pub async fn serve_mcp() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn handle_request(
-    req: Value,
-    state: &Arc<McpState>,
-    out_tx: &mpsc::UnboundedSender<String>,
-) {
+async fn handle_request(req: Value, state: &Arc<McpState>, out_tx: &mpsc::UnboundedSender<String>) {
     let id = req.get("id").cloned().filter(|v| !v.is_null());
     let method = req.get("method").and_then(|v| v.as_str()).unwrap_or("");
     let params = req.get("params").cloned().unwrap_or_else(|| json!({}));
@@ -169,7 +165,10 @@ async fn handle_request(
                 send_error(-32602, &format!("Unknown tool: {name}"));
                 return;
             }
-            let args = params.get("arguments").cloned().unwrap_or_else(|| json!({}));
+            let args = params
+                .get("arguments")
+                .cloned()
+                .unwrap_or_else(|| json!({}));
             match call_tool(name, args, state).await {
                 Ok(res) => send_result(res),
                 Err(err) => send_result(json!({
@@ -355,7 +354,10 @@ async fn call_tool(name: &str, args: Value, state: &Arc<McpState>) -> anyhow::Re
             let mut lines = Vec::new();
             if let Some(entries) = res.get("entries").and_then(|v| v.as_array()) {
                 for entry in entries {
-                    let ts = entry.get("timestampMs").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let ts = entry
+                        .get("timestampMs")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
                     let lvl = entry
                         .get("level")
                         .and_then(|v| v.as_str())
@@ -453,7 +455,10 @@ pub fn collect_node_lines(node: &NodeSummary, indent: usize, out: &mut Vec<Strin
     let label = if node.label.is_empty() {
         String::new()
     } else {
-        format!(" {}", serde_json::to_string(&node.label).unwrap_or_default())
+        format!(
+            " {}",
+            serde_json::to_string(&node.label).unwrap_or_default()
+        )
     };
     let hidden = if node.visible { "" } else { " (hidden)" };
     out.push(format!(

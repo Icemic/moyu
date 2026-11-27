@@ -92,11 +92,16 @@ pub fn render_debug_view(
         .logs
         .iter()
         .rev()
-        .filter(|entry| {
-            level_filter == "ALL" || entry.level.eq_ignore_ascii_case(&level_filter)
-        })
+        .filter(|entry| level_filter == "ALL" || entry.level.eq_ignore_ascii_case(&level_filter))
         .take(40)
-        .map(|e| format!("[{}] {}: {}", e.level.to_ascii_uppercase(), e.target, e.message))
+        .map(|e| {
+            format!(
+                "[{}] {}: {}",
+                e.level.to_ascii_uppercase(),
+                e.target,
+                e.message
+            )
+        })
         .collect();
 
     let screenshot_img = app.debug_screenshot_image.clone();
@@ -340,14 +345,12 @@ pub fn render_debug_view(
                                             })
                                         })
                                         .text_size(px(12.0))
-                                        .text_color(if is_sel {
-                                            theme.accent
-                                        } else {
-                                            theme.text
-                                        })
+                                        .text_color(if is_sel { theme.accent } else { theme.text })
                                         .cursor_pointer()
                                         .on_click(cx.listener(move |this, _, _, cx| {
-                                            if row.has_children && this.debug_selected_node == Some(node_id) {
+                                            if row.has_children
+                                                && this.debug_selected_node == Some(node_id)
+                                            {
                                                 if !this.debug_collapsed_nodes.remove(&node_id) {
                                                     this.debug_collapsed_nodes.insert(node_id);
                                                 }
@@ -399,15 +402,12 @@ pub fn render_debug_view(
                                     ),
                                 )
                                 .child(
-                                    muted_panel(theme)
-                                        .max_h(px(120.0))
-                                        .overflow_hidden()
-                                        .child(
-                                            div()
-                                                .text_size(px(11.0))
-                                                .text_color(theme.text_secondary)
-                                                .child(props_text),
-                                        ),
+                                    muted_panel(theme).max_h(px(120.0)).overflow_hidden().child(
+                                        div()
+                                            .text_size(px(11.0))
+                                            .text_color(theme.text_secondary)
+                                            .child(props_text),
+                                    ),
                                 ),
                         )
                         .when_some(screenshot_img, |this, image| {
@@ -425,10 +425,9 @@ pub fn render_debug_view(
                                                 div()
                                                     .text_size(px(12.0))
                                                     .text_color(theme.text_secondary)
-                                                    .child(
-                                                        screenshot_meta
-                                                            .unwrap_or_else(|| "Screenshot".to_string()),
-                                                    ),
+                                                    .child(screenshot_meta.unwrap_or_else(|| {
+                                                        "Screenshot".to_string()
+                                                    })),
                                             )
                                             .child(button(
                                                 "dbg-save-shot",
@@ -462,33 +461,29 @@ pub fn render_debug_view(
                                                 .child("Engine Logs"),
                                         )
                                         .child(
-                                            div()
-                                                .flex()
-                                                .flex_row()
-                                                .gap(px(4.0))
-                                                .children(
-                                                    ["ALL", "ERROR", "WARN", "INFO", "DEBUG"]
-                                                        .iter()
-                                                        .enumerate()
-                                                        .map(|(i, &lvl)| {
-                                                            let active = level_filter == lvl;
-                                                            button(
-                                                                ("dbg-lvl", i),
-                                                                lvl,
-                                                                if active {
-                                                                    ButtonVariant::Primary
-                                                                } else {
-                                                                    ButtonVariant::Ghost
-                                                                },
-                                                                theme,
-                                                                cx.listener(move |this, _, _, cx| {
-                                                                    this.debug_log_level_filter =
-                                                                        lvl.to_string();
-                                                                    cx.notify();
-                                                                }),
-                                                            )
-                                                        }),
-                                                ),
+                                            div().flex().flex_row().gap(px(4.0)).children(
+                                                ["ALL", "ERROR", "WARN", "INFO", "DEBUG"]
+                                                    .iter()
+                                                    .enumerate()
+                                                    .map(|(i, &lvl)| {
+                                                        let active = level_filter == lvl;
+                                                        button(
+                                                            ("dbg-lvl", i),
+                                                            lvl,
+                                                            if active {
+                                                                ButtonVariant::Primary
+                                                            } else {
+                                                                ButtonVariant::Ghost
+                                                            },
+                                                            theme,
+                                                            cx.listener(move |this, _, _, cx| {
+                                                                this.debug_log_level_filter =
+                                                                    lvl.to_string();
+                                                                cx.notify();
+                                                            }),
+                                                        )
+                                                    }),
+                                            ),
                                         ),
                                 )
                                 .child(

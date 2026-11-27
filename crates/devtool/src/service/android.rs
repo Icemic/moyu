@@ -11,12 +11,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use crate::service::{ServiceReporter, copy_dir_all, download_to_file_verified};
 
 pub const ANDROID_PLATFORM: &str = "android-aarch64";
-pub const ANDROID_FORMATS: &[&str] = &[
-    "debug-apk",
-    "release-apk",
-    "release-aab",
-    "android-project",
-];
+pub const ANDROID_FORMATS: &[&str] =
+    &["debug-apk", "release-apk", "release-aab", "android-project"];
 
 const ANDROID_TEMPLATE_VERSION: &str = "0.0.1";
 const ANDROID_TEMPLATE_URL: &str =
@@ -206,9 +202,7 @@ fn validate_android_config(config: &AndroidConfig) -> Result<()> {
         parts.len() >= 2
             && parts.iter().all(|p| {
                 let mut chars = p.chars();
-                chars
-                    .next()
-                    .is_some_and(|c| c.is_ascii_alphabetic())
+                chars.next().is_some_and(|c| c.is_ascii_alphabetic())
                     && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
             })
             && !config.application_id.starts_with("ink.momoyu")
@@ -397,7 +391,11 @@ fn sync_android_project(
         fs::remove_dir_all(&res_dir)?;
     }
     copy_dir_all(
-        &template_dir.join("app").join("src").join("main").join("res"),
+        &template_dir
+            .join("app")
+            .join("src")
+            .join("main")
+            .join("res"),
         &res_dir,
     )?;
 
@@ -407,11 +405,7 @@ fn sync_android_project(
     Ok(())
 }
 
-fn sync_launcher_icons(
-    project_root: &Path,
-    res_dir: &Path,
-    config: &AndroidConfig,
-) -> Result<()> {
+fn sync_launcher_icons(project_root: &Path, res_dir: &Path, config: &AndroidConfig) -> Result<()> {
     let source = config.icon_source.trim();
     if source.is_empty() {
         return Ok(());
@@ -535,9 +529,9 @@ fn resolve_android_signing(
     if !keystore_path.is_file() {
         bail!("Android keystore not found: {}", keystore_path.display());
     }
-    let password = signing_password
-        .filter(|p| !p.is_empty())
-        .ok_or_else(|| anyhow::anyhow!("Android signing password is required for release builds."))?;
+    let password = signing_password.filter(|p| !p.is_empty()).ok_or_else(|| {
+        anyhow::anyhow!("Android signing password is required for release builds.")
+    })?;
     Ok(AndroidSigning {
         keystore_path,
         key_alias: config.key_alias.trim().to_string(),
@@ -595,10 +589,13 @@ async fn run_gradle_build(
         .stderr(Stdio::piped());
 
     if let Some(s) = signing {
-        cmd.env("MOYU_KEYSTORE_PATH", s.keystore_path.to_string_lossy().as_ref())
-            .env("MOYU_STORE_PASSWORD", &s.password)
-            .env("MOYU_KEY_ALIAS", &s.key_alias)
-            .env("MOYU_KEY_PASSWORD", &s.password);
+        cmd.env(
+            "MOYU_KEYSTORE_PATH",
+            s.keystore_path.to_string_lossy().as_ref(),
+        )
+        .env("MOYU_STORE_PASSWORD", &s.password)
+        .env("MOYU_KEY_ALIAS", &s.key_alias)
+        .env("MOYU_KEY_PASSWORD", &s.password);
     }
 
     let mut child = cmd.spawn().context("Failed to execute Gradle wrapper")?;
@@ -638,7 +635,10 @@ async fn run_gradle_build(
     }
 
     if !status.success() {
-        bail!("Gradle build exited with code {}", status.code().unwrap_or(1));
+        bail!(
+            "Gradle build exited with code {}",
+            status.code().unwrap_or(1)
+        );
     }
 
     let artifact = match format {

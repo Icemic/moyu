@@ -191,83 +191,65 @@ pub fn render_engine_view(
         .when(!remote_channels.is_empty(), |this| {
             this.child(
                 card(theme)
-                    .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .flex_wrap()
-                            .gap(px(6.0))
-                            .children(remote_channels.into_iter().enumerate().map(|(idx, ch)| {
-                                let is_sel = ch == selected_channel;
-                                let ch_clone = ch.clone();
-                                button(
-                                    ("ch-chip", idx),
-                                    ch,
-                                    if is_sel {
-                                        ButtonVariant::Primary
+                    .child(div().flex().flex_row().flex_wrap().gap(px(6.0)).children(
+                        remote_channels.into_iter().enumerate().map(|(idx, ch)| {
+                            let is_sel = ch == selected_channel;
+                            let ch_clone = ch.clone();
+                            button(
+                                ("ch-chip", idx),
+                                ch,
+                                if is_sel {
+                                    ButtonVariant::Primary
+                                } else {
+                                    ButtonVariant::Default
+                                },
+                                theme,
+                                cx.listener(move |this, _, _, cx| {
+                                    this.select_channel(ch_clone.clone(), cx);
+                                }),
+                            )
+                        }),
+                    ))
+                    .child(muted_panel(theme).child(
+                        div().flex().flex_row().flex_wrap().gap(px(6.0)).children(
+                            remote_versions.into_iter().enumerate().map(
+                                |(idx, (ver, date, is_latest))| {
+                                    let is_sel = selected_version.as_deref() == Some(ver.as_str());
+                                    let label = if is_latest {
+                                        format!("{ver} ({date}) *")
                                     } else {
-                                        ButtonVariant::Default
-                                    },
-                                    theme,
-                                    cx.listener(move |this, _, _, cx| {
-                                        this.select_channel(ch_clone.clone(), cx);
-                                    }),
-                                )
-                            })),
-                    )
-                    .child(
-                        muted_panel(theme).child(
-                            div()
-                                .flex()
-                                .flex_row()
-                                .flex_wrap()
-                                .gap(px(6.0))
-                                .children(remote_versions.into_iter().enumerate().map(
-                                    |(idx, (ver, date, is_latest))| {
-                                        let is_sel = selected_version.as_deref() == Some(ver.as_str());
-                                        let label = if is_latest {
-                                            format!("{ver} ({date}) *")
+                                        format!("{ver} ({date})")
+                                    };
+                                    let ver_clone = ver.clone();
+                                    button(
+                                        ("ver-chip", idx),
+                                        label,
+                                        if is_sel {
+                                            ButtonVariant::Primary
                                         } else {
-                                            format!("{ver} ({date})")
-                                        };
-                                        let ver_clone = ver.clone();
-                                        button(
-                                            ("ver-chip", idx),
-                                            label,
-                                            if is_sel {
-                                                ButtonVariant::Primary
-                                            } else {
-                                                ButtonVariant::Default
-                                            },
-                                            theme,
-                                            cx.listener(move |this, _, _, cx| {
-                                                this.selected_version = Some(ver_clone.clone());
-                                                cx.notify();
-                                            }),
-                                        )
-                                    },
-                                )),
+                                            ButtonVariant::Default
+                                        },
+                                        theme,
+                                        cx.listener(move |this, _, _, cx| {
+                                            this.selected_version = Some(ver_clone.clone());
+                                            cx.notify();
+                                        }),
+                                    )
+                                },
+                            ),
                         ),
-                    )
+                    ))
                     .when(!available_platforms.is_empty(), |inner| {
                         inner
                             .child(
-                                div()
-                                    .flex()
-                                    .flex_row()
-                                    .flex_wrap()
-                                    .gap(px(6.0))
-                                    .children(available_platforms.into_iter().enumerate().map(
+                                div().flex().flex_row().flex_wrap().gap(px(6.0)).children(
+                                    available_platforms.into_iter().enumerate().map(
                                         |(idx, plat)| {
                                             let checked = selected_platforms.contains(&plat);
                                             let plat_clone = plat.clone();
                                             button(
                                                 ("plat-chip", idx),
-                                                if checked {
-                                                    format!("✓ {plat}")
-                                                } else {
-                                                    plat
-                                                },
+                                                if checked { format!("✓ {plat}") } else { plat },
                                                 if checked {
                                                     ButtonVariant::Primary
                                                 } else {
@@ -275,26 +257,27 @@ pub fn render_engine_view(
                                                 },
                                                 theme,
                                                 cx.listener(move |this, _, _, cx| {
-                                                    if !this.selected_platforms.remove(&plat_clone) {
-                                                        this.selected_platforms.insert(plat_clone.clone());
+                                                    if !this.selected_platforms.remove(&plat_clone)
+                                                    {
+                                                        this.selected_platforms
+                                                            .insert(plat_clone.clone());
                                                     }
                                                     cx.notify();
                                                 }),
                                             )
                                         },
-                                    )),
+                                    ),
+                                ),
                             )
-                            .child(
-                                div().flex().flex_row().gap(px(8.0)).child(button(
-                                    "btn-download-selected",
-                                    i18n.download_selected(),
-                                    ButtonVariant::Primary,
-                                    theme,
-                                    cx.listener(|this, _, _, cx| {
-                                        this.start_engine_download_selected(cx)
-                                    }),
-                                )),
-                            )
+                            .child(div().flex().flex_row().gap(px(8.0)).child(button(
+                                "btn-download-selected",
+                                i18n.download_selected(),
+                                ButtonVariant::Primary,
+                                theme,
+                                cx.listener(|this, _, _, cx| {
+                                    this.start_engine_download_selected(cx)
+                                }),
+                            )))
                     }),
             )
         })

@@ -15,9 +15,9 @@ pub fn validate_project_name(name: &str) -> Result<()> {
     let bytes = name.as_bytes();
     let valid = !bytes.is_empty()
         && (bytes[0].is_ascii_lowercase() || bytes[0].is_ascii_digit())
-        && bytes
-            .iter()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'.' | b'_' | b'-'));
+        && bytes.iter().all(|b| {
+            b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'.' | b'_' | b'-')
+        });
     if !valid {
         bail!("Invalid project name. Use lowercase letters, numbers, hyphens, and dots.");
     }

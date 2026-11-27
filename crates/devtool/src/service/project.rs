@@ -232,10 +232,7 @@ fn scan_variants(assets_dir: &Path) -> Result<Vec<VariantFile>> {
             .unwrap_or(entry.path())
             .to_string_lossy()
             .replace('\\', "/");
-        let base_dir = rel
-            .rfind('/')
-            .map(|idx| &rel[..=idx])
-            .unwrap_or("");
+        let base_dir = rel.rfind('/').map(|idx| &rel[..=idx]).unwrap_or("");
         let base = format!("{base_dir}{}", base_name(&file_name));
         found.push(VariantFile {
             path: rel,

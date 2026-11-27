@@ -129,8 +129,7 @@ mod app {
                 input.set_masked(true, cx);
                 input
             });
-            let debug_eval_input =
-                cx.new(|cx| TextInput::new("Evaluate JS (e.g. 1 + 1)", cx));
+            let debug_eval_input = cx.new(|cx| TextInput::new("Evaluate JS (e.g. 1 + 1)", cx));
             let log_list = cx.new(|_| LogListView::new(i18n.logs_empty()));
 
             let default_platform = try_detect_platform().unwrap_or("windows-amd64").to_string();
@@ -195,7 +194,11 @@ mod app {
             self.log_list.update(cx, |list, cx| list.push(entry, cx));
         }
 
-        fn begin_task(&mut self, label: impl Into<String>, cx: &mut Context<Self>) -> ServiceReporter {
+        fn begin_task(
+            &mut self,
+            label: impl Into<String>,
+            cx: &mut Context<Self>,
+        ) -> ServiceReporter {
             if let Some(prev) = self.active_cancel.take() {
                 prev.cancel();
             }
@@ -376,10 +379,7 @@ mod app {
                                 .cloned()
                                 .unwrap_or_else(|| DEFAULT_CHANNEL.to_string())
                         };
-                        let latest_ver = manifest
-                            .channels
-                            .get(&first_ch)
-                            .map(|c| c.latest.clone());
+                        let latest_ver = manifest.channels.get(&first_ch).map(|c| c.latest.clone());
                         app.selected_channel = first_ch;
                         app.selected_version = latest_ver;
                         app.engine.apply(EngineEvent::ManifestLoaded(manifest));
@@ -449,13 +449,7 @@ mod app {
             let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
             let handle = rt.spawn(async move {
                 let res = download_platforms(
-                    &root,
-                    &channel,
-                    &version,
-                    &manifest,
-                    &platforms,
-                    true,
-                    &reporter,
+                    &root, &channel, &version, &manifest, &platforms, true, &reporter,
                 )
                 .await;
                 drop(reporter);
@@ -702,7 +696,12 @@ mod app {
             .detach();
         }
 
-        pub fn set_theme(&mut self, pref: ThemePreference, window: &Window, cx: &mut Context<Self>) {
+        pub fn set_theme(
+            &mut self,
+            pref: ThemePreference,
+            window: &Window,
+            cx: &mut Context<Self>,
+        ) {
             self.global_config.theme = pref;
             let _ = save_global_config(&self.global_config);
             let next = Theme::resolve(pref, window.appearance());
@@ -714,8 +713,9 @@ mod app {
             self.global_config.locale = locale;
             let _ = save_global_config(&self.global_config);
             let i18n = I18n::new(locale);
-            self.init_name_input
-                .update(cx, |i, cx| i.set_placeholder(i18n.project_name_placeholder(), cx));
+            self.init_name_input.update(cx, |i, cx| {
+                i.set_placeholder(i18n.project_name_placeholder(), cx)
+            });
             self.android_password_input.update(cx, |i, cx| {
                 i.set_placeholder(i18n.android_password_placeholder(), cx)
             });
@@ -846,8 +846,11 @@ mod app {
             let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
             let handle = rt.spawn(async move {
                 let host = session_arc.lock().await.host.clone();
-                host.request("engine:props", Some(serde_json::json!({ "nodeId": node_id })))
-                    .await
+                host.request(
+                    "engine:props",
+                    Some(serde_json::json!({ "nodeId": node_id })),
+                )
+                .await
             });
             cx.spawn(async move |this, cx| {
                 let res = handle.await;
@@ -914,7 +917,10 @@ mod app {
             let handle = rt.spawn(async move {
                 let host = session_arc.lock().await.host.clone();
                 let res = host
-                    .request("engine:logs", Some(serde_json::json!({ "subscribe": true })))
+                    .request(
+                        "engine:logs",
+                        Some(serde_json::json!({ "subscribe": true })),
+                    )
                     .await?;
                 let mut entries = Vec::new();
                 if let Some(arr) = res.get("entries").and_then(|v| v.as_array()) {
@@ -1000,10 +1006,7 @@ mod app {
                 .clone()
                 .unwrap_or_else(|| std::env::temp_dir());
             let dir = base_dir.join(".moyu").join("screenshots");
-            let filename = format!(
-                "shot-{}.webp",
-                chrono::Utc::now().format("%Y%m%d%H%M%S")
-            );
+            let filename = format!("shot-{}.webp", chrono::Utc::now().format("%Y%m%d%H%M%S"));
             let path = dir.join(filename);
             match std::fs::create_dir_all(&dir).and_then(|()| std::fs::write(&path, bytes)) {
                 Ok(()) => self.push_log(

@@ -22,9 +22,9 @@ pub async fn run_project(
     report_multi_res_warnings(&report, reporter);
 
     let meta = load_meta(&meta_file(project_root));
-    let active = meta
-        .and_then(|m| m.active)
-        .ok_or_else(|| anyhow::anyhow!("No active engine version. Run \"moyu-devtool download\" first."))?;
+    let active = meta.and_then(|m| m.active).ok_or_else(|| {
+        anyhow::anyhow!("No active engine version. Run \"moyu-devtool download\" first.")
+    })?;
 
     if !web {
         let platform = detect_platform()?;
