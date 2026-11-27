@@ -19,7 +19,7 @@ use crate::service::engine::{
     detect_platform, download_platforms, fetch_versions_json, load_config, load_meta,
     resolve_update_platforms, switch_active_version, try_detect_platform,
 };
-use crate::service::init::{ProjectTemplate, create_project, validate_project_name};
+use crate::service::init::{create_project, validate_project_name};
 use crate::service::mcp::{collect_node_lines, format_hms_ms, serve_mcp};
 use crate::service::node::generate_json_schema;
 use crate::service::pack::{PackOptions, pack_project};
@@ -49,12 +49,8 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Create a new Moyu project.
-    Init {
-        name: Option<String>,
-        #[arg(long)]
-        template: Option<String>,
-    },
+    /// Create a new Moyu project from the latest framework template.
+    Init { name: Option<String> },
     /// Download a specific engine version for selected platforms.
     Download {
         #[arg(long)]
@@ -262,8 +258,8 @@ pub async fn run(cli: Cli) -> i32 {
 
 async fn dispatch(command: Commands) -> Result<i32> {
     match command {
-        Commands::Init { name, template } => {
-            cmd_init(name, template)?;
+        Commands::Init { name } => {
+            cmd_init(name).await?;
             Ok(0)
         }
         Commands::Download {
@@ -375,7 +371,7 @@ async fn dispatch(command: Commands) -> Result<i32> {
     }
 }
 
-fn cmd_init(name_arg: Option<String>, template_arg: Option<String>) -> Result<()> {
+async fn cmd_init(name_arg: Option<String>) -> Result<()> {
     println!("\nMoyu Project Setup\nCreate a new visual novel project\n");
     let project_name = match name_arg {
         Some(n) => n,
@@ -384,42 +380,20 @@ fn cmd_init(name_arg: Option<String>, template_arg: Option<String>) -> Result<()
     validate_project_name(&project_name)?;
     let target_dir = std::env::current_dir()?.join(&project_name);
 
-    let tpl_str = match template_arg {
-        Some(t) => t,
-        None => {
-            let idx = prompt_select(
-                "Select a template:",
-                &[
-                    "Basic (Minimal starter template)".to_string(),
-                    "Advanced (With save/load, settings, and gallery)".to_string(),
-                ],
-                0,
-            )?;
-            if idx == 0 {
-                "basic".to_string()
-            } else {
-                "advanced".to_string()
-            }
-        }
-    };
-    let template = match tpl_str.as_str() {
-        "basic" => ProjectTemplate::Basic,
-        "advanced" => ProjectTemplate::Advanced,
-        other => bail!("Unknown template \"{other}\". Use \"basic\" or \"advanced\"."),
-    };
-
     println!("\nProject configuration:");
-    println!("  Name:     {project_name}");
-    println!("  Template: {tpl_str}");
-    println!("  Path:     {}\n", target_dir.display());
+    println!("  Name: {project_name}");
+    println!("  Path: {}\n", target_dir.display());
 
     if io::stdin().is_terminal() && !prompt_confirm("Create project?", true)? {
         eprintln!("info: Setup cancelled.");
         return Ok(());
     }
 
-    create_project(&project_name, template, &target_dir)?;
-    eprintln!("success: Created project at {}", target_dir.display());
+    let (reporter, printer) = create_cli_reporter();
+    let res = create_project(&project_name, &target_dir, &reporter).await;
+    drop(reporter);
+    let _ = printer.await;
+    res?;
     Ok(())
 }
 

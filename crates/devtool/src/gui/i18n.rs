@@ -84,6 +84,15 @@ impl I18n {
         }
     }
 
+    pub fn project_not_found_removed(&self, path: &str) -> String {
+        match self.locale {
+            LocalePreference::ZhCn => format!("工程目录不存在或缺少 index.json，已从列表移除：{path}"),
+            LocalePreference::EnUs => {
+                format!("Project directory not found or missing index.json; removed from list: {path}")
+            }
+        }
+    }
+
     pub const fn project_name(&self) -> &'static str {
         match self.locale {
             LocalePreference::ZhCn => "工程名称",
@@ -286,8 +295,22 @@ impl I18n {
 
     pub const fn install_managed_node(&self) -> &'static str {
         match self.locale {
-            LocalePreference::ZhCn => "安装托管 Node LTS",
-            LocalePreference::EnUs => "Install Managed Node LTS",
+            LocalePreference::ZhCn => "安装 Node LTS",
+            LocalePreference::EnUs => "Install Node LTS",
+        }
+    }
+
+    pub const fn uninstall_managed_node(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "卸载 Node LTS",
+            LocalePreference::EnUs => "Uninstall Node LTS",
+        }
+    }
+
+    pub const fn install_deps(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "安装/重装依赖",
+            LocalePreference::EnUs => "Install Dependencies",
         }
     }
 

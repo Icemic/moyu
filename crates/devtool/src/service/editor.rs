@@ -598,6 +598,44 @@ fn find_in_path(binary: &str) -> Option<PathBuf> {
     None
 }
 
+/// Open `url` in the platform's default web browser.
+#[allow(dead_code)]
+pub fn open_url_in_browser(url: &str) -> Result<()> {
+    #[cfg(windows)]
+    {
+        Command::new("rundll32")
+            .args(["url.dll,FileProtocolHandler", url])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .with_context(|| format!("Failed to open browser for {url}"))?;
+        return Ok(());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(url)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .with_context(|| format!("Failed to open browser for {url}"))?;
+        return Ok(());
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        Command::new("xdg-open")
+            .arg(url)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .with_context(|| format!("Failed to open browser for {url}"))?;
+        Ok(())
+    }
+}
+
 /// Open `dir` in the platform's native file manager (Explorer / Finder / xdg-open).
 #[allow(dead_code)]
 pub fn open_in_file_manager(dir: &Path) -> Result<()> {

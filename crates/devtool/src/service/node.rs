@@ -10,7 +10,10 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use crate::config::managed_node_root;
 use crate::model::env::{EnvModel, NodeRuntimeInfo, PackageManager};
 use crate::model::tasks::{TaskKind, TaskStatus};
-use crate::service::{ServiceReporter, copy_dir_all, download_to_file_verified, http_get_bytes};
+use crate::service::{
+    ServiceReporter, configure_no_window_std, configure_no_window_tokio, copy_dir_all,
+    download_to_file_verified, http_get_bytes,
+};
 
 const SCHEMA_RUNNER_JS: &str = r#"
 import { pathToFileURL } from 'node:url';
@@ -65,10 +68,7 @@ pub fn detect_env(project_root: Option<&Path>) -> EnvModel {
 }
 
 pub fn detect_node() -> Option<NodeRuntimeInfo> {
-    if let Some(info) = probe_node_binary(Path::new("node"), false) {
-        return Some(info);
-    }
-
+    // Prefer locally installed managed Node.js (~/.moyu/node/) over system PATH.
     if let Ok(root) = managed_node_root()
         && root.is_dir()
         && let Ok(entries) = fs::read_dir(&root)
@@ -94,11 +94,29 @@ pub fn detect_node() -> Option<NodeRuntimeInfo> {
         }
     }
 
+    if let Some(info) = probe_node_binary(Path::new("node"), false) {
+        return Some(info);
+    }
+
     None
 }
 
+/// Remove all locally installed managed Node.js versions under `~/.moyu/node/`.
+#[allow(dead_code)]
+pub fn uninstall_managed_node() -> Result<()> {
+    let root = managed_node_root()?;
+    if root.exists() {
+        fs::remove_dir_all(&root)
+            .with_context(|| format!("Failed to remove managed Node directory {}", root.display()))?;
+    }
+    Ok(())
+}
+
 fn probe_node_binary(executable: &Path, is_managed: bool) -> Option<NodeRuntimeInfo> {
-    let out = Command::new(executable).arg("-v").output().ok()?;
+    let mut cmd = Command::new(executable);
+    cmd.arg("-v");
+    configure_no_window_std(&mut cmd);
+    let out = cmd.output().ok()?;
     if !out.status.success() {
         return None;
     }
@@ -176,6 +194,7 @@ fn is_pm_available(pm: PackageManager) -> bool {
         c.arg("--version");
         c
     };
+    configure_no_window_std(&mut cmd);
     cmd.stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -185,8 +204,24 @@ fn is_pm_available(pm: PackageManager) -> bool {
 
 /// Run the project's `build` script using the detected package manager.
 pub async fn run_project_build(project_root: &Path, reporter: &ServiceReporter) -> Result<()> {
+    run_pm_command(project_root, &["run", "build"], "Project build", reporter).await
+}
+
+/// Install or reinstall project dependencies (`node_modules`) using the detected package manager.
+#[allow(dead_code)]
+pub async fn run_project_install(project_root: &Path, reporter: &ServiceReporter) -> Result<()> {
+    run_pm_command(project_root, &["install"], "Dependency install", reporter).await
+}
+
+async fn run_pm_command(
+    project_root: &Path,
+    args: &[&str],
+    label: &str,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     reporter.cancel.check()?;
     let root = project_root.to_path_buf();
+    let node_info = require_node()?;
     let detected_pm = detect_package_manager(&root);
     let pm = if detected_pm != PackageManager::Npm && !is_pm_available(detected_pm) {
         reporter.warn(format!(
@@ -197,15 +232,14 @@ pub async fn run_project_build(project_root: &Path, reporter: &ServiceReporter) 
     } else {
         detected_pm
     };
-    let node_info = require_node()?;
 
     let mut cmd = if cfg!(windows) {
         let mut c = tokio::process::Command::new("cmd.exe");
-        c.args(["/c", &format!("{}.cmd", pm.binary_name()), "run", "build"]);
+        c.arg("/c").arg(format!("{}.cmd", pm.binary_name())).args(args);
         c
     } else {
         let mut c = tokio::process::Command::new(pm.binary_name());
-        c.args(["run", "build"]);
+        c.args(args);
         c
     };
 
@@ -220,13 +254,15 @@ pub async fn run_project_build(project_root: &Path, reporter: &ServiceReporter) 
         }
     }
 
+    configure_no_window_tokio(&mut cmd);
     let mut child = cmd
         .current_dir(&root)
+        .kill_on_drop(true)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .with_context(|| format!("Failed to launch {} run build", pm.binary_name()))?;
+        .with_context(|| format!("Failed to launch {} {}", pm.binary_name(), args.join(" ")))?;
 
     let stdout_task = child.stdout.take().map(|out| {
         let rep = reporter.clone();
@@ -252,7 +288,7 @@ pub async fn run_project_build(project_root: &Path, reporter: &ServiceReporter) 
         _ = reporter.cancel.cancelled() => {
             let _ = child.kill().await;
             let _ = child.wait().await;
-            bail!("Build cancelled.");
+            bail!("{label} cancelled.");
         }
     };
 
@@ -264,10 +300,7 @@ pub async fn run_project_build(project_root: &Path, reporter: &ServiceReporter) 
     }
 
     if !status.success() {
-        bail!(
-            "Project build exited with code {}",
-            status.code().unwrap_or(1)
-        );
+        bail!("{label} exited with code {}", status.code().unwrap_or(1));
     }
     Ok(())
 }
@@ -300,7 +333,9 @@ pub async fn generate_json_schema(
     let root = project_root.to_path_buf();
 
     tokio::task::spawn_blocking(move || -> Result<()> {
-        let status = Command::new(&node.executable)
+        let mut cmd = Command::new(&node.executable);
+        configure_no_window_std(&mut cmd);
+        let status = cmd
             .args(["--input-type=module", "-e", SCHEMA_RUNNER_JS])
             .current_dir(&root)
             .env("MOYU_JITI_ENTRY", &jiti_dir)

@@ -91,7 +91,6 @@ pub fn render_development_view(
         }
     };
     let run_menu_open = app.active_popover == Some(ActivePopover::RunModeMenu);
-    let running_web_url = app.debug.web_url.clone();
 
     let intro = div()
         .flex()
@@ -147,18 +146,7 @@ pub fn render_development_view(
                                 }))
                                 .child(icon(IconName::FolderOpen, 13.0, theme.meta))
                                 .child(i18n.open_folder()),
-                        )
-                        .when_some(running_web_url, |d, url| {
-                            d.child(
-                                div()
-                                    .px(px(6.0))
-                                    .py(px(1.0))
-                                    .rounded(px(3.0))
-                                    .bg(theme.secondary)
-                                    .text_color(theme.success)
-                                    .child(url),
-                            )
-                        }),
+                        ),
                 ),
         )
         .child(
@@ -785,6 +773,7 @@ fn render_env_panel(
         })
         .unwrap_or("-");
 
+    let has_managed_node = app.env.node.as_ref().is_some_and(|n| n.is_managed);
     let jiti_found = app.env.jiti_path.is_some();
 
     panel(theme)
@@ -904,13 +893,33 @@ fn render_env_panel(
                 .flex()
                 .flex_row()
                 .justify_end()
+                .gap(px(6.0))
                 .child(sm_button(
-                    "btn-install-node",
-                    i18n.install_managed_node(),
+                    "btn-install-deps",
+                    i18n.install_deps(),
                     ButtonVariant::Secondary,
                     theme,
-                    cx.listener(|this, _, _, cx| this.start_install_managed_node(cx)),
-                )),
+                    cx.listener(|this, _, _, cx| this.start_install_deps(cx)),
+                ))
+                .child(if has_managed_node {
+                    sm_button(
+                        "btn-uninstall-node",
+                        i18n.uninstall_managed_node(),
+                        ButtonVariant::Danger,
+                        theme,
+                        cx.listener(|this, _, _, cx| this.uninstall_managed_node_action(cx)),
+                    )
+                    .into_any_element()
+                } else {
+                    sm_button(
+                        "btn-install-node",
+                        i18n.install_managed_node(),
+                        ButtonVariant::Secondary,
+                        theme,
+                        cx.listener(|this, _, _, cx| this.start_install_managed_node(cx)),
+                    )
+                    .into_any_element()
+                }),
         )
         .into_any_element()
 }

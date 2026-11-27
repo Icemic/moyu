@@ -38,6 +38,7 @@ pub enum TaskKind {
     GenerateSchema,
     RunProject,
     InstallNode,
+    CreateProject,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

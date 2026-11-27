@@ -12,7 +12,7 @@ use futures_util::{SinkExt, StreamExt};
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
-use tokio::process::{Child, Command};
+use tokio::process::Command;
 use tokio::sync::{Mutex, broadcast, mpsc, oneshot, watch};
 use tokio_tungstenite::accept_async;
 use tokio_tungstenite::tungstenite::Message;
@@ -165,15 +165,23 @@ pub struct DebugSession {
     pub headless: bool,
     pub url: Option<String>,
     pub attach_endpoint: Option<String>,
-    child: Option<Child>,
+    child_kill_tx: Option<oneshot::Sender<()>>,
+    child_task: Option<tokio::task::JoinHandle<()>>,
     static_server: Option<StaticFileServer>,
 }
 
 impl DebugSession {
+    #[allow(dead_code)]
+    pub fn is_child_finished(&self) -> bool {
+        self.child_task.as_ref().is_some_and(|h| h.is_finished())
+    }
+
     pub async fn stop(&mut self) {
-        if let Some(mut child) = self.child.take() {
-            let _ = child.kill().await;
-            let _ = child.wait().await;
+        if let Some(tx) = self.child_kill_tx.take() {
+            let _ = tx.send(());
+        }
+        if let Some(handle) = self.child_task.take() {
+            let _ = handle.await;
         }
         if let Some(server) = self.static_server.take() {
             server.close();
@@ -184,8 +192,8 @@ impl DebugSession {
 
 impl Drop for DebugSession {
     fn drop(&mut self) {
-        if let Some(mut child) = self.child.take() {
-            let _ = child.start_kill();
+        if let Some(tx) = self.child_kill_tx.take() {
+            let _ = tx.send(());
         }
         if let Some(server) = self.static_server.take() {
             server.close();
@@ -227,7 +235,8 @@ pub async fn start_debug_session(
             headless: false,
             url: None,
             attach_endpoint: Some(endpoint),
-            child: None,
+            child_kill_tx: None,
+            child_task: None,
             static_server: None,
         });
     }
@@ -290,7 +299,8 @@ pub async fn start_debug_session(
             headless: false,
             url: Some(page_url),
             attach_endpoint: None,
-            child: None,
+            child_kill_tx: None,
+            child_task: None,
             static_server: Some(server),
         });
     }
@@ -319,6 +329,7 @@ pub async fn start_debug_session(
     eprintln!("info: Starting native engine: {}", engine_path.display());
 
     let mut cmd = Command::new(&engine_path);
+    crate::service::configure_no_window_tokio(&mut cmd);
     cmd.args(["--entry", &entry, "--params", &params])
         .current_dir(&project_root)
         .kill_on_drop(true)
@@ -359,13 +370,33 @@ pub async fn start_debug_session(
         });
     }
 
+    // Watch child process exit so callers are notified automatically when the engine window closes.
+    let (child_kill_tx, mut child_kill_rx) = oneshot::channel::<()>();
+    let host_for_wait = Arc::clone(&host);
+    let ev_tx_for_wait = event_tx.clone();
+    let child_task = tokio::spawn(async move {
+        tokio::select! {
+            _ = child.wait() => {
+                host_for_wait.close();
+                if let Some(tx) = &ev_tx_for_wait {
+                    let _ = tx.try_send(DebugEvent::SessionStopped);
+                }
+            }
+            _ = &mut child_kill_rx => {
+                let _ = child.kill().await;
+                let _ = child.wait().await;
+            }
+        }
+    });
+
     Ok(DebugSession {
         host,
         mode: SessionMode::Native,
         headless,
         url: None,
         attach_endpoint: None,
-        child: Some(child),
+        child_kill_tx: Some(child_kill_tx),
+        child_task: Some(child_task),
         static_server: None,
     })
 }

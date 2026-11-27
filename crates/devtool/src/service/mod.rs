@@ -220,6 +220,15 @@ pub async fn http_get_bytes(url: &str) -> Result<Vec<u8>> {
     .await?
 }
 
+/// Stream a download to `dest_file`, emitting progress and respecting cancellation (no checksum check).
+pub async fn download_to_file(
+    url: &str,
+    dest_file: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
+    download_to_file_impl(url, dest_file, None, reporter).await
+}
+
 /// Stream a download to `dest_file` while computing SHA-256, emitting progress, and respecting cancellation.
 pub async fn download_to_file_verified(
     url: &str,
@@ -227,10 +236,24 @@ pub async fn download_to_file_verified(
     expected_sha256: &str,
     reporter: &ServiceReporter,
 ) -> Result<()> {
+    download_to_file_impl(
+        url,
+        dest_file,
+        Some(expected_sha256.to_ascii_lowercase()),
+        reporter,
+    )
+    .await
+}
+
+async fn download_to_file_impl(
+    url: &str,
+    dest_file: &Path,
+    expected_sha256: Option<String>,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     reporter.cancel.check()?;
     let url = url.to_string();
     let dest = dest_file.to_path_buf();
-    let expected = expected_sha256.to_ascii_lowercase();
     let reporter = reporter.clone();
 
     tokio::task::spawn_blocking(move || -> Result<()> {
@@ -252,7 +275,7 @@ pub async fn download_to_file_verified(
 
         let mut reader = resp.into_body().into_reader();
         let mut file = File::create(&dest)?;
-        let mut hasher = Sha256Context::new(&SHA256);
+        let mut hasher = expected_sha256.as_ref().map(|_| Sha256Context::new(&SHA256));
         let mut buf = [0u8; 64 * 1024];
         let mut downloaded = 0u64;
 
@@ -267,16 +290,20 @@ pub async fn download_to_file_verified(
                 break;
             }
             file.write_all(&buf[..n])?;
-            hasher.update(&buf[..n]);
+            if let Some(h) = &mut hasher {
+                h.update(&buf[..n]);
+            }
             downloaded += n as u64;
             reporter.progress(downloaded, total_bytes);
         }
         file.flush()?;
 
-        let actual = hex_lower(hasher.finish().as_ref());
-        if actual != expected {
-            let _ = fs::remove_file(&dest);
-            bail!("SHA-256 mismatch!\n  Expected: {expected}\n  Actual:   {actual}");
+        if let (Some(expected), Some(h)) = (expected_sha256, hasher) {
+            let actual = hex_lower(h.finish().as_ref());
+            if actual != expected {
+                let _ = fs::remove_file(&dest);
+                bail!("SHA-256 mismatch!\n  Expected: {expected}\n  Actual:   {actual}");
+            }
         }
         Ok(())
     })
@@ -297,4 +324,27 @@ pub fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Configure a `std::process::Command` so it does not flash a console window on Windows.
+pub fn configure_no_window_std(cmd: &mut std::process::Command) -> &mut std::process::Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
+/// Configure a `tokio::process::Command` so it does not flash a console window on Windows.
+pub fn configure_no_window_tokio(
+    cmd: &mut tokio::process::Command,
+) -> &mut tokio::process::Command {
+    #[cfg(windows)]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
 }

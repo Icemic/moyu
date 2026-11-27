@@ -59,14 +59,17 @@ mod app {
     use crate::model::tasks::{LogLevel, TaskEvent, TaskLogEntry, TasksModel};
     use crate::service::debug::{DebugSession, SessionOptions, start_debug_session};
     use crate::service::editor::{
-        DetectedEditor, detect_editors, open_in_editor, open_in_file_manager,
+        DetectedEditor, detect_editors, open_in_editor, open_in_file_manager, open_url_in_browser,
     };
     use crate::service::engine::{
         download_platforms, fetch_versions_json, load_config, load_meta, resolve_update_platforms,
         switch_active_version, try_detect_platform,
     };
-    use crate::service::init::{ProjectTemplate, create_project};
-    use crate::service::node::{detect_env, generate_json_schema, install_managed_node};
+    use crate::service::init::{create_project, validate_project_name};
+    use crate::service::node::{
+        detect_env, generate_json_schema, install_managed_node, run_project_install,
+        uninstall_managed_node,
+    };
     use crate::service::pack::{PackOptions, pack_project};
     use crate::service::project::{
         ProjectConfigPatch, check_multi_res_assets, load_index_summary, load_project_opened_event,
@@ -95,7 +98,6 @@ mod app {
         ConfigChannel,
         SettingsTheme,
         SettingsLocale,
-        CreateTemplate,
         DownloadChannel,
         DownloadVersion,
         PackPlatform,
@@ -155,7 +157,6 @@ mod app {
         // Create project dialog
         pub init_name_input: Entity<TextInput>,
         pub init_dir_input: Entity<TextInput>,
-        pub init_template: ProjectTemplate,
         // Engine download dialog
         pub selected_channel: String,
         pub selected_version: Option<String>,
@@ -170,6 +171,7 @@ mod app {
         // V2 Visual Debugger
         pub debug: DebugModel,
         pub debug_session: Option<Arc<tokio::sync::Mutex<DebugSession>>>,
+        debug_session_gen: u64,
         pub debug_mode: SessionMode,
         pub debug_headless: bool,
         pub debug_collapsed_nodes: BTreeSet<u32>,
@@ -250,7 +252,6 @@ mod app {
                 cfg_stage_size_input,
                 init_name_input,
                 init_dir_input,
-                init_template: ProjectTemplate::Basic,
                 selected_channel: DEFAULT_CHANNEL.to_string(),
                 selected_version: None,
                 selected_platforms,
@@ -262,6 +263,7 @@ mod app {
                 android_password_input,
                 debug: DebugModel::default(),
                 debug_session: None,
+                debug_session_gen: 0,
                 debug_mode: SessionMode::Native,
                 debug_headless: false,
                 debug_collapsed_nodes: BTreeSet::new(),
@@ -561,11 +563,31 @@ mod app {
             cx.notify();
         }
 
+        pub fn remove_recent_project(&mut self, path: &std::path::Path, cx: &mut Context<Self>) {
+            if self.global_config.remove_recent_project(path) {
+                let _ = save_global_config(&self.global_config);
+                cx.notify();
+            }
+        }
+
         pub fn open_project_path(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+            self.active_popover = None;
+            if !path.is_dir() || !path.join("index.json").is_file() {
+                if self.global_config.remove_recent_project(&path) {
+                    let _ = save_global_config(&self.global_config);
+                }
+                let i18n = I18n::new(self.global_config.locale);
+                self.push_log(
+                    LogLevel::Warn,
+                    i18n.project_not_found_removed(&path.display().to_string()),
+                    cx,
+                );
+                return;
+            }
+
             self.stop_debug_session(cx);
             self.config_editing = false;
             self.config_save_error = None;
-            self.active_popover = None;
 
             match load_project_opened_event(&path) {
                 Ok(ev) => {
@@ -664,24 +686,54 @@ mod app {
                 self.push_log(LogLevel::Warn, "Please enter a project name.", cx);
                 return;
             }
+            if let Err(err) = validate_project_name(&name) {
+                self.push_log(LogLevel::Error, format!("{err:#}"), cx);
+                return;
+            }
             if parent_text.is_empty() {
                 self.push_log(LogLevel::Warn, "Please choose a parent directory.", cx);
                 return;
             }
             let target_dir = PathBuf::from(parent_text).join(&name);
-            match create_project(&name, self.init_template, &target_dir) {
-                Ok(()) => {
-                    self.active_dialog = None;
-                    self.init_name_input.update(cx, |i, cx| i.set_text("", cx));
-                    self.push_log(
-                        LogLevel::Success,
-                        format!("Created project at {}", target_dir.display()),
-                        cx,
-                    );
-                    self.open_project_path(target_dir, cx);
-                }
-                Err(err) => self.push_log(LogLevel::Error, format!("{err:#}"), cx),
+            if target_dir.exists() {
+                self.push_log(
+                    LogLevel::Error,
+                    format!("Directory \"{}\" already exists.", target_dir.display()),
+                    cx,
+                );
+                return;
             }
+
+            self.active_dialog = None;
+            self.init_name_input.update(cx, |i, cx| i.set_text("", cx));
+            let reporter = self.begin_task(format!("Creating project {name}..."), cx);
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+            let dir_for_task = target_dir.clone();
+            let name_for_task = name.clone();
+            let handle = rt.spawn(async move {
+                let res = create_project(&name_for_task, &dir_for_task, &reporter).await;
+                drop(reporter);
+                res
+            });
+
+            cx.spawn(async move |this, cx| {
+                let res = handle.await;
+                let _ = this.update(cx, |app, cx| {
+                    app.clear_active_task(cx);
+                    match res {
+                        Ok(Ok(created)) => {
+                            if let Some(ver) = created.managed_node_version {
+                                app.global_config.managed_node_version = Some(ver);
+                                let _ = save_global_config(&app.global_config);
+                            }
+                            app.open_project_path(target_dir, cx);
+                        }
+                        Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
+                        Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
+                    }
+                });
+            })
+            .detach();
         }
 
         pub fn fetch_engine_manifest(&mut self, cx: &mut Context<Self>) {
@@ -1027,6 +1079,52 @@ mod app {
             .detach();
         }
 
+        pub fn uninstall_managed_node_action(&mut self, cx: &mut Context<Self>) {
+            match uninstall_managed_node() {
+                Ok(()) => {
+                    self.global_config.managed_node_version = None;
+                    let _ = save_global_config(&self.global_config);
+                    self.refresh_env(cx);
+                    self.push_log(LogLevel::Success, "Uninstalled managed Node.js LTS.", cx);
+                }
+                Err(err) => self.push_log(LogLevel::Error, format!("{err:#}"), cx),
+            }
+        }
+
+        pub fn start_install_deps(&mut self, cx: &mut Context<Self>) {
+            let Some(root) = self.project.root.clone() else {
+                self.push_log(LogLevel::Warn, "Open a project first.", cx);
+                return;
+            };
+            let reporter = self.begin_task("Installing project dependencies...", cx);
+            let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
+            let handle = rt.spawn(async move {
+                let res = run_project_install(&root, &reporter).await;
+                drop(reporter);
+                res
+            });
+
+            cx.spawn(async move |this, cx| {
+                let res = handle.await;
+                let _ = this.update(cx, |app, cx| {
+                    app.clear_active_task(cx);
+                    match res {
+                        Ok(Ok(())) => {
+                            app.refresh_env(cx);
+                            app.push_log(
+                                LogLevel::Success,
+                                "Project dependencies installed.",
+                                cx,
+                            );
+                        }
+                        Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
+                        Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
+                    }
+                });
+            })
+            .detach();
+        }
+
         pub fn set_theme(
             &mut self,
             pref: ThemePreference,
@@ -1094,16 +1192,37 @@ mod app {
                 }
             };
 
+            self.debug_session_gen = self.debug_session_gen.wrapping_add(1);
+            let session_gen = self.debug_session_gen;
+
             let (ev_tx, ev_rx) = async_channel::unbounded();
             let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
 
             cx.spawn(async move |this, cx| {
                 while let Ok(ev) = ev_rx.recv().await {
+                    let mut should_break = false;
                     let _ = this.update(cx, |app, cx| {
+                        if app.debug_session_gen != session_gen {
+                            should_break = true;
+                            return;
+                        }
+                        if matches!(ev, DebugEvent::SessionStopped) {
+                            app.debug_session = None;
+                            app.debug_selected_node = None;
+                            app.debug_selected_props = None;
+                            app.debug.apply(DebugEvent::SessionStopped);
+                            app.push_log(LogLevel::Info, "Engine exited; debug session stopped.", cx);
+                            cx.notify();
+                            should_break = true;
+                            return;
+                        }
                         if app.debug.apply(ev) {
                             cx.notify();
                         }
                     });
+                    if should_break {
+                        break;
+                    }
                 }
             })
             .detach();
@@ -1112,10 +1231,34 @@ mod app {
             cx.spawn(async move |this, cx| {
                 let res = handle.await;
                 let _ = this.update(cx, |app, cx| {
+                    if app.debug_session_gen != session_gen {
+                        return;
+                    }
                     match res {
                         Ok(Ok(session)) => {
+                            if session.is_child_finished() {
+                                app.debug_session = None;
+                                app.debug.apply(DebugEvent::SessionStopped);
+                                cx.notify();
+                                return;
+                            }
+                            let web_url = session.url.clone();
                             app.debug_session = Some(Arc::new(tokio::sync::Mutex::new(session)));
                             app.push_log(LogLevel::Success, "Debug session started.", cx);
+                            if let Some(url) = web_url {
+                                match open_url_in_browser(&url) {
+                                    Ok(()) => app.push_log(
+                                        LogLevel::Info,
+                                        format!("Opened browser: {url}"),
+                                        cx,
+                                    ),
+                                    Err(err) => app.push_log(
+                                        LogLevel::Warn,
+                                        format!("Failed to open browser: {err:#}"),
+                                        cx,
+                                    ),
+                                }
+                            }
                         }
                         Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
                         Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
@@ -1127,6 +1270,7 @@ mod app {
         }
 
         pub fn stop_debug_session(&mut self, cx: &mut Context<Self>) {
+            self.debug_session_gen = self.debug_session_gen.wrapping_add(1);
             if let Some(session_arc) = self.debug_session.take() {
                 let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
                 rt.spawn(async move {
@@ -1559,9 +1703,9 @@ mod app {
 
             let tabs: &[(NavTab, &str)] = &[
                 (NavTab::Development, i18n.tab_development()),
+                (NavTab::Debug, i18n.tab_debug()),
                 (NavTab::Engine, i18n.tab_engine()),
                 (NavTab::Pack, i18n.tab_pack()),
-                (NavTab::Debug, i18n.tab_debug()),
             ];
 
             div()
@@ -1652,6 +1796,8 @@ mod app {
                                         .children(recent_entries.into_iter().enumerate().map(
                                             |(idx, (name, path, is_cur))| {
                                                 let path_str = path.display().to_string();
+                                                let open_path = path.clone();
+                                                let remove_path = path;
                                                 div()
                                                     .id(("recent-proj-item", idx))
                                                     .px(px(8.0))
@@ -1676,7 +1822,10 @@ mod app {
                                                         cx.stop_propagation();
                                                     })
                                                     .on_click(cx.listener(move |this, _, _, cx| {
-                                                        this.open_project_path(path.clone(), cx);
+                                                        this.open_project_path(
+                                                            open_path.clone(),
+                                                            cx,
+                                                        );
                                                     }))
                                                     .child(
                                                         div()
@@ -1707,6 +1856,45 @@ mod app {
                                                             14.0,
                                                             theme.meta,
                                                         ))
+                                                    })
+                                                    .when(!is_cur, |r| {
+                                                        r.child(
+                                                            div()
+                                                                .id(("recent-proj-remove", idx))
+                                                                .w(px(22.0))
+                                                                .h(px(22.0))
+                                                                .flex_shrink_0()
+                                                                .rounded(px(3.0))
+                                                                .flex()
+                                                                .items_center()
+                                                                .justify_center()
+                                                                .cursor_pointer()
+                                                                .hover(move |s| {
+                                                                    s.bg(theme
+                                                                        .destructive
+                                                                        .opacity(0.16))
+                                                                })
+                                                                .on_mouse_down(
+                                                                    MouseButton::Left,
+                                                                    |_, _, cx| {
+                                                                        cx.stop_propagation();
+                                                                    },
+                                                                )
+                                                                .on_click(cx.listener(
+                                                                    move |this, _, _, cx| {
+                                                                        cx.stop_propagation();
+                                                                        this.remove_recent_project(
+                                                                            &remove_path,
+                                                                            cx,
+                                                                        );
+                                                                    },
+                                                                ))
+                                                                .child(icon(
+                                                                    IconName::X,
+                                                                    13.0,
+                                                                    theme.destructive,
+                                                                )),
+                                                        )
                                                     })
                                             },
                                         ))

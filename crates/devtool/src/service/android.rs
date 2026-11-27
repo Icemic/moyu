@@ -583,6 +583,7 @@ async fn run_gradle_build(
         c
     };
 
+    crate::service::configure_no_window_tokio(&mut cmd);
     cmd.current_dir(workdir)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

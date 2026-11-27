@@ -56,6 +56,14 @@ impl DevtoolGlobalConfig {
         self.recent_projects.insert(0, path);
         self.recent_projects.truncate(MAX_RECENT_PROJECTS);
     }
+
+    /// Remove `path` from `recent_projects`. Returns `true` if an entry was removed.
+    #[allow(dead_code)]
+    pub fn remove_recent_project(&mut self, path: &Path) -> bool {
+        let before = self.recent_projects.len();
+        self.recent_projects.retain(|p| p != path);
+        self.recent_projects.len() != before
+    }
 }
 
 /// Global user directory (`~/.moyu`).

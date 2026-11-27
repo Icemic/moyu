@@ -9,7 +9,6 @@ use crate::gui::theme::Theme;
 use crate::gui::ui::button::{ButtonVariant, button, icon_button, sm_button};
 use crate::gui::ui::dropdown::{menu_item, select_dropdown};
 use crate::gui::ui::icon::IconName;
-use crate::service::init::ProjectTemplate;
 
 fn modal_shell(
     id: usize,
@@ -236,34 +235,6 @@ pub fn render_create_project_dialog(
     i18n: I18n,
     cx: &mut Context<DevtoolApp>,
 ) -> AnyElement {
-    let template = app.init_template;
-    let tpl_open = app.active_popover == Some(ActivePopover::CreateTemplate);
-    let tpl_label = match template {
-        ProjectTemplate::Basic => "Basic",
-        ProjectTemplate::Advanced => "Advanced",
-    };
-    let tpl_items: Vec<AnyElement> = [
-        (ProjectTemplate::Basic, "Basic"),
-        (ProjectTemplate::Advanced, "Advanced"),
-    ]
-    .into_iter()
-    .enumerate()
-    .map(|(i, (tpl, label))| {
-        menu_item(
-            ("dlg-tpl-opt", i),
-            label,
-            template == tpl,
-            theme,
-            cx.listener(move |this, _, _, cx| {
-                this.init_template = tpl;
-                this.active_popover = None;
-                cx.notify();
-            }),
-        )
-        .into_any_element()
-    })
-    .collect();
-
     let body = div()
         .flex()
         .flex_col()
@@ -280,30 +251,6 @@ pub fn render_create_project_dialog(
                         .child(i18n.project_name()),
                 )
                 .child(app.init_name_input.clone()),
-        )
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap(px(6.0))
-                .child(
-                    div()
-                        .text_size(px(12.0))
-                        .text_color(theme.meta)
-                        .child(i18n.scaffold_label()),
-                )
-                .child(select_dropdown(
-                    "dlg-tpl-select",
-                    tpl_label,
-                    tpl_open,
-                    388.0,
-                    false,
-                    theme,
-                    cx.listener(|this, _, _, cx| {
-                        this.toggle_popover(ActivePopover::CreateTemplate, cx);
-                    }),
-                    tpl_items,
-                )),
         )
         .child(
             div()
