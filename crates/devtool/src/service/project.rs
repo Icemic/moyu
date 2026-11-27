@@ -290,11 +290,10 @@ fn parse_variant_scale(file_name: &str) -> Option<f64> {
     if whole.is_empty() || !whole.bytes().all(|b| b.is_ascii_digit()) {
         return None;
     }
-    if let Some(frac) = parts.next() {
-        if frac.is_empty() || !frac.bytes().all(|b| b.is_ascii_digit()) || parts.next().is_some() {
+    if let Some(frac) = parts.next()
+        && (frac.is_empty() || !frac.bytes().all(|b| b.is_ascii_digit()) || parts.next().is_some()) {
             return None;
         }
-    }
     let scale: f64 = digits.parse().ok()?;
     (scale > 0.0).then_some(scale)
 }

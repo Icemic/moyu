@@ -1004,7 +1004,7 @@ mod app {
                 .project
                 .root
                 .clone()
-                .unwrap_or_else(|| std::env::temp_dir());
+                .unwrap_or_else(std::env::temp_dir);
             let dir = base_dir.join(".moyu").join("screenshots");
             let filename = format!("shot-{}.webp", chrono::Utc::now().format("%Y%m%d%H%M%S"));
             let path = dir.join(filename);

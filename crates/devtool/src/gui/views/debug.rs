@@ -350,11 +350,9 @@ pub fn render_debug_view(
                                         .on_click(cx.listener(move |this, _, _, cx| {
                                             if row.has_children
                                                 && this.debug_selected_node == Some(node_id)
-                                            {
-                                                if !this.debug_collapsed_nodes.remove(&node_id) {
+                                                && !this.debug_collapsed_nodes.remove(&node_id) {
                                                     this.debug_collapsed_nodes.insert(node_id);
                                                 }
-                                            }
                                             this.debug_select_node(node_id, cx);
                                         }))
                                         .child(text)
