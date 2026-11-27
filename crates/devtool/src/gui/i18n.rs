@@ -86,9 +86,13 @@ impl I18n {
 
     pub fn project_not_found_removed(&self, path: &str) -> String {
         match self.locale {
-            LocalePreference::ZhCn => format!("工程目录不存在或缺少 index.json，已从列表移除：{path}"),
+            LocalePreference::ZhCn => {
+                format!("工程目录不存在或缺少 index.json，已从列表移除：{path}")
+            }
             LocalePreference::EnUs => {
-                format!("Project directory not found or missing index.json; removed from list: {path}")
+                format!(
+                    "Project directory not found or missing index.json; removed from list: {path}"
+                )
             }
         }
     }

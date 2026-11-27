@@ -32,9 +32,8 @@ mod app {
     use std::sync::Arc;
 
     use gpui::{
-        App, Bounds, Context, Entity, Global, MouseButton, PathPromptOptions, Window,
-        WindowBounds, WindowControlArea, WindowOptions, deferred, div, img, point, prelude::*, px,
-        size,
+        App, Bounds, Context, Entity, Global, MouseButton, PathPromptOptions, Window, WindowBounds,
+        WindowControlArea, WindowOptions, deferred, div, img, point, prelude::*, px, size,
     };
 
     use crate::config::{
@@ -321,7 +320,12 @@ mod app {
             cx.notify();
         }
 
-        pub fn push_log(&mut self, level: LogLevel, line: impl Into<String>, cx: &mut Context<Self>) {
+        pub fn push_log(
+            &mut self,
+            level: LogLevel,
+            line: impl Into<String>,
+            cx: &mut Context<Self>,
+        ) {
             let text = line.into();
             self.status_message = text.clone();
             self.status_is_error = matches!(level, LogLevel::Error);
@@ -513,8 +517,10 @@ mod app {
                 .and_then(|m| m.engine_channel.clone())
                 .unwrap_or_else(|| self.engine.config.channel.clone());
 
-            self.cfg_title_input.update(cx, |i, cx| i.set_text(title, cx));
-            self.cfg_entry_input.update(cx, |i, cx| i.set_text(entry, cx));
+            self.cfg_title_input
+                .update(cx, |i, cx| i.set_text(title, cx));
+            self.cfg_entry_input
+                .update(cx, |i, cx| i.set_text(entry, cx));
             self.cfg_window_size_input
                 .update(cx, |i, cx| i.set_text(win_size, cx));
             self.cfg_stage_size_input
@@ -1111,11 +1117,7 @@ mod app {
                     match res {
                         Ok(Ok(())) => {
                             app.refresh_env(cx);
-                            app.push_log(
-                                LogLevel::Success,
-                                "Project dependencies installed.",
-                                cx,
-                            );
+                            app.push_log(LogLevel::Success, "Project dependencies installed.", cx);
                         }
                         Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
                         Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
@@ -1211,7 +1213,11 @@ mod app {
                             app.debug_selected_node = None;
                             app.debug_selected_props = None;
                             app.debug.apply(DebugEvent::SessionStopped);
-                            app.push_log(LogLevel::Info, "Engine exited; debug session stopped.", cx);
+                            app.push_log(
+                                LogLevel::Info,
+                                "Engine exited; debug session stopped.",
+                                cx,
+                            );
                             cx.notify();
                             should_break = true;
                             return;
@@ -1495,11 +1501,7 @@ mod app {
             let Some(bytes) = self.debug_screenshot_bytes.clone() else {
                 return;
             };
-            let base_dir = self
-                .project
-                .root
-                .clone()
-                .unwrap_or_else(std::env::temp_dir);
+            let base_dir = self.project.root.clone().unwrap_or_else(std::env::temp_dir);
             let dir = base_dir.join(".moyu").join("screenshots");
             let filename = format!("shot-{}.webp", chrono::Utc::now().format("%Y%m%d%H%M%S"));
             let path = dir.join(filename);
@@ -1538,7 +1540,9 @@ mod app {
                     .flex_row()
                     .items_center()
                     .window_control_area(WindowControlArea::Drag)
-                    .when(!is_fullscreen, |d| d.child(div().w(px(74.0)).flex_shrink_0()))
+                    .when(!is_fullscreen, |d| {
+                        d.child(div().w(px(74.0)).flex_shrink_0())
+                    })
                     .child(
                         div()
                             .flex_1()
@@ -1555,7 +1559,9 @@ mod app {
                                     .child(app_title),
                             ),
                     )
-                    .when(!is_fullscreen, |d| d.child(div().w(px(74.0)).flex_shrink_0()))
+                    .when(!is_fullscreen, |d| {
+                        d.child(div().w(px(74.0)).flex_shrink_0())
+                    })
             }
 
             #[cfg(not(target_os = "macos"))]
@@ -1765,12 +1771,7 @@ mod app {
                                     this.toggle_popover(ActivePopover::ProjectMenu, cx);
                                 }))
                                 .child(icon(IconName::Folder, 14.0, theme.meta))
-                                .child(
-                                    div()
-                                        .max_w(px(160.0))
-                                        .overflow_hidden()
-                                        .child(project_name),
-                                )
+                                .child(div().max_w(px(160.0)).overflow_hidden().child(project_name))
                                 .child(icon(IconName::ChevronDown, 14.0, theme.meta)),
                         )
                         .when(project_menu_open, |d| {
@@ -2005,34 +2006,29 @@ mod app {
                         })),
                 )
                 .child(
-                    div()
-                        .pb(px(3.0))
-                        .flex_shrink_0()
-                        .child(
-                            div()
-                                .id("btn-open-settings")
-                                .h(px(28.0))
-                                .px(px(8.0))
-                                .rounded(px(4.0))
-                                .hover(move |s| {
-                                    s.bg(theme.accent).text_color(theme.accent_foreground)
-                                })
-                                .text_size(px(13.0))
-                                .line_height(px(18.0))
-                                .text_color(theme.foreground)
-                                .flex()
-                                .flex_row()
-                                .items_center()
-                                .gap(px(5.0))
-                                .cursor_pointer()
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.active_popover = None;
-                                    this.active_dialog = Some(ActiveDialog::Settings);
-                                    cx.notify();
-                                }))
-                                .child(icon(IconName::Settings, 14.0, theme.meta))
-                                .child(i18n.settings()),
-                        ),
+                    div().pb(px(3.0)).flex_shrink_0().child(
+                        div()
+                            .id("btn-open-settings")
+                            .h(px(28.0))
+                            .px(px(8.0))
+                            .rounded(px(4.0))
+                            .hover(move |s| s.bg(theme.accent).text_color(theme.accent_foreground))
+                            .text_size(px(13.0))
+                            .line_height(px(18.0))
+                            .text_color(theme.foreground)
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap(px(5.0))
+                            .cursor_pointer()
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.active_popover = None;
+                                this.active_dialog = Some(ActiveDialog::Settings);
+                                cx.notify();
+                            }))
+                            .child(icon(IconName::Settings, 14.0, theme.meta))
+                            .child(i18n.settings()),
+                    ),
                 )
         }
     }

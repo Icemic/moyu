@@ -190,7 +190,10 @@ pub fn save_project_config(project_root: &Path, patch: &ProjectConfigPatch) -> R
         serde_json::Value::String(engine_channel.to_string()),
     );
 
-    fs::write(&index_path, serde_json::to_string_pretty(&index_val)? + "\n")?;
+    fs::write(
+        &index_path,
+        serde_json::to_string_pretty(&index_val)? + "\n",
+    )?;
     fs::write(&moyu_path, serde_json::to_string_pretty(&moyu_val)? + "\n")?;
     Ok(())
 }
@@ -396,9 +399,10 @@ fn parse_variant_scale(file_name: &str) -> Option<f64> {
         return None;
     }
     if let Some(frac) = parts.next()
-        && (frac.is_empty() || !frac.bytes().all(|b| b.is_ascii_digit()) || parts.next().is_some()) {
-            return None;
-        }
+        && (frac.is_empty() || !frac.bytes().all(|b| b.is_ascii_digit()) || parts.next().is_some())
+    {
+        return None;
+    }
     let scale: f64 = digits.parse().ok()?;
     (scale > 0.0).then_some(scale)
 }

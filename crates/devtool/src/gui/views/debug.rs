@@ -4,12 +4,12 @@ use std::collections::BTreeSet;
 
 use gpui::{AnyElement, Context, div, img, prelude::*, px};
 
-use crate::gui::{ActivePopover, DevtoolApp};
 use crate::gui::i18n::I18n;
 use crate::gui::theme::Theme;
 use crate::gui::ui::button::{ButtonVariant, button, sm_button};
 use crate::gui::ui::card::{muted_panel, panel, section_heading, status_dot};
 use crate::gui::ui::dropdown::{menu_item, select_dropdown};
+use crate::gui::{ActivePopover, DevtoolApp};
 use crate::model::debug::{DebugConnectionStatus, NodeSummary, SessionMode};
 
 struct FlatTreeRow {
@@ -282,21 +282,14 @@ pub fn render_debug_view(
                     .bg(theme.card)
                     .border_1()
                     .border_color(theme.rule)
-                    .child(
-                        div()
-                            .text_size(px(12.0))
-                            .text_color(theme.meta)
-                            .child(ep),
-                    )
+                    .child(div().text_size(px(12.0)).text_color(theme.meta).child(ep))
                     .child(sm_button(
                         "dbg-copy-ep",
                         i18n.dbg_copy(),
                         ButtonVariant::Ghost,
                         theme,
                         cx.listener(move |this, _, _, cx| {
-                            cx.write_to_clipboard(gpui::ClipboardItem::new_string(
-                                ep_copy.clone(),
-                            ));
+                            cx.write_to_clipboard(gpui::ClipboardItem::new_string(ep_copy.clone()));
                             this.push_log(
                                 crate::model::tasks::LogLevel::Info,
                                 "Copied debug endpoint to clipboard.",

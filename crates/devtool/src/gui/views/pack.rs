@@ -2,12 +2,12 @@
 
 use gpui::{AnyElement, Context, div, prelude::*, px};
 
-use crate::gui::{ActivePopover, DevtoolApp, PackTargetGroup};
 use crate::gui::i18n::I18n;
 use crate::gui::theme::Theme;
 use crate::gui::ui::button::{ButtonVariant, button, sm_button};
 use crate::gui::ui::card::{detail_row, panel, section_heading};
 use crate::gui::ui::dropdown::{menu_item, select_dropdown};
+use crate::gui::{ActivePopover, DevtoolApp, PackTargetGroup};
 use crate::service::android::ANDROID_FORMATS;
 
 const DESKTOP_PLATFORMS: &[(&str, &str)] = &[
@@ -142,12 +142,7 @@ pub fn render_pack_view(
                     })
                     .child(title),
             )
-            .child(
-                div()
-                    .text_size(px(11.0))
-                    .text_color(theme.meta)
-                    .child(desc),
-            )
+            .child(div().text_size(px(11.0)).text_color(theme.meta).child(desc))
     };
 
     let targets_panel = panel(theme)

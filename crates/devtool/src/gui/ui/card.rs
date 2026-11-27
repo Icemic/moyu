@@ -69,11 +69,7 @@ pub fn detail_row(theme: Theme) -> Div {
 }
 
 pub fn status_dot(color: Hsla) -> Div {
-    div()
-        .size(px(6.0))
-        .rounded_full()
-        .bg(color)
-        .flex_shrink_0()
+    div().size(px(6.0)).rounded_full().bg(color).flex_shrink_0()
 }
 
 pub fn chip(label: impl Into<SharedString>, theme: Theme) -> Div {

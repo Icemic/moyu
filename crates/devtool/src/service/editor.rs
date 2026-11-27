@@ -610,7 +610,7 @@ pub fn open_url_in_browser(url: &str) -> Result<()> {
             .stderr(Stdio::null())
             .spawn()
             .with_context(|| format!("Failed to open browser for {url}"))?;
-        return Ok(());
+        Ok(())
     }
     #[cfg(target_os = "macos")]
     {
@@ -648,7 +648,7 @@ pub fn open_in_file_manager(dir: &Path) -> Result<()> {
             .stderr(Stdio::null())
             .spawn()
             .with_context(|| format!("Failed to open Explorer for {}", dir.display()))?;
-        return Ok(());
+        Ok(())
     }
     #[cfg(target_os = "macos")]
     {
@@ -711,9 +711,8 @@ pub fn open_in_editor(editor: &DetectedEditor, project_root: &Path) -> Result<()
             // does not split subcommands).
             if let Some(bin_dir) = crate::service::node::managed_node_bin_dir() {
                 let ps_bin = ps_single_quote(&bin_dir.display().to_string());
-                let init_cmd = format!(
-                    "$env:PATH = '{ps_bin}' + [IO.Path]::PathSeparator + $env:PATH"
-                );
+                let init_cmd =
+                    format!("$env:PATH = '{ps_bin}' + [IO.Path]::PathSeparator + $env:PATH");
                 cmd.arg(preferred_powershell_exe())
                     .args(["-NoExit", "-Command", &init_cmd]);
             }

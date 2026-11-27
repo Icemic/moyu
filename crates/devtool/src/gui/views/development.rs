@@ -3,7 +3,6 @@
 
 use gpui::{AnyElement, Context, MouseButton, deferred, div, prelude::*, px};
 
-use crate::gui::{ActivePopover, DevtoolApp, RunMode};
 use crate::gui::i18n::I18n;
 use crate::gui::theme::Theme;
 use crate::gui::ui::button::{ButtonVariant, button, sm_button};
@@ -12,6 +11,7 @@ use crate::gui::ui::dropdown::{
     menu_divider, menu_item, menu_section_label, popover_container, select_dropdown,
 };
 use crate::gui::ui::icon::{IconName, icon};
+use crate::gui::{ActivePopover, DevtoolApp, RunMode};
 use crate::service::editor::LauncherKind;
 
 pub fn render_development_view(
@@ -236,7 +236,10 @@ fn render_editor_split_button(
         .unwrap_or(IconName::Code);
     let editors = app.detected_editors.clone();
 
-    let groups: Vec<(&'static str, Vec<(usize, crate::service::editor::DetectedEditor)>)> = [
+    let groups: Vec<(
+        &'static str,
+        Vec<(usize, crate::service::editor::DetectedEditor)>,
+    )> = [
         (LauncherKind::Editor, i18n.detected_editors()),
         (LauncherKind::Terminal, i18n.detected_terminals()),
         (LauncherKind::Ai, i18n.detected_ai_tools()),
@@ -310,7 +313,11 @@ fn render_editor_split_button(
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.toggle_popover(ActivePopover::EditorMenu, cx);
                 }))
-                .child(icon(IconName::ChevronDown, 14.0, theme.secondary_foreground)),
+                .child(icon(
+                    IconName::ChevronDown,
+                    14.0,
+                    theme.secondary_foreground,
+                )),
         )
         .when(menu_open, |d| {
             let mut popup = popover_container("popover-editor-menu", 210.0, theme)
@@ -351,18 +358,16 @@ fn render_editor_split_button(
                 }
             }
 
-            popup = popup
-                .child(menu_divider(theme))
-                .child(menu_item(
-                    "editor-opt-redetect",
-                    i18n.redetect(),
-                    false,
-                    theme,
-                    cx.listener(|this, _, _, cx| {
-                        this.active_popover = None;
-                        this.refresh_editors(cx);
-                    }),
-                ));
+            popup = popup.child(menu_divider(theme)).child(menu_item(
+                "editor-opt-redetect",
+                i18n.redetect(),
+                false,
+                theme,
+                cx.listener(|this, _, _, cx| {
+                    this.active_popover = None;
+                    this.refresh_editors(cx);
+                }),
+            ));
 
             d.child(deferred(popup).with_priority(5))
         })
@@ -497,18 +502,14 @@ fn render_config_panel(
 ) -> AnyElement {
     let editing = app.config_editing;
     let index = app.project.index_summary.as_ref();
-    let window_title = index
-        .and_then(|s| s.window_title.as_deref())
-        .unwrap_or("-");
+    let window_title = index.and_then(|s| s.window_title.as_deref()).unwrap_or("-");
     let entry_filename = index
         .and_then(|s| s.entry_filename.as_deref())
         .unwrap_or("-");
     let window_size = index
         .and_then(|s| s.initial_surface_size.as_deref())
         .unwrap_or("-");
-    let stage_size = index
-        .and_then(|s| s.stage_size.as_deref())
-        .unwrap_or("-");
+    let stage_size = index.and_then(|s| s.stage_size.as_deref()).unwrap_or("-");
     let engine_channel = app
         .project
         .moyu_summary
@@ -599,11 +600,7 @@ fn render_config_panel(
     };
 
     panel(theme)
-        .child(section_heading(
-            i18n.project_config(),
-            Some(actions),
-            theme,
-        ))
+        .child(section_heading(i18n.project_config(), Some(actions), theme))
         .when_some(config_err, |p, err| {
             p.child(
                 div()
@@ -873,16 +870,13 @@ fn render_env_panel(
                         } else {
                             theme.warning
                         }))
-                        .child(
-                            div()
-                                .text_size(px(12.0))
-                                .text_color(theme.meta)
-                                .child(if jiti_found {
-                                    i18n.found_label()
-                                } else {
-                                    i18n.not_found_label()
-                                }),
-                        ),
+                        .child(div().text_size(px(12.0)).text_color(theme.meta).child(
+                            if jiti_found {
+                                i18n.found_label()
+                            } else {
+                                i18n.not_found_label()
+                            },
+                        )),
                 ),
         )
         .child(
@@ -924,11 +918,7 @@ fn render_env_panel(
         .into_any_element()
 }
 
-fn render_schema_panel(
-    theme: Theme,
-    i18n: I18n,
-    cx: &mut Context<DevtoolApp>,
-) -> AnyElement {
+fn render_schema_panel(theme: Theme, i18n: I18n, cx: &mut Context<DevtoolApp>) -> AnyElement {
     panel(theme)
         .child(section_heading(i18n.schema_title(), None, theme))
         .child(

@@ -83,7 +83,9 @@ impl Render for LogListView {
                                         .text_color(level_color)
                                         .child(format!("[{}]", entry.level.prefix())),
                                 )
-                                .child(div().text_color(theme.foreground).child(entry.line.clone())),
+                                .child(
+                                    div().text_color(theme.foreground).child(entry.line.clone()),
+                                ),
                         );
                     }
                     rows

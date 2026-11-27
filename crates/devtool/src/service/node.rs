@@ -153,8 +153,9 @@ pub fn detect_node() -> Option<NodeRuntimeInfo> {
 pub fn uninstall_managed_node() -> Result<()> {
     let root = managed_node_root()?;
     if root.exists() {
-        fs::remove_dir_all(&root)
-            .with_context(|| format!("Failed to remove managed Node directory {}", root.display()))?;
+        fs::remove_dir_all(&root).with_context(|| {
+            format!("Failed to remove managed Node directory {}", root.display())
+        })?;
     }
     Ok(())
 }
@@ -436,10 +437,7 @@ async fn run_pm_command(
     let root = project_root.to_path_buf();
     let node_info = tokio::task::spawn_blocking(require_node).await??;
     let path_override = if node_info.is_managed {
-        node_info
-            .executable
-            .parent()
-            .and_then(build_augmented_path)
+        node_info.executable.parent().and_then(build_augmented_path)
     } else {
         None
     };
@@ -449,13 +447,20 @@ async fn run_pm_command(
     let path_for_pm = path_override.clone();
     let rep_for_pm = reporter.clone();
     let pm = tokio::task::spawn_blocking(move || {
-        ensure_package_manager(detected_pm, &node_for_pm, path_for_pm.as_deref(), &rep_for_pm)
+        ensure_package_manager(
+            detected_pm,
+            &node_for_pm,
+            path_for_pm.as_deref(),
+            &rep_for_pm,
+        )
     })
     .await?;
 
     let mut cmd = if cfg!(windows) {
         let mut c = tokio::process::Command::new("cmd.exe");
-        c.arg("/c").arg(format!("{}.cmd", pm.binary_name())).args(args);
+        c.arg("/c")
+            .arg(format!("{}.cmd", pm.binary_name()))
+            .args(args);
         c
     } else {
         let mut c = tokio::process::Command::new(pm.binary_name());

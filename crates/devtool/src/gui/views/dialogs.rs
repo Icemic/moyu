@@ -3,12 +3,12 @@
 use gpui::{AnyElement, Context, MouseButton, div, prelude::*, px};
 
 use crate::config::{LocalePreference, ThemePreference};
-use crate::gui::{ActivePopover, DevtoolApp};
 use crate::gui::i18n::I18n;
 use crate::gui::theme::Theme;
 use crate::gui::ui::button::{ButtonVariant, button, icon_button, sm_button};
 use crate::gui::ui::dropdown::{menu_item, select_dropdown};
 use crate::gui::ui::icon::IconName;
+use crate::gui::{ActivePopover, DevtoolApp};
 
 fn modal_shell(
     id: usize,
@@ -389,102 +389,75 @@ pub fn render_download_engine_dialog(
         })
         .collect();
 
-    let body = div()
-        .flex()
-        .flex_col()
-        .gap(px(12.0))
-        .when(remote_channels.is_empty(), |d| {
-            d.child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .text_size(px(12.0))
-                            .text_color(theme.meta)
-                            .child(if fetching {
+    let body =
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(12.0))
+            .when(remote_channels.is_empty(), |d| {
+                d.child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .justify_between()
+                        .gap(px(8.0))
+                        .child(div().text_size(px(12.0)).text_color(theme.meta).child(
+                            if fetching {
                                 i18n.fetching_manifest()
                             } else {
                                 i18n.load_manifest_hint()
+                            },
+                        ))
+                        .child(sm_button(
+                            "dlg-fetch-manifest",
+                            i18n.fetch_manifest(),
+                            ButtonVariant::Secondary,
+                            theme,
+                            cx.listener(|this, _, _, cx| this.fetch_engine_manifest(cx)),
+                        )),
+                )
+            })
+            .when(!remote_channels.is_empty(), |d| {
+                d.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(6.0))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_row()
+                                .items_center()
+                                .justify_between()
+                                .child(
+                                    div()
+                                        .text_size(px(12.0))
+                                        .text_color(theme.meta)
+                                        .child(i18n.engine_channel_label()),
+                                )
+                                .child(sm_button(
+                                    "dlg-refetch-manifest",
+                                    i18n.fetch_manifest(),
+                                    ButtonVariant::Ghost,
+                                    theme,
+                                    cx.listener(|this, _, _, cx| this.fetch_engine_manifest(cx)),
+                                )),
+                        )
+                        .child(select_dropdown(
+                            "dlg-ch-select",
+                            selected_channel.clone(),
+                            ch_open,
+                            388.0,
+                            false,
+                            theme,
+                            cx.listener(|this, _, _, cx| {
+                                this.toggle_popover(ActivePopover::DownloadChannel, cx);
                             }),
-                    )
-                    .child(sm_button(
-                        "dlg-fetch-manifest",
-                        i18n.fetch_manifest(),
-                        ButtonVariant::Secondary,
-                        theme,
-                        cx.listener(|this, _, _, cx| this.fetch_engine_manifest(cx)),
-                    )),
-            )
-        })
-        .when(!remote_channels.is_empty(), |d| {
-            d.child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(6.0))
-                    .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .justify_between()
-                            .child(
-                                div()
-                                    .text_size(px(12.0))
-                                    .text_color(theme.meta)
-                                    .child(i18n.engine_channel_label()),
-                            )
-                            .child(sm_button(
-                                "dlg-refetch-manifest",
-                                i18n.fetch_manifest(),
-                                ButtonVariant::Ghost,
-                                theme,
-                                cx.listener(|this, _, _, cx| this.fetch_engine_manifest(cx)),
-                            )),
-                    )
-                    .child(select_dropdown(
-                        "dlg-ch-select",
-                        selected_channel.clone(),
-                        ch_open,
-                        388.0,
-                        false,
-                        theme,
-                        cx.listener(|this, _, _, cx| {
-                            this.toggle_popover(ActivePopover::DownloadChannel, cx);
-                        }),
-                        ch_items,
-                    )),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(6.0))
-                    .child(
-                        div()
-                            .text_size(px(12.0))
-                            .text_color(theme.meta)
-                            .child(i18n.version_label()),
-                    )
-                    .child(select_dropdown(
-                        "dlg-ver-select",
-                        selected_version.clone().unwrap_or_else(|| "-".to_string()),
-                        ver_open,
-                        388.0,
-                        false,
-                        theme,
-                        cx.listener(|this, _, _, cx| {
-                            this.toggle_popover(ActivePopover::DownloadVersion, cx);
-                        }),
-                        ver_items,
-                    )),
-            )
-            .when(!available_platforms.is_empty(), |inner| {
-                inner.child(
+                            ch_items,
+                        )),
+                )
+                .child(
                     div()
                         .flex()
                         .flex_col()
@@ -493,34 +466,65 @@ pub fn render_download_engine_dialog(
                             div()
                                 .text_size(px(12.0))
                                 .text_color(theme.meta)
-                                .child(i18n.platforms_label()),
+                                .child(i18n.version_label()),
                         )
-                        .child(div().flex().flex_row().flex_wrap().gap(px(6.0)).children(
-                            available_platforms.into_iter().enumerate().map(|(idx, plat)| {
-                                let checked = selected_platforms.contains(&plat);
-                                let plat_clone = plat.clone();
-                                sm_button(
-                                    ("dlg-plat", idx),
-                                    if checked { format!("✓ {plat}") } else { plat },
-                                    if checked {
-                                        ButtonVariant::Primary
-                                    } else {
-                                        ButtonVariant::Secondary
-                                    },
-                                    theme,
-                                    cx.listener(move |this, _, _, cx| {
-                                        if !this.selected_platforms.remove(&plat_clone) {
-                                            this.selected_platforms.insert(plat_clone.clone());
-                                        }
-                                        cx.notify();
-                                    }),
-                                )
+                        .child(select_dropdown(
+                            "dlg-ver-select",
+                            selected_version.clone().unwrap_or_else(|| "-".to_string()),
+                            ver_open,
+                            388.0,
+                            false,
+                            theme,
+                            cx.listener(|this, _, _, cx| {
+                                this.toggle_popover(ActivePopover::DownloadVersion, cx);
                             }),
+                            ver_items,
                         )),
                 )
+                .when(!available_platforms.is_empty(), |inner| {
+                    inner.child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(6.0))
+                            .child(
+                                div()
+                                    .text_size(px(12.0))
+                                    .text_color(theme.meta)
+                                    .child(i18n.platforms_label()),
+                            )
+                            .child(
+                                div().flex().flex_row().flex_wrap().gap(px(6.0)).children(
+                                    available_platforms.into_iter().enumerate().map(
+                                        |(idx, plat)| {
+                                            let checked = selected_platforms.contains(&plat);
+                                            let plat_clone = plat.clone();
+                                            sm_button(
+                                                ("dlg-plat", idx),
+                                                if checked { format!("✓ {plat}") } else { plat },
+                                                if checked {
+                                                    ButtonVariant::Primary
+                                                } else {
+                                                    ButtonVariant::Secondary
+                                                },
+                                                theme,
+                                                cx.listener(move |this, _, _, cx| {
+                                                    if !this.selected_platforms.remove(&plat_clone)
+                                                    {
+                                                        this.selected_platforms
+                                                            .insert(plat_clone.clone());
+                                                    }
+                                                    cx.notify();
+                                                }),
+                                            )
+                                        },
+                                    ),
+                                ),
+                            ),
+                    )
+                })
             })
-        })
-        .into_any_element();
+            .into_any_element();
 
     let footer = div()
         .flex()
@@ -545,12 +549,5 @@ pub fn render_download_engine_dialog(
         ))
         .into_any_element();
 
-    modal_shell(
-        3,
-        i18n.download_engine_title(),
-        theme,
-        body,
-        footer,
-        cx,
-    )
+    modal_shell(3, i18n.download_engine_title(), theme, body, footer, cx)
 }

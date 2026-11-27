@@ -64,10 +64,7 @@ async fn create_project_inner(
         bail!("Directory \"{}\" already exists.", target_dir.display());
     }
 
-    let tmp_zip = std::env::temp_dir().join(format!(
-        "moyu-framework-{}.zip",
-        uuid::Uuid::new_v4()
-    ));
+    let tmp_zip = std::env::temp_dir().join(format!("moyu-framework-{}.zip", uuid::Uuid::new_v4()));
 
     reporter.stage("Downloading latest Moyu framework...");
     reporter.info(format!("Downloading {FRAMEWORK_MAIN_ZIP_URL} ..."));
@@ -85,10 +82,8 @@ async fn create_project_inner(
     let project_name = name.to_string();
 
     let extract_res = tokio::task::spawn_blocking(move || -> Result<()> {
-        let tmp_extract = std::env::temp_dir().join(format!(
-            "moyu-framework-extract-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let tmp_extract =
+            std::env::temp_dir().join(format!("moyu-framework-extract-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&tmp_extract)?;
 
         let inner_res = (|| -> Result<()> {
@@ -98,7 +93,8 @@ async fn create_project_inner(
             zip.extract(&tmp_extract)
                 .context("Failed to extract framework ZIP archive")?;
 
-            let source_root = find_single_root_dir(&tmp_extract).unwrap_or_else(|| tmp_extract.clone());
+            let source_root =
+                find_single_root_dir(&tmp_extract).unwrap_or_else(|| tmp_extract.clone());
             copy_dir_all(&source_root, &dest)?;
             patch_project_metadata(&dest, &project_name);
             Ok(())
@@ -192,7 +188,10 @@ fn patch_project_metadata(project_root: &Path, name: &str) {
         && let Ok(mut val) = serde_json::from_str::<serde_json::Value>(&text)
         && let Some(obj) = val.as_object_mut()
     {
-        obj.insert("name".to_string(), serde_json::Value::String(name.to_string()));
+        obj.insert(
+            "name".to_string(),
+            serde_json::Value::String(name.to_string()),
+        );
         if let Ok(pretty) = serde_json::to_string_pretty(&val) {
             let _ = fs::write(&pkg_path, format!("{pretty}\n"));
         }

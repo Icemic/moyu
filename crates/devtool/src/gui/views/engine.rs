@@ -90,16 +90,13 @@ pub fn render_engine_view(
                     } else {
                         theme.meta
                     }))
-                    .child(
-                        div()
-                            .text_size(px(12.0))
-                            .text_color(theme.meta)
-                            .child(if active.is_some() {
-                                i18n.activated()
-                            } else {
-                                "-"
-                            }),
-                    )
+                    .child(div().text_size(px(12.0)).text_color(theme.meta).child(
+                        if active.is_some() {
+                            i18n.activated()
+                        } else {
+                            "-"
+                        },
+                    ))
                     .into_any_element(),
             ),
             theme,

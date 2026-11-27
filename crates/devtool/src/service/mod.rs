@@ -275,7 +275,9 @@ async fn download_to_file_impl(
 
         let mut reader = resp.into_body().into_reader();
         let mut file = File::create(&dest)?;
-        let mut hasher = expected_sha256.as_ref().map(|_| Sha256Context::new(&SHA256));
+        let mut hasher = expected_sha256
+            .as_ref()
+            .map(|_| Sha256Context::new(&SHA256));
         let mut buf = [0u8; 64 * 1024];
         let mut downloaded = 0u64;
 

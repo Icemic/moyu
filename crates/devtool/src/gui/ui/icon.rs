@@ -74,7 +74,9 @@ impl AssetSource for DevtoolAssets {
             }
             "icons/check.svg" => Some(include_bytes!("../../../assets/icons/check.svg")),
             "icons/folder.svg" => Some(include_bytes!("../../../assets/icons/folder.svg")),
-            "icons/folder-open.svg" => Some(include_bytes!("../../../assets/icons/folder-open.svg")),
+            "icons/folder-open.svg" => {
+                Some(include_bytes!("../../../assets/icons/folder-open.svg"))
+            }
             "icons/plus.svg" => Some(include_bytes!("../../../assets/icons/plus.svg")),
             "icons/settings.svg" => Some(include_bytes!("../../../assets/icons/settings.svg")),
             "icons/code.svg" => Some(include_bytes!("../../../assets/icons/code.svg")),

@@ -12,7 +12,11 @@ use crate::gui::theme::Theme;
 use crate::gui::ui::icon::{IconName, icon};
 
 /// Floating popover container styled after FishFlow's `DropdownMenuContent`.
-pub fn popover_container(id: impl Into<ElementId>, min_width: f32, theme: Theme) -> gpui::Stateful<Div> {
+pub fn popover_container(
+    id: impl Into<ElementId>,
+    min_width: f32,
+    theme: Theme,
+) -> gpui::Stateful<Div> {
     div()
         .id(id)
         .min_w(px(min_width))
