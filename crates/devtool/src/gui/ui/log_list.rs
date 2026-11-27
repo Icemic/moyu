@@ -47,7 +47,7 @@ impl Render for LogListView {
                 .flex()
                 .items_center()
                 .justify_center()
-                .text_color(theme.text_tertiary)
+                .text_color(theme.muted_foreground)
                 .text_size(px(12.0))
                 .child(self.empty_label.clone())
                 .into_any_element();
@@ -64,15 +64,15 @@ impl Render for LogListView {
                     for ix in range {
                         let entry = &this.entries[ix];
                         let level_color = match entry.level {
-                            LogLevel::Info => theme.text_secondary,
+                            LogLevel::Info => theme.meta,
                             LogLevel::Success => theme.success,
-                            LogLevel::Warn => theme.warn,
-                            LogLevel::Error => theme.danger,
+                            LogLevel::Warn => theme.warning,
+                            LogLevel::Error => theme.destructive,
                         };
                         rows.push(
                             div()
                                 .id(ix)
-                                .px(px(8.0))
+                                .px(px(6.0))
                                 .py(px(2.0))
                                 .flex()
                                 .flex_row()
@@ -83,7 +83,7 @@ impl Render for LogListView {
                                         .text_color(level_color)
                                         .child(format!("[{}]", entry.level.prefix())),
                                 )
-                                .child(div().text_color(theme.text).child(entry.line.clone())),
+                                .child(div().text_color(theme.foreground).child(entry.line.clone())),
                         );
                     }
                     rows

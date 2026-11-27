@@ -182,6 +182,18 @@ impl DebugSession {
     }
 }
 
+impl Drop for DebugSession {
+    fn drop(&mut self) {
+        if let Some(mut child) = self.child.take() {
+            let _ = child.start_kill();
+        }
+        if let Some(server) = self.static_server.take() {
+            server.close();
+        }
+        self.host.close();
+    }
+}
+
 pub async fn start_debug_session(
     options: SessionOptions,
     event_tx: Option<async_channel::Sender<DebugEvent>>,
@@ -309,6 +321,7 @@ pub async fn start_debug_session(
     let mut cmd = Command::new(&engine_path);
     cmd.args(["--entry", &entry, "--params", &params])
         .current_dir(&project_root)
+        .kill_on_drop(true)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());

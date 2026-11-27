@@ -14,13 +14,14 @@ pub enum BadgeTone {
     Danger,
 }
 
+#[allow(dead_code)]
 pub fn badge(label: impl Into<SharedString>, tone: BadgeTone, theme: Theme) -> Div {
     let (bg, fg) = match tone {
-        BadgeTone::Neutral => (theme.control_idle, theme.text_secondary),
-        BadgeTone::Accent => (theme.accent_soft, theme.accent),
-        BadgeTone::Success => (theme.surface_muted, theme.success),
-        BadgeTone::Warn => (theme.surface_muted, theme.warn),
-        BadgeTone::Danger => (theme.surface_muted, theme.danger),
+        BadgeTone::Neutral => (theme.secondary, theme.meta),
+        BadgeTone::Accent => (theme.accent, theme.info),
+        BadgeTone::Success => (theme.muted, theme.success),
+        BadgeTone::Warn => (theme.muted, theme.warning),
+        BadgeTone::Danger => (theme.muted, theme.destructive),
     };
 
     div()

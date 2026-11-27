@@ -501,14 +501,14 @@ impl Element for TextElement {
         let style = window.text_style();
 
         let (display_text, text_color) = if content.is_empty() {
-            (input.placeholder.clone(), theme.text_tertiary)
+            (input.placeholder.clone(), theme.muted_foreground)
         } else if input.masked {
             (
                 SharedString::from("•".repeat(content.chars().count())),
-                theme.text,
+                theme.foreground,
             )
         } else {
-            (content, theme.text)
+            (content, theme.foreground)
         };
 
         let run = TextRun {
@@ -531,7 +531,7 @@ impl Element for TextElement {
                 TextRun {
                     len: marked_range.end - marked_range.start,
                     underline: Some(UnderlineStyle {
-                        color: Some(theme.accent),
+                        color: Some(theme.ring),
                         thickness: px(1.5),
                         wavy: false,
                     }),
@@ -563,7 +563,7 @@ impl Element for TextElement {
                         point(bounds.left() + cursor_pos, bounds.top()),
                         size(px(1.5), bounds.bottom() - bounds.top()),
                     ),
-                    theme.accent,
+                    theme.ring,
                 )),
             )
         } else {
@@ -575,7 +575,7 @@ impl Element for TextElement {
                         point(bounds.left() + line.x_for_index(start), bounds.top()),
                         point(bounds.left() + line.x_for_index(end), bounds.bottom()),
                     ),
-                    theme.accent_soft,
+                    theme.selection_bg,
                 )),
                 None,
             )
@@ -630,11 +630,14 @@ impl Element for TextElement {
 }
 
 impl Render for TextInput {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = Theme::global(cx);
+        let is_focused = self.focus_handle.is_focused(window);
         div()
             .flex()
+            .items_center()
             .w_full()
+            .h(px(30.0))
             .key_context("DevtoolTextInput")
             .track_focus(&self.focus_handle)
             .cursor(CursorStyle::IBeam)
@@ -655,10 +658,11 @@ impl Render for TextInput {
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_move(cx.listener(Self::on_mouse_move))
             .px(px(10.0))
-            .py(px(6.0))
-            .rounded(px(6.0))
-            .bg(theme.control_idle)
-            .line_height(px(20.0))
+            .rounded(px(4.0))
+            .bg(theme.background)
+            .border_1()
+            .border_color(if is_focused { theme.ring } else { theme.input })
+            .line_height(px(18.0))
             .text_size(px(13.0))
             .child(TextElement { input: cx.entity() })
     }

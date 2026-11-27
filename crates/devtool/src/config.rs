@@ -21,6 +21,8 @@ pub enum ThemePreference {
     System,
     Light,
     Dark,
+    SolarizedLight,
+    OneDark,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -42,6 +44,8 @@ pub struct DevtoolGlobalConfig {
     pub locale: LocalePreference,
     #[serde(default)]
     pub managed_node_version: Option<String>,
+    #[serde(default)]
+    pub preferred_editor: Option<String>,
 }
 
 impl DevtoolGlobalConfig {

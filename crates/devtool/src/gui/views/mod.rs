@@ -1,7 +1,7 @@
-//! V1 MVP view renderers for `DevtoolApp`.
+//! GPUI views for the Devtool workspace and modal dialogs.
 
 pub mod debug;
+pub mod development;
+pub mod dialogs;
 pub mod engine;
-pub mod project;
-pub mod run_pack;
-pub mod settings;
+pub mod pack;

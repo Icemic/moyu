@@ -2,6 +2,7 @@
 
 pub mod android;
 pub mod debug;
+pub mod editor;
 pub mod engine;
 pub mod init;
 pub mod mcp;

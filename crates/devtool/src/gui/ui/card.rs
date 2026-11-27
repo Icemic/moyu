@@ -1,26 +1,88 @@
-//! Surface card / panel container using Gallery borderless elevation levels.
+//! FishFlow-styled panel, section heading, detail row, status dot, and chip helpers.
 
-use gpui::{Div, div, prelude::*, px};
+use gpui::{AnyElement, Div, Hsla, SharedString, div, prelude::*, px};
 
 use crate::gui::theme::Theme;
 
-pub fn card(theme: Theme) -> Div {
+pub fn panel(theme: Theme) -> Div {
     div()
-        .bg(theme.surface)
-        .rounded(px(8.0))
-        .p(px(16.0))
+        .bg(theme.card)
+        .text_color(theme.card_foreground)
+        .border_1()
+        .border_color(theme.border)
+        .rounded(px(4.0))
+        .px(px(14.0))
+        .py(px(10.0))
         .flex()
         .flex_col()
-        .gap(px(10.0))
+        .min_w_0()
 }
 
-#[allow(dead_code)]
 pub fn muted_panel(theme: Theme) -> Div {
     div()
-        .bg(theme.surface_muted)
-        .rounded(px(6.0))
-        .p(px(12.0))
+        .bg(theme.background)
+        .border_1()
+        .border_color(theme.rule)
+        .rounded(px(4.0))
+        .px(px(10.0))
+        .py(px(8.0))
         .flex()
         .flex_col()
         .gap(px(6.0))
+        .min_w_0()
+}
+
+pub fn section_heading(
+    title: impl Into<SharedString>,
+    right: Option<AnyElement>,
+    theme: Theme,
+) -> Div {
+    div()
+        .flex()
+        .flex_row()
+        .items_center()
+        .justify_between()
+        .gap(px(8.0))
+        .min_h(px(30.0))
+        .pb(px(6.0))
+        .child(
+            div()
+                .text_size(px(14.0))
+                .font_weight(gpui::FontWeight::SEMIBOLD)
+                .text_color(theme.card_foreground)
+                .child(title.into()),
+        )
+        .when_some(right, |d, el| d.child(el))
+}
+
+pub fn detail_row(theme: Theme) -> Div {
+    div()
+        .flex()
+        .flex_row()
+        .items_center()
+        .justify_between()
+        .gap(px(12.0))
+        .min_h(px(38.0))
+        .py(px(6.0))
+        .border_t_1()
+        .border_color(theme.rule)
+}
+
+pub fn status_dot(color: Hsla) -> Div {
+    div()
+        .size(px(6.0))
+        .rounded_full()
+        .bg(color)
+        .flex_shrink_0()
+}
+
+pub fn chip(label: impl Into<SharedString>, theme: Theme) -> Div {
+    div()
+        .px(px(7.0))
+        .py(px(2.0))
+        .rounded(px(3.0))
+        .bg(theme.secondary)
+        .text_color(theme.secondary_foreground)
+        .text_size(px(12.0))
+        .child(label.into())
 }

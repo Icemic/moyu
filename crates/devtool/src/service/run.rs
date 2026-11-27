@@ -60,6 +60,7 @@ async fn run_native(
     let mut child = Command::new(&engine_path)
         .args(["--entry", &entry_url])
         .current_dir(project_root)
+        .kill_on_drop(true)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -88,6 +89,7 @@ async fn run_web(
 ) -> Result<()> {
     let server = start_static_file_server(project_root, web_path, port).await?;
 
+    reporter.stage(server.url.clone());
     reporter.success(format!("Web engine server running at {}", server.url));
     reporter.info("Serving files from:");
     reporter.info(format!("  1. {} (engine)", web_path.display()));

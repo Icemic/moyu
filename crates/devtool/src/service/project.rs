@@ -91,6 +91,111 @@ pub fn load_framework_summary(project_root: &Path) -> Option<FrameworkSummary> {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ProjectConfigPatch {
+    pub window_title: String,
+    pub entry_filename: String,
+    pub initial_surface_size: String,
+    pub stage_size: String,
+    pub engine_channel: String,
+}
+
+#[allow(dead_code)]
+pub fn validate_size_string(value: &str, label: &str) -> Result<()> {
+    let trimmed = value.trim();
+    let Some((w_str, h_str)) = trimmed.split_once('x').or_else(|| trimmed.split_once('X')) else {
+        bail!("{label} must be formatted as <width>x<height> (e.g. 1280x720).");
+    };
+    let w: u32 = w_str
+        .trim()
+        .parse()
+        .map_err(|_| anyhow::anyhow!("{label} width must be a positive integer."))?;
+    let h: u32 = h_str
+        .trim()
+        .parse()
+        .map_err(|_| anyhow::anyhow!("{label} height must be a positive integer."))?;
+    if w == 0 || h == 0 {
+        bail!("{label} dimensions must be greater than zero.");
+    }
+    Ok(())
+}
+
+/// Update editable fields in `index.json` and `moyu.json` while preserving all unrelated keys.
+#[allow(dead_code)]
+pub fn save_project_config(project_root: &Path, patch: &ProjectConfigPatch) -> Result<()> {
+    let window_title = patch.window_title.trim();
+    let entry_filename = patch.entry_filename.trim();
+    let initial_surface_size = patch.initial_surface_size.trim();
+    let stage_size = patch.stage_size.trim();
+    let engine_channel = patch.engine_channel.trim();
+
+    if window_title.is_empty() {
+        bail!("Window title cannot be empty.");
+    }
+    if entry_filename.is_empty() {
+        bail!("Entry script cannot be empty.");
+    }
+    validate_size_string(initial_surface_size, "Window size")?;
+    validate_size_string(stage_size, "Stage size")?;
+    if engine_channel.is_empty() {
+        bail!("Engine channel cannot be empty.");
+    }
+
+    let index_path = project_root.join("index.json");
+    if !index_path.is_file() {
+        bail!("index.json not found in {}", project_root.display());
+    }
+    let index_text = fs::read_to_string(&index_path)?;
+    let mut index_val: serde_json::Value = serde_json::from_str(&index_text)
+        .map_err(|e| anyhow::anyhow!("Failed to parse index.json: {e}"))?;
+    let index_obj = index_val
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("index.json root must be a JSON object."))?;
+    index_obj.insert(
+        "windowTitle".to_string(),
+        serde_json::Value::String(window_title.to_string()),
+    );
+    index_obj.insert(
+        "entryFilename".to_string(),
+        serde_json::Value::String(entry_filename.to_string()),
+    );
+    index_obj.insert(
+        "initialSurfaceSize".to_string(),
+        serde_json::Value::String(initial_surface_size.to_string()),
+    );
+    index_obj.insert(
+        "stageSize".to_string(),
+        serde_json::Value::String(stage_size.to_string()),
+    );
+
+    let moyu_path = project_root.join("moyu.json");
+    let mut moyu_val: serde_json::Value = if moyu_path.is_file() {
+        let text = fs::read_to_string(&moyu_path)?;
+        serde_json::from_str(&text)
+            .map_err(|e| anyhow::anyhow!("Failed to parse moyu.json: {e}"))?
+    } else {
+        serde_json::json!({})
+    };
+    let moyu_obj = moyu_val
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("moyu.json root must be a JSON object."))?;
+    let engine_entry = moyu_obj
+        .entry("engine".to_string())
+        .or_insert_with(|| serde_json::json!({}));
+    if !engine_entry.is_object() {
+        *engine_entry = serde_json::json!({});
+    }
+    engine_entry.as_object_mut().unwrap().insert(
+        "channel".to_string(),
+        serde_json::Value::String(engine_channel.to_string()),
+    );
+
+    fs::write(&index_path, serde_json::to_string_pretty(&index_val)? + "\n")?;
+    fs::write(&moyu_path, serde_json::to_string_pretty(&moyu_val)? + "\n")?;
+    Ok(())
+}
+
+#[allow(dead_code)]
 pub fn load_project_opened_event(project_root: &Path) -> Result<ProjectEvent> {
     let index = load_index_summary(project_root)?;
     let moyu = load_moyu_summary(project_root);
