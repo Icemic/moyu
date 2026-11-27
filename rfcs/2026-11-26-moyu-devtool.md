@@ -110,9 +110,9 @@ crates/devtool/
     │   ├── pack.rs       # 桌面/Web/Android/Framework 打包与 ZIP64 归档
     │   ├── video_decoder.rs # 视频解码插件下载校验与缓存
     │   ├── android.rs    # Android 工程同步、签名与 Gradle 调度
-    │   ├── node.rs       # Node/PM/jiti 探测、build 调度、Schema 生成、托管 Node 安装
-    │   ├── editor.rs     # 跨平台编辑器 / 终端 / AI 工具探测启动与文件管理器打开
-    │   └── init.rs       # Basic / Advanced 最小工程脚手架创建
+    │   ├── node.rs       # Node/PM/jiti 探测、Corepack 自动启用、install/build、Schema、托管 Node
+    │   ├── editor.rs     # 跨平台编辑器 / 终端 / AI 工具探测启动、文件管理器与浏览器打开
+    │   └── init.rs       # 拉取 DeepSpaceMill/framework 最新 main.zip 并自动装依赖与最新引擎
     ├── cli/              # CLI 壳层（clap、隐藏密码输入、终端输出、MCP stdio）
     └── gui/              # GPUI 图形界面壳层（受 `gui` feature 控制）
 ```
@@ -128,7 +128,7 @@ crates/devtool/
    - 显式传入 `--no-gui` 或任意已知子命令（`init`、`download`、`update`、`switch`、`run`、`debug`、`mcp`、`pack`、`schema`、`ui-schema`、`--help`、`--version`）进入 **CLI 模式**。
    - 无参数或显式传入 `--gui`（且未附带子命令）进入 **GUI 模式**；若以 `--no-default-features` 编译，GUI 入口提示重新启用 `gui` feature 并返回非零退出码。
 2. **Windows 控制台行为**：
-   - Release 构建启用 `#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]`，双击启动 GUI 不弹控制台黑窗。
+   - Release 构建启用 `#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]`，双击启动 GUI 不弹控制台黑窗；所有后台控制台子进程（Node / 包管理器探测与执行、Gradle、调试引擎拉起等）统一设置 `CREATE_NO_WINDOW`（`0x0800_0000`），避免 Release 下闪烁临时黑框。
    - 仅进入 CLI 模式时按需调用 `AttachConsole(ATTACH_PARENT_PROCESS)`；GUI 模式禁止附着父终端。
    - 经管道调用（如 `moyu mcp` stdio JSON-RPC 或 `@momoyu-ink/cli` `spawn` 转发）时，标准输入输出句柄直接继承，退出码原样透传。
 
@@ -142,7 +142,7 @@ crates/devtool/
   }
   ```
 - 长耗时服务接收 `ServiceReporter`（内置执行器无关 `async_channel::Sender<TaskEvent>` 与 `CancelToken`），支持分阶段进度汇报与协作取消，取消时自动清理未完成临时文件或终止子进程。
-- **引擎子进程生命周期**：由 `service/debug.rs` 与 `service/run.rs` 拉起的原生引擎进程必须启用 `kill_on_drop(true)`；`DebugSession` 实现 `Drop` 同步调用 `start_kill()` 并关闭静态服与 WS 宿主机，避免工具退出后遗留僵尸进程。
+- **引擎子进程生命周期**：由 `service/debug.rs` 与 `service/run.rs` 拉起的原生引擎进程必须启用 `kill_on_drop(true)`；`DebugSession` 为 Native 子进程建立后台退出监听任务，游戏窗口自行关闭时自动关闭调试宿主机并发出 `DebugEvent::SessionStopped`；手动停止或 `Drop` 时发送终止信号并回收子进程、静态服与 WS 宿主机，避免遗留僵尸进程。
 
 ### 5.4 全局配置与工程配置写回
 
@@ -153,9 +153,10 @@ crates/devtool/
 
 ### 5.5 Node.js 边界、Schema 与托管 Node
 
-- **环境探测**：探测系统 `PATH` 与托管目录 `~/.moyu/node/` 下的 `node` 路径与版本号，以及项目 lockfile / `packageManager` 对应的包管理器（`yarn` / `pnpm` / `npm`）和项目 `jiti` 可用性。
+- **环境探测**：优先探测本地托管目录 `~/.moyu/node/` 下的 `node`，未安装时回退至系统 `PATH`；同时探测项目 lockfile / `packageManager` 对应的包管理器（`yarn` / `pnpm` / `npm`）和项目 `jiti` 可用性。
 - **Schema 生成（`schema` / `ui-schema` / `pack --framework`）**：通过探测到的 `node` 执行内嵌 ESM 脚本，**仅从项目及上层目录 `node_modules` 解析 `jiti`** 加载目标 `.ts` 文件并调用 Zod `.toJSONSchema({ io: 'input' })`；不做无 `jiti` 回退，缺失时直接报错提示安装项目依赖。
-- **托管 Node LTS 安装**：从官方分发源拉取最新 LTS 列表与当前平台便携归档，校验 `SHASUMS256.txt` 后解压至 `~/.moyu/node/<version>/`，仅在子进程 `PATH` 前置注入，不污染系统全局环境变量。
+- **托管 Node LTS 与依赖安装**：支持从官方分发源拉取最新 LTS 便携归档、校验 `SHASUMS256.txt` 后解压至 `~/.moyu/node/<version>/`，并支持一键卸载清除 `~/.moyu/node/`；托管 Node 仅在子进程 `PATH` 前置注入，不污染系统全局环境变量。同时提供项目依赖安装服务（`run_project_install`），使用探测到的包管理器执行 `install`。
+- **Corepack 自动启用**：当工程需要 `yarn` / `pnpm` 但当前不可用且存在 `corepack` 时，优先无权限直接执行 `corepack enable`（托管 Node 或用户可写目录无需提权）；若 Windows 系统 Node 目录受权限保护导致失败，通过原生 `ShellExecuteExW`（`runas`）临时申请 UAC 提权执行 `corepack enable`；用户取消或不可用时警告并回退至 `npm`。
 
 ### 5.6 外部工具探测与启动
 
@@ -164,7 +165,8 @@ crates/devtool/
 - **编辑器**：VS Code、VS Code Insiders、Cursor、Windsurf、Zed、WebStorm、Trae。
 - **终端**：Windows Terminal、PowerShell 7、Windows PowerShell、Git Bash、WezTerm、Alacritty、macOS Terminal / iTerm2 / Warp / Ghostty、Linux GNOME Terminal / Konsole / Kitty。
 - **AI 工具**：Antigravity、Codex App（macOS 经 `open -a`；Windows 通过用户注册表 `AppModel\Repository\Packages\OpenAI.Codex_*` 解析包根目录并调用内置 `app\resources\codex.exe app <dir>`）、Codex CLI（`codex`）、Claude Code（`claude`）、Gemini CLI（`gemini`）、OpenCode（`opencode`）、Pi（`pi`）、DeepSeek Harness（`dsh`）。
-- **文件管理器**：提供 `open_in_file_manager`（Windows `explorer` / macOS `open` / Linux `xdg-open`）。
+- **托管 Node 环境透传**：启动外部编辑器、终端与 AI 工具时，若本地存在托管 Node，动态在子进程 `PATH` 前置托管目录（不修改用户全局设置）；针对 Windows Terminal（MSIX 服务端会丢弃调用方 `PATH`），改在新建标签页的 Shell 初始化参数中注入 `$env:PATH`（使用 `[IO.Path]::PathSeparator` 避免 `;` 被 `wt.exe` 解析为子命令分隔符）。
+- **文件管理器与浏览器**：提供 `open_in_file_manager`（Windows `explorer` / macOS `open` / Linux `xdg-open`）与 `open_url_in_browser`（Windows `rundll32 url.dll,FileProtocolHandler` / macOS `open` / Linux `xdg-open`）。
 
 ### 5.7 分发与三轨发布规范
 
@@ -179,7 +181,7 @@ crates/devtool/
 
 | 子命令 | 行为与契约 |
 | :--- | :--- |
-| `moyu init [name]` | 交互向导或参数模式创建 Basic / Advanced 最小工程骨架 |
+| `moyu init [name]` | 从 `DeepSpaceMill/framework` 下载最新 `main.zip` 解压并写入工程名；若无 Node 则自动安装托管 Node LTS，自动安装 `node_modules` 并下载激活当前渠道最新引擎（本机桌面 + Web），完成后可直接运行 |
 | `moyu download` | 拉取 CDN `versions.json`（schema v2），流式下载 `.tar.zst`、校验 SHA-256 并更新 `.moyu/engine/meta.json` |
 | `moyu update` | 在当前 channel 内增量更新已下载平台集合至最新版本 |
 | `moyu switch` | 在本地已下载版本间切换 `active` 引擎 |
