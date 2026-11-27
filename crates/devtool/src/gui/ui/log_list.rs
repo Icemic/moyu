@@ -31,6 +31,11 @@ impl LogListView {
         self.empty_label = label.into();
         cx.notify();
     }
+
+    pub fn clear(&mut self, cx: &mut Context<Self>) {
+        self.entries.clear();
+        cx.notify();
+    }
 }
 
 impl Render for LogListView {

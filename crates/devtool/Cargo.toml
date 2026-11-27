@@ -24,6 +24,7 @@ chrono = "0.4"
 clap = { version = "4", features = ["derive"] }
 dirs = "6.0"
 fast-glob = "1.0"
+flate2 = "1"
 futures-util = "0.3"
 http = "1.5"
 httparse = "1.10"

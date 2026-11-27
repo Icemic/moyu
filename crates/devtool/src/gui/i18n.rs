@@ -75,6 +75,146 @@ impl I18n {
         }
     }
 
+    pub const fn create_project_title(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "新建最小工程骨架",
+            LocalePreference::EnUs => "Create New Project",
+        }
+    }
+
+    pub const fn project_name_placeholder(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "输入工程名（如 my-visual-novel）",
+            LocalePreference::EnUs => "Project name (e.g. my-visual-novel)",
+        }
+    }
+
+    pub const fn pick_parent_and_create(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "选择父目录并创建",
+            LocalePreference::EnUs => "Pick Folder & Create",
+        }
+    }
+
+    pub const fn recheck_assets(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "重新检查多分辨率资源",
+            LocalePreference::EnUs => "Recheck Multi-Res Assets",
+        }
+    }
+
+    pub const fn fetch_versions(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "拉取远端版本清单",
+            LocalePreference::EnUs => "Fetch Manifest",
+        }
+    }
+
+    pub const fn update_latest(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "一键更新当前渠道最新版",
+            LocalePreference::EnUs => "Update to Latest",
+        }
+    }
+
+    pub const fn download_selected(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "下载所选平台",
+            LocalePreference::EnUs => "Download Selected",
+        }
+    }
+
+    pub const fn local_versions(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "本地已下载引擎版本",
+            LocalePreference::EnUs => "Local Engine Versions",
+        }
+    }
+
+    pub const fn activate(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "设为激活",
+            LocalePreference::EnUs => "Activate",
+        }
+    }
+
+    pub const fn active_badge(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "当前激活",
+            LocalePreference::EnUs => "Active",
+        }
+    }
+
+    pub const fn run_native(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "启动原生运行",
+            LocalePreference::EnUs => "Run Native",
+        }
+    }
+
+    pub const fn run_web(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "启动 Web 服务 (6320)",
+            LocalePreference::EnUs => "Run Web (6320)",
+        }
+    }
+
+    pub const fn stop_task(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "停止 / 取消",
+            LocalePreference::EnUs => "Stop / Cancel",
+        }
+    }
+
+    pub const fn start_pack(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "开始打包",
+            LocalePreference::EnUs => "Start Pack",
+        }
+    }
+
+    pub const fn gen_commands_schema(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "生成 commands.schema.json",
+            LocalePreference::EnUs => "Generate commands.schema.json",
+        }
+    }
+
+    pub const fn gen_ui_schema(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "生成 ui.schema.json",
+            LocalePreference::EnUs => "Generate ui.schema.json",
+        }
+    }
+
+    pub const fn android_password_placeholder(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "Android Release 签名密码（debug-apk 留空）",
+            LocalePreference::EnUs => "Android release signing password",
+        }
+    }
+
+    pub const fn env_title(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "Node.js 与包管理器环境",
+            LocalePreference::EnUs => "Node.js & Package Managers",
+        }
+    }
+
+    pub const fn redetect_env(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "重新检测环境",
+            LocalePreference::EnUs => "Re-detect",
+        }
+    }
+
+    pub const fn install_managed_node(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "一键安装受管 Node LTS",
+            LocalePreference::EnUs => "Install Managed Node LTS",
+        }
+    }
+
     pub const fn theme_label(&self) -> &'static str {
         match self.locale {
             LocalePreference::ZhCn => "主题外观",
@@ -124,17 +264,17 @@ impl I18n {
         }
     }
 
-    pub const fn search_placeholder(&self) -> &'static str {
+    pub const fn clear_logs(&self) -> &'static str {
         match self.locale {
-            LocalePreference::ZhCn => "输入文本测试中文 IME 组合输入...",
-            LocalePreference::EnUs => "Type here to test input...",
+            LocalePreference::ZhCn => "清空",
+            LocalePreference::EnUs => "Clear",
         }
     }
 
-    pub const fn stage_placeholder_hint(&self) -> &'static str {
+    pub const fn debug_v2_placeholder(&self) -> &'static str {
         match self.locale {
-            LocalePreference::ZhCn => "阶段 3.1 基础架构与组件库已就绪，阶段 3.2 将接入完整业务页面。",
-            LocalePreference::EnUs => "Phase 3.1 shell & components ready; Phase 3.2 wires full views.",
+            LocalePreference::ZhCn => "可视化调试器（节点树、属性检查、日志流、截图预览）将在阶段 3.3（V2）接入。",
+            LocalePreference::EnUs => "Visual Debugger (node tree, props, logs, screenshot) lands in Phase 3.3 (V2).",
         }
     }
 }

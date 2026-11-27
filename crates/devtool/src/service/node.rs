@@ -9,7 +9,10 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::config::managed_node_root;
 use crate::model::env::{EnvModel, NodeRuntimeInfo, PackageManager};
-use crate::service::ServiceReporter;
+use crate::model::tasks::{TaskKind, TaskStatus};
+use crate::service::{
+    ServiceReporter, copy_dir_all, download_to_file_verified, http_get_bytes,
+};
 
 const SCHEMA_RUNNER_JS: &str = r#"
 import { pathToFileURL } from 'node:url';
@@ -321,4 +324,131 @@ pub async fn generate_json_schema(
         Ok(())
     })
     .await?
+}
+
+/// Download and install the latest Node.js LTS portable archive into `~/.moyu/node/<version>/`.
+pub async fn install_managed_node(reporter: &ServiceReporter) -> Result<String> {
+    reporter.started(TaskKind::InstallNode, "Install Managed Node.js LTS");
+    let res = install_managed_node_inner(reporter).await;
+    match &res {
+        Ok(_) => reporter.finished(TaskStatus::Completed),
+        Err(_) if reporter.cancel.is_cancelled() => reporter.finished(TaskStatus::Cancelled),
+        Err(e) => reporter.finished(TaskStatus::Failed(format!("{e:#}"))),
+    }
+    res
+}
+
+async fn install_managed_node_inner(reporter: &ServiceReporter) -> Result<String> {
+    reporter.cancel.check()?;
+    let (platform_tag, ext) = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", "x86_64") => ("win-x64", "zip"),
+        ("macos", "aarch64") => ("darwin-arm64", "tar.gz"),
+        ("macos", "x86_64") => ("darwin-x64", "tar.gz"),
+        ("linux", "x86_64") => ("linux-x64", "tar.gz"),
+        ("linux", "aarch64") => ("linux-arm64", "tar.gz"),
+        (os, arch) => bail!("Unsupported platform for managed Node.js: {os}/{arch}"),
+    };
+
+    reporter.stage("Fetching Node.js LTS release index...");
+    reporter.info("Fetching https://nodejs.org/dist/index.json ...");
+    let index_bytes = http_get_bytes("https://nodejs.org/dist/index.json").await?;
+    reporter.cancel.check()?;
+
+    let releases: Vec<serde_json::Value> = serde_json::from_slice(&index_bytes)
+        .context("Failed to parse Node.js release index")?;
+    let lts_version = releases
+        .iter()
+        .find(|entry| entry.get("lts").is_some_and(|v| v.is_string()))
+        .and_then(|entry| entry.get("version"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Could not find an LTS release in Node.js index"))?
+        .to_string();
+
+    let archive_name = format!("node-{lts_version}-{platform_tag}.{ext}");
+    let base_url = format!("https://nodejs.org/dist/{lts_version}");
+
+    reporter.stage(format!("Fetching SHASUMS256.txt for {lts_version}..."));
+    let sums_bytes = http_get_bytes(&format!("{base_url}/SHASUMS256.txt")).await?;
+    let sums_text = String::from_utf8_lossy(&sums_bytes);
+    let expected_sha = sums_text
+        .lines()
+        .find_map(|line| {
+            let mut parts = line.split_whitespace();
+            let hash = parts.next()?;
+            let name = parts.next()?;
+            (name == archive_name).then(|| hash.to_string())
+        })
+        .ok_or_else(|| anyhow::anyhow!("Checksum for {archive_name} not found in SHASUMS256.txt"))?;
+
+    let tmp_archive = std::env::temp_dir().join(format!(
+        "moyu-node-{}-{archive_name}",
+        uuid::Uuid::new_v4()
+    ));
+    let dest_root = managed_node_root()?.join(&lts_version);
+
+    let extract_res = async {
+        reporter.info(format!("Downloading {archive_name}..."));
+        reporter.stage(format!("Downloading {archive_name}..."));
+        download_to_file_verified(
+            &format!("{base_url}/{archive_name}"),
+            &tmp_archive,
+            &expected_sha,
+            reporter,
+        )
+        .await?;
+        reporter.cancel.check()?;
+        reporter.stage(format!("Extracting {archive_name}..."));
+
+        let archive_path = tmp_archive.clone();
+        let dest = dest_root.clone();
+        let inner_dir_name = format!("node-{lts_version}-{platform_tag}");
+        let is_zip = ext == "zip";
+
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let tmp_extract = std::env::temp_dir().join(format!(
+                "moyu-node-extract-{}",
+                uuid::Uuid::new_v4()
+            ));
+            fs::create_dir_all(&tmp_extract)?;
+
+            let inner_res = (|| -> Result<()> {
+                if is_zip {
+                    let file = fs::File::open(&archive_path)?;
+                    let mut zip = zip::ZipArchive::new(file)?;
+                    zip.extract(&tmp_extract)?;
+                } else {
+                    let file = fs::File::open(&archive_path)?;
+                    let gz = flate2::read::GzDecoder::new(file);
+                    let mut archive = tar::Archive::new(gz);
+                    archive.unpack(&tmp_extract)?;
+                }
+
+                let extracted_inner = tmp_extract.join(&inner_dir_name);
+                if !extracted_inner.is_dir() {
+                    bail!("Expected extracted directory {} not found", extracted_inner.display());
+                }
+                if dest.exists() {
+                    fs::remove_dir_all(&dest)?;
+                }
+                copy_dir_all(&extracted_inner, &dest)?;
+                Ok(())
+            })();
+
+            let _ = fs::remove_dir_all(&tmp_extract);
+            inner_res
+        })
+        .await??;
+
+        Ok::<(), anyhow::Error>(())
+    }
+    .await;
+
+    let _ = fs::remove_file(&tmp_archive);
+    extract_res?;
+
+    reporter.success(format!(
+        "Installed managed Node.js {lts_version} to {}",
+        dest_root.display()
+    ));
+    Ok(lts_version)
 }

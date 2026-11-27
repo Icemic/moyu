@@ -4334,6 +4334,7 @@ dependencies = [
  "clap",
  "dirs",
  "fast-glob",
+ "flate2",
  "futures-util",
  "gpui",
  "gpui_platform",

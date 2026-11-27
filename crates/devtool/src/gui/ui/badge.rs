@@ -1,6 +1,6 @@
 //! Compact status badge / tag component.
 
-use gpui::{SharedString, div, prelude::*, px};
+use gpui::{Div, SharedString, div, prelude::*, px};
 
 use crate::gui::theme::Theme;
 
@@ -14,7 +14,7 @@ pub enum BadgeTone {
     Danger,
 }
 
-pub fn badge(label: impl Into<SharedString>, tone: BadgeTone, theme: Theme) -> impl IntoElement {
+pub fn badge(label: impl Into<SharedString>, tone: BadgeTone, theme: Theme) -> Div {
     let (bg, fg) = match tone {
         BadgeTone::Neutral => (theme.control_idle, theme.text_secondary),
         BadgeTone::Accent => (theme.accent_soft, theme.accent),
