@@ -26,7 +26,7 @@ use crate::service::pack::{PackOptions, pack_project};
 use crate::service::project::require_project_root;
 use crate::service::run::run_project;
 use crate::service::video_decoder::supports_video_decoder;
-use crate::service::{format_bytes};
+use crate::service::{CancelToken, ServiceReporter, format_bytes, next_task_id};
 
 #[derive(Parser)]
 #[command(
@@ -283,7 +283,13 @@ async fn dispatch(command: Commands) -> Result<i32> {
             cmd_switch(version)?;
             Ok(0)
         }
-        Commands::Run { native: _, web, port } => run_project(&require_project_root(None)?, web, port).await,
+        Commands::Run { native: _, web, port } => {
+            let (reporter, printer) = create_cli_reporter();
+            let res = run_project(&require_project_root(None)?, web, port, &reporter).await;
+            drop(reporter);
+            let _ = printer.await;
+            res
+        }
         Commands::Debug { action } => {
             cmd_debug(action).await?;
             Ok(0)
@@ -321,7 +327,8 @@ async fn dispatch(command: Commands) -> Result<i32> {
             } else {
                 None
             };
-            pack_project(
+            let (reporter, printer) = create_cli_reporter();
+            let res = pack_project(
                 &project_root,
                 PackOptions {
                     target,
@@ -332,8 +339,12 @@ async fn dispatch(command: Commands) -> Result<i32> {
                     include_video_decoder,
                     signing_password,
                 },
+                &reporter,
             )
-            .await?;
+            .await;
+            drop(reporter);
+            let _ = printer.await;
+            res?;
             Ok(0)
         }
         Commands::Schema { input, output } => {
@@ -527,21 +538,21 @@ async fn cmd_download(
         false
     };
 
-    let (tx, rx) = async_channel::unbounded();
-    let printer = spawn_progress_printer(rx);
+    let (reporter, printer) = create_cli_reporter();
     eprintln!("info: Downloading {selected_version} ({})...", selected_platforms.join(", "));
-    download_platforms(
+    let res = download_platforms(
         &project_root,
         &selected_channel,
         &selected_version,
         &manifest,
         &selected_platforms,
         activate,
-        Some(&tx),
+        &reporter,
     )
-    .await?;
-    drop(tx);
+    .await;
+    drop(reporter);
     let _ = printer.await;
+    res?;
 
     eprintln!("success: Done!");
     Ok(())
@@ -614,20 +625,20 @@ async fn cmd_update(skip_confirm: bool) -> Result<()> {
         }
     }
 
-    let (tx, rx) = async_channel::unbounded();
-    let printer = spawn_progress_printer(rx);
-    download_platforms(
+    let (reporter, printer) = create_cli_reporter();
+    let res = download_platforms(
         &project_root,
         &current_channel,
         &target_version,
         &manifest,
         &target_platforms,
         true,
-        Some(&tx),
+        &reporter,
     )
-    .await?;
-    drop(tx);
+    .await;
+    drop(reporter);
     let _ = printer.await;
+    res?;
 
     eprintln!("success: Engine updated to {target_version}!");
     for p in &target_platforms {
@@ -887,32 +898,55 @@ fn print_log_entry(entry: &LogEntry) {
     );
 }
 
-fn spawn_progress_printer(rx: async_channel::Receiver<TaskEvent>) -> tokio::task::JoinHandle<()> {
-    tokio::spawn(async move {
+fn create_cli_reporter() -> (ServiceReporter, tokio::task::JoinHandle<()>) {
+    let (tx, rx) = async_channel::unbounded();
+    let reporter = ServiceReporter::with_channel(next_task_id(), tx, CancelToken::new());
+    let printer = tokio::spawn(async move {
+        let mut showing_progress = false;
         while let Ok(ev) = rx.recv().await {
-            if let TaskEvent::Progress {
-                downloaded_bytes,
-                total_bytes,
-                ..
-            } = ev
-            {
-                if let Some(total) = total_bytes
-                    && total > 0
-                {
-                    let pct = (downloaded_bytes * 100) / total;
-                    eprint!(
-                        "\r  Downloading... {} / {} ({pct}%)",
-                        format_bytes(downloaded_bytes),
-                        format_bytes(total)
-                    );
-                } else {
-                    eprint!("\r  Downloading... {}", format_bytes(downloaded_bytes));
+            match ev {
+                TaskEvent::Progress {
+                    downloaded_bytes,
+                    total_bytes,
+                    ..
+                } => {
+                    showing_progress = true;
+                    if let Some(total) = total_bytes
+                        && total > 0
+                    {
+                        let pct = (downloaded_bytes * 100) / total;
+                        eprint!(
+                            "\r  Downloading... {} / {} ({pct}%)",
+                            format_bytes(downloaded_bytes),
+                            format_bytes(total)
+                        );
+                    } else {
+                        eprint!("\r  Downloading... {}", format_bytes(downloaded_bytes));
+                    }
+                    let _ = io::stderr().flush();
                 }
-                let _ = io::stderr().flush();
+                TaskEvent::LogLine { level, line, .. } => {
+                    if showing_progress {
+                        eprintln!();
+                        showing_progress = false;
+                    }
+                    eprintln!("{}: {line}", level.prefix());
+                }
+                TaskEvent::Stage { stage, .. } => {
+                    if showing_progress {
+                        eprintln!();
+                        showing_progress = false;
+                    }
+                    eprintln!("info: {stage}");
+                }
+                TaskEvent::Started { .. } | TaskEvent::Finished { .. } => {}
             }
         }
-        eprintln!();
-    })
+        if showing_progress {
+            eprintln!();
+        }
+    });
+    (reporter, printer)
 }
 
 fn prompt_text(label: &str, default: Option<&str>) -> Result<String> {

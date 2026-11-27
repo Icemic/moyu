@@ -3,11 +3,12 @@
 use std::collections::BTreeSet;
 use std::fs::{self, File};
 use std::path::{Component, Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 use anyhow::{Context, Result, bail};
+use tokio::io::{AsyncBufReadExt, BufReader};
 
-use crate::service::{copy_dir_all, http_get_bytes, sha256_hex};
+use crate::service::{ServiceReporter, copy_dir_all, download_to_file_verified};
 
 pub const ANDROID_PLATFORM: &str = "android-aarch64";
 pub const ANDROID_FORMATS: &[&str] = &[
@@ -74,7 +75,10 @@ pub fn is_android_format(value: Option<&str>) -> bool {
     value.is_some_and(|v| ANDROID_FORMATS.contains(&v))
 }
 
-pub async fn pack_android(options: PackAndroidOptions<'_>) -> Result<()> {
+pub async fn pack_android(
+    options: PackAndroidOptions<'_>,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     if !is_android_format(Some(options.format)) {
         bail!(
             "Invalid --android-format. Supported values: {}",
@@ -85,10 +89,10 @@ pub async fn pack_android(options: PackAndroidOptions<'_>) -> Result<()> {
     let config = load_android_config(options.project_root)?;
     validate_android_config(&config)?;
 
-    let template_dir = ensure_android_template(options.project_root).await?;
-    let workdir = ensure_android_workdir(options.project_root, &template_dir)?;
+    let template_dir = ensure_android_template(options.project_root, reporter).await?;
+    let workdir = ensure_android_workdir(options.project_root, &template_dir, reporter)?;
 
-    eprintln!("info: Syncing Android project...");
+    reporter.info("Syncing Android project...");
     sync_android_project(
         options.project_root,
         options.engine_dir,
@@ -101,10 +105,10 @@ pub async fn pack_android(options: PackAndroidOptions<'_>) -> Result<()> {
 
     if options.format == "android-project" {
         let output_path = options.output_dir.join("android-project");
-        eprintln!(
-            "info: Exporting Android Studio project: {}",
+        reporter.info(format!(
+            "Exporting Android Studio project: {}",
             output_path.display()
-        );
+        ));
         copy_android_project(&workdir, &output_path)?;
         return Ok(());
     }
@@ -119,7 +123,7 @@ pub async fn pack_android(options: PackAndroidOptions<'_>) -> Result<()> {
         )?)
     };
 
-    let artifact = run_gradle_build(&workdir, options.format, signing.as_ref()).await?;
+    let artifact = run_gradle_build(&workdir, options.format, signing.as_ref(), reporter).await?;
     let ext = if options.format == "release-aab" {
         "aab"
     } else {
@@ -130,7 +134,10 @@ pub async fn pack_android(options: PackAndroidOptions<'_>) -> Result<()> {
         .join(format!("game-{}.{ext}", options.format));
     fs::create_dir_all(options.output_dir)?;
     fs::copy(&artifact, &output_path)?;
-    eprintln!("success: Android artifact created: {}", output_path.display());
+    reporter.success(format!(
+        "Android artifact created: {}",
+        output_path.display()
+    ));
     Ok(())
 }
 
@@ -243,7 +250,10 @@ fn validate_android_config(config: &AndroidConfig) -> Result<()> {
     Ok(())
 }
 
-async fn ensure_android_template(project_root: &Path) -> Result<PathBuf> {
+async fn ensure_android_template(
+    project_root: &Path,
+    reporter: &ServiceReporter,
+) -> Result<PathBuf> {
     let cache_dir = project_root
         .join(".moyu")
         .join("android-template")
@@ -252,14 +262,23 @@ async fn ensure_android_template(project_root: &Path) -> Result<PathBuf> {
         return Ok(cache_dir);
     }
 
-    eprintln!("info: Downloading Android template {ANDROID_TEMPLATE_VERSION}...");
-    let archive_bytes = http_get_bytes(ANDROID_TEMPLATE_URL).await?;
-    let actual_sha = sha256_hex(&archive_bytes);
-    if actual_sha != ANDROID_TEMPLATE_SHA256 {
-        bail!(
-            "Android template SHA-256 mismatch.\nExpected: {ANDROID_TEMPLATE_SHA256}\nActual:   {actual_sha}"
-        );
-    }
+    reporter.info(format!(
+        "Downloading Android template {ANDROID_TEMPLATE_VERSION}..."
+    ));
+    let tmp_zip = std::env::temp_dir().join(format!(
+        "moyu-android-template-{}.zip",
+        uuid::Uuid::new_v4()
+    ));
+    download_to_file_verified(
+        ANDROID_TEMPLATE_URL,
+        &tmp_zip,
+        ANDROID_TEMPLATE_SHA256,
+        reporter,
+    )
+    .await?;
+    let archive_bytes = fs::read(&tmp_zip)?;
+    let _ = fs::remove_file(&tmp_zip);
+    reporter.cancel.check()?;
 
     let tmp_dir = project_root
         .join(".moyu")
@@ -285,7 +304,7 @@ async fn ensure_android_template(project_root: &Path) -> Result<PathBuf> {
     })
     .await??;
 
-    eprintln!("success: Android template cached.");
+    reporter.success("Android template cached.");
     Ok(cache_dir)
 }
 
@@ -318,13 +337,17 @@ fn extract_zip_safe(archive_bytes: &[u8], dest_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn ensure_android_workdir(project_root: &Path, template_dir: &Path) -> Result<PathBuf> {
+fn ensure_android_workdir(
+    project_root: &Path,
+    template_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<PathBuf> {
     let workdir = project_root
         .join(".moyu")
         .join("android-build")
         .join(ANDROID_PLATFORM);
     if !workdir.exists() {
-        eprintln!("info: Initializing Android work directory...");
+        reporter.info("Initializing Android work directory...");
         copy_dir_all(template_dir, &workdir)?;
     }
     Ok(workdir)
@@ -526,7 +549,9 @@ async fn run_gradle_build(
     workdir: &Path,
     format: &str,
     signing: Option<&AndroidSigning>,
+    reporter: &ServiceReporter,
 ) -> Result<PathBuf> {
+    reporter.cancel.check()?;
     let task = match format {
         "debug-apk" => ":app:assembleDebug",
         "release-apk" => ":app:assembleRelease",
@@ -551,48 +576,70 @@ async fn run_gradle_build(
         fs::set_permissions(&gradlew, perms)?;
     }
 
-    let workdir_owned = workdir.to_path_buf();
     let gradlew_str = gradlew.to_string_lossy().to_string();
-    let task_owned = task.to_string();
-    let signing_env = signing.map(|s| {
-        (
-            s.keystore_path.to_string_lossy().to_string(),
-            s.password.clone(),
-            s.key_alias.clone(),
-        )
+    reporter.info(format!("Running Gradle {task}..."));
+
+    let mut cmd = if cfg!(windows) {
+        let mut c = tokio::process::Command::new("cmd.exe");
+        c.args(["/c", &gradlew_str, task]);
+        c
+    } else {
+        let mut c = tokio::process::Command::new(&gradlew_str);
+        c.arg(task);
+        c
+    };
+
+    cmd.current_dir(workdir)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    if let Some(s) = signing {
+        cmd.env("MOYU_KEYSTORE_PATH", s.keystore_path.to_string_lossy().as_ref())
+            .env("MOYU_STORE_PASSWORD", &s.password)
+            .env("MOYU_KEY_ALIAS", &s.key_alias)
+            .env("MOYU_KEY_PASSWORD", &s.password);
+    }
+
+    let mut child = cmd.spawn().context("Failed to execute Gradle wrapper")?;
+    let stdout_task = child.stdout.take().map(|out| {
+        let rep = reporter.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(out).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                rep.info(line);
+            }
+        })
+    });
+    let stderr_task = child.stderr.take().map(|err| {
+        let rep = reporter.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(err).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                rep.warn(line);
+            }
+        })
     });
 
-    eprintln!("info: Running Gradle {task}...");
-    tokio::task::spawn_blocking(move || -> Result<()> {
-        let mut cmd = if cfg!(windows) {
-            let mut c = Command::new("cmd.exe");
-            c.args(["/c", &gradlew_str, &task_owned]);
-            c
-        } else {
-            let mut c = Command::new(&gradlew_str);
-            c.arg(&task_owned);
-            c
-        };
-
-        cmd.current_dir(&workdir_owned)
-            .stdin(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit());
-
-        if let Some((ks, pw, alias)) = signing_env {
-            cmd.env("MOYU_KEYSTORE_PATH", ks)
-                .env("MOYU_STORE_PASSWORD", &pw)
-                .env("MOYU_KEY_ALIAS", alias)
-                .env("MOYU_KEY_PASSWORD", &pw);
+    let status = tokio::select! {
+        res = child.wait() => res?,
+        _ = reporter.cancel.cancelled() => {
+            let _ = child.kill().await;
+            let _ = child.wait().await;
+            bail!("Gradle build cancelled.");
         }
+    };
 
-        let status = cmd.status().context("Failed to execute Gradle wrapper")?;
-        if !status.success() {
-            bail!("Gradle build exited with code {}", status.code().unwrap_or(1));
-        }
-        Ok(())
-    })
-    .await??;
+    if let Some(t) = stdout_task {
+        let _ = t.await;
+    }
+    if let Some(t) = stderr_task {
+        let _ = t.await;
+    }
+
+    if !status.success() {
+        bail!("Gradle build exited with code {}", status.code().unwrap_or(1));
+    }
 
     let artifact = match format {
         "debug-apk" => workdir.join("app/build/outputs/apk/debug/app-debug.apk"),

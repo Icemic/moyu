@@ -33,6 +33,7 @@ pub struct NodeRuntimeInfo {
 pub struct EnvModel {
     pub node: Option<NodeRuntimeInfo>,
     pub package_manager: Option<PackageManager>,
+    pub available_package_managers: Vec<PackageManager>,
     pub jiti_path: Option<PathBuf>,
     pub checked: bool,
 }
@@ -42,6 +43,7 @@ pub enum EnvEvent {
     Detected {
         node: Option<NodeRuntimeInfo>,
         package_manager: Option<PackageManager>,
+        available_package_managers: Vec<PackageManager>,
         jiti_path: Option<PathBuf>,
     },
 }
@@ -54,10 +56,12 @@ impl DomainModel for EnvModel {
             EnvEvent::Detected {
                 node,
                 package_manager,
+                available_package_managers,
                 jiti_path,
             } => {
                 self.node = node;
                 self.package_manager = package_manager;
+                self.available_package_managers = available_package_managers;
                 self.jiti_path = jiti_path;
                 self.checked = true;
                 true

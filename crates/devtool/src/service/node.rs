@@ -5,9 +5,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use anyhow::{Context, Result, bail};
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::config::managed_node_root;
 use crate::model::env::{EnvModel, NodeRuntimeInfo, PackageManager};
+use crate::service::ServiceReporter;
 
 const SCHEMA_RUNNER_JS: &str = r#"
 import { pathToFileURL } from 'node:url';
@@ -43,10 +45,19 @@ writeFileSync(outputPath, JSON.stringify(jsonSchema, null, 2) + '\n');
 pub fn detect_env(project_root: Option<&Path>) -> EnvModel {
     let node = detect_node();
     let package_manager = project_root.map(detect_package_manager);
+    let available_package_managers = [
+        PackageManager::Yarn,
+        PackageManager::Pnpm,
+        PackageManager::Npm,
+    ]
+    .into_iter()
+    .filter(|pm| is_pm_available(*pm))
+    .collect();
     let jiti_path = project_root.and_then(find_jiti_entry);
     EnvModel {
         node,
         package_manager,
+        available_package_managers,
         jiti_path,
         checked: true,
     }
@@ -172,60 +183,92 @@ fn is_pm_available(pm: PackageManager) -> bool {
 }
 
 /// Run the project's `build` script using the detected package manager.
-pub async fn run_project_build(project_root: &Path) -> Result<()> {
+pub async fn run_project_build(project_root: &Path, reporter: &ServiceReporter) -> Result<()> {
+    reporter.cancel.check()?;
     let root = project_root.to_path_buf();
     let detected_pm = detect_package_manager(&root);
     let pm = if detected_pm != PackageManager::Npm && !is_pm_available(detected_pm) {
-        eprintln!(
-            "warn: {} was not found in PATH; falling back to npm.",
+        reporter.warn(format!(
+            "{} was not found in PATH; falling back to npm.",
             detected_pm.binary_name()
-        );
+        ));
         PackageManager::Npm
     } else {
         detected_pm
     };
     let node_info = require_node()?;
 
-    tokio::task::spawn_blocking(move || -> Result<()> {
-        let mut cmd = if cfg!(windows) {
-            let mut c = Command::new("cmd.exe");
-            c.args(["/c", &format!("{}.cmd", pm.binary_name()), "run", "build"]);
-            c
-        } else {
-            let mut c = Command::new(pm.binary_name());
-            c.args(["run", "build"]);
-            c
-        };
+    let mut cmd = if cfg!(windows) {
+        let mut c = tokio::process::Command::new("cmd.exe");
+        c.args(["/c", &format!("{}.cmd", pm.binary_name()), "run", "build"]);
+        c
+    } else {
+        let mut c = tokio::process::Command::new(pm.binary_name());
+        c.args(["run", "build"]);
+        c
+    };
 
-        // Prepend managed node directory if Node is not already from PATH.
-        if node_info.is_managed
-            && let Some(bin_dir) = node_info.executable.parent()
-        {
-            let current_path = std::env::var_os("PATH").unwrap_or_default();
-            let mut paths = vec![bin_dir.to_path_buf()];
-            paths.extend(std::env::split_paths(&current_path));
-            if let Ok(joined) = std::env::join_paths(paths) {
-                cmd.env("PATH", joined);
+    if node_info.is_managed
+        && let Some(bin_dir) = node_info.executable.parent()
+    {
+        let current_path = std::env::var_os("PATH").unwrap_or_default();
+        let mut paths = vec![bin_dir.to_path_buf()];
+        paths.extend(std::env::split_paths(&current_path));
+        if let Ok(joined) = std::env::join_paths(paths) {
+            cmd.env("PATH", joined);
+        }
+    }
+
+    let mut child = cmd
+        .current_dir(&root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("Failed to launch {} run build", pm.binary_name()))?;
+
+    let stdout_task = child.stdout.take().map(|out| {
+        let rep = reporter.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(out).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                rep.info(line);
             }
-        }
+        })
+    });
+    let stderr_task = child.stderr.take().map(|err| {
+        let rep = reporter.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(err).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                rep.warn(line);
+            }
+        })
+    });
 
-        let status = cmd
-            .current_dir(&root)
-            .stdin(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status()
-            .with_context(|| format!("Failed to launch {} run build", pm.binary_name()))?;
-
-        if !status.success() {
-            bail!(
-                "Project build exited with code {}",
-                status.code().unwrap_or(1)
-            );
+    let status = tokio::select! {
+        res = child.wait() => res?,
+        _ = reporter.cancel.cancelled() => {
+            let _ = child.kill().await;
+            let _ = child.wait().await;
+            bail!("Build cancelled.");
         }
-        Ok(())
-    })
-    .await?
+    };
+
+    if let Some(t) = stdout_task {
+        let _ = t.await;
+    }
+    if let Some(t) = stderr_task {
+        let _ = t.await;
+    }
+
+    if !status.success() {
+        bail!(
+            "Project build exited with code {}",
+            status.code().unwrap_or(1)
+        );
+    }
+    Ok(())
 }
 
 /// Generate JSON Schema by loading the project's TypeScript file via `jiti` in `node_modules`.

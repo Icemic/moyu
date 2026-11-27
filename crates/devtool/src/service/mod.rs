@@ -1,4 +1,4 @@
-//! Async domain services and shared I/O helpers for `moyu-devtool`.
+//! Async domain services, cancellation token, diagnostic reporter, and shared I/O helpers.
 
 pub mod android;
 pub mod debug;
@@ -19,8 +19,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::{Context, Result, bail};
 use ring::digest::{Context as Sha256Context, SHA256};
+use tokio::sync::watch;
 
-use crate::model::tasks::{TaskEvent, TaskId};
+use crate::model::tasks::{LogLevel, TaskEvent, TaskId, TaskKind, TaskStatus};
 
 pub type EventSink<T> = async_channel::Sender<T>;
 
@@ -28,6 +29,152 @@ static NEXT_TASK_ID: AtomicU64 = AtomicU64::new(1);
 
 pub fn next_task_id() -> TaskId {
     NEXT_TASK_ID.fetch_add(1, Ordering::Relaxed)
+}
+
+/// Lightweight, executor-agnostic cooperative cancellation token.
+#[derive(Clone)]
+pub struct CancelToken {
+    tx: watch::Sender<bool>,
+    rx: watch::Receiver<bool>,
+}
+
+impl Default for CancelToken {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CancelToken {
+    pub fn new() -> Self {
+        let (tx, rx) = watch::channel(false);
+        Self { tx, rx }
+    }
+
+    #[allow(dead_code)]
+    pub fn cancel(&self) {
+        let _ = self.tx.send(true);
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        *self.rx.borrow()
+    }
+
+    pub fn check(&self) -> Result<()> {
+        if self.is_cancelled() {
+            bail!("Operation cancelled.");
+        }
+        Ok(())
+    }
+
+    pub async fn cancelled(&self) {
+        let mut rx = self.rx.clone();
+        while !*rx.borrow() {
+            if rx.changed().await.is_err() {
+                break;
+            }
+        }
+    }
+}
+
+/// Structured reporter passed into async services to emit task progress, logs, and handle cancellation.
+#[derive(Clone)]
+pub struct ServiceReporter {
+    pub task_id: TaskId,
+    pub tx: Option<EventSink<TaskEvent>>,
+    pub cancel: CancelToken,
+}
+
+impl Default for ServiceReporter {
+    fn default() -> Self {
+        Self::noop()
+    }
+}
+
+impl ServiceReporter {
+    pub fn noop() -> Self {
+        Self {
+            task_id: next_task_id(),
+            tx: None,
+            cancel: CancelToken::new(),
+        }
+    }
+
+    pub fn with_channel(task_id: TaskId, tx: EventSink<TaskEvent>, cancel: CancelToken) -> Self {
+        Self {
+            task_id,
+            tx: Some(tx),
+            cancel,
+        }
+    }
+
+    pub fn child(&self) -> Self {
+        Self {
+            task_id: next_task_id(),
+            tx: self.tx.clone(),
+            cancel: self.cancel.clone(),
+        }
+    }
+
+    pub fn started(&self, kind: TaskKind, title: impl Into<String>) {
+        if let Some(tx) = &self.tx {
+            let _ = tx.try_send(TaskEvent::Started {
+                id: self.task_id,
+                kind,
+                title: title.into(),
+            });
+        }
+    }
+
+    pub fn stage(&self, stage: impl Into<String>) {
+        if let Some(tx) = &self.tx {
+            let _ = tx.try_send(TaskEvent::Stage {
+                id: self.task_id,
+                stage: stage.into(),
+            });
+        }
+    }
+
+    pub fn progress(&self, downloaded_bytes: u64, total_bytes: Option<u64>) {
+        if let Some(tx) = &self.tx {
+            let _ = tx.try_send(TaskEvent::Progress {
+                id: self.task_id,
+                downloaded_bytes,
+                total_bytes,
+            });
+        }
+    }
+
+    pub fn log(&self, level: LogLevel, line: impl Into<String>) {
+        let line = line.into();
+        if let Some(tx) = &self.tx {
+            let _ = tx.try_send(TaskEvent::LogLine {
+                id: self.task_id,
+                level,
+                line,
+            });
+        }
+    }
+
+    pub fn info(&self, line: impl Into<String>) {
+        self.log(LogLevel::Info, line);
+    }
+
+    pub fn success(&self, line: impl Into<String>) {
+        self.log(LogLevel::Success, line);
+    }
+
+    pub fn warn(&self, line: impl Into<String>) {
+        self.log(LogLevel::Warn, line);
+    }
+
+    pub fn finished(&self, status: TaskStatus) {
+        if let Some(tx) = &self.tx {
+            let _ = tx.try_send(TaskEvent::Finished {
+                id: self.task_id,
+                status,
+            });
+        }
+    }
 }
 
 pub fn format_bytes(bytes: u64) -> String {
@@ -40,6 +187,7 @@ pub fn format_bytes(bytes: u64) -> String {
     }
 }
 
+#[allow(dead_code)]
 pub fn sha256_hex(data: &[u8]) -> String {
     let digest = ring::digest::digest(&SHA256, data);
     hex_lower(digest.as_ref())
@@ -71,18 +219,18 @@ pub async fn http_get_bytes(url: &str) -> Result<Vec<u8>> {
     .await?
 }
 
-/// Stream a download to `dest_file` while computing SHA-256 and emitting progress events.
+/// Stream a download to `dest_file` while computing SHA-256, emitting progress, and respecting cancellation.
 pub async fn download_to_file_verified(
     url: &str,
     dest_file: &Path,
     expected_sha256: &str,
-    task_id: Option<TaskId>,
-    tx: Option<&EventSink<TaskEvent>>,
+    reporter: &ServiceReporter,
 ) -> Result<()> {
+    reporter.cancel.check()?;
     let url = url.to_string();
     let dest = dest_file.to_path_buf();
     let expected = expected_sha256.to_ascii_lowercase();
-    let tx = tx.cloned();
+    let reporter = reporter.clone();
 
     tokio::task::spawn_blocking(move || -> Result<()> {
         if let Some(parent) = dest.parent() {
@@ -108,6 +256,11 @@ pub async fn download_to_file_verified(
         let mut downloaded = 0u64;
 
         loop {
+            if reporter.cancel.is_cancelled() {
+                drop(file);
+                let _ = fs::remove_file(&dest);
+                bail!("Download cancelled.");
+            }
             let n = reader.read(&mut buf)?;
             if n == 0 {
                 break;
@@ -115,18 +268,13 @@ pub async fn download_to_file_verified(
             file.write_all(&buf[..n])?;
             hasher.update(&buf[..n]);
             downloaded += n as u64;
-            if let (Some(id), Some(sender)) = (task_id, tx.as_ref()) {
-                let _ = sender.try_send(TaskEvent::Progress {
-                    id,
-                    downloaded_bytes: downloaded,
-                    total_bytes,
-                });
-            }
+            reporter.progress(downloaded, total_bytes);
         }
         file.flush()?;
 
         let actual = hex_lower(hasher.finish().as_ref());
         if actual != expected {
+            let _ = fs::remove_file(&dest);
             bail!("SHA-256 mismatch!\n  Expected: {expected}\n  Actual:   {actual}");
         }
         Ok(())

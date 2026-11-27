@@ -7,13 +7,19 @@ use anyhow::{Result, bail};
 use tokio::process::Command;
 
 use crate::config::{DEV_SERVER_PORT, meta_file, platform_dir};
+use crate::service::ServiceReporter;
 use crate::service::engine::{detect_platform, load_meta, native_executable_name};
-use crate::service::project::{check_multi_res_assets, print_multi_res_warnings};
+use crate::service::project::{check_multi_res_assets, report_multi_res_warnings};
 use crate::service::server::{require_web_engine_assets, start_static_file_server};
 
-pub async fn run_project(project_root: &Path, web: bool, port: u16) -> Result<i32> {
+pub async fn run_project(
+    project_root: &Path,
+    web: bool,
+    port: u16,
+    reporter: &ServiceReporter,
+) -> Result<i32> {
     let report = check_multi_res_assets(project_root)?;
-    print_multi_res_warnings(&report);
+    report_multi_res_warnings(&report, reporter);
 
     let meta = load_meta(&meta_file(project_root));
     let active = meta
@@ -23,15 +29,20 @@ pub async fn run_project(project_root: &Path, web: bool, port: u16) -> Result<i3
     if !web {
         let platform = detect_platform()?;
         let native_dir = platform_dir(project_root, &active.version, platform)?;
-        run_native(project_root, &native_dir, platform).await
+        run_native(project_root, &native_dir, platform, reporter).await
     } else {
         let web_path = require_web_engine_assets(project_root, &active.version)?;
-        run_web(project_root, &web_path, port).await?;
+        run_web(project_root, &web_path, port, reporter).await?;
         Ok(0)
     }
 }
 
-async fn run_native(project_root: &Path, native_dir: &Path, platform: &str) -> Result<i32> {
+async fn run_native(
+    project_root: &Path,
+    native_dir: &Path,
+    platform: &str,
+    reporter: &ServiceReporter,
+) -> Result<i32> {
     let exe_name = native_executable_name(platform)
         .ok_or_else(|| anyhow::anyhow!("Unsupported native platform: {platform}"))?;
     let engine_path = native_dir.join(exe_name);
@@ -42,8 +53,8 @@ async fn run_native(project_root: &Path, native_dir: &Path, platform: &str) -> R
         );
     }
 
-    eprintln!("info: Starting native engine: {}", engine_path.display());
-    eprintln!("info: Working directory: {}", project_root.display());
+    reporter.info(format!("Starting native engine: {}", engine_path.display()));
+    reporter.info(format!("Working directory: {}", project_root.display()));
 
     let entry_url = format!("http://localhost:{DEV_SERVER_PORT}/index.json");
     let mut child = Command::new(&engine_path)
@@ -56,6 +67,10 @@ async fn run_native(project_root: &Path, native_dir: &Path, platform: &str) -> R
 
     let status = tokio::select! {
         res = child.wait() => res?,
+        _ = reporter.cancel.cancelled() => {
+            let _ = child.kill().await;
+            return Ok(0);
+        }
         _ = wait_shutdown_signal() => {
             let _ = child.kill().await;
             return Ok(130);
@@ -65,17 +80,25 @@ async fn run_native(project_root: &Path, native_dir: &Path, platform: &str) -> R
     Ok(status.code().unwrap_or(1))
 }
 
-async fn run_web(project_root: &Path, web_path: &Path, port: u16) -> Result<()> {
+async fn run_web(
+    project_root: &Path,
+    web_path: &Path,
+    port: u16,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let server = start_static_file_server(project_root, web_path, port).await?;
 
-    eprintln!("success: Web engine server running at {}", server.url);
-    eprintln!("info: Serving files from:");
-    eprintln!("info:   1. {} (engine)", web_path.display());
-    eprintln!("info:   2. {} (project)", project_root.display());
-    eprintln!("info: Press Ctrl+C to stop.\n");
+    reporter.success(format!("Web engine server running at {}", server.url));
+    reporter.info("Serving files from:");
+    reporter.info(format!("  1. {} (engine)", web_path.display()));
+    reporter.info(format!("  2. {} (project)", project_root.display()));
+    reporter.info("Press Ctrl+C to stop.");
 
-    wait_shutdown_signal().await;
-    eprintln!("\ninfo: Shutting down server...");
+    tokio::select! {
+        _ = reporter.cancel.cancelled() => {}
+        _ = wait_shutdown_signal() => {}
+    }
+    reporter.info("Shutting down server...");
     server.close();
     Ok(())
 }

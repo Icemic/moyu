@@ -43,12 +43,36 @@ impl MultiResReport {
 pub struct ProjectIndexSummary {
     pub window_title: Option<String>,
     pub entry_filename: Option<String>,
+    pub initial_surface_size: Option<String>,
+    pub stage_size: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MoyuConfigSummary {
+    pub engine_channel: Option<String>,
+    pub engine_cdn_url: Option<String>,
+    pub android_app_name: Option<String>,
+    pub android_application_id: Option<String>,
+    pub android_version_name: Option<String>,
+    pub android_version_code: Option<u32>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameworkSummary {
+    pub name: Option<String>,
+    pub title: Option<String>,
+    pub version: Option<String>,
+    pub constructible: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct ProjectModel {
     pub root: Option<PathBuf>,
     pub index_summary: Option<ProjectIndexSummary>,
+    pub moyu_summary: Option<MoyuConfigSummary>,
+    pub framework_summary: Option<FrameworkSummary>,
     pub multi_res_report: Option<MultiResReport>,
     pub last_error: Option<String>,
 }
@@ -57,7 +81,9 @@ pub struct ProjectModel {
 pub enum ProjectEvent {
     Opened {
         root: PathBuf,
-        summary: ProjectIndexSummary,
+        index: ProjectIndexSummary,
+        moyu: Option<MoyuConfigSummary>,
+        framework: Option<FrameworkSummary>,
     },
     MultiResChecked(MultiResReport),
     Error(String),
@@ -69,9 +95,16 @@ impl DomainModel for ProjectModel {
 
     fn apply(&mut self, event: Self::Event) -> bool {
         match event {
-            ProjectEvent::Opened { root, summary } => {
+            ProjectEvent::Opened {
+                root,
+                index,
+                moyu,
+                framework,
+            } => {
                 self.root = Some(root);
-                self.index_summary = Some(summary);
+                self.index_summary = Some(index);
+                self.moyu_summary = moyu;
+                self.framework_summary = framework;
                 self.last_error = None;
                 true
             }

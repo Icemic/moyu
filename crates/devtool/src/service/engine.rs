@@ -11,8 +11,8 @@ use crate::config::{meta_file, platform_dir};
 use crate::model::engine::{
     ActiveEngine, DownloadedVersion, EngineConfig, EngineMeta, PlatformDownload, VersionsJson,
 };
-use crate::model::tasks::{TaskEvent, TaskId};
-use crate::service::{EventSink, download_to_file_verified, http_get_bytes, next_task_id};
+use crate::model::tasks::{TaskKind, TaskStatus};
+use crate::service::{ServiceReporter, download_to_file_verified, http_get_bytes};
 
 pub fn try_detect_platform() -> Option<&'static str> {
     match (std::env::consts::OS, std::env::consts::ARCH) {
@@ -54,7 +54,6 @@ pub fn load_config(project_root: &Path) -> EngineConfig {
         return defaults;
     };
     let Ok(raw) = serde_json::from_str::<serde_json::Value>(&text) else {
-        eprintln!("warn: Failed to parse moyu.json - using default engine config.");
         return defaults;
     };
 
@@ -111,21 +110,15 @@ pub async fn download_and_extract(
     url: &str,
     dest_dir: &Path,
     expected_sha256: &str,
-    task_id: Option<TaskId>,
-    tx: Option<&EventSink<TaskEvent>>,
+    reporter: &ServiceReporter,
 ) -> Result<()> {
     let tmp_name = format!("moyu-engine-{}.tar.zst", uuid::Uuid::new_v4());
     let tmp_file = std::env::temp_dir().join(tmp_name);
 
     let res = async {
-        download_to_file_verified(url, &tmp_file, expected_sha256, task_id, tx).await?;
-
-        if let (Some(id), Some(sender)) = (task_id, tx) {
-            let _ = sender.try_send(TaskEvent::Stage {
-                id,
-                stage: format!("Extracting to {}", dest_dir.display()),
-            });
-        }
+        download_to_file_verified(url, &tmp_file, expected_sha256, reporter).await?;
+        reporter.cancel.check()?;
+        reporter.stage(format!("Extracting to {}", dest_dir.display()));
 
         let archive_path = tmp_file.clone();
         let dest = dest_dir.to_path_buf();
@@ -158,7 +151,7 @@ pub async fn download_platforms(
     manifest: &VersionsJson,
     platforms: &[String],
     activate: bool,
-    tx: Option<&EventSink<TaskEvent>>,
+    reporter: &ServiceReporter,
 ) -> Result<EngineMeta> {
     let channel = manifest
         .channels
@@ -198,12 +191,24 @@ pub async fn download_platforms(
         let url = asset.url.clone();
         let sha = asset.sha256.clone();
         let platform_label = platform.clone();
-        let tx_clone = tx.cloned();
-        let task_id = next_task_id();
+        let child_reporter = reporter.child();
+        let version_owned = version_name.to_string();
         handles.push(tokio::spawn(async move {
-            download_and_extract(&url, &dest_dir, &sha, Some(task_id), tx_clone.as_ref())
+            child_reporter.started(
+                TaskKind::DownloadEngine,
+                format!("Download {version_owned} ({platform_label})"),
+            );
+            let res = download_and_extract(&url, &dest_dir, &sha, &child_reporter)
                 .await
-                .with_context(|| format!("Failed downloading {platform_label}"))
+                .with_context(|| format!("Failed downloading {platform_label}"));
+            match &res {
+                Ok(()) => child_reporter.finished(TaskStatus::Completed),
+                Err(_) if child_reporter.cancel.is_cancelled() => {
+                    child_reporter.finished(TaskStatus::Cancelled)
+                }
+                Err(e) => child_reporter.finished(TaskStatus::Failed(format!("{e:#}"))),
+            }
+            res
         }));
     }
 

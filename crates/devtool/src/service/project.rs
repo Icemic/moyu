@@ -6,7 +6,11 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
 
-use crate::model::project::{MultiResMode, MultiResReport, ProjectIndexSummary, VariantFile};
+use crate::model::project::{
+    FrameworkSummary, MoyuConfigSummary, MultiResMode, MultiResReport, ProjectEvent,
+    ProjectIndexSummary, VariantFile,
+};
+use crate::service::ServiceReporter;
 
 const BASE_SCALE: f64 = 1.0;
 
@@ -44,6 +48,59 @@ pub fn load_index_summary(project_root: &Path) -> Result<ProjectIndexSummary> {
     let text = fs::read_to_string(&path)?;
     let parsed: ProjectIndexSummary = serde_json::from_str(&text).unwrap_or_default();
     Ok(parsed)
+}
+
+#[allow(dead_code)]
+pub fn load_moyu_summary(project_root: &Path) -> Option<MoyuConfigSummary> {
+    let text = fs::read_to_string(project_root.join("moyu.json")).ok()?;
+    let raw: serde_json::Value = serde_json::from_str(&text).ok()?;
+    let engine = raw.get("engine");
+    let android = raw.get("android");
+    Some(MoyuConfigSummary {
+        engine_channel: engine
+            .and_then(|e| e.get("channel"))
+            .and_then(|v| v.as_str())
+            .map(ToString::to_string),
+        engine_cdn_url: engine
+            .and_then(|e| e.get("cdnUrl"))
+            .and_then(|v| v.as_str())
+            .map(ToString::to_string),
+        android_app_name: android
+            .and_then(|a| a.get("appName"))
+            .and_then(|v| v.as_str())
+            .map(ToString::to_string),
+        android_application_id: android
+            .and_then(|a| a.get("applicationId"))
+            .and_then(|v| v.as_str())
+            .map(ToString::to_string),
+        android_version_name: android
+            .and_then(|a| a.get("versionName"))
+            .and_then(|v| v.as_str())
+            .map(ToString::to_string),
+        android_version_code: android
+            .and_then(|a| a.get("versionCode"))
+            .and_then(|v| v.as_u64())
+            .and_then(|n| u32::try_from(n).ok()),
+    })
+}
+
+#[allow(dead_code)]
+pub fn load_framework_summary(project_root: &Path) -> Option<FrameworkSummary> {
+    let text = fs::read_to_string(project_root.join("framework.json")).ok()?;
+    serde_json::from_str(&text).ok()
+}
+
+#[allow(dead_code)]
+pub fn load_project_opened_event(project_root: &Path) -> Result<ProjectEvent> {
+    let index = load_index_summary(project_root)?;
+    let moyu = load_moyu_summary(project_root);
+    let framework = load_framework_summary(project_root);
+    Ok(ProjectEvent::Opened {
+        root: project_root.to_path_buf(),
+        index,
+        moyu,
+        framework,
+    })
 }
 
 /// Mirror `crates/resource/src/variant.rs` and `packages/cli/src/utils/multi-res-assets.ts`.
@@ -102,13 +159,13 @@ pub fn check_multi_res_assets(project_root: &Path) -> Result<MultiResReport> {
     Ok(report)
 }
 
-pub fn print_multi_res_warnings(report: &MultiResReport) {
+pub fn report_multi_res_warnings(report: &MultiResReport, reporter: &ServiceReporter) {
     if report.all_unused_when_off > 0 {
         let n = report.all_unused_when_off;
-        eprintln!(
-            "warn: Found {n} variant file{}, but multiResAssets is \"off\", so only the base assets are used.\nSet \"multiResAssets\": \"auto\" in index.json to use them.",
+        reporter.warn(format!(
+            "Found {n} variant file{}, but multiResAssets is \"off\", so only the base assets are used.\nSet \"multiResAssets\": \"auto\" in index.json to use them.",
             if n == 1 { "" } else { "s" }
-        );
+        ));
     }
     for (scale, files) in &report.unused_by_scale {
         let hint = if (*scale - BASE_SCALE).abs() < f64::EPSILON {
@@ -122,10 +179,10 @@ pub fn print_multi_res_warnings(report: &MultiResReport) {
         };
         let count = files.len();
         let example = files.first().map(String::as_str).unwrap_or("");
-        eprintln!(
-            "warn: Scale {scale} is not tried by the engine ({count} file{}, e.g. {example}): {hint}",
+        reporter.warn(format!(
+            "Scale {scale} is not tried by the engine ({count} file{}, e.g. {example}): {hint}",
             if count == 1 { "" } else { "s" }
-        );
+        ));
     }
     if !report.undeclared_scales.is_empty() {
         let joined: Vec<String> = report
@@ -134,10 +191,10 @@ pub fn print_multi_res_warnings(report: &MultiResReport) {
             .map(ToString::to_string)
             .collect();
         let pronoun = if joined.len() == 1 { "it" } else { "them" };
-        eprintln!(
-            "info: multiResAssetScales declares {}, but no variant file uses {pronoun}. Every asset will make one extra failed read for each.",
+        reporter.info(format!(
+            "multiResAssetScales declares {}, but no variant file uses {pronoun}. Every asset will make one extra failed read for each.",
             joined.join(", ")
-        );
+        ));
     }
     if !report.missing_base.is_empty() {
         let n = report.missing_base.len();
@@ -147,11 +204,11 @@ pub fn print_multi_res_warnings(report: &MultiResReport) {
             .iter()
             .map(|(p, b)| format!("  {p} (expected {b})"))
             .collect();
-        eprintln!(
-            "warn: No base asset for {n} variant file{}, so nothing can reference {pronoun}:\n{}",
+        reporter.warn(format!(
+            "No base asset for {n} variant file{}, so nothing can reference {pronoun}:\n{}",
             if n == 1 { "" } else { "s" },
             lines.join("\n")
-        );
+        ));
     }
 }
 

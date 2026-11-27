@@ -9,14 +9,15 @@ use serde::{Deserialize, Serialize};
 use zip::write::SimpleFileOptions;
 
 use crate::config::{meta_file, platform_dir};
+use crate::model::tasks::{TaskKind, TaskStatus};
 use crate::service::android::{
     ANDROID_FORMATS, ANDROID_PLATFORM, PackAndroidOptions, is_android_format, pack_android,
 };
 use crate::service::engine::{load_meta, native_executable_name};
 use crate::service::node::{generate_json_schema, run_project_build};
-use crate::service::project::{check_multi_res_assets, print_multi_res_warnings};
+use crate::service::project::{check_multi_res_assets, report_multi_res_warnings};
 use crate::service::video_decoder::{ensure_video_decoder_library, supports_video_decoder};
-use crate::service::{copy_dir_all, format_bytes};
+use crate::service::{ServiceReporter, copy_dir_all, format_bytes};
 
 const WEB_PLATFORM: &str = "web-universal";
 const FRAMEWORK_ARCHIVE_NAME: &str = "framework.zip";
@@ -67,9 +68,40 @@ struct FrameworkMeta {
     constructible: Option<bool>,
 }
 
-pub async fn pack_project(project_root: &Path, options: PackOptions) -> Result<()> {
+pub async fn pack_project(
+    project_root: &Path,
+    options: PackOptions,
+    reporter: &ServiceReporter,
+) -> Result<()> {
+    let kind = if options.target.as_deref() == Some(ANDROID_PLATFORM) {
+        TaskKind::PackAndroid
+    } else {
+        TaskKind::PackGame
+    };
+    let title = if options.framework {
+        "Pack framework".to_string()
+    } else {
+        format!("Pack {}", options.target.as_deref().unwrap_or("game"))
+    };
+    reporter.started(kind, title);
+
+    let result = pack_project_inner(project_root, options, reporter).await;
+    match &result {
+        Ok(()) => reporter.finished(TaskStatus::Completed),
+        Err(_) if reporter.cancel.is_cancelled() => reporter.finished(TaskStatus::Cancelled),
+        Err(e) => reporter.finished(TaskStatus::Failed(format!("{e:#}"))),
+    }
+    result
+}
+
+async fn pack_project_inner(
+    project_root: &Path,
+    options: PackOptions,
+    reporter: &ServiceReporter,
+) -> Result<()> {
+    reporter.cancel.check()?;
     let report = check_multi_res_assets(project_root)?;
-    print_multi_res_warnings(&report);
+    report_multi_res_warnings(&report, reporter);
 
     let framework_mode = options.framework;
     let compress = if framework_mode { true } else { options.compress };
@@ -134,32 +166,34 @@ pub async fn pack_project(project_root: &Path, options: PackOptions) -> Result<(
     }
 
     if framework_mode {
-        eprintln!("info: Mode: framework");
+        reporter.info("Mode: framework");
     } else {
-        eprintln!("info: Target: {}", options.target.as_deref().unwrap_or(""));
-        eprintln!(
-            "info: Engine version: {}",
+        reporter.info(format!("Target: {}", options.target.as_deref().unwrap_or("")));
+        reporter.info(format!(
+            "Engine version: {}",
             active_version.as_deref().unwrap_or("")
-        );
+        ));
     }
-    eprintln!("info: Compress: {compress}");
+    reporter.info(format!("Compress: {compress}"));
     if is_android {
-        eprintln!(
-            "info: Android format: {}",
+        reporter.info(format!(
+            "Android format: {}",
             options.android_format.as_deref().unwrap_or("")
-        );
+        ));
     }
     if options.include_video_decoder {
-        eprintln!("info: Video playback plugin: included");
+        reporter.info("Video playback plugin: included");
     }
-    eprintln!("info: Output: {}", output_dir.display());
+    reporter.info(format!("Output: {}", output_dir.display()));
 
-    eprintln!("info: Building project...");
-    run_project_build(project_root).await?;
-    eprintln!("success: Build complete.");
+    reporter.stage("Building project...");
+    reporter.info("Building project...");
+    run_project_build(project_root, reporter).await?;
+    reporter.success("Build complete.");
+    reporter.cancel.check()?;
 
     if tmp_pack_dir.exists() {
-        eprintln!("info: Cleaning existing tmp-pack directory...");
+        reporter.info("Cleaning existing tmp-pack directory...");
         fs::remove_dir_all(&tmp_pack_dir)?;
     }
     fs::create_dir_all(&tmp_pack_dir)?;
@@ -167,54 +201,58 @@ pub async fn pack_project(project_root: &Path, options: PackOptions) -> Result<(
     let res = async {
         if framework_mode {
             let fw_cfg = load_framework_config(project_root)?;
-            copy_framework_assets(project_root, &tmp_pack_dir, fw_cfg.assets.as_ref())?;
-            copy_index_json(project_root, &tmp_pack_dir)?;
-            copy_bundle_js(project_root, &tmp_pack_dir)?;
-            regenerate_schemas(project_root).await?;
-            copy_commands_schema(project_root, &tmp_pack_dir)?;
-            copy_ui_schema(project_root, &tmp_pack_dir)?;
-            copy_index_html(project_root, &tmp_pack_dir)?;
-            copy_index_preview_html(project_root, &tmp_pack_dir)?;
+            copy_framework_assets(project_root, &tmp_pack_dir, fw_cfg.assets.as_ref(), reporter)?;
+            copy_index_json(project_root, &tmp_pack_dir, reporter)?;
+            copy_bundle_js(project_root, &tmp_pack_dir, reporter)?;
+            regenerate_schemas(project_root, reporter).await?;
+            copy_commands_schema(project_root, &tmp_pack_dir, reporter)?;
+            copy_ui_schema(project_root, &tmp_pack_dir, reporter)?;
+            copy_index_html(project_root, &tmp_pack_dir, reporter)?;
+            copy_index_preview_html(project_root, &tmp_pack_dir, reporter)?;
             let fw_meta = build_framework_meta(&fw_cfg)?;
             if fw_meta.constructible == Some(true) {
-                copy_construct_files(project_root, &tmp_pack_dir)?;
+                copy_construct_files(project_root, &tmp_pack_dir, reporter)?;
             }
-            write_framework_meta(&tmp_pack_dir, &fw_meta)?;
+            write_framework_meta(&tmp_pack_dir, &fw_meta, reporter)?;
         } else {
-            copy_assets(project_root, &tmp_pack_dir)?;
-            copy_index_json(project_root, &tmp_pack_dir)?;
-            copy_bundle_js(project_root, &tmp_pack_dir)?;
+            copy_assets(project_root, &tmp_pack_dir, reporter)?;
+            copy_index_json(project_root, &tmp_pack_dir, reporter)?;
+            copy_bundle_js(project_root, &tmp_pack_dir, reporter)?;
 
             let target = options.target.as_deref().unwrap();
             let engine_dir = target_path.as_deref().unwrap();
             let video_lib = if options.include_video_decoder {
                 if supports_video_decoder(target) {
-                    Some(ensure_video_decoder_library(project_root, target).await?)
+                    Some(ensure_video_decoder_library(project_root, target, reporter).await?)
                 } else {
-                    eprintln!(
-                        "warn: Video playback plugin is not supported for target \"{target}\"; ignoring --video-decoder."
-                    );
+                    reporter.warn(format!(
+                        "Video playback plugin is not supported for target \"{target}\"; ignoring --video-decoder."
+                    ));
                     None
                 }
             } else {
                 None
             };
 
+            reporter.cancel.check()?;
             if is_android {
-                pack_android(PackAndroidOptions {
-                    project_root,
-                    engine_dir,
-                    runtime_package_dir: &tmp_pack_dir,
-                    output_dir: &output_dir,
-                    format: options.android_format.as_deref().unwrap_or(""),
-                    video_decoder_library: video_lib.as_deref(),
-                    signing_password: options.signing_password.as_deref(),
-                })
+                pack_android(
+                    PackAndroidOptions {
+                        project_root,
+                        engine_dir,
+                        runtime_package_dir: &tmp_pack_dir,
+                        output_dir: &output_dir,
+                        format: options.android_format.as_deref().unwrap_or(""),
+                        video_decoder_library: video_lib.as_deref(),
+                        signing_password: options.signing_password.as_deref(),
+                    },
+                    reporter,
+                )
                 .await?;
             } else if is_web {
-                copy_web_engine(project_root, engine_dir, &tmp_pack_dir)?;
+                copy_web_engine(project_root, engine_dir, &tmp_pack_dir, reporter)?;
             } else {
-                copy_native_engine(target, engine_dir, &tmp_pack_dir)?;
+                copy_native_engine(target, engine_dir, &tmp_pack_dir, reporter)?;
                 if let Some(lib) = &video_lib
                     && let Some(name) = lib.file_name()
                 {
@@ -223,12 +261,13 @@ pub async fn pack_project(project_root: &Path, options: PackOptions) -> Result<(
             }
         }
 
+        reporter.cancel.check()?;
         if !is_android {
             if compress {
-                create_zip(&tmp_pack_dir, &output_dir, archive_name).await?;
+                create_zip(&tmp_pack_dir, &output_dir, archive_name, reporter).await?;
             } else {
                 let game_path = output_dir.join("game");
-                eprintln!("info: Copying files to: {}", game_path.display());
+                reporter.info(format!("Copying files to: {}", game_path.display()));
                 copy_dir_all(&tmp_pack_dir, &game_path)?;
             }
         }
@@ -236,14 +275,18 @@ pub async fn pack_project(project_root: &Path, options: PackOptions) -> Result<(
     }
     .await;
 
-    eprintln!("info: Cleaning up tmp-pack...");
+    reporter.info("Cleaning up tmp-pack...");
     let _ = fs::remove_dir_all(&tmp_pack_dir);
     res?;
-    eprintln!("success: Pack complete!");
+    reporter.success("Pack complete!");
     Ok(())
 }
 
-fn copy_bundle_js(project_root: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_bundle_js(
+    project_root: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let mut entry_filename = "index.js".to_string();
     let index_json = project_root.join("index.json");
     if index_json.is_file()
@@ -265,17 +308,21 @@ fn copy_bundle_js(project_root: &Path, tmp_pack_dir: &Path) -> Result<()> {
     let name = Path::new(&entry_filename)
         .file_name()
         .context("Invalid entryFilename")?;
-    eprintln!("info: Copying bundle: {}", name.to_string_lossy());
+    reporter.info(format!("Copying bundle: {}", name.to_string_lossy()));
     fs::copy(&src_path, tmp_pack_dir.join(name))?;
     Ok(())
 }
 
-fn copy_assets(project_root: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_assets(
+    project_root: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let assets_dir = project_root.join("assets");
     if !assets_dir.is_dir() {
         bail!("Assets directory not found.");
     }
-    eprintln!("info: Copying assets...");
+    reporter.info("Copying assets...");
     copy_dir_all(&assets_dir, &tmp_pack_dir.join("assets"))?;
     Ok(())
 }
@@ -284,9 +331,10 @@ fn copy_framework_assets(
     project_root: &Path,
     tmp_pack_dir: &Path,
     patterns: Option<&AssetPatternConfig>,
+    reporter: &ServiceReporter,
 ) -> Result<()> {
     let Some(patterns) = patterns else {
-        return copy_assets(project_root, tmp_pack_dir);
+        return copy_assets(project_root, tmp_pack_dir, reporter);
     };
 
     let list: Vec<&str> = match patterns {
@@ -294,14 +342,14 @@ fn copy_framework_assets(
         AssetPatternConfig::Multiple(v) => v.iter().map(String::as_str).collect(),
     };
     let assets_root = project_root.join("assets");
-    eprintln!("info: Copying assets...");
+    reporter.info("Copying assets...");
 
     for pattern in list {
         let has_glob = pattern.contains(['*', '?', '[', ']', '{', '}']);
         if !has_glob {
             let src = assets_root.join(pattern);
             if !src.exists() {
-                eprintln!("warn: Asset path not found: {pattern}");
+                reporter.warn(format!("Asset path not found: {pattern}"));
                 continue;
             }
             let dst = tmp_pack_dir.join("assets").join(pattern);
@@ -356,36 +404,48 @@ fn copy_framework_assets(
     Ok(())
 }
 
-fn copy_index_json(project_root: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_index_json(
+    project_root: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let src = project_root.join("index.json");
     if !src.is_file() {
         bail!("index.json not found.");
     }
-    eprintln!("info: Copying index.json...");
+    reporter.info("Copying index.json...");
     fs::copy(src, tmp_pack_dir.join("index.json"))?;
     Ok(())
 }
 
-fn copy_index_html(project_root: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_index_html(
+    project_root: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let src = project_root.join("index.html");
     if !src.is_file() {
         bail!("index.html not found in project root.");
     }
-    eprintln!("info: Copying index.html...");
+    reporter.info("Copying index.html...");
     fs::copy(src, tmp_pack_dir.join("index.html"))?;
     Ok(())
 }
 
-fn copy_index_preview_html(project_root: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_index_preview_html(
+    project_root: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let src = project_root.join("index-preview.html");
     if src.is_file() {
-        eprintln!("info: Copying index-preview.html...");
+        reporter.info("Copying index-preview.html...");
         fs::copy(src, tmp_pack_dir.join("index-preview.html"))?;
     }
     Ok(())
 }
 
-async fn regenerate_schemas(project_root: &Path) -> Result<()> {
+async fn regenerate_schemas(project_root: &Path, reporter: &ServiceReporter) -> Result<()> {
     let commands_input = project_root.join("src/commands/commands.ts");
     if commands_input.is_file() {
         generate_json_schema(
@@ -396,7 +456,7 @@ async fn regenerate_schemas(project_root: &Path) -> Result<()> {
         )
         .await?;
     } else {
-        eprintln!("warn: src/commands/commands.ts not found, skipping commands schema generation.");
+        reporter.warn("src/commands/commands.ts not found, skipping commands schema generation.");
     }
 
     let ui_input = project_root.join("src/data/ui.ts");
@@ -412,26 +472,39 @@ async fn regenerate_schemas(project_root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn copy_commands_schema(project_root: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_commands_schema(
+    project_root: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let src = project_root.join("commands.schema.json");
     if !src.is_file() {
         bail!("commands.schema.json not found. Run \"moyu-devtool schema\" to generate it first.");
     }
-    eprintln!("info: Copying commands.schema.json...");
+    reporter.info("Copying commands.schema.json...");
     fs::copy(src, tmp_pack_dir.join("commands.schema.json"))?;
     Ok(())
 }
 
-fn copy_ui_schema(project_root: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_ui_schema(
+    project_root: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let src = project_root.join("ui.schema.json");
     if src.is_file() {
-        eprintln!("info: Copying ui.schema.json...");
+        reporter.info("Copying ui.schema.json...");
         fs::copy(src, tmp_pack_dir.join("ui.schema.json"))?;
     }
     Ok(())
 }
 
-fn copy_native_engine(target: &str, target_path: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_native_engine(
+    target: &str,
+    target_path: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let exe_name = native_executable_name(target)
         .ok_or_else(|| anyhow::anyhow!("Unsupported native target: {target}"))?;
     let exe_path = target_path.join(exe_name);
@@ -441,28 +514,37 @@ fn copy_native_engine(target: &str, target_path: &Path, tmp_pack_dir: &Path) -> 
             exe_path.display()
         );
     }
-    eprintln!("info: Copying native engine executable: {exe_name}");
+    reporter.info(format!("Copying native engine executable: {exe_name}"));
     fs::copy(exe_path, tmp_pack_dir.join(exe_name))?;
     Ok(())
 }
 
-fn copy_web_engine(project_root: &Path, web_path: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_web_engine(
+    project_root: &Path,
+    web_path: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     if !web_path.is_dir() {
         bail!("Web engine directory not found. Run \"moyu-devtool download\" to download web-universal platform.");
     }
-    eprintln!("info: Copying web engine files...");
+    reporter.info("Copying web engine files...");
     copy_dir_all(web_path, tmp_pack_dir)?;
-    copy_index_html(project_root, tmp_pack_dir)?;
+    copy_index_html(project_root, tmp_pack_dir, reporter)?;
     Ok(())
 }
 
-fn copy_construct_files(project_root: &Path, tmp_pack_dir: &Path) -> Result<()> {
+fn copy_construct_files(
+    project_root: &Path,
+    tmp_pack_dir: &Path,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     for filename in ["builtins.json", "events.json"] {
         let src = project_root.join(filename);
         if !src.is_file() {
             bail!("Construct file not found: {filename}");
         }
-        eprintln!("info: Copying Construct file: {filename}");
+        reporter.info(format!("Copying Construct file: {filename}"));
         fs::copy(src, tmp_pack_dir.join(filename))?;
     }
     Ok(())
@@ -502,8 +584,12 @@ fn build_framework_meta(config: &FrameworkConfig) -> Result<FrameworkMeta> {
     })
 }
 
-fn write_framework_meta(tmp_pack_dir: &Path, meta: &FrameworkMeta) -> Result<()> {
-    eprintln!("info: Writing framework meta.json...");
+fn write_framework_meta(
+    tmp_pack_dir: &Path,
+    meta: &FrameworkMeta,
+    reporter: &ServiceReporter,
+) -> Result<()> {
+    reporter.info("Writing framework meta.json...");
     fs::write(
         tmp_pack_dir.join("meta.json"),
         serde_json::to_string_pretty(meta)? + "\n",
@@ -511,15 +597,21 @@ fn write_framework_meta(tmp_pack_dir: &Path, meta: &FrameworkMeta) -> Result<()>
     Ok(())
 }
 
-async fn create_zip(tmp_pack_dir: &Path, output_dir: &Path, archive_name: &str) -> Result<()> {
+async fn create_zip(
+    tmp_pack_dir: &Path,
+    output_dir: &Path,
+    archive_name: &str,
+    reporter: &ServiceReporter,
+) -> Result<()> {
     let src_dir = tmp_pack_dir.to_path_buf();
     let out_dir = output_dir.to_path_buf();
     let archive = archive_name.to_string();
+    let reporter = reporter.clone();
 
     tokio::task::spawn_blocking(move || -> Result<()> {
         fs::create_dir_all(&out_dir)?;
         let zip_path = out_dir.join(&archive);
-        eprintln!("info: Creating zip archive: {}", zip_path.display());
+        reporter.info(format!("Creating zip archive: {}", zip_path.display()));
 
         let file = File::create(&zip_path)?;
         let mut writer = zip::ZipWriter::new(file);
@@ -528,6 +620,7 @@ async fn create_zip(tmp_pack_dir: &Path, output_dir: &Path, archive_name: &str) 
             .compression_level(Some(6));
 
         for entry in walkdir::WalkDir::new(&src_dir) {
+            reporter.cancel.check()?;
             let entry = entry?;
             let rel = entry
                 .path()
@@ -550,11 +643,11 @@ async fn create_zip(tmp_pack_dir: &Path, output_dir: &Path, archive_name: &str) 
         writer.finish()?;
 
         let size = fs::metadata(&zip_path)?.len();
-        eprintln!(
-            "success: Archive created: {} ({})",
+        reporter.success(format!(
+            "Archive created: {} ({})",
             zip_path.display(),
             format_bytes(size)
-        );
+        ));
         Ok(())
     })
     .await?

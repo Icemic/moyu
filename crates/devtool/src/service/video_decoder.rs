@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
 
-use crate::service::{http_get_bytes, sha256_hex};
+use crate::service::{ServiceReporter, download_to_file_verified};
 
 const VIDEO_DECODER_VERSION: &str = "v0.4.0";
 const VIDEO_DECODER_RELEASE_URL: &str =
@@ -58,7 +58,11 @@ pub fn supports_video_decoder(target: &str) -> bool {
     asset_for_target(target).is_some()
 }
 
-pub async fn ensure_video_decoder_library(project_root: &Path, target: &str) -> Result<PathBuf> {
+pub async fn ensure_video_decoder_library(
+    project_root: &Path,
+    target: &str,
+    reporter: &ServiceReporter,
+) -> Result<PathBuf> {
     let asset = asset_for_target(target)
         .ok_or_else(|| anyhow::anyhow!("Video decoder is not available for target: {target}"))?;
 
@@ -72,18 +76,18 @@ pub async fn ensure_video_decoder_library(project_root: &Path, target: &str) -> 
         return Ok(cached_library);
     }
 
-    eprintln!(
-        "info: Downloading video decoder {VIDEO_DECODER_VERSION} for {target}..."
-    );
+    reporter.info(format!(
+        "Downloading video decoder {VIDEO_DECODER_VERSION} for {target}..."
+    ));
     let url = format!("{VIDEO_DECODER_RELEASE_URL}/{}", asset.archive);
-    let archive_bytes = http_get_bytes(&url).await?;
-    let actual_sha256 = sha256_hex(&archive_bytes);
-    if actual_sha256 != asset.sha256 {
-        bail!(
-            "Video decoder SHA-256 mismatch.\nExpected: {}\nActual:   {actual_sha256}",
-            asset.sha256
-        );
-    }
+    let tmp_zip = std::env::temp_dir().join(format!(
+        "moyu-video-decoder-{}.zip",
+        uuid::Uuid::new_v4()
+    ));
+    download_to_file_verified(&url, &tmp_zip, asset.sha256, reporter).await?;
+    let archive_bytes = fs::read(&tmp_zip)?;
+    let _ = fs::remove_file(&tmp_zip);
+    reporter.cancel.check()?;
 
     let tmp_dir = project_root
         .join(".moyu")
@@ -131,6 +135,6 @@ pub async fn ensure_video_decoder_library(project_root: &Path, target: &str) -> 
     })
     .await??;
 
-    eprintln!("success: Video decoder cached: {}", cached_library.display());
+    reporter.success(format!("Video decoder cached: {}", cached_library.display()));
     Ok(cached_library)
 }
