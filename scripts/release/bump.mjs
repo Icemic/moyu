@@ -140,12 +140,12 @@ for (const item of plan) {
 console.log('\nUpdated successfully. Next steps:');
 if (target === 'moyu') {
   console.log(`  git commit -am "chore: release v${nextVersion}"`);
-  console.log(`  git tag v${nextVersion}`);
+  console.log(`  git tag -a v${nextVersion} -m "Release v${nextVersion}"`);
 } else if (target === 'devtool') {
   console.log(`  git commit -am "chore(devtool): release v${nextVersion}"`);
-  console.log(`  git tag devtool-v${nextVersion}`);
+  console.log(`  git tag -a devtool-v${nextVersion} -m "Release devtool-v${nextVersion}"`);
 } else {
   console.log(`  git commit -am "chore(kit): release v${nextVersion}"`);
-  console.log(`  git tag kit-v${nextVersion}`);
+  console.log(`  git tag -a kit-v${nextVersion} -m "Release kit-v${nextVersion}"`);
 }
 console.log('  git push --follow-tags');
