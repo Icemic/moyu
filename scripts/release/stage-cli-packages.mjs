@@ -78,6 +78,11 @@ for (const plat of PLATFORMS) {
     name: plat.pkg,
     version: args.version,
     description: `Prebuilt moyu-devtool binary for ${plat.os}-${plat.cpu}`,
+    repository: {
+      type: 'git',
+      url: 'https://github.com/Icemic/moyu.git',
+      directory: 'crates/devtool',
+    },
     license: 'MPL-2.0',
     os: [plat.os],
     cpu: [plat.cpu],

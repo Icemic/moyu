@@ -39,6 +39,11 @@
   },
   "author": "Icemic <bingfeng.web@gmail.com>",
   "homepage": "https://momoyu.ink",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Icemic/moyu.git",
+    "directory": "packages/kit"
+  },
   "license": "MPL-2.0",
   "engines": {
     "node": ">=22"

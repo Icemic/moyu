@@ -3,6 +3,11 @@
   "version": "0.10.0",
   "description": "CLI wrapper for moyu-devtool (Moyu Visual Novel Engine toolchain)",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Icemic/moyu.git",
+    "directory": "packages/cli"
+  },
   "license": "MPL-2.0",
   "bin": {
     "moyu": "./bin/moyu.js"
