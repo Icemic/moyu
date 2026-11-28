@@ -10,6 +10,7 @@ use gpui::{
 
 use crate::gui::theme::Theme;
 use crate::gui::ui::icon::{IconName, icon};
+use crate::gui::ui::motion::animate_popover_in;
 
 /// Floating popover container styled after FishFlow's `DropdownMenuContent`.
 pub fn popover_container(
@@ -70,6 +71,7 @@ pub fn menu_item(
             theme.popover_foreground
         })
         .hover(move |s| s.bg(theme.accent).text_color(theme.accent_foreground))
+        .active(|s| s.opacity(0.86))
         .flex()
         .flex_row()
         .items_center()
@@ -121,6 +123,7 @@ pub fn select_dropdown(
                 .gap(px(8.0))
                 .cursor_pointer()
                 .hover(move |s| s.bg(theme.accent))
+                .active(|s| s.opacity(0.88))
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .on_click(on_toggle)
                 .child(div().overflow_hidden().child(current_label.into()))
@@ -137,7 +140,13 @@ pub fn select_dropdown(
             } else {
                 popup.left_0()
             };
-            d.child(deferred(popup.children(menu_items)).with_priority(5))
+            d.child(
+                deferred(animate_popover_in(
+                    "select-popup-anim",
+                    popup.children(menu_items),
+                ))
+                .with_priority(5),
+            )
         })
         .into_any_element()
 }

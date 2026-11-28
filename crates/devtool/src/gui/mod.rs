@@ -43,10 +43,11 @@ mod app {
     use crate::gui::i18n::I18n;
     use crate::gui::theme::Theme;
     use crate::gui::ui::button::{ButtonVariant, icon_button, sm_button};
-    use crate::gui::ui::card::status_dot;
+    use crate::gui::ui::card::{pulsing_status_dot, status_dot};
     use crate::gui::ui::dropdown::{menu_divider, menu_section_label, popover_container};
     use crate::gui::ui::icon::{DevtoolAssets, IconName, icon};
     use crate::gui::ui::log_list::LogListView;
+    use crate::gui::ui::motion::{animate_drawer_in, animate_popover_in};
     use crate::gui::ui::progress::progress_bar;
     use crate::gui::ui::text_input::{TextInput, register_key_bindings};
     use crate::gui::views::{debug, development, dialogs, engine, pack};
@@ -2019,7 +2020,8 @@ mod app {
                         )
                         .when(project_menu_open, |d| {
                             d.child(
-                                deferred(
+                                deferred(animate_popover_in(
+                                    "popover-project-anim",
                                     popover_container("popover-project-menu", 320.0, theme)
                                         .absolute()
                                         .top(px(33.0))
@@ -2193,7 +2195,7 @@ mod app {
                                                 .child(icon(IconName::FolderOpen, 14.0, theme.meta))
                                                 .child(i18n.open_existing_project()),
                                         ),
-                                )
+                                ))
                                 .with_priority(5),
                             )
                         }),
@@ -2345,56 +2347,61 @@ mod app {
             };
 
             let output_drawer = output_open.then(|| {
-                div()
-                    .h(px(150.0))
-                    .w_full()
-                    .flex_shrink_0()
-                    .bg(theme.card)
-                    .border_t_1()
-                    .border_color(theme.rule)
-                    .p(px(8.0))
-                    .flex()
-                    .flex_col()
-                    .gap(px(4.0))
-                    .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .justify_between()
-                            .child(
-                                div()
-                                    .text_size(px(12.0))
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(theme.foreground)
-                                    .child(i18n.task_output()),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_row()
-                                    .gap(px(4.0))
-                                    .child(sm_button(
-                                        "btn-clear-logs",
-                                        i18n.clear_logs(),
-                                        ButtonVariant::Ghost,
-                                        theme,
-                                        cx.listener(|this, _, _, cx| {
-                                            this.log_list.update(cx, |l, cx| l.clear(cx));
-                                        }),
-                                    ))
-                                    .child(icon_button(
-                                        "btn-close-output",
-                                        IconName::X,
-                                        theme,
-                                        cx.listener(|this, _, _, cx| {
-                                            this.output_open = false;
-                                            cx.notify();
-                                        }),
-                                    )),
-                            ),
-                    )
-                    .child(div().flex_1().w_full().child(self.log_list.clone()))
+                animate_drawer_in(
+                    "output-drawer-anim",
+                    150.0,
+                    div()
+                        .h(px(150.0))
+                        .w_full()
+                        .overflow_hidden()
+                        .flex_shrink_0()
+                        .bg(theme.card)
+                        .border_t_1()
+                        .border_color(theme.rule)
+                        .p(px(8.0))
+                        .flex()
+                        .flex_col()
+                        .gap(px(4.0))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_row()
+                                .items_center()
+                                .justify_between()
+                                .child(
+                                    div()
+                                        .text_size(px(12.0))
+                                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                                        .text_color(theme.foreground)
+                                        .child(i18n.task_output()),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_row()
+                                        .gap(px(4.0))
+                                        .child(sm_button(
+                                            "btn-clear-logs",
+                                            i18n.clear_logs(),
+                                            ButtonVariant::Ghost,
+                                            theme,
+                                            cx.listener(|this, _, _, cx| {
+                                                this.log_list.update(cx, |l, cx| l.clear(cx));
+                                            }),
+                                        ))
+                                        .child(icon_button(
+                                            "btn-close-output",
+                                            IconName::X,
+                                            theme,
+                                            cx.listener(|this, _, _, cx| {
+                                                this.output_open = false;
+                                                cx.notify();
+                                            }),
+                                        )),
+                                ),
+                        )
+                        .child(div().flex_1().w_full().child(self.log_list.clone())),
+                )
             });
 
             let statusbar = div()
@@ -2418,7 +2425,11 @@ mod app {
                         .gap(px(6.0))
                         .min_w_0()
                         .flex_1()
-                        .child(status_dot(status_color))
+                        .child(if self.active_stage.is_some() {
+                            pulsing_status_dot("status-busy-dot", theme.info)
+                        } else {
+                            status_dot(status_color).into_any_element()
+                        })
                         .child(
                             div()
                                 .text_size(px(12.0))

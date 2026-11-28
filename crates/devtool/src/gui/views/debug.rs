@@ -7,7 +7,7 @@ use gpui::{AnyElement, Context, div, img, prelude::*, px};
 use crate::gui::i18n::I18n;
 use crate::gui::theme::Theme;
 use crate::gui::ui::button::{ButtonVariant, button, sm_button};
-use crate::gui::ui::card::{muted_panel, panel, section_heading, status_dot};
+use crate::gui::ui::card::{muted_panel, panel, pulsing_status_dot, section_heading, status_dot};
 use crate::gui::ui::dropdown::{menu_item, select_dropdown};
 use crate::gui::{ActivePopover, DevtoolApp};
 use crate::model::debug::{DebugConnectionStatus, NodeSummary, SessionMode};
@@ -222,7 +222,13 @@ pub fn render_debug_view(
                         .flex_row()
                         .items_center()
                         .gap(px(6.0))
-                        .child(status_dot(status_color))
+                        .child(
+                            if matches!(app.debug.status, DebugConnectionStatus::Listening { .. }) {
+                                pulsing_status_dot("dbg-listening-dot", status_color)
+                            } else {
+                                status_dot(status_color).into_any_element()
+                            },
+                        )
                         .child(
                             div()
                                 .text_size(px(12.0))

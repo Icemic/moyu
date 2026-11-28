@@ -1,8 +1,9 @@
 //! FishFlow-styled panel, section heading, detail row, status dot, and chip helpers.
 
-use gpui::{AnyElement, Div, Hsla, SharedString, div, prelude::*, px};
+use gpui::{AnimationExt, AnyElement, Div, ElementId, Hsla, SharedString, div, prelude::*, px};
 
 use crate::gui::theme::Theme;
+use crate::gui::ui::motion::pulse_animation;
 
 pub fn panel(theme: Theme) -> Div {
     div()
@@ -70,6 +71,13 @@ pub fn detail_row(theme: Theme) -> Div {
 
 pub fn status_dot(color: Hsla) -> Div {
     div().size(px(6.0)).rounded_full().bg(color).flex_shrink_0()
+}
+
+/// Gentle pulsing status dot for starting / waiting / busy indicators.
+pub fn pulsing_status_dot(id: impl Into<ElementId>, color: Hsla) -> AnyElement {
+    status_dot(color)
+        .with_animation(id, pulse_animation(), |dot, delta| dot.opacity(delta))
+        .into_any_element()
 }
 
 pub fn chip(label: impl Into<SharedString>, theme: Theme) -> Div {

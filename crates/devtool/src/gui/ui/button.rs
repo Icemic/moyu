@@ -87,6 +87,7 @@ pub fn button_sized(
         .flex_shrink_0()
         .cursor_pointer()
         .hover(move |s| s.bg(hover_bg))
+        .active(|s| s.opacity(0.84))
         .on_click(on_click)
         .child(label.into())
 }
@@ -128,6 +129,7 @@ pub fn icon_button(
         .flex_shrink_0()
         .cursor_pointer()
         .hover(move |s| s.bg(theme.accent))
+        .active(|s| s.opacity(0.82))
         .on_click(on_click)
         .child(icon(icon_name, 14.0, theme.foreground))
 }

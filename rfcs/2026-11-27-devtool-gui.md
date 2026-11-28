@@ -65,7 +65,8 @@
 | `icon.rs` | `IconName` 枚举、`DevtoolAssets` 资源源与 `icon(name, size_px, color)` 渲染函数 |
 | `button.rs` | 正交拆分 `ButtonVariant`（`Primary` / `Secondary` / `Outline` / `Ghost` / `Danger`）与 `ButtonSize`（`Sm = 26px` / `Md = 32px`），保证同组切换按钮尺寸严格一致；提供 `icon_button` |
 | `dropdown.rs` | 通用 `SelectDropdown` 与 `popover_container` / `menu_item` / `menu_section_label` / `menu_divider`；**所有触发器与菜单项在 `MouseDown` 拦截事件冒泡**，确保展开态再次点击稳定收起；浮层通过 `gpui::deferred` 置顶渲染 |
-| `card.rs` | `panel`、`muted_panel`、`section_heading`、`detail_row`、`status_dot`、`chip` |
+| `card.rs` | `panel`、`muted_panel`、`section_heading`、`detail_row`、`status_dot`、`pulsing_status_dot`、`chip` |
+| `motion.rs` | 基于 GPUI 内置 `AnimationExt` 的微动效原语（弹窗淡入上浮、下拉浮层滑入、抽屉高度展开、状态呼吸点），零第三方动效库依赖 |
 | `progress.rs` | 细条水平进度条，配合任务阶段与字节统计展示 |
 | `log_list.rs` | 基于 `gpui::uniform_list` 的虚拟滚动日志列表，支撑底部「任务输出」 |
 | `text_input.rs` | 基于 `gpui::EntityInputHandler` 的单行文本输入框，支持选区、剪贴板、掩码（密码输入）与**中文 IME 组合输入** |

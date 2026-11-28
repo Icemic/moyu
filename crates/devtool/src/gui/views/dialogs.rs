@@ -8,6 +8,7 @@ use crate::gui::theme::Theme;
 use crate::gui::ui::button::{ButtonVariant, button, icon_button, sm_button};
 use crate::gui::ui::dropdown::{menu_item, select_dropdown};
 use crate::gui::ui::icon::IconName;
+use crate::gui::ui::motion::{animate_modal_backdrop, animate_modal_panel};
 use crate::gui::{ActivePopover, DevtoolApp};
 
 fn modal_shell(
@@ -18,7 +19,70 @@ fn modal_shell(
     footer: AnyElement,
     cx: &mut Context<DevtoolApp>,
 ) -> AnyElement {
-    div()
+    let panel = div()
+        .id(("modal-box", id))
+        .w(px(420.0))
+        .max_w(px(520.0))
+        .rounded(px(6.0))
+        .bg(theme.background)
+        .text_color(theme.foreground)
+        .border_1()
+        .border_color(theme.rule)
+        .shadow_lg()
+        .on_mouse_down(
+            MouseButton::Left,
+            cx.listener(|this, _, _, cx| {
+                cx.stop_propagation();
+                if this.active_popover.is_some() {
+                    this.active_popover = None;
+                    cx.notify();
+                }
+            }),
+        )
+        .child(
+            div()
+                .p(px(16.0))
+                .flex()
+                .flex_col()
+                .gap(px(12.0))
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .justify_between()
+                        .child(
+                            div()
+                                .text_size(px(15.0))
+                                .font_weight(gpui::FontWeight::MEDIUM)
+                                .text_color(theme.foreground)
+                                .child(title.to_string()),
+                        )
+                        .child(icon_button(
+                            ("modal-close", id),
+                            IconName::X,
+                            theme,
+                            cx.listener(|this, _, _, cx| this.close_dialog(cx)),
+                        )),
+                )
+                .child(body),
+        )
+        .child(
+            div()
+                .px(px(16.0))
+                .py(px(12.0))
+                .rounded_b(px(6.0))
+                .bg(theme.card)
+                .border_t_1()
+                .border_color(theme.rule)
+                .flex()
+                .flex_row()
+                .justify_end()
+                .gap(px(8.0))
+                .child(footer),
+        );
+
+    let backdrop = div()
         .id(("modal-backdrop", id))
         .absolute()
         .inset_0()
@@ -32,71 +96,9 @@ fn modal_shell(
                 this.close_dialog(cx);
             }),
         )
-        .child(
-            div()
-                .id(("modal-box", id))
-                .w(px(420.0))
-                .max_w(px(520.0))
-                .rounded(px(6.0))
-                .bg(theme.background)
-                .text_color(theme.foreground)
-                .border_1()
-                .border_color(theme.rule)
-                .shadow_lg()
-                .on_mouse_down(
-                    MouseButton::Left,
-                    cx.listener(|this, _, _, cx| {
-                        cx.stop_propagation();
-                        if this.active_popover.is_some() {
-                            this.active_popover = None;
-                            cx.notify();
-                        }
-                    }),
-                )
-                .child(
-                    div()
-                        .p(px(16.0))
-                        .flex()
-                        .flex_col()
-                        .gap(px(12.0))
-                        .child(
-                            div()
-                                .flex()
-                                .flex_row()
-                                .items_center()
-                                .justify_between()
-                                .child(
-                                    div()
-                                        .text_size(px(15.0))
-                                        .font_weight(gpui::FontWeight::MEDIUM)
-                                        .text_color(theme.foreground)
-                                        .child(title.to_string()),
-                                )
-                                .child(icon_button(
-                                    ("modal-close", id),
-                                    IconName::X,
-                                    theme,
-                                    cx.listener(|this, _, _, cx| this.close_dialog(cx)),
-                                )),
-                        )
-                        .child(body),
-                )
-                .child(
-                    div()
-                        .px(px(16.0))
-                        .py(px(12.0))
-                        .rounded_b(px(6.0))
-                        .bg(theme.card)
-                        .border_t_1()
-                        .border_color(theme.rule)
-                        .flex()
-                        .flex_row()
-                        .justify_end()
-                        .gap(px(8.0))
-                        .child(footer),
-                ),
-        )
-        .into_any_element()
+        .child(animate_modal_panel(("modal-panel-anim", id), panel));
+
+    animate_modal_backdrop(("modal-backdrop-anim", id), backdrop).into_any_element()
 }
 
 pub fn render_settings_dialog(

@@ -6,11 +6,12 @@ use gpui::{AnyElement, Context, MouseButton, deferred, div, prelude::*, px};
 use crate::gui::i18n::I18n;
 use crate::gui::theme::Theme;
 use crate::gui::ui::button::{ButtonVariant, button, sm_button};
-use crate::gui::ui::card::{detail_row, panel, section_heading, status_dot};
+use crate::gui::ui::card::{detail_row, panel, pulsing_status_dot, section_heading, status_dot};
 use crate::gui::ui::dropdown::{
     menu_divider, menu_item, menu_section_label, popover_container, select_dropdown,
 };
 use crate::gui::ui::icon::{IconName, icon};
+use crate::gui::ui::motion::animate_popover_in;
 use crate::gui::{ActivePopover, DevtoolApp, RunMode};
 use crate::service::dev_server::DevServerStatus;
 use crate::service::editor::LauncherKind;
@@ -142,6 +143,7 @@ pub fn render_development_view(
                                 .hover(move |s| {
                                     s.bg(theme.accent).text_color(theme.accent_foreground)
                                 })
+                                .active(|s| s.opacity(0.84))
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.open_project_folder(cx);
                                 }))
@@ -283,6 +285,7 @@ fn render_editor_split_button(
                 .when(has_editor, |d| {
                     d.cursor_pointer()
                         .hover(move |s| s.bg(theme.secondary_hover))
+                        .active(|s| s.opacity(0.84))
                         .on_click(cx.listener(|this, _, _, cx| this.launch_selected_editor(cx)))
                 })
                 .child(icon(
@@ -310,6 +313,7 @@ fn render_editor_split_button(
                 .justify_center()
                 .cursor_pointer()
                 .hover(move |s| s.bg(theme.secondary_hover))
+                .active(|s| s.opacity(0.84))
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.toggle_popover(ActivePopover::EditorMenu, cx);
@@ -370,7 +374,7 @@ fn render_editor_split_button(
                 }),
             ));
 
-            d.child(deferred(popup).with_priority(5))
+            d.child(deferred(animate_popover_in("popover-editor-anim", popup)).with_priority(5))
         })
         .into_any_element()
 }
@@ -421,6 +425,7 @@ fn render_run_split_button(
                 .gap(px(6.0))
                 .cursor_pointer()
                 .hover(move |s| s.bg(main_hover))
+                .active(|s| s.opacity(0.84))
                 .on_click(cx.listener(|this, _, _, cx| this.toggle_run_preview(cx)))
                 .child(icon(
                     if is_running {
@@ -448,6 +453,7 @@ fn render_run_split_button(
                 .when(!is_running, |d| {
                     d.cursor_pointer()
                         .hover(move |s| s.bg(main_hover))
+                        .active(|s| s.opacity(0.84))
                         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.toggle_popover(ActivePopover::RunModeMenu, cx);
@@ -465,7 +471,8 @@ fn render_run_split_button(
         )
         .when(menu_open && !is_running, |d| {
             d.child(
-                deferred(
+                deferred(animate_popover_in(
+                    "popover-run-mode-anim",
                     popover_container("popover-run-mode", 150.0, theme)
                         .absolute()
                         .top(px(36.0))
@@ -488,7 +495,7 @@ fn render_run_split_button(
                                 this.set_run_mode(RunMode::Browser, cx);
                             }),
                         )),
-                )
+                ))
                 .with_priority(5),
             )
         })
@@ -906,7 +913,11 @@ fn render_env_panel(
                                 .flex_row()
                                 .items_center()
                                 .gap(px(5.0))
-                                .child(status_dot(dev_dot))
+                                .child(if dev_server_status == DevServerStatus::Starting {
+                                    pulsing_status_dot("dev-server-starting-dot", dev_dot)
+                                } else {
+                                    status_dot(dev_dot).into_any_element()
+                                })
                                 .child(
                                     div()
                                         .text_size(px(12.0))
