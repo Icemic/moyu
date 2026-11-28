@@ -215,6 +215,6 @@ jobs:
             DIST_TAG_FLAG="--tag next"
           fi
           for dir in npm-stage/platforms/*; do
-            npm publish "$dir" --provenance --access public $DIST_TAG_FLAG
+            (cd "$dir" && npm publish --provenance --access public $DIST_TAG_FLAG)
           done
-          npm publish npm-stage/cli --provenance --access public $DIST_TAG_FLAG
+          (cd npm-stage/cli && npm publish --provenance --access public $DIST_TAG_FLAG)
