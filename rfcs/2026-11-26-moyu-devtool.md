@@ -114,7 +114,7 @@ crates/devtool/
     │   ├── node.rs       # Node/PM/jiti 探测、Corepack 自动启用、install/build、Schema、托管 Node
     │   ├── editor.rs     # 跨平台编辑器 / 终端 / AI 工具探测启动、文件管理器与浏览器打开
     │   └── init.rs       # 拉取 DeepSpaceMill/framework 最新 main.zip 并自动装依赖与最新引擎
-    ├── cli/              # CLI 壳层（clap、隐藏密码输入、终端输出、MCP stdio）
+    ├── cli/              # CLI 壳层（clap + cliclack 交互向导 + indicatif 进度条 + MCP stdio）
     └── gui/              # GPUI 图形界面壳层（受 `gui` feature 控制）
 ```
 

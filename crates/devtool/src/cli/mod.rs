@@ -1,6 +1,7 @@
-//! Command-line interface frontend powered by `clap`.
+//! Command-line interface frontend powered by `clap`, `cliclack`, and `indicatif`.
 
-use std::io::{self, BufRead, IsTerminal, Write};
+mod ui;
+
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -10,7 +11,7 @@ use serde_json::{Value, json};
 
 use crate::config::{DEFAULT_ATTACH_PORT, DEFAULT_WEB_PORT, meta_file, platform_dir};
 use crate::model::debug::LogEntry;
-use crate::model::tasks::TaskEvent;
+use crate::service::android::ANDROID_PLATFORM;
 use crate::service::debug::{
     DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_READY_TIMEOUT_MS, DebugHost, SessionOptions,
     start_debug_session,
@@ -26,7 +27,8 @@ use crate::service::pack::{PackOptions, pack_project};
 use crate::service::project::require_project_root;
 use crate::service::run::run_project;
 use crate::service::video_decoder::supports_video_decoder;
-use crate::service::{CancelToken, ServiceReporter, format_bytes, next_task_id};
+
+use self::ui::SelectItem;
 
 #[derive(Parser)]
 #[command(
@@ -251,8 +253,13 @@ pub async fn run(cli: Cli) -> i32 {
     match dispatch(command).await {
         Ok(code) => code,
         Err(err) => {
-            eprintln!("error: {err:#}");
-            1
+            if err.downcast_ref::<ui::UserCancelled>().is_some() {
+                ui::outro_cancel("Cancelled.");
+                0
+            } else {
+                ui::log_error(&format!("{err:#}"));
+                1
+            }
         }
     }
 }
@@ -285,7 +292,7 @@ async fn dispatch(command: Commands) -> Result<i32> {
             web,
             port,
         } => {
-            let (reporter, printer) = create_cli_reporter();
+            let (reporter, printer) = ui::create_cli_reporter();
             let res = run_project(&require_project_root(None)?, web, port, &reporter).await;
             drop(reporter);
             let _ = printer.await;
@@ -307,45 +314,15 @@ async fn dispatch(command: Commands) -> Result<i32> {
             android_format,
             video_decoder,
         } => {
-            let project_root = require_project_root(None)?;
-            let include_video_decoder = match video_decoder {
-                Some(v) => v,
-                None if !framework
-                    && target.as_deref().is_some_and(supports_video_decoder)
-                    && io::stdin().is_terminal() =>
-                {
-                    prompt_confirm("Include video playback plugin?", false)?
-                }
-                None => false,
-            };
-            let signing_password = if !framework
-                && target.as_deref() == Some("android-aarch64")
-                && matches!(
-                    android_format.as_deref(),
-                    Some("release-apk" | "release-aab")
-                ) {
-                Some(prompt_hidden("Android signing password: ")?)
-            } else {
-                None
-            };
-            let (reporter, printer) = create_cli_reporter();
-            let res = pack_project(
-                &project_root,
-                PackOptions {
-                    target,
-                    framework,
-                    compress,
-                    output,
-                    android_format,
-                    include_video_decoder,
-                    signing_password,
-                },
-                &reporter,
+            cmd_pack(
+                target,
+                framework,
+                compress,
+                output,
+                android_format,
+                video_decoder,
             )
-            .await;
-            drop(reporter);
-            let _ = printer.await;
-            res?;
+            .await?;
             Ok(0)
         }
         Commands::Schema { input, output } => {
@@ -354,9 +331,12 @@ async fn dispatch(command: Commands) -> Result<i32> {
                 .join(input.unwrap_or_else(|| PathBuf::from("src/commands/commands.ts")));
             let out_path =
                 project_root.join(output.unwrap_or_else(|| PathBuf::from("commands.schema.json")));
-            generate_json_schema(&project_root, &in_path, &out_path, "ScenarioCommandSchema")
-                .await?;
-            eprintln!("success: JSON Schema written to {}", out_path.display());
+            ui::with_spinner(
+                "Generating commands.schema.json...",
+                generate_json_schema(&project_root, &in_path, &out_path, "ScenarioCommandSchema"),
+            )
+            .await?;
+            ui::log_success(&format!("JSON Schema written to {}", out_path.display()));
             Ok(0)
         }
         Commands::UiSchema { input, output } => {
@@ -365,36 +345,63 @@ async fn dispatch(command: Commands) -> Result<i32> {
                 project_root.join(input.unwrap_or_else(|| PathBuf::from("src/data/ui.ts")));
             let out_path =
                 project_root.join(output.unwrap_or_else(|| PathBuf::from("ui.schema.json")));
-            generate_json_schema(&project_root, &in_path, &out_path, "GameUiSchema").await?;
-            eprintln!("success: JSON Schema written to {}", out_path.display());
+            ui::with_spinner(
+                "Generating ui.schema.json...",
+                generate_json_schema(&project_root, &in_path, &out_path, "GameUiSchema"),
+            )
+            .await?;
+            ui::log_success(&format!("JSON Schema written to {}", out_path.display()));
             Ok(0)
         }
     }
 }
 
 async fn cmd_init(name_arg: Option<String>) -> Result<()> {
-    println!("\nMoyu Project Setup\nCreate a new visual novel project\n");
+    ui::intro("moyu · init");
+    let cwd = std::env::current_dir()?;
+
     let project_name = match name_arg {
-        Some(n) => n,
-        None => prompt_text("Project name", Some("my-visual-novel"))?,
+        Some(n) => {
+            validate_project_name(&n)?;
+            n
+        }
+        None => {
+            let cwd_check = cwd.clone();
+            ui::prompt_input(
+                "Project name",
+                Some("my-visual-novel"),
+                Some("my-visual-novel"),
+                move |input| {
+                    let trimmed = input.trim();
+                    if let Err(err) = validate_project_name(trimmed) {
+                        return Err(format!("{err}"));
+                    }
+                    if cwd_check.join(trimmed).exists() {
+                        return Err(format!("Directory \"{trimmed}\" already exists."));
+                    }
+                    Ok(())
+                },
+            )?
+        }
     };
-    validate_project_name(&project_name)?;
-    let target_dir = std::env::current_dir()?.join(&project_name);
+    let target_dir = cwd.join(&project_name);
+    ui::log_info(&format!("Target directory: {}", target_dir.display()));
 
-    println!("\nProject configuration:");
-    println!("  Name: {project_name}");
-    println!("  Path: {}\n", target_dir.display());
-
-    if io::stdin().is_terminal() && !prompt_confirm("Create project?", true)? {
-        eprintln!("info: Setup cancelled.");
+    if ui::is_interactive() && !ui::prompt_confirm("Create project?", true)? {
+        ui::outro_cancel("Setup cancelled.");
         return Ok(());
     }
 
-    let (reporter, printer) = create_cli_reporter();
+    let (reporter, printer) = ui::create_cli_reporter();
     let res = create_project(&project_name, &target_dir, &reporter).await;
     drop(reporter);
     let _ = printer.await;
     res?;
+
+    ui::outro(&format!(
+        "Project \"{project_name}\" created at {}",
+        target_dir.display()
+    ));
     Ok(())
 }
 
@@ -404,10 +411,14 @@ async fn cmd_download(
     platforms_arg: Vec<String>,
     activate_flag: bool,
 ) -> Result<()> {
+    ui::intro("moyu · download");
     let project_root = require_project_root(None)?;
     let config = load_config(&project_root);
-    eprintln!("info: Fetching version manifest...");
-    let manifest = fetch_versions_json(&config.cdn_url).await?;
+    let manifest = ui::with_spinner(
+        "Fetching engine version manifest...",
+        fetch_versions_json(&config.cdn_url),
+    )
+    .await?;
 
     let channel_names: Vec<String> = manifest.channels.keys().cloned().collect();
     if channel_names.is_empty() {
@@ -417,21 +428,15 @@ async fn cmd_download(
     let selected_channel = match channel_arg {
         Some(c) => c,
         None => {
-            let labels: Vec<String> = channel_names
+            let items: Vec<SelectItem> = channel_names
                 .iter()
-                .map(|c| {
-                    if *c == config.channel {
-                        format!("{c} (current)")
-                    } else {
-                        c.clone()
-                    }
-                })
+                .map(|c| SelectItem::new(c, if *c == config.channel { "current" } else { "" }))
                 .collect();
             let default_idx = channel_names
                 .iter()
                 .position(|c| *c == config.channel)
                 .unwrap_or(0);
-            let idx = prompt_select("Select channel:", &labels, default_idx)?;
+            let idx = ui::prompt_select("Select engine channel", &items, default_idx)?;
             channel_names[idx].clone()
         }
     };
@@ -451,22 +456,23 @@ async fn cmd_download(
     let selected_version = match version_arg {
         Some(v) => v,
         None => {
-            let labels: Vec<String> = version_entries
+            let items: Vec<SelectItem> = version_entries
                 .iter()
                 .map(|(name, e)| {
                     let date = e.published_at.get(..10).unwrap_or(&e.published_at);
-                    if **name == channel.latest {
-                        format!("{name} ({date}) [latest]")
+                    let hint = if **name == channel.latest {
+                        format!("{date} · latest")
                     } else {
-                        format!("{name} ({date})")
-                    }
+                        date.to_string()
+                    };
+                    SelectItem::new(*name, hint)
                 })
                 .collect();
             let default_idx = version_entries
                 .iter()
                 .position(|(n, _)| **n == channel.latest)
                 .unwrap_or(0);
-            let idx = prompt_select("Select version:", &labels, default_idx)?;
+            let idx = ui::prompt_select("Select engine version", &items, default_idx)?;
             version_entries[idx].0.clone()
         }
     };
@@ -484,13 +490,24 @@ async fn cmd_download(
         platforms_arg
     } else {
         let current = try_detect_platform();
+        let items: Vec<SelectItem> = available_platforms
+            .iter()
+            .map(|p| {
+                let hint = if current == Some(p.as_str()) {
+                    "current platform"
+                } else {
+                    ""
+                };
+                SelectItem::new(p, hint)
+            })
+            .collect();
         let default_indices: Vec<usize> = current
             .and_then(|c| available_platforms.iter().position(|p| p == c))
             .into_iter()
             .collect();
-        let chosen = prompt_multiselect(
-            "Select platforms to download (comma-separated numbers):",
-            &available_platforms,
+        let chosen = ui::prompt_multiselect(
+            "Select platforms to download (Space to toggle, Enter to confirm)",
+            &items,
             &default_indices,
         )?;
         chosen
@@ -500,7 +517,7 @@ async fn cmd_download(
     };
 
     if selected_platforms.is_empty() {
-        eprintln!("warn: No platforms selected. Nothing to download.");
+        ui::outro_cancel("No platforms selected. Nothing to download.");
         return Ok(());
     }
 
@@ -509,9 +526,9 @@ async fn cmd_download(
         true
     } else if let Some(active) = &existing_meta.active
         && active.version != selected_version
-        && io::stdin().is_terminal()
+        && ui::is_interactive()
     {
-        prompt_confirm(
+        ui::prompt_confirm(
             &format!(
                 "Switch active version from {} to {selected_version}?",
                 active.version
@@ -522,11 +539,7 @@ async fn cmd_download(
         false
     };
 
-    let (reporter, printer) = create_cli_reporter();
-    eprintln!(
-        "info: Downloading {selected_version} ({})...",
-        selected_platforms.join(", ")
-    );
+    let (reporter, printer) = ui::create_cli_reporter();
     let res = download_platforms(
         &project_root,
         &selected_channel,
@@ -541,11 +554,15 @@ async fn cmd_download(
     let _ = printer.await;
     res?;
 
-    eprintln!("success: Done!");
+    ui::outro(&format!(
+        "Downloaded {selected_version} ({})",
+        selected_platforms.join(", ")
+    ));
     Ok(())
 }
 
 async fn cmd_update(skip_confirm: bool) -> Result<()> {
+    ui::intro("moyu · update");
     let project_root = require_project_root(None)?;
     let meta = load_meta(&meta_file(&project_root)).unwrap_or_default();
     let config = load_config(&project_root);
@@ -555,10 +572,15 @@ async fn cmd_update(skip_confirm: bool) -> Result<()> {
         .map(|a| a.channel.clone())
         .unwrap_or(config.channel);
 
-    eprintln!("info: CDN: {}", config.cdn_url);
-    eprintln!("info: Channel: {current_channel}");
-    eprintln!("info: Fetching version manifest...");
-    let manifest = fetch_versions_json(&config.cdn_url).await?;
+    ui::log_info(&format!(
+        "Channel: {current_channel}  ·  CDN: {}",
+        config.cdn_url
+    ));
+    let manifest = ui::with_spinner(
+        "Fetching engine version manifest...",
+        fetch_versions_json(&config.cdn_url),
+    )
+    .await?;
 
     let channel = manifest
         .channels
@@ -586,9 +608,7 @@ async fn cmd_update(skip_confirm: bool) -> Result<()> {
             .is_some_and(|a| a.version == target_version)
             && all_match
         {
-            eprintln!(
-                "success: Engine is already up to date ({target_version}). Nothing to download."
-            );
+            ui::outro(&format!("Engine is already up to date ({target_version})."));
             return Ok(());
         }
     }
@@ -599,22 +619,22 @@ async fn cmd_update(skip_confirm: bool) -> Result<()> {
         .map(|a| a.version.as_str())
         .unwrap_or("(none)");
     if !skip_confirm {
-        if !io::stdin().is_terminal() {
+        if !ui::is_interactive() {
             bail!("Confirmation required. Re-run with --yes (-y) in non-interactive mode.");
         }
-        if !prompt_confirm(
+        if !ui::prompt_confirm(
             &format!(
-                "Update engine: {current_ver} -> {target_version}?\n  Platforms: {}",
+                "Update engine {current_ver} -> {target_version} ({})?",
                 target_platforms.join(", ")
             ),
-            false,
+            true,
         )? {
-            eprintln!("info: Update cancelled.");
+            ui::outro_cancel("Update cancelled.");
             return Ok(());
         }
     }
 
-    let (reporter, printer) = create_cli_reporter();
+    let (reporter, printer) = ui::create_cli_reporter();
     let res = download_platforms(
         &project_root,
         &current_channel,
@@ -629,16 +649,17 @@ async fn cmd_update(skip_confirm: bool) -> Result<()> {
     let _ = printer.await;
     res?;
 
-    eprintln!("success: Engine updated to {target_version}!");
     for p in &target_platforms {
         if let Ok(dir) = platform_dir(&project_root, &target_version, p) {
-            eprintln!("info:   {p}: {}", dir.display());
+            ui::log_info(&format!("{p}: {}", dir.display()));
         }
     }
+    ui::outro(&format!("Engine updated to {target_version}!"));
     Ok(())
 }
 
 fn cmd_switch(version_arg: Option<String>) -> Result<()> {
+    ui::intro("moyu · switch");
     let project_root = require_project_root(None)?;
     let meta = load_meta(&meta_file(&project_root)).ok_or_else(|| {
         anyhow::anyhow!("No engine versions downloaded yet. Run \"moyu-devtool download\" first.")
@@ -653,30 +674,40 @@ fn cmd_switch(version_arg: Option<String>) -> Result<()> {
     } else if version_names.len() == 1 {
         let only = &version_names[0];
         if meta.active.as_ref().is_some_and(|a| &a.version == only) {
-            eprintln!("info: Only one version available ({only}) and it is already active.");
+            ui::outro(&format!(
+                "Only one version available ({only}) and it is already active."
+            ));
             return Ok(());
         }
         only.clone()
     } else {
-        let labels: Vec<String> = version_names
+        let active_idx = meta
+            .active
+            .as_ref()
+            .and_then(|a| version_names.iter().position(|v| v == &a.version))
+            .unwrap_or(0);
+        let items: Vec<SelectItem> = version_names
             .iter()
             .map(|v| {
                 let dl = &meta.downloads[v];
                 let plats: Vec<&str> = dl.platforms.keys().map(String::as_str).collect();
                 let active_mark = if meta.active.as_ref().is_some_and(|a| &a.version == v) {
-                    " (active)"
+                    " · active"
                 } else {
                     ""
                 };
-                format!("{v} [{} | {}{active_mark}]", dl.channel, plats.join(", "))
+                SelectItem::new(
+                    v,
+                    format!("{} · {}{active_mark}", dl.channel, plats.join(", ")),
+                )
             })
             .collect();
-        let idx = prompt_select("Select engine version to activate:", &labels, 0)?;
+        let idx = ui::prompt_select("Select engine version to activate", &items, active_idx)?;
         version_names[idx].clone()
     };
 
     if meta.active.as_ref().is_some_and(|a| a.version == selected) {
-        eprintln!("info: {selected} is already the active version.");
+        ui::outro(&format!("{selected} is already the active version."));
         return Ok(());
     }
 
@@ -684,13 +715,119 @@ fn cmd_switch(version_arg: Option<String>) -> Result<()> {
     if let Some(dl) = meta.downloads.get(&selected)
         && !dl.platforms.contains_key(current_platform)
     {
-        eprintln!(
-            "warn: Version {selected} does not include platform \"{current_platform}\".\nNative run may not work. Use \"moyu-devtool download\" to add it."
-        );
+        ui::log_warn(&format!(
+            "Version {selected} does not include platform \"{current_platform}\". Native run may not work."
+        ));
     }
 
     switch_active_version(&project_root, &selected)?;
-    eprintln!("success: Active version switched to {selected}.");
+    ui::outro(&format!("Active engine version switched to {selected}."));
+    Ok(())
+}
+
+async fn cmd_pack(
+    mut target: Option<String>,
+    mut framework: bool,
+    compress: bool,
+    output: Option<PathBuf>,
+    mut android_format: Option<String>,
+    video_decoder: Option<bool>,
+) -> Result<()> {
+    ui::intro("moyu · pack");
+    let project_root = require_project_root(None)?;
+
+    if !framework && target.is_none() && ui::is_interactive() {
+        let group_items = [
+            SelectItem::new("Desktop", "Windows, macOS, Linux"),
+            SelectItem::new("Web", "Browser static bundle"),
+            SelectItem::new("Android", "APK, AAB, Android Studio project"),
+            SelectItem::new("Framework", "Moyu framework ZIP archive"),
+        ];
+        match ui::prompt_select("Select export target", &group_items, 0)? {
+            0 => {
+                let desktop_platforms = [
+                    "windows-amd64",
+                    "macos-aarch64",
+                    "macos-amd64",
+                    "linux-amd64",
+                    "linux-aarch64",
+                ];
+                let current = try_detect_platform();
+                let default_idx = current
+                    .and_then(|c| desktop_platforms.iter().position(|&p| p == c))
+                    .unwrap_or(0);
+                let plat_items: Vec<SelectItem> = desktop_platforms
+                    .iter()
+                    .map(|&p| SelectItem::new(p, if current == Some(p) { "current" } else { "" }))
+                    .collect();
+                let idx = ui::prompt_select("Select desktop platform", &plat_items, default_idx)?;
+                target = Some(desktop_platforms[idx].to_string());
+            }
+            1 => {
+                target = Some("web-universal".to_string());
+            }
+            2 => {
+                target = Some(ANDROID_PLATFORM.to_string());
+                if android_format.is_none() {
+                    let fmt_keys = ["debug-apk", "release-apk", "release-aab", "android-project"];
+                    let fmt_items = [
+                        SelectItem::new("debug-apk", "Debug APK (no signing password needed)"),
+                        SelectItem::new("release-apk", "Signed Release APK"),
+                        SelectItem::new("release-aab", "Signed Release App Bundle (AAB)"),
+                        SelectItem::new("android-project", "Export Android Gradle project"),
+                    ];
+                    let idx = ui::prompt_select("Select Android output format", &fmt_items, 0)?;
+                    android_format = Some(fmt_keys[idx].to_string());
+                }
+            }
+            _ => {
+                framework = true;
+            }
+        }
+    }
+
+    let include_video_decoder = match video_decoder {
+        Some(v) => v,
+        None if !framework
+            && target.as_deref().is_some_and(supports_video_decoder)
+            && ui::is_interactive() =>
+        {
+            ui::prompt_confirm("Include video playback plugin?", false)?
+        }
+        None => false,
+    };
+
+    let signing_password = if !framework
+        && target.as_deref() == Some(ANDROID_PLATFORM)
+        && matches!(
+            android_format.as_deref(),
+            Some("release-apk" | "release-aab")
+        ) {
+        Some(ui::prompt_password("Android signing password")?)
+    } else {
+        None
+    };
+
+    let (reporter, printer) = ui::create_cli_reporter();
+    let res = pack_project(
+        &project_root,
+        PackOptions {
+            target,
+            framework,
+            compress,
+            output,
+            android_format,
+            include_video_decoder,
+            signing_password,
+        },
+        &reporter,
+    )
+    .await;
+    drop(reporter);
+    let _ = printer.await;
+    res?;
+
+    ui::outro("Packaging complete!");
     Ok(())
 }
 
@@ -881,221 +1018,4 @@ fn print_log_entry(entry: &LogEntry) {
         entry.target,
         entry.message
     );
-}
-
-fn create_cli_reporter() -> (ServiceReporter, tokio::task::JoinHandle<()>) {
-    let (tx, rx) = async_channel::unbounded();
-    let reporter = ServiceReporter::with_channel(next_task_id(), tx, CancelToken::new());
-    let printer = tokio::spawn(async move {
-        let mut showing_progress = false;
-        while let Ok(ev) = rx.recv().await {
-            match ev {
-                TaskEvent::Progress {
-                    downloaded_bytes,
-                    total_bytes,
-                    ..
-                } => {
-                    showing_progress = true;
-                    if let Some(total) = total_bytes
-                        && total > 0
-                    {
-                        let pct = (downloaded_bytes * 100) / total;
-                        eprint!(
-                            "\r  Downloading... {} / {} ({pct}%)",
-                            format_bytes(downloaded_bytes),
-                            format_bytes(total)
-                        );
-                    } else {
-                        eprint!("\r  Downloading... {}", format_bytes(downloaded_bytes));
-                    }
-                    let _ = io::stderr().flush();
-                }
-                TaskEvent::LogLine { level, line, .. } => {
-                    if showing_progress {
-                        eprintln!();
-                        showing_progress = false;
-                    }
-                    eprintln!("{}: {line}", level.prefix());
-                }
-                TaskEvent::Stage { stage, .. } => {
-                    if showing_progress {
-                        eprintln!();
-                        showing_progress = false;
-                    }
-                    eprintln!("info: {stage}");
-                }
-                TaskEvent::Started { .. } | TaskEvent::Finished { .. } => {}
-            }
-        }
-        if showing_progress {
-            eprintln!();
-        }
-    });
-    (reporter, printer)
-}
-
-fn prompt_text(label: &str, default: Option<&str>) -> Result<String> {
-    if let Some(d) = default {
-        print!("{label} [{d}]: ");
-    } else {
-        print!("{label}: ");
-    }
-    io::stdout().flush()?;
-    let mut line = String::new();
-    io::stdin().lock().read_line(&mut line)?;
-    let trimmed = line.trim().to_string();
-    if trimmed.is_empty()
-        && let Some(d) = default
-    {
-        return Ok(d.to_string());
-    }
-    Ok(trimmed)
-}
-
-fn prompt_confirm(label: &str, default: bool) -> Result<bool> {
-    let hint = if default { "Y/n" } else { "y/N" };
-    print!("{label} ({hint}): ");
-    io::stdout().flush()?;
-    let mut line = String::new();
-    io::stdin().lock().read_line(&mut line)?;
-    let trimmed = line.trim().to_ascii_lowercase();
-    if trimmed.is_empty() {
-        Ok(default)
-    } else {
-        Ok(matches!(trimmed.as_str(), "y" | "yes"))
-    }
-}
-
-fn prompt_hidden(message: &str) -> Result<String> {
-    if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
-        bail!("Android release signing password must be entered in an interactive terminal.");
-    }
-    print!("{message}");
-    io::stdout().flush()?;
-
-    #[cfg(target_os = "windows")]
-    let password = {
-        use windows::Win32::System::Console::{
-            CONSOLE_MODE, ENABLE_ECHO_INPUT, GetConsoleMode, GetStdHandle, STD_INPUT_HANDLE,
-            SetConsoleMode,
-        };
-        struct ModeGuard {
-            handle: windows::Win32::Foundation::HANDLE,
-            old_mode: CONSOLE_MODE,
-        }
-        impl Drop for ModeGuard {
-            fn drop(&mut self) {
-                unsafe {
-                    let _ = SetConsoleMode(self.handle, self.old_mode);
-                }
-            }
-        }
-        let handle = unsafe { GetStdHandle(STD_INPUT_HANDLE)? };
-        let mut old_mode = CONSOLE_MODE(0);
-        unsafe { GetConsoleMode(handle, &mut old_mode)? };
-        let _guard = ModeGuard { handle, old_mode };
-        unsafe {
-            SetConsoleMode(handle, CONSOLE_MODE(old_mode.0 & !ENABLE_ECHO_INPUT.0))?;
-        }
-        let mut line = String::new();
-        io::stdin().read_line(&mut line)?;
-        println!();
-        line.trim_end_matches(&['\r', '\n'][..]).to_string()
-    };
-
-    #[cfg(not(target_os = "windows"))]
-    let password = {
-        use std::process::{Command, Stdio};
-        struct EchoGuard;
-        impl Drop for EchoGuard {
-            fn drop(&mut self) {
-                let _ = Command::new("stty")
-                    .arg("echo")
-                    .stdin(Stdio::inherit())
-                    .status();
-            }
-        }
-        let status = Command::new("stty")
-            .arg("-echo")
-            .stdin(Stdio::inherit())
-            .status()?;
-        if !status.success() {
-            bail!("Failed to disable terminal echo via stty.");
-        }
-        let _guard = EchoGuard;
-        let mut line = String::new();
-        io::stdin().read_line(&mut line)?;
-        println!();
-        line.trim_end_matches(&['\r', '\n'][..]).to_string()
-    };
-
-    Ok(password)
-}
-
-fn prompt_select(label: &str, options: &[String], default_idx: usize) -> Result<usize> {
-    println!("{label}");
-    for (i, opt) in options.iter().enumerate() {
-        let marker = if i == default_idx { "*" } else { " " };
-        println!("  {marker} [{}] {opt}", i + 1);
-    }
-    print!("Enter number [{}]: ", default_idx + 1);
-    io::stdout().flush()?;
-    let mut line = String::new();
-    io::stdin().lock().read_line(&mut line)?;
-    let trimmed = line.trim();
-    if trimmed.is_empty() {
-        return Ok(default_idx);
-    }
-    let idx: usize = trimmed
-        .parse::<usize>()
-        .map_err(|_| anyhow::anyhow!("Invalid selection: {trimmed}"))?;
-    if idx == 0 || idx > options.len() {
-        bail!("Selection out of range: {idx}");
-    }
-    Ok(idx - 1)
-}
-
-fn prompt_multiselect(
-    label: &str,
-    options: &[String],
-    default_indices: &[usize],
-) -> Result<Vec<usize>> {
-    println!("{label}");
-    for (i, opt) in options.iter().enumerate() {
-        let marker = if default_indices.contains(&i) {
-            "*"
-        } else {
-            " "
-        };
-        println!("  {marker} [{}] {opt}", i + 1);
-    }
-    let default_str: Vec<String> = default_indices
-        .iter()
-        .map(|i| (i + 1).to_string())
-        .collect();
-    print!("Enter numbers [{}]: ", default_str.join(","));
-    io::stdout().flush()?;
-    let mut line = String::new();
-    io::stdin().lock().read_line(&mut line)?;
-    let trimmed = line.trim();
-    if trimmed.is_empty() {
-        return Ok(default_indices.to_vec());
-    }
-    let mut selected = Vec::new();
-    for part in trimmed.split(',') {
-        let p = part.trim();
-        if p.is_empty() {
-            continue;
-        }
-        let idx: usize = p
-            .parse::<usize>()
-            .map_err(|_| anyhow::anyhow!("Invalid selection: {p}"))?;
-        if idx == 0 || idx > options.len() {
-            bail!("Selection out of range: {idx}");
-        }
-        if !selected.contains(&(idx - 1)) {
-            selected.push(idx - 1);
-        }
-    }
-    Ok(selected)
 }
