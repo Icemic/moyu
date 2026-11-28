@@ -55,7 +55,7 @@ jobs:
         if: runner.os == 'Linux' && matrix.wasm == false && matrix.android != true
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev pkg-config libudev-dev libdbus-1-dev
+          sudo apt-get install -y libasound2-dev pkg-config libudev-dev libdbus-1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libxcb1-dev libx11-xcb-dev libfontconfig1-dev
 
       - name: Install wasm-pack
         if: matrix.os == 'ubuntu-latest' && matrix.wasm == true
@@ -85,6 +85,10 @@ jobs:
 
       - name: Build Binary
         run: cargo build --verbose --release ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+        if: matrix.wasm == false && matrix.android != true
+
+      - name: Build Devtool
+        run: cargo build --verbose --release -p moyu_devtool ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
         if: matrix.wasm == false && matrix.android != true
 
       - name: Build Android

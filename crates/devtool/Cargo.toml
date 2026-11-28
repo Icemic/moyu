@@ -1,0 +1,58 @@
+[package]
+description = "Unified Rust CLI and GUI devtool for the Moyu Visual Novel Engine."
+edition = "2024"
+license = "MPL-2.0"
+name = "moyu_devtool"
+version = "0.10.0"
+
+[[bin]]
+name = "moyu-devtool"
+path = "src/main.rs"
+
+[features]
+default = ["gui"]
+gui = ["dep:gpui", "dep:gpui_platform", "dep:unicode-segmentation"]
+
+[dependencies]
+anyhow = {workspace = true}
+async-channel = "2.5"
+base64 = {workspace = true}
+chrono = "0.4"
+clap = {version = "4", features = ["derive"]}
+cliclack = "0.5"
+console = "0.16"
+dirs = {workspace = true}
+fast-glob = {workspace = true}
+flate2 = "1"
+futures-util = {workspace = true}
+gpui = {package = "gpui-pre", version = "0.3.14", optional = true}
+gpui_platform = {package = "gpui-pre-platform", version = "0.3.14", features = [
+    "font-kit",
+    "wayland",
+    "x11",
+], optional = true}
+httparse = "1.10"
+indicatif = "0.18"
+percent-encoding = "2.3"
+ring = "0.17"
+serde = {workspace = true}
+serde_json = {workspace = true}
+tar = "0.4"
+tokio = {workspace = true, features = ["full"]}
+tokio-tungstenite = {workspace = true}
+unicode-segmentation = {version = "1", optional = true}
+ureq = "3"
+uuid = {version = "1", features = ["v4"]}
+walkdir = "2.5"
+zip = {workspace = true, features = ["deflate"]}
+zstd = "0.14"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = {version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_System_Console",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+]}

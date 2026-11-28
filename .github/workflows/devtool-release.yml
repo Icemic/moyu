@@ -1,0 +1,220 @@
+name: Devtool Release
+
+on:
+  push:
+    tags:
+      - 'devtool-v*'
+  workflow_dispatch:
+    inputs:
+      publish_npm:
+        description: 'Publish @momoyu-ink/cli and platform packages to npm'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify-version:
+    name: Verify Devtool Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      is_tag: ${{ steps.check.outputs.is_tag }}
+      is_prerelease: ${{ steps.check.outputs.is_prerelease }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check Cargo.toml, package.json, and tag alignment
+        id: check
+        shell: bash
+        run: |
+          CARGO_VER=$(sed -n 's/^version = "\(.*\)"/\1/p' crates/devtool/Cargo.toml | head -n 1)
+          PKG_VER=$(node -p "require('./packages/cli/package.json').version")
+
+          if [ -z "$CARGO_VER" ] || [ "$CARGO_VER" != "$PKG_VER" ]; then
+            echo "Error: Version mismatch between crates/devtool/Cargo.toml ($CARGO_VER) and packages/cli/package.json ($PKG_VER)."
+            exit 1
+          fi
+
+          if [[ "${{ github.ref }}" == refs/tags/devtool-v* ]]; then
+            TAG_VER="${{ github.ref_name }}"
+            TAG_VER="${TAG_VER#devtool-v}"
+            if [ "$TAG_VER" != "$CARGO_VER" ]; then
+              echo "Error: Tag version ($TAG_VER) does not match Cargo.toml/package.json ($CARGO_VER)."
+              exit 1
+            fi
+            echo "is_tag=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_tag=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "version=$CARGO_VER" >> "$GITHUB_OUTPUT"
+          if [[ "$CARGO_VER" == *"-"* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-devtool:
+    name: Build moyu-devtool (${{ matrix.npm_key }})
+    needs: verify-version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            npm_key: linux-x64
+            bin_name: moyu-devtool
+          - os: ubuntu-24.04-arm
+            npm_key: linux-arm64
+            target: aarch64-unknown-linux-gnu
+            bin_name: moyu-devtool
+          - os: macos-15
+            npm_key: darwin-arm64
+            target: aarch64-apple-darwin
+            bin_name: moyu-devtool
+          - os: macos-15
+            npm_key: darwin-x64
+            target: x86_64-apple-darwin
+            bin_name: moyu-devtool
+          - os: windows-latest
+            npm_key: win32-x64
+            bin_name: moyu-devtool.exe
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 1
+      CARGO_PROFILE_RELEASE_STRIP: 'true'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libxcb1-dev libx11-xcb-dev libfontconfig1-dev
+
+      - name: Install Rust target
+        if: matrix.target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build moyu-devtool
+        run: cargo build --release -p moyu_devtool ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+
+      - name: Prepare artifacts
+        shell: bash
+        env:
+          BUILD_DIR: ${{ matrix.target && format('target/{0}/release', matrix.target) || 'target/release' }}
+        run: |
+          mkdir -p "devtool-bin/${{ matrix.npm_key }}" standalone
+          cp "$BUILD_DIR/${{ matrix.bin_name }}" "devtool-bin/${{ matrix.npm_key }}/${{ matrix.bin_name }}"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            7z a "standalone/moyu-devtool-${{ matrix.npm_key }}.zip" "./devtool-bin/${{ matrix.npm_key }}/${{ matrix.bin_name }}"
+          else
+            tar -C "devtool-bin/${{ matrix.npm_key }}" -cf - "${{ matrix.bin_name }}" | zstd -o "standalone/moyu-devtool-${{ matrix.npm_key }}.tar.zst"
+          fi
+
+      - name: Upload raw binary for npm staging
+        uses: actions/upload-artifact@v7
+        with:
+          name: devtool-bin-${{ matrix.npm_key }}
+          path: devtool-bin/${{ matrix.npm_key }}/${{ matrix.bin_name }}
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload standalone archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: devtool-standalone-${{ matrix.npm_key }}
+          path: standalone/*
+          if-no-files-found: error
+          retention-days: 30
+
+  stage-and-publish:
+    name: Stage & Publish Devtool
+    needs: [verify-version, build-devtool]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download binaries
+        uses: actions/download-artifact@v7
+        with:
+          pattern: devtool-bin-*
+          path: devtool-artifacts
+
+      - name: Normalize binary directory layout
+        shell: bash
+        run: |
+          mkdir -p staged-bins
+          for dir in devtool-artifacts/devtool-bin-*; do
+            key="${dir#devtool-artifacts/devtool-bin-}"
+            mkdir -p "staged-bins/$key"
+            cp "$dir"/* "staged-bins/$key/"
+          done
+
+      - name: Stage npm packages
+        run: |
+          node scripts/release/stage-cli-packages.mjs \
+            --version "${{ needs.verify-version.outputs.version }}" \
+            --artifacts-dir ./staged-bins \
+            --output-dir ./npm-stage
+
+      - name: Upload staged npm packages artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: devtool-npm-stage-${{ needs.verify-version.outputs.version }}
+          path: npm-stage
+          retention-days: 14
+
+      - name: Download standalone archives
+        if: needs.verify-version.outputs.is_tag == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          pattern: devtool-standalone-*
+          path: standalone-archives
+
+      - name: Create GitHub Release
+        if: needs.verify-version.outputs.is_tag == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          TITLE="moyu-devtool v${{ needs.verify-version.outputs.version }}"
+          EXTRA_FLAGS="--latest=false"
+          if [[ "${{ needs.verify-version.outputs.is_prerelease }}" == "true" ]]; then
+            EXTRA_FLAGS="$EXTRA_FLAGS --prerelease"
+          fi
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TITLE" --generate-notes $EXTRA_FLAGS --repo "${{ github.repository }}"
+          fi
+          for f in standalone-archives/*/*; do
+            gh release upload "$TAG" "$f" --clobber --repo "${{ github.repository }}"
+          done
+
+      - name: Publish npm packages (Trusted Publishing)
+        if: needs.verify-version.outputs.is_tag == 'true' || inputs.publish_npm == true
+        run: |
+          npm install -g npm@latest
+          DIST_TAG_FLAG=""
+          if [[ "${{ needs.verify-version.outputs.is_prerelease }}" == "true" ]]; then
+            DIST_TAG_FLAG="--tag next"
+          fi
+          for dir in npm-stage/platforms/*; do
+            npm publish "$dir" --provenance --access public $DIST_TAG_FLAG
+          done
+          npm publish npm-stage/cli --provenance --access public $DIST_TAG_FLAG

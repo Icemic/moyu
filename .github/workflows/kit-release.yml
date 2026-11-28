@@ -1,0 +1,87 @@
+name: Kit Release
+
+on:
+  push:
+    tags:
+      - 'kit-v*'
+  workflow_dispatch:
+    inputs:
+      publish_npm:
+        description: 'Publish @momoyu-ink/kit to npm'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  release-kit:
+    name: Build & Release @momoyu-ink/kit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Check package.json and tag alignment
+        id: check
+        shell: bash
+        run: |
+          PKG_VER=$(node -p "require('./packages/kit/package.json').version")
+
+          if [[ "${{ github.ref }}" == refs/tags/kit-v* ]]; then
+            TAG_VER="${{ github.ref_name }}"
+            TAG_VER="${TAG_VER#kit-v}"
+            if [ "$TAG_VER" != "$PKG_VER" ]; then
+              echo "Error: Tag version ($TAG_VER) does not match packages/kit/package.json ($PKG_VER)."
+              exit 1
+            fi
+            echo "is_tag=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_tag=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "version=$PKG_VER" >> "$GITHUB_OUTPUT"
+          if [[ "$PKG_VER" == *"-"* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          yarn install --immutable
+
+      - name: Build @momoyu-ink/kit
+        run: yarn workspace @momoyu-ink/kit build
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.is_tag == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          TITLE="@momoyu-ink/kit v${{ steps.check.outputs.version }}"
+          EXTRA_FLAGS="--latest=false"
+          if [[ "${{ steps.check.outputs.is_prerelease }}" == "true" ]]; then
+            EXTRA_FLAGS="$EXTRA_FLAGS --prerelease"
+          fi
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "$TITLE" --generate-notes $EXTRA_FLAGS --repo "${{ github.repository }}"
+          fi
+
+      - name: Publish @momoyu-ink/kit to npm (Trusted Publishing)
+        if: steps.check.outputs.is_tag == 'true' || inputs.publish_npm == true
+        run: |
+          npm install -g npm@latest
+          DIST_TAG_FLAG=""
+          if [[ "${{ steps.check.outputs.is_prerelease }}" == "true" ]]; then
+            DIST_TAG_FLAG="--tag next"
+          fi
+          npm publish packages/kit --provenance --access public $DIST_TAG_FLAG

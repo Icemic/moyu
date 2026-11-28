@@ -8,13 +8,13 @@ version.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow = {workspace = true}
-ehttp = { version = "0.7.1", features = ["native-async"] }
-futures-util = "0.3"
+ehttp = {version = "0.7.1", features = ["native-async"]}
+futures-util = {workspace = true}
 log = {workspace = true}
 quickjs-rusty = {workspace = true}
 serde = {workspace = true}
 tokio = {workspace = true, features = ["time", "sync"]}
-tokio-tungstenite = "0.30"
+tokio-tungstenite = {workspace = true}
 
 moyu_pal = {workspace = true}
 
