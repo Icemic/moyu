@@ -3,7 +3,7 @@ description = "Unified Rust CLI and GUI devtool for the Moyu Visual Novel Engine
 edition = "2024"
 license = "MPL-2.0"
 name = "moyu_devtool"
-version = "0.11.0-pre.0"
+version = "0.11.0"
 
 [[bin]]
 name = "moyu-devtool"
