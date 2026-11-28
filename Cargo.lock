@@ -4218,7 +4218,6 @@ dependencies = [
  "futures-util",
  "gpui-pre",
  "gpui-pre-platform",
- "http",
  "httparse",
  "indicatif",
  "percent-encoding",

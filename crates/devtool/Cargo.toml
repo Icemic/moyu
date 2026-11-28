@@ -31,7 +31,6 @@ gpui_platform = {package = "gpui-pre-platform", version = "0.3.14", features = [
     "wayland",
     "x11",
 ], optional = true}
-http = "1.5"
 httparse = "1.10"
 indicatif = "0.18"
 percent-encoding = "2.3"
