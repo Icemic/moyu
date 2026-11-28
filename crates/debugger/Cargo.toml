@@ -18,11 +18,11 @@ moyu_ops = {workspace = true}
 moyu_pal = {workspace = true}
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-futures-util = "0.3"
+futures-util = {workspace = true}
 
 # "time" backs the retry backoff and the evaluation timeout.
 tokio = {workspace = true, features = ["rt-multi-thread", "macros", "parking_lot", "time"]}
-tokio-tungstenite = "0.30"
+tokio-tungstenite = {workspace = true}
 
 moyu_core = {workspace = true, features = ["js_runtime"]}
 moyu_runtime = {workspace = true}
