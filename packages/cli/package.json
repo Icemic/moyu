@@ -1,6 +1,6 @@
 {
   "name": "@momoyu-ink/cli",
-  "version": "0.10.0",
+  "version": "0.11.0-pre.0",
   "description": "CLI wrapper for moyu-devtool (Moyu Visual Novel Engine toolchain)",
   "type": "module",
   "repository": {
