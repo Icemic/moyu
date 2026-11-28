@@ -7,9 +7,7 @@ use crate::gui::i18n::I18n;
 use crate::gui::theme::Theme;
 use crate::gui::ui::button::{ButtonVariant, button, sm_button};
 use crate::gui::ui::card::{detail_row, panel, pulsing_status_dot, section_heading, status_dot};
-use crate::gui::ui::dropdown::{
-    menu_divider, menu_item, menu_section_label, popover_container, select_dropdown,
-};
+use crate::gui::ui::dropdown::{menu_divider, menu_item, menu_section_label, popover_container};
 use crate::gui::ui::icon::{IconName, icon};
 use crate::gui::ui::motion::animate_popover_in;
 use crate::gui::{ActivePopover, DevtoolApp, RunMode};
@@ -508,86 +506,29 @@ fn render_config_panel(
     i18n: I18n,
     cx: &mut Context<DevtoolApp>,
 ) -> AnyElement {
-    let editing = app.config_editing;
     let index = app.project.index_summary.as_ref();
     let window_title = index.and_then(|s| s.window_title.as_deref()).unwrap_or("-");
-    let entry_filename = index
-        .and_then(|s| s.entry_filename.as_deref())
-        .unwrap_or("-");
+    let app_name = index.and_then(|s| s.app_name.as_deref()).unwrap_or("-");
     let window_size = index
         .and_then(|s| s.initial_surface_size.as_deref())
         .unwrap_or("-");
     let stage_size = index.and_then(|s| s.stage_size.as_deref()).unwrap_or("-");
-    let engine_channel = app
-        .project
-        .moyu_summary
-        .as_ref()
-        .and_then(|m| m.engine_channel.as_deref())
-        .unwrap_or(&app.engine.config.channel);
     let framework_name = app
         .project
         .framework_summary
         .as_ref()
         .and_then(|f| f.name.clone().or_else(|| f.title.clone()));
 
-    let channel_options = app.available_config_channels();
-    let edit_channel = app.config_channel_draft.clone();
-    let ch_menu_open = app.active_popover == Some(ActivePopover::ConfigChannel);
-    let config_err = app.config_save_error.clone();
+    let actions = sm_button(
+        "btn-config-edit",
+        i18n.edit(),
+        ButtonVariant::Secondary,
+        theme,
+        cx.listener(|this, _, _, cx| this.open_runtime_config_dialog(cx)),
+    )
+    .into_any_element();
 
-    let ch_items: Vec<AnyElement> = channel_options
-        .into_iter()
-        .enumerate()
-        .map(|(i, ch)| {
-            let sel = ch == edit_channel;
-            let ch_clone = ch.clone();
-            menu_item(
-                ("cfg-ch-opt", i),
-                ch,
-                sel,
-                theme,
-                cx.listener(move |this, _, _, cx| {
-                    this.config_channel_draft = ch_clone.clone();
-                    this.active_popover = None;
-                    cx.notify();
-                }),
-            )
-            .into_any_element()
-        })
-        .collect();
-
-    let actions = if editing {
-        div()
-            .flex()
-            .flex_row()
-            .gap(px(6.0))
-            .child(sm_button(
-                "btn-config-cancel",
-                i18n.cancel(),
-                ButtonVariant::Secondary,
-                theme,
-                cx.listener(|this, _, _, cx| this.cancel_config_edit(cx)),
-            ))
-            .child(sm_button(
-                "btn-config-save",
-                i18n.save(),
-                ButtonVariant::Primary,
-                theme,
-                cx.listener(|this, _, _, cx| this.save_config_edit(cx)),
-            ))
-            .into_any_element()
-    } else {
-        sm_button(
-            "btn-config-edit",
-            i18n.edit(),
-            ButtonVariant::Secondary,
-            theme,
-            cx.listener(|this, _, _, cx| this.begin_config_edit(cx)),
-        )
-        .into_any_element()
-    };
-
-    let config_row = |label: &str, value_el: AnyElement| {
+    let config_row = |label: &str, value: &str| {
         detail_row(theme)
             .child(
                 div()
@@ -596,99 +537,26 @@ fn render_config_panel(
                     .flex_shrink_0()
                     .child(label.to_string()),
             )
-            .child(value_el)
-    };
-
-    let value_text = |v: &str| {
-        div()
-            .text_size(px(13.0))
-            .text_color(theme.foreground)
-            .child(v.to_string())
-            .into_any_element()
+            .child(
+                div()
+                    .text_size(px(13.0))
+                    .text_color(theme.foreground)
+                    .child(value.to_string()),
+            )
     };
 
     panel(theme)
-        .child(section_heading(i18n.project_config(), Some(actions), theme))
-        .when_some(config_err, |p, err| {
-            p.child(
-                div()
-                    .mb(px(8.0))
-                    .px(px(10.0))
-                    .py(px(6.0))
-                    .rounded(px(4.0))
-                    .bg(theme.background)
-                    .border_1()
-                    .border_color(theme.destructive)
-                    .text_size(px(12.0))
-                    .text_color(theme.destructive)
-                    .child(err),
-            )
-        })
-        .child(config_row(
-            i18n.window_title_label(),
-            if editing {
-                div()
-                    .w(px(260.0))
-                    .child(app.cfg_title_input.clone())
-                    .into_any_element()
-            } else {
-                value_text(window_title)
-            },
+        .child(section_heading(
+            format!("{} (index.json)", i18n.project_config()),
+            Some(actions),
+            theme,
         ))
-        .child(config_row(
-            i18n.entry_script_label(),
-            if editing {
-                div()
-                    .w(px(260.0))
-                    .child(app.cfg_entry_input.clone())
-                    .into_any_element()
-            } else {
-                value_text(entry_filename)
-            },
-        ))
-        .child(config_row(
-            i18n.window_size_label(),
-            if editing {
-                div()
-                    .w(px(260.0))
-                    .child(app.cfg_window_size_input.clone())
-                    .into_any_element()
-            } else {
-                value_text(window_size)
-            },
-        ))
-        .child(config_row(
-            i18n.stage_size_label(),
-            if editing {
-                div()
-                    .w(px(260.0))
-                    .child(app.cfg_stage_size_input.clone())
-                    .into_any_element()
-            } else {
-                value_text(stage_size)
-            },
-        ))
-        .child(config_row(
-            i18n.engine_channel_label(),
-            if editing {
-                select_dropdown(
-                    "cfg-ch-select",
-                    edit_channel,
-                    ch_menu_open,
-                    260.0,
-                    true,
-                    theme,
-                    cx.listener(|this, _, _, cx| {
-                        this.toggle_popover(ActivePopover::ConfigChannel, cx);
-                    }),
-                    ch_items,
-                )
-            } else {
-                value_text(engine_channel)
-            },
-        ))
+        .child(config_row(i18n.window_title_label(), window_title))
+        .child(config_row(i18n.cfg_app_name(), app_name))
+        .child(config_row(i18n.window_size_label(), window_size))
+        .child(config_row(i18n.stage_size_label(), stage_size))
         .when_some(framework_name, |p, fw| {
-            p.child(config_row(i18n.framework_label(), value_text(&fw)))
+            p.child(config_row(i18n.framework_label(), &fw))
         })
         .into_any_element()
 }

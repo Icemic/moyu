@@ -148,9 +148,10 @@ crates/devtool/
 ### 5.4 全局配置与工程配置写回
 
 - **全局配置**（`~/.moyu/devtool.json`，`src/config.rs`）：持久化 `recentProjects`（最多 10 条）、`theme`（`system` / `light` / `dark` / `solarizedLight` / `oneDark`）、`locale`（`zhCn` / `enUs`）、`managedNodeVersion`、`preferredEditor`。
-- **工程配置写回**（`service/project.rs::save_project_config`）：
-  - 修改 `index.json` 的 `windowTitle`、`entryFilename`、`initialSurfaceSize`、`stageSize`（尺寸校验为 `<宽>x<高>` 正整数）及 `moyu.json` 的 `engine.channel`（文件不存在时自动创建）。
-  - 读写以通用 JSON 对象合并方式进行，**严格保留配置文件中的其他无关字段**（如 `$schema`、`fontFile`、`steam`、`multiResAssets` 等）。
+- **配置写回（职责分离）**：
+  - `index.json`（运行时配置，`service/project.rs::save_runtime_config`）：支持完整读写 `MoyuConfig` 全部 25 项运行时字段（窗口与基础、多分辨率资源、特性与平台含 MSAA/Mipmaps/Steam/Cursor、高级渲染与入口）。
+  - `moyu.json`（工程与工具链配置）：`engine.*`（`channel` / `cdnUrl` / `version`）由 `save_engine_project_config` 管理；`android.*`（应用信息、图标、发布签名）由 `service/android.rs::save_android_config` 管理并复用 `validate_android_config` 校验。
+  - 所有写回均以通用 JSON 对象合并方式进行，**严格保留配置文件中的 `$schema` 与其他未知扩展字段**。
 
 ### 5.5 Node.js 边界、Schema 与托管 Node
 

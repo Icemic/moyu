@@ -15,7 +15,7 @@ use crate::model::tasks::LogLevel;
 use crate::service::node::{
     build_augmented_path, detect_package_manager, ensure_package_manager, require_node,
 };
-use crate::service::{ServiceReporter, configure_no_window_std, configure_no_window_tokio};
+use crate::service::{ServiceReporter, configure_no_window_tokio, kill_process_tree_sync};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(dead_code)]
@@ -340,24 +340,6 @@ pub async fn start_dev_server(
         task: Some(task),
         port_rx,
     })
-}
-
-/// Kill the entire child process tree on Windows so nested `node`/`rspack`/`vite` processes do not leak.
-fn kill_process_tree_sync(pid: u32) {
-    #[cfg(windows)]
-    {
-        let mut cmd = std::process::Command::new("taskkill");
-        cmd.args(["/PID", &pid.to_string(), "/T", "/F"])
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-        configure_no_window_std(&mut cmd);
-        let _ = cmd.status();
-    }
-    #[cfg(not(windows))]
-    {
-        let _ = pid;
-    }
 }
 
 /// Strip ANSI CSI escape sequences from terminal output.

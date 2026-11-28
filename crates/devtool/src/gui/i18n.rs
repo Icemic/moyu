@@ -169,8 +169,323 @@ impl I18n {
 
     pub const fn project_config(&self) -> &'static str {
         match self.locale {
-            LocalePreference::ZhCn => "工程配置",
-            LocalePreference::EnUs => "Project Config",
+            LocalePreference::ZhCn => "运行时配置",
+            LocalePreference::EnUs => "Runtime Config",
+        }
+    }
+
+    pub const fn runtime_config_title(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "运行时配置",
+            LocalePreference::EnUs => "Runtime Configuration",
+        }
+    }
+
+    pub const fn engine_config_title(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "引擎配置",
+            LocalePreference::EnUs => "Engine Configuration",
+        }
+    }
+
+    pub const fn android_config_title(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "Android 工程配置",
+            LocalePreference::EnUs => "Android Configuration",
+        }
+    }
+
+    pub const fn configure(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "配置",
+            LocalePreference::EnUs => "Configure",
+        }
+    }
+
+    pub const fn cfg_sec_window(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "窗口与基础",
+            LocalePreference::EnUs => "Window & Basics",
+        }
+    }
+
+    pub const fn cfg_sec_features(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "特性与平台",
+            LocalePreference::EnUs => "Features & Platform",
+        }
+    }
+
+    pub const fn cfg_sec_advanced(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "高级渲染与入口设置",
+            LocalePreference::EnUs => "Advanced Rendering & Entry",
+        }
+    }
+
+    pub const fn cfg_app_name(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "应用标识名",
+            LocalePreference::EnUs => "App Name",
+        }
+    }
+
+    pub const fn cfg_window_state(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "初始窗口状态",
+            LocalePreference::EnUs => "Window State",
+        }
+    }
+
+    pub const fn cfg_window_resizable(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "允许缩放窗口",
+            LocalePreference::EnUs => "Resizable Window",
+        }
+    }
+
+    pub const fn cfg_background_color(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "背景色",
+            LocalePreference::EnUs => "Background Color",
+        }
+    }
+
+    pub const fn cfg_font_file(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "字体配置",
+            LocalePreference::EnUs => "Fonts",
+        }
+    }
+
+    pub const fn cfg_add_font(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "添加字体",
+            LocalePreference::EnUs => "Add Font",
+        }
+    }
+
+    pub const fn cfg_font_kind_auto(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "自动",
+            LocalePreference::EnUs => "Auto",
+        }
+    }
+
+    pub const fn cfg_add_cursor(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "添加状态",
+            LocalePreference::EnUs => "Add State",
+        }
+    }
+
+    pub const fn cfg_multi_res_mode(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "多分辨率模式",
+            LocalePreference::EnUs => "Multi-Res Mode",
+        }
+    }
+
+    pub const fn cfg_multi_res_fixed(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "固定倍率",
+            LocalePreference::EnUs => "Fixed Scale",
+        }
+    }
+
+    pub const fn cfg_multi_res_scales(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "候选倍率（逗号分隔）",
+            LocalePreference::EnUs => "Candidate Scales",
+        }
+    }
+
+    pub const fn cfg_multi_res_policy(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "选图策略",
+            LocalePreference::EnUs => "Selection Policy",
+        }
+    }
+
+    pub const fn cfg_enable_gamepads(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "启用手柄",
+            LocalePreference::EnUs => "Enable Gamepads",
+        }
+    }
+
+    pub const fn cfg_skip_splash(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "跳过启动页",
+            LocalePreference::EnUs => "Skip Splash",
+        }
+    }
+
+    pub const fn cfg_show_fps(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "显示 FPS",
+            LocalePreference::EnUs => "Show FPS",
+        }
+    }
+
+    pub const fn cfg_steam_enable(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "Steam 集成",
+            LocalePreference::EnUs => "Steam Integration",
+        }
+    }
+
+    pub const fn cfg_steam_required(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "强制要求 Steam",
+            LocalePreference::EnUs => "Require Steam",
+        }
+    }
+
+    pub const fn cfg_steam_restart(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "通过客户端重启",
+            LocalePreference::EnUs => "Restart Through Client",
+        }
+    }
+
+    pub const fn cfg_cursor(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "自定义光标",
+            LocalePreference::EnUs => "Custom Cursor",
+        }
+    }
+
+    pub const fn cfg_entry_redirect(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "入口重定向 (entry)",
+            LocalePreference::EnUs => "Entry Redirect",
+        }
+    }
+
+    pub const fn cfg_autorun(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "自动运行模式",
+            LocalePreference::EnUs => "Autorun Mode",
+        }
+    }
+
+    pub const fn cfg_backend(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "渲染后端",
+            LocalePreference::EnUs => "Rendering Backend",
+        }
+    }
+
+    pub const fn cfg_present_mode(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "垂直同步模式",
+            LocalePreference::EnUs => "Present Mode",
+        }
+    }
+
+    pub const fn cfg_frame_latency(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "最大帧延迟",
+            LocalePreference::EnUs => "Max Frame Latency",
+        }
+    }
+
+    pub const fn cfg_params(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "透传参数 (params)",
+            LocalePreference::EnUs => "Custom Params",
+        }
+    }
+
+    pub const fn cfg_engine_advanced(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "高级源配置（CDN / 锁定版本）",
+            LocalePreference::EnUs => "Advanced Source (CDN / Pin Version)",
+        }
+    }
+
+    pub const fn cfg_engine_pin_version(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "锁定版本（留空自动）",
+            LocalePreference::EnUs => "Pin Version (optional)",
+        }
+    }
+
+    pub const fn cfg_android_basic(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "应用信息",
+            LocalePreference::EnUs => "Application Info",
+        }
+    }
+
+    pub const fn cfg_android_app_name(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "应用名称",
+            LocalePreference::EnUs => "App Name",
+        }
+    }
+
+    pub const fn cfg_android_version_name(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "版本名 (versionName)",
+            LocalePreference::EnUs => "Version Name",
+        }
+    }
+
+    pub const fn cfg_android_version_code(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "版本码 (versionCode)",
+            LocalePreference::EnUs => "Version Code",
+        }
+    }
+
+    pub const fn cfg_android_orientation(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "屏幕方向",
+            LocalePreference::EnUs => "Orientation",
+        }
+    }
+
+    pub const fn cfg_android_icon_signing(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "图标与发布签名（高级）",
+            LocalePreference::EnUs => "Icon & Release Signing (Advanced)",
+        }
+    }
+
+    pub const fn cfg_android_icon_source(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "图标 PNG 相对路径",
+            LocalePreference::EnUs => "Icon PNG Path",
+        }
+    }
+
+    pub const fn cfg_android_icon_bg(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "图标背景色 (#RRGGBB)",
+            LocalePreference::EnUs => "Icon Background (#RRGGBB)",
+        }
+    }
+
+    pub const fn cfg_android_icon_padding(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "前景留白 (0.0–0.5)",
+            LocalePreference::EnUs => "Foreground Padding",
+        }
+    }
+
+    pub const fn cfg_android_keystore(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "Keystore 相对路径",
+            LocalePreference::EnUs => "Keystore Path",
+        }
+    }
+
+    pub const fn cfg_android_key_alias(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "签名密钥别名",
+            LocalePreference::EnUs => "Key Alias",
         }
     }
 
@@ -716,6 +1031,20 @@ impl I18n {
         match self.locale {
             LocalePreference::ZhCn => "输出目录",
             LocalePreference::EnUs => "Output Directory",
+        }
+    }
+
+    pub const fn pack_complete_title(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "打包完成",
+            LocalePreference::EnUs => "Packaging Complete",
+        }
+    }
+
+    pub const fn open_output_dir(&self) -> &'static str {
+        match self.locale {
+            LocalePreference::ZhCn => "打开输出目录",
+            LocalePreference::EnUs => "Open Output Folder",
         }
     }
 

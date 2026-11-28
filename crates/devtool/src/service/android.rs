@@ -137,7 +137,7 @@ pub async fn pack_android(
     Ok(())
 }
 
-fn load_android_config(project_root: &Path) -> Result<AndroidConfig> {
+pub fn load_android_config(project_root: &Path) -> Result<AndroidConfig> {
     let mut cfg = AndroidConfig::default();
     let config_path = project_root.join("moyu.json");
     if !config_path.is_file() {
@@ -196,7 +196,7 @@ fn load_android_config(project_root: &Path) -> Result<AndroidConfig> {
     Ok(cfg)
 }
 
-fn validate_android_config(config: &AndroidConfig) -> Result<()> {
+pub fn validate_android_config(config: &AndroidConfig) -> Result<()> {
     let valid_app_id = {
         let parts: Vec<&str> = config.application_id.split('.').collect();
         parts.len() >= 2
@@ -241,6 +241,101 @@ fn validate_android_config(config: &AndroidConfig) -> Result<()> {
     if !config.keystore_path.trim().is_empty() && Path::new(&config.keystore_path).is_absolute() {
         bail!("Android keystore path must be relative to the project directory.");
     }
+    Ok(())
+}
+
+/// Save `moyu.json`'s `android` section while preserving `engine` and all unrelated keys.
+#[allow(dead_code)]
+pub fn save_android_config(project_root: &Path, config: &AndroidConfig) -> Result<()> {
+    validate_android_config(config)?;
+    let moyu_path = project_root.join("moyu.json");
+    let mut moyu_val: serde_json::Value = if moyu_path.is_file() {
+        let text = fs::read_to_string(&moyu_path)?;
+        serde_json::from_str(&text).context("Failed to parse moyu.json.")?
+    } else {
+        serde_json::json!({})
+    };
+    let moyu_obj = moyu_val
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("moyu.json root must be a JSON object."))?;
+    let android_entry = moyu_obj
+        .entry("android".to_string())
+        .or_insert_with(|| serde_json::json!({}));
+    if !android_entry.is_object() {
+        *android_entry = serde_json::json!({});
+    }
+    let android_obj = android_entry.as_object_mut().unwrap();
+
+    let defaults = AndroidConfig::default();
+    let upsert = |obj: &mut serde_json::Map<String, serde_json::Value>,
+                  key: &str,
+                  val: serde_json::Value,
+                  default_val: serde_json::Value| {
+        if obj.contains_key(key) || val != default_val {
+            obj.insert(key.to_string(), val);
+        }
+    };
+
+    upsert(
+        android_obj,
+        "appName",
+        serde_json::json!(config.app_name.trim()),
+        serde_json::json!(defaults.app_name),
+    );
+    upsert(
+        android_obj,
+        "applicationId",
+        serde_json::json!(config.application_id.trim()),
+        serde_json::json!(defaults.application_id),
+    );
+    upsert(
+        android_obj,
+        "versionName",
+        serde_json::json!(config.version_name.trim()),
+        serde_json::json!(defaults.version_name),
+    );
+    upsert(
+        android_obj,
+        "versionCode",
+        serde_json::json!(config.version_code),
+        serde_json::json!(defaults.version_code),
+    );
+    upsert(
+        android_obj,
+        "orientation",
+        serde_json::json!(config.orientation.trim()),
+        serde_json::json!(defaults.orientation),
+    );
+
+    let icon_src = config.icon_source.trim();
+    if icon_src.is_empty() {
+        android_obj.remove("icon");
+    } else {
+        android_obj.insert(
+            "icon".into(),
+            serde_json::json!({
+                "source": icon_src,
+                "background": { "color": config.icon_bg_color.trim() },
+                "foregroundPadding": config.foreground_padding,
+            }),
+        );
+    }
+
+    let ks = config.keystore_path.trim();
+    let alias = config.key_alias.trim();
+    if ks.is_empty() && alias.is_empty() {
+        android_obj.remove("signing");
+    } else {
+        android_obj.insert(
+            "signing".into(),
+            serde_json::json!({
+                "keystorePath": ks,
+                "keyAlias": alias,
+            }),
+        );
+    }
+
+    fs::write(&moyu_path, serde_json::to_string_pretty(&moyu_val)? + "\n")?;
     Ok(())
 }
 
@@ -575,16 +670,17 @@ async fn run_gradle_build(
 
     let mut cmd = if cfg!(windows) {
         let mut c = tokio::process::Command::new("cmd.exe");
-        c.args(["/c", &gradlew_str, task]);
+        c.args(["/c", &gradlew_str, "--no-daemon", task]);
         c
     } else {
         let mut c = tokio::process::Command::new(&gradlew_str);
-        c.arg(task);
+        c.args(["--no-daemon", task]);
         c
     };
 
     crate::service::configure_no_window_tokio(&mut cmd);
     cmd.current_dir(workdir)
+        .kill_on_drop(true)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -599,7 +695,17 @@ async fn run_gradle_build(
         .env("MOYU_KEY_PASSWORD", &s.password);
     }
 
+    struct ProcessTreeGuard(Option<u32>);
+    impl Drop for ProcessTreeGuard {
+        fn drop(&mut self) {
+            if let Some(pid) = self.0.take() {
+                crate::service::kill_process_tree_sync(pid);
+            }
+        }
+    }
+
     let mut child = cmd.spawn().context("Failed to execute Gradle wrapper")?;
+    let mut tree_guard = ProcessTreeGuard(child.id());
     let stdout_task = child.stdout.take().map(|out| {
         let rep = reporter.clone();
         tokio::spawn(async move {
@@ -620,10 +726,25 @@ async fn run_gradle_build(
     });
 
     let status = tokio::select! {
-        res = child.wait() => res?,
+        res = child.wait() => {
+            tree_guard.0 = None;
+            res?
+        }
         _ = reporter.cancel.cancelled() => {
+            if let Some(pid) = tree_guard.0.take() {
+                let _ = tokio::task::spawn_blocking(move || {
+                    crate::service::kill_process_tree_sync(pid);
+                })
+                .await;
+            }
             let _ = child.kill().await;
             let _ = child.wait().await;
+            if let Some(t) = stdout_task {
+                t.abort();
+            }
+            if let Some(t) = stderr_task {
+                t.abort();
+            }
             bail!("Gradle build cancelled.");
         }
     };

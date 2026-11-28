@@ -4,9 +4,11 @@ use gpui::{AnyElement, Context, div, prelude::*, px};
 
 use crate::gui::i18n::I18n;
 use crate::gui::theme::Theme;
-use crate::gui::ui::button::{ButtonVariant, button, sm_button};
-use crate::gui::ui::card::{detail_row, panel, section_heading};
+use crate::gui::ui::button::{ButtonVariant, button, icon_button, sm_button};
+use crate::gui::ui::card::{detail_row, panel, section_heading, status_dot};
 use crate::gui::ui::dropdown::{menu_item, select_dropdown};
+use crate::gui::ui::icon::IconName;
+use crate::gui::ui::switch::switch;
 use crate::gui::{ActivePopover, DevtoolApp, PackTargetGroup};
 use crate::service::android::ANDROID_FORMATS;
 
@@ -251,6 +253,43 @@ pub fn render_pack_view(
                         .child(div().w(px(220.0)).child(app.android_password_input.clone())),
                 )
             })
+            .child(
+                detail_row(theme)
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(2.0))
+                            .min_w_0()
+                            .flex_1()
+                            .child(
+                                div()
+                                    .text_size(px(13.0))
+                                    .text_color(theme.foreground)
+                                    .child(i18n.android_config_title()),
+                            )
+                            .child(
+                                div()
+                                    .text_size(px(11.0))
+                                    .text_color(theme.meta)
+                                    .overflow_hidden()
+                                    .child(
+                                        app.project
+                                            .moyu_summary
+                                            .as_ref()
+                                            .and_then(|m| m.android_application_id.clone())
+                                            .unwrap_or_else(|| "moyu.json · android".to_string()),
+                                    ),
+                            ),
+                    )
+                    .child(sm_button(
+                        "pack-open-android-cfg",
+                        i18n.configure(),
+                        ButtonVariant::Secondary,
+                        theme,
+                        cx.listener(|this, _, _, cx| this.open_android_config_dialog(cx)),
+                    )),
+            )
         })
         .when(
             matches!(group, PackTargetGroup::Desktop | PackTargetGroup::Web),
@@ -263,18 +302,9 @@ pub fn render_pack_view(
                                 .text_color(theme.foreground)
                                 .child(i18n.zip_archive_label()),
                         )
-                        .child(sm_button(
+                        .child(switch(
                             "toggle-compress",
-                            if compress {
-                                format!("✓ {}", i18n.toggle_on())
-                            } else {
-                                i18n.toggle_off().to_string()
-                            },
-                            if compress {
-                                ButtonVariant::Primary
-                            } else {
-                                ButtonVariant::Secondary
-                            },
+                            compress,
                             theme,
                             cx.listener(|this, _, _, cx| {
                                 this.pack_compress = !this.pack_compress;
@@ -295,18 +325,9 @@ pub fn render_pack_view(
                                 .text_color(theme.foreground)
                                 .child(i18n.video_decoder_label()),
                         )
-                        .child(sm_button(
+                        .child(switch(
                             "toggle-video",
-                            if video {
-                                format!("✓ {}", i18n.toggle_on())
-                            } else {
-                                i18n.toggle_off().to_string()
-                            },
-                            if video {
-                                ButtonVariant::Primary
-                            } else {
-                                ButtonVariant::Secondary
-                            },
+                            video,
                             theme,
                             cx.listener(|this, _, _, cx| {
                                 this.pack_video_decoder = !this.pack_video_decoder;
@@ -343,17 +364,118 @@ pub fn render_pack_view(
                 )
                 .child(
                     div()
-                        .text_size(px(12.0))
-                        .text_color(theme.foreground)
-                        .child(".moyu/release"),
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(
+                            div()
+                                .text_size(px(12.0))
+                                .text_color(theme.foreground)
+                                .child(".moyu/release"),
+                        )
+                        .when_some(
+                            app.project
+                                .root
+                                .as_ref()
+                                .map(|r| r.join(".moyu").join("release"))
+                                .filter(|p| p.is_dir()),
+                            |d, release_dir| {
+                                d.child(sm_button(
+                                    "pack-open-release-dir",
+                                    i18n.open_folder(),
+                                    ButtonVariant::Secondary,
+                                    theme,
+                                    cx.listener(move |this, _, _, cx| {
+                                        this.open_pack_output_dir(release_dir.clone(), cx);
+                                    }),
+                                ))
+                            },
+                        ),
                 ),
         );
+
+    let pack_done_banner = app.last_pack_output.clone().map(|out_dir| {
+        let out_str = out_dir.display().to_string();
+        let open_dir = out_dir.clone();
+        div()
+            .mb(px(10.0))
+            .px(px(12.0))
+            .py(px(8.0))
+            .rounded(px(4.0))
+            .bg(theme.card)
+            .border_1()
+            .border_color(theme.success)
+            .flex()
+            .flex_row()
+            .items_center()
+            .justify_between()
+            .gap(px(10.0))
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(px(8.0))
+                    .min_w_0()
+                    .flex_1()
+                    .child(status_dot(theme.success))
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(2.0))
+                            .min_w_0()
+                            .child(
+                                div()
+                                    .text_size(px(13.0))
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .text_color(theme.foreground)
+                                    .child(i18n.pack_complete_title()),
+                            )
+                            .child(
+                                div()
+                                    .text_size(px(11.0))
+                                    .text_color(theme.meta)
+                                    .overflow_hidden()
+                                    .child(out_str),
+                            ),
+                    ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(px(6.0))
+                    .flex_shrink_0()
+                    .child(sm_button(
+                        "pack-open-last-output",
+                        i18n.open_output_dir(),
+                        ButtonVariant::Primary,
+                        theme,
+                        cx.listener(move |this, _, _, cx| {
+                            this.open_pack_output_dir(open_dir.clone(), cx);
+                        }),
+                    ))
+                    .child(icon_button(
+                        "pack-dismiss-banner",
+                        IconName::X,
+                        theme,
+                        cx.listener(|this, _, _, cx| {
+                            this.last_pack_output = None;
+                            cx.notify();
+                        }),
+                    )),
+            )
+    });
 
     div()
         .size_full()
         .flex()
         .flex_col()
         .child(heading)
+        .when_some(pack_done_banner, |d, b| d.child(b))
         .child(
             div()
                 .flex()

@@ -72,7 +72,7 @@ pub async fn pack_project(
     project_root: &Path,
     options: PackOptions,
     reporter: &ServiceReporter,
-) -> Result<()> {
+) -> Result<PathBuf> {
     let kind = if options.target.as_deref() == Some(ANDROID_PLATFORM) {
         TaskKind::PackAndroid
     } else {
@@ -87,7 +87,7 @@ pub async fn pack_project(
 
     let result = pack_project_inner(project_root, options, reporter).await;
     match &result {
-        Ok(()) => reporter.finished(TaskStatus::Completed),
+        Ok(_) => reporter.finished(TaskStatus::Completed),
         Err(_) if reporter.cancel.is_cancelled() => reporter.finished(TaskStatus::Cancelled),
         Err(e) => reporter.finished(TaskStatus::Failed(format!("{e:#}"))),
     }
@@ -98,7 +98,7 @@ async fn pack_project_inner(
     project_root: &Path,
     options: PackOptions,
     reporter: &ServiceReporter,
-) -> Result<()> {
+) -> Result<PathBuf> {
     reporter.cancel.check()?;
     let report = check_multi_res_assets(project_root)?;
     report_multi_res_warnings(&report, reporter);
@@ -285,8 +285,8 @@ async fn pack_project_inner(
     reporter.info("Cleaning up tmp-pack...");
     let _ = fs::remove_dir_all(&tmp_pack_dir);
     res?;
-    reporter.success("Pack complete!");
-    Ok(())
+    reporter.success(format!("Pack complete: {}", output_dir.display()));
+    Ok(output_dir)
 }
 
 fn copy_bundle_js(

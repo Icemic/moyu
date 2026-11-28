@@ -351,3 +351,22 @@ pub fn configure_no_window_tokio(
     }
     cmd
 }
+
+/// Kill an entire child process tree synchronously on Windows (`taskkill /PID <pid> /T /F`)
+/// so nested shells (`cmd.exe` -> `node`/`java`/`gradlew`) do not leak orphan processes.
+pub fn kill_process_tree_sync(pid: u32) {
+    #[cfg(windows)]
+    {
+        let mut cmd = std::process::Command::new("taskkill");
+        cmd.args(["/PID", &pid.to_string(), "/T", "/F"])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+        configure_no_window_std(&mut cmd);
+        let _ = cmd.status();
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = pid;
+    }
+}

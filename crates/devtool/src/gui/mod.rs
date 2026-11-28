@@ -50,13 +50,17 @@ mod app {
     use crate::gui::ui::motion::{animate_drawer_in, animate_popover_in};
     use crate::gui::ui::progress::progress_bar;
     use crate::gui::ui::text_input::{TextInput, register_key_bindings};
-    use crate::gui::views::{debug, development, dialogs, engine, pack};
+    use crate::gui::views::config_dialogs::{
+        AndroidConfigEditors, EngineConfigEditors, RuntimeConfigEditors,
+    };
+    use crate::gui::views::{config_dialogs, debug, development, dialogs, engine, pack};
     use crate::model::DomainModel;
     use crate::model::debug::{DebugEvent, DebugModel, LogEntry, NodeSummary, SessionMode};
     use crate::model::engine::{EngineEvent, EngineModel};
     use crate::model::env::EnvModel;
     use crate::model::project::{ProjectEvent, ProjectModel};
     use crate::model::tasks::{LogLevel, TaskEvent, TaskLogEntry, TasksModel};
+    use crate::service::android::{load_android_config, save_android_config};
     use crate::service::debug::{DebugSession, SessionOptions, start_debug_session};
     use crate::service::dev_server::{
         DevServerEvent, DevServerHandle, DevServerStatus, start_dev_server,
@@ -75,8 +79,9 @@ mod app {
     };
     use crate::service::pack::{PackOptions, pack_project};
     use crate::service::project::{
-        ProjectConfigPatch, check_multi_res_assets, load_index_summary, load_project_opened_event,
-        report_multi_res_warnings, save_project_config,
+        check_multi_res_assets, load_engine_project_config, load_index_summary,
+        load_project_opened_event, load_runtime_config, report_multi_res_warnings,
+        save_engine_project_config, save_runtime_config,
     };
     use crate::service::{CancelToken, ServiceReporter, format_bytes, next_task_id};
 
@@ -98,7 +103,6 @@ mod app {
         ProjectMenu,
         EditorMenu,
         RunModeMenu,
-        ConfigChannel,
         SettingsTheme,
         SettingsLocale,
         DownloadChannel,
@@ -106,6 +110,15 @@ mod app {
         PackPlatform,
         PackAndroidFormat,
         DebugMode,
+        RuntimeWindowState,
+        RuntimeFontKind(usize),
+        RuntimeMultiResMode,
+        RuntimeMultiResPolicy,
+        RuntimeAutorun,
+        RuntimeBackend,
+        RuntimePresentMode,
+        EngineCfgChannel,
+        AndroidCfgOrientation,
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -113,6 +126,9 @@ mod app {
         Settings,
         CreateProject,
         DownloadEngine,
+        RuntimeConfig,
+        EngineConfig,
+        AndroidConfig,
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -149,14 +165,10 @@ mod app {
         pub selected_editor_id: Option<String>,
         // Unified run/debug preview mode (shares `debug_session` with Debugger tab)
         pub run_mode: RunMode,
-        // Inline project config editing
-        pub config_editing: bool,
-        pub config_channel_draft: String,
-        pub config_save_error: Option<String>,
-        pub cfg_title_input: Entity<TextInput>,
-        pub cfg_entry_input: Entity<TextInput>,
-        pub cfg_window_size_input: Entity<TextInput>,
-        pub cfg_stage_size_input: Entity<TextInput>,
+        // Dedicated config dialog editors (`index.json`, `moyu.json` engine & android)
+        pub rt_cfg: RuntimeConfigEditors,
+        pub eng_cfg: EngineConfigEditors,
+        pub and_cfg: AndroidConfigEditors,
         // Create project dialog
         pub init_name_input: Entity<TextInput>,
         pub init_dir_input: Entity<TextInput>,
@@ -171,6 +183,7 @@ mod app {
         pub pack_video_decoder: bool,
         pub pack_android_format: String,
         pub android_password_input: Entity<TextInput>,
+        pub last_pack_output: Option<PathBuf>,
         // Project Dev Server (independent from one-shot task slot)
         pub dev_server_status: DevServerStatus,
         dev_server_handle: Option<Arc<tokio::sync::Mutex<DevServerHandle>>>,
@@ -214,10 +227,9 @@ mod app {
                 input.set_text(default_parent, cx);
                 input
             });
-            let cfg_title_input = cx.new(|cx| TextInput::new(i18n.window_title_label(), cx));
-            let cfg_entry_input = cx.new(|cx| TextInput::new("./main.js", cx));
-            let cfg_window_size_input = cx.new(|cx| TextInput::new("1280x720", cx));
-            let cfg_stage_size_input = cx.new(|cx| TextInput::new("1920x1080", cx));
+            let rt_cfg = RuntimeConfigEditors::new(cx);
+            let eng_cfg = EngineConfigEditors::new(cx);
+            let and_cfg = AndroidConfigEditors::new(cx);
             let android_password_input = cx.new(|cx| {
                 let mut input = TextInput::new(i18n.android_password_placeholder(), cx);
                 input.set_masked(true, cx);
@@ -250,13 +262,9 @@ mod app {
                 detected_editors: Vec::new(),
                 selected_editor_id: preferred_editor,
                 run_mode: RunMode::Desktop,
-                config_editing: false,
-                config_channel_draft: DEFAULT_CHANNEL.to_string(),
-                config_save_error: None,
-                cfg_title_input,
-                cfg_entry_input,
-                cfg_window_size_input,
-                cfg_stage_size_input,
+                rt_cfg,
+                eng_cfg,
+                and_cfg,
                 init_name_input,
                 init_dir_input,
                 selected_channel: DEFAULT_CHANNEL.to_string(),
@@ -268,6 +276,7 @@ mod app {
                 pack_video_decoder: false,
                 pack_android_format: "debug-apk".to_string(),
                 android_password_input,
+                last_pack_output: None,
                 dev_server_status: DevServerStatus::Stopped,
                 dev_server_handle: None,
                 dev_server_gen: 0,
@@ -499,67 +508,75 @@ mod app {
                     }
                 }
             }
-            if !self.config_channel_draft.is_empty()
-                && !channels.contains(&self.config_channel_draft)
-            {
-                channels.push(self.config_channel_draft.clone());
+            if !self.eng_cfg.channel.is_empty() && !channels.contains(&self.eng_cfg.channel) {
+                channels.push(self.eng_cfg.channel.clone());
             }
             channels
         }
 
-        pub fn begin_config_edit(&mut self, cx: &mut Context<Self>) {
-            let index = self.project.index_summary.as_ref();
-            let title = index
-                .and_then(|s| s.window_title.clone())
-                .unwrap_or_default();
-            let entry = index
-                .and_then(|s| s.entry_filename.clone())
-                .unwrap_or_else(|| "./main.js".to_string());
-            let win_size = index
-                .and_then(|s| s.initial_surface_size.clone())
-                .unwrap_or_else(|| "1280x720".to_string());
-            let stage_size = index
-                .and_then(|s| s.stage_size.clone())
-                .unwrap_or_else(|| "1920x1080".to_string());
-            let channel = self
-                .project
-                .moyu_summary
-                .as_ref()
-                .and_then(|m| m.engine_channel.clone())
-                .unwrap_or_else(|| self.engine.config.channel.clone());
-
-            self.cfg_title_input
-                .update(cx, |i, cx| i.set_text(title, cx));
-            self.cfg_entry_input
-                .update(cx, |i, cx| i.set_text(entry, cx));
-            self.cfg_window_size_input
-                .update(cx, |i, cx| i.set_text(win_size, cx));
-            self.cfg_stage_size_input
-                .update(cx, |i, cx| i.set_text(stage_size, cx));
-            self.config_channel_draft = channel;
-            self.config_save_error = None;
-            self.config_editing = true;
-            cx.notify();
+        pub fn open_runtime_config_dialog(&mut self, cx: &mut Context<Self>) {
+            let Some(root) = self.project.root.clone() else {
+                self.push_log(LogLevel::Warn, "Open a project first.", cx);
+                return;
+            };
+            match load_runtime_config(&root) {
+                Ok(form) => {
+                    self.rt_cfg.load_from(&form, cx);
+                    self.active_popover = None;
+                    self.active_dialog = Some(ActiveDialog::RuntimeConfig);
+                    cx.notify();
+                }
+                Err(err) => self.push_log(LogLevel::Error, format!("{err:#}"), cx),
+            }
         }
 
-        pub fn cancel_config_edit(&mut self, cx: &mut Context<Self>) {
-            self.config_editing = false;
-            self.config_save_error = None;
-            cx.notify();
-        }
-
-        pub fn save_config_edit(&mut self, cx: &mut Context<Self>) {
+        pub fn save_runtime_config_dialog(&mut self, cx: &mut Context<Self>) {
             let Some(root) = self.project.root.clone() else {
                 return;
             };
-            let patch = ProjectConfigPatch {
-                window_title: self.cfg_title_input.read(cx).text().to_string(),
-                entry_filename: self.cfg_entry_input.read(cx).text().to_string(),
-                initial_surface_size: self.cfg_window_size_input.read(cx).text().to_string(),
-                stage_size: self.cfg_stage_size_input.read(cx).text().to_string(),
-                engine_channel: self.config_channel_draft.clone(),
+            let form = self.rt_cfg.to_form(cx);
+            match save_runtime_config(&root, &form) {
+                Ok(()) => {
+                    if let Ok(ev) = load_project_opened_event(&root) {
+                        self.project.apply(ev);
+                    }
+                    self.recheck_multi_res(cx);
+                    self.rt_cfg.save_error = None;
+                    self.active_popover = None;
+                    self.active_dialog = None;
+                    self.push_log(
+                        LogLevel::Success,
+                        "Runtime configuration (index.json) saved.",
+                        cx,
+                    );
+                }
+                Err(err) => {
+                    let msg = format!("{err:#}");
+                    self.rt_cfg.save_error = Some(msg.clone());
+                    self.push_log(LogLevel::Error, msg, cx);
+                }
+            }
+            cx.notify();
+        }
+
+        pub fn open_engine_config_dialog(&mut self, cx: &mut Context<Self>) {
+            let Some(root) = self.project.root.clone() else {
+                self.push_log(LogLevel::Warn, "Open a project first.", cx);
+                return;
             };
-            match save_project_config(&root, &patch) {
+            let form = load_engine_project_config(&root);
+            self.eng_cfg.load_from(&form, cx);
+            self.active_popover = None;
+            self.active_dialog = Some(ActiveDialog::EngineConfig);
+            cx.notify();
+        }
+
+        pub fn save_engine_config_dialog(&mut self, cx: &mut Context<Self>) {
+            let Some(root) = self.project.root.clone() else {
+                return;
+            };
+            let form = self.eng_cfg.to_form(cx);
+            match save_engine_project_config(&root, &form) {
                 Ok(()) => {
                     if let Ok(ev) = load_project_opened_event(&root) {
                         self.project.apply(ev);
@@ -567,13 +584,65 @@ mod app {
                     let cfg = load_config(&root);
                     self.selected_channel = cfg.channel.clone();
                     self.engine.apply(EngineEvent::ConfigLoaded(cfg));
-                    self.config_editing = false;
-                    self.config_save_error = None;
-                    self.push_log(LogLevel::Success, "Project configuration saved.", cx);
+                    self.eng_cfg.save_error = None;
+                    self.active_popover = None;
+                    self.active_dialog = None;
+                    self.push_log(
+                        LogLevel::Success,
+                        "Engine configuration (moyu.json) saved.",
+                        cx,
+                    );
                 }
                 Err(err) => {
                     let msg = format!("{err:#}");
-                    self.config_save_error = Some(msg.clone());
+                    self.eng_cfg.save_error = Some(msg.clone());
+                    self.push_log(LogLevel::Error, msg, cx);
+                }
+            }
+            cx.notify();
+        }
+
+        pub fn open_android_config_dialog(&mut self, cx: &mut Context<Self>) {
+            let Some(root) = self.project.root.clone() else {
+                self.push_log(LogLevel::Warn, "Open a project first.", cx);
+                return;
+            };
+            match load_android_config(&root) {
+                Ok(cfg) => {
+                    self.and_cfg.load_from(&cfg, cx);
+                    self.active_popover = None;
+                    self.active_dialog = Some(ActiveDialog::AndroidConfig);
+                    cx.notify();
+                }
+                Err(err) => self.push_log(LogLevel::Error, format!("{err:#}"), cx),
+            }
+        }
+
+        pub fn save_android_config_dialog(&mut self, cx: &mut Context<Self>) {
+            let Some(root) = self.project.root.clone() else {
+                return;
+            };
+            match self
+                .and_cfg
+                .to_config(cx)
+                .and_then(|cfg| save_android_config(&root, &cfg))
+            {
+                Ok(()) => {
+                    if let Ok(ev) = load_project_opened_event(&root) {
+                        self.project.apply(ev);
+                    }
+                    self.and_cfg.save_error = None;
+                    self.active_popover = None;
+                    self.active_dialog = None;
+                    self.push_log(
+                        LogLevel::Success,
+                        "Android configuration (moyu.json) saved.",
+                        cx,
+                    );
+                }
+                Err(err) => {
+                    let msg = format!("{err:#}");
+                    self.and_cfg.save_error = Some(msg.clone());
                     self.push_log(LogLevel::Error, msg, cx);
                 }
             }
@@ -604,8 +673,8 @@ mod app {
 
             self.stop_debug_session(cx);
             self.stop_dev_server(cx);
-            self.config_editing = false;
-            self.config_save_error = None;
+            self.active_dialog = None;
+            self.last_pack_output = None;
 
             match load_project_opened_event(&path) {
                 Ok(ev) => {
@@ -982,15 +1051,24 @@ mod app {
                 ),
                 PackTargetGroup::Framework => (true, None, None),
             };
+            let compress = matches!(
+                self.pack_target_group,
+                PackTargetGroup::Desktop | PackTargetGroup::Web
+            ) && self.pack_compress;
+            let include_video_decoder = matches!(
+                self.pack_target_group,
+                PackTargetGroup::Desktop | PackTargetGroup::Android
+            ) && self.pack_video_decoder;
             let options = PackOptions {
                 target,
                 framework,
-                compress: self.pack_compress,
+                compress,
                 output: None,
                 android_format,
-                include_video_decoder: self.pack_video_decoder,
+                include_video_decoder,
                 signing_password: (!signing_pw.is_empty()).then_some(signing_pw),
             };
+            self.last_pack_output = None;
             let reporter = self.begin_task("Packaging project...", cx);
             let rt = Arc::clone(&cx.global::<TokioRuntime>().0);
             let handle = rt.spawn(async move {
@@ -1004,13 +1082,41 @@ mod app {
                 let _ = this.update(cx, |app, cx| {
                     app.clear_active_task(cx);
                     match res {
-                        Ok(Ok(())) => {}
+                        Ok(Ok(output_dir)) => {
+                            let display = output_dir.display().to_string();
+                            app.last_pack_output = Some(output_dir);
+                            app.push_log(
+                                LogLevel::Success,
+                                format!("Packaging complete: {display}"),
+                                cx,
+                            );
+                        }
                         Ok(Err(err)) => app.push_log(LogLevel::Error, format!("{err:#}"), cx),
                         Err(err) => app.push_log(LogLevel::Error, format!("Task panic: {err}"), cx),
                     }
+                    cx.notify();
                 });
             })
             .detach();
+        }
+
+        pub fn open_pack_output_dir(&mut self, dir: PathBuf, cx: &mut Context<Self>) {
+            if !dir.exists() {
+                self.push_log(
+                    LogLevel::Warn,
+                    format!("Output directory does not exist yet: {}", dir.display()),
+                    cx,
+                );
+                return;
+            }
+            match open_in_file_manager(&dir) {
+                Ok(()) => self.push_log(
+                    LogLevel::Info,
+                    format!("Opened output directory: {}", dir.display()),
+                    cx,
+                ),
+                Err(err) => self.push_log(LogLevel::Error, format!("{err:#}"), cx),
+            }
         }
 
         pub fn start_generate_schema(&mut self, is_ui: bool, cx: &mut Context<Self>) {
@@ -2478,6 +2584,15 @@ mod app {
                 Some(ActiveDialog::DownloadEngine) => Some(dialogs::render_download_engine_dialog(
                     self, theme, i18n, cx,
                 )),
+                Some(ActiveDialog::RuntimeConfig) => Some(
+                    config_dialogs::render_runtime_config_dialog(self, theme, i18n, cx),
+                ),
+                Some(ActiveDialog::EngineConfig) => Some(
+                    config_dialogs::render_engine_config_dialog(self, theme, i18n, cx),
+                ),
+                Some(ActiveDialog::AndroidConfig) => Some(
+                    config_dialogs::render_android_config_dialog(self, theme, i18n, cx),
+                ),
                 None => None,
             };
 

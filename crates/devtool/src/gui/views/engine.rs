@@ -131,9 +131,32 @@ pub fn render_engine_view(
                 .pt(px(8.0))
                 .border_t_1()
                 .border_color(theme.rule)
-                .text_size(px(11.0))
-                .text_color(theme.meta)
-                .child(format!("CDN: {}", app.engine.config.cdn_url)),
+                .flex()
+                .flex_row()
+                .items_center()
+                .justify_between()
+                .gap(px(8.0))
+                .child(
+                    div()
+                        .min_w_0()
+                        .flex_1()
+                        .overflow_hidden()
+                        .text_size(px(11.0))
+                        .text_color(theme.meta)
+                        .child(format!(
+                            "{}: {} · CDN: {}",
+                            i18n.engine_channel_label(),
+                            app.engine.config.channel,
+                            app.engine.config.cdn_url
+                        )),
+                )
+                .child(sm_button(
+                    "eng-open-cfg-dlg",
+                    i18n.configure(),
+                    ButtonVariant::Secondary,
+                    theme,
+                    cx.listener(|this, _, _, cx| this.open_engine_config_dialog(cx)),
+                )),
         );
 
     let installed_panel = panel(theme)

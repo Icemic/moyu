@@ -42,6 +42,7 @@ impl MultiResReport {
 #[serde(rename_all = "camelCase")]
 pub struct ProjectIndexSummary {
     pub window_title: Option<String>,
+    pub app_name: Option<String>,
     pub entry_filename: Option<String>,
     pub initial_surface_size: Option<String>,
     pub stage_size: Option<String>,

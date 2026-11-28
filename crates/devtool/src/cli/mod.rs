@@ -825,9 +825,9 @@ async fn cmd_pack(
     .await;
     drop(reporter);
     let _ = printer.await;
-    res?;
+    let out_dir = res?;
 
-    ui::outro("Packaging complete!");
+    ui::outro(&format!("Packaging complete: {}", out_dir.display()));
     Ok(())
 }
 
