@@ -84,4 +84,4 @@ jobs:
           if [[ "${{ steps.check.outputs.is_prerelease }}" == "true" ]]; then
             DIST_TAG_FLAG="--tag next"
           fi
-          npm publish packages/kit --provenance --access public $DIST_TAG_FLAG
+          (cd packages/kit && npm publish --provenance --access public $DIST_TAG_FLAG)
